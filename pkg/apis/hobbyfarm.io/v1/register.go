@@ -27,8 +27,14 @@ var (
 // Adds the list of known types to Scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&Cluster{},
-		&ClusterList{},
+		&VirtualMachine{},
+		&VirtualMachineList{},
+		&VirtualMachineType{},
+		&VirtualMachineTypeList{},
+		&Environment{},
+		&EnvironmentList{},
+		&ActiveScenario{},
+		&ActiveScenarioList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

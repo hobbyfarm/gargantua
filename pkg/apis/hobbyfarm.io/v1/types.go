@@ -6,6 +6,24 @@ import (
 	"time"
 )
 
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type VirtualMachine struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              VirtualMachineSpec `json:"spec"`
+	Status			VirtualMachineStatus `json:"status,omitempty"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type VirtualMachineList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []VirtualMachine `json:"items"`
+}
+
 type VirtualMachineSpec struct {
 	VMType			string		`json:"vmtype"`
 	KeyPair			string		`json:"keypair_name"` // this refers to the secret name for the keypair
@@ -20,11 +38,22 @@ type VirtualMachineStatus struct {
 	Hostname			string		`json:"hostname"` // ideally <hostname>.<enviroment dnssuffix> should be the FQDN to this machine
 }
 
-type VirtualMachineTypeSpec struct {
-	Name	string	`json:"name"` // 2x4, etc.
-	Image 	string	`json:"image"` // ubuntu-18.04
-	CPU		int		`json:"cpu"`
-	Memory	int		`json:"memory"`
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type Environment struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              EnvironmentSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type EnvironmentList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Environment `json:"items"`
 }
 
 // environment is to be like
@@ -52,6 +81,24 @@ type AWSEnvironmentSpec struct {
 	// @todo: finish filling this in
 }
 
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ActiveScenario struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              ActiveScenarioSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ActiveScenarioList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []ActiveScenario `json:"items"`
+}
+
 type ActiveScenarioSpec struct {
 	Scenario	string	`json:"scenario"`
 	User		string	`json:"user"`
@@ -63,29 +110,8 @@ type ActiveScenarioStatus struct {
 }
 
 // +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type VirtualMachine struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              VirtualMachineSpec `json:"spec"`
-	Status			VirtualMachineStatus `json:"status,omitempty"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type VirtualMachineList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-	Items           []VirtualMachine `json:"items"`
-}
-
-// +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// VM type is a genercized collection of information about a VM. this includes things like
-// cpu, ram, disk, etc.
 
 type VirtualMachineType struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -93,8 +119,19 @@ type VirtualMachineType struct {
 	Spec              VirtualMachineTypeSpec `json:"spec"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 type VirtualMachineTypeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 	Items           []VirtualMachineType `json:"items"`
+}
+
+// VM type is a genercized collection of information about a VM. this includes things like
+// cpu, ram, disk, etc.
+type VirtualMachineTypeSpec struct {
+	Name	string	`json:"name"` // 2x4, etc.
+	Image 	string	`json:"image"` // ubuntu-18.04
+	CPU		int		`json:"cpu"`
+	Memory	int		`json:"memory"`
 }
