@@ -41,33 +41,32 @@ type ActiveScenarioInformer interface {
 type activeScenarioInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
-	namespace        string
 }
 
 // NewActiveScenarioInformer constructs a new informer for ActiveScenario type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewActiveScenarioInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredActiveScenarioInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewActiveScenarioInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredActiveScenarioInformer(client, resyncPeriod, indexers, nil)
 }
 
 // NewFilteredActiveScenarioInformer constructs a new informer for ActiveScenario type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredActiveScenarioInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredActiveScenarioInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().ActiveScenarios(namespace).List(options)
+				return client.HobbyfarmV1().ActiveScenarios().List(options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().ActiveScenarios(namespace).Watch(options)
+				return client.HobbyfarmV1().ActiveScenarios().Watch(options)
 			},
 		},
 		&hobbyfarmiov1.ActiveScenario{},
@@ -77,7 +76,7 @@ func NewFilteredActiveScenarioInformer(client versioned.Interface, namespace str
 }
 
 func (f *activeScenarioInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredActiveScenarioInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredActiveScenarioInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
 func (f *activeScenarioInformer) Informer() cache.SharedIndexInformer {

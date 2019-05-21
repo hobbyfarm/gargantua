@@ -31,7 +31,6 @@ import (
 // FakeAccessCodes implements AccessCodeInterface
 type FakeAccessCodes struct {
 	Fake *FakeHobbyfarmV1
-	ns   string
 }
 
 var accesscodesResource = schema.GroupVersionResource{Group: "hobbyfarm.io", Version: "v1", Resource: "accesscodes"}
@@ -41,8 +40,7 @@ var accesscodesKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version: "v
 // Get takes name of the accessCode, and returns the corresponding accessCode object, and an error if there is any.
 func (c *FakeAccessCodes) Get(name string, options v1.GetOptions) (result *hobbyfarmiov1.AccessCode, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(accesscodesResource, c.ns, name), &hobbyfarmiov1.AccessCode{})
-
+		Invokes(testing.NewRootGetAction(accesscodesResource, name), &hobbyfarmiov1.AccessCode{})
 	if obj == nil {
 		return nil, err
 	}
@@ -52,8 +50,7 @@ func (c *FakeAccessCodes) Get(name string, options v1.GetOptions) (result *hobby
 // List takes label and field selectors, and returns the list of AccessCodes that match those selectors.
 func (c *FakeAccessCodes) List(opts v1.ListOptions) (result *hobbyfarmiov1.AccessCodeList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(accesscodesResource, accesscodesKind, c.ns, opts), &hobbyfarmiov1.AccessCodeList{})
-
+		Invokes(testing.NewRootListAction(accesscodesResource, accesscodesKind, opts), &hobbyfarmiov1.AccessCodeList{})
 	if obj == nil {
 		return nil, err
 	}
@@ -74,15 +71,13 @@ func (c *FakeAccessCodes) List(opts v1.ListOptions) (result *hobbyfarmiov1.Acces
 // Watch returns a watch.Interface that watches the requested accessCodes.
 func (c *FakeAccessCodes) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(accesscodesResource, c.ns, opts))
-
+		InvokesWatch(testing.NewRootWatchAction(accesscodesResource, opts))
 }
 
 // Create takes the representation of a accessCode and creates it.  Returns the server's representation of the accessCode, and an error, if there is any.
 func (c *FakeAccessCodes) Create(accessCode *hobbyfarmiov1.AccessCode) (result *hobbyfarmiov1.AccessCode, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(accesscodesResource, c.ns, accessCode), &hobbyfarmiov1.AccessCode{})
-
+		Invokes(testing.NewRootCreateAction(accesscodesResource, accessCode), &hobbyfarmiov1.AccessCode{})
 	if obj == nil {
 		return nil, err
 	}
@@ -92,8 +87,7 @@ func (c *FakeAccessCodes) Create(accessCode *hobbyfarmiov1.AccessCode) (result *
 // Update takes the representation of a accessCode and updates it. Returns the server's representation of the accessCode, and an error, if there is any.
 func (c *FakeAccessCodes) Update(accessCode *hobbyfarmiov1.AccessCode) (result *hobbyfarmiov1.AccessCode, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(accesscodesResource, c.ns, accessCode), &hobbyfarmiov1.AccessCode{})
-
+		Invokes(testing.NewRootUpdateAction(accesscodesResource, accessCode), &hobbyfarmiov1.AccessCode{})
 	if obj == nil {
 		return nil, err
 	}
@@ -103,14 +97,13 @@ func (c *FakeAccessCodes) Update(accessCode *hobbyfarmiov1.AccessCode) (result *
 // Delete takes name of the accessCode and deletes it. Returns an error if one occurs.
 func (c *FakeAccessCodes) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(accesscodesResource, c.ns, name), &hobbyfarmiov1.AccessCode{})
-
+		Invokes(testing.NewRootDeleteAction(accesscodesResource, name), &hobbyfarmiov1.AccessCode{})
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeAccessCodes) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(accesscodesResource, c.ns, listOptions)
+	action := testing.NewRootDeleteCollectionAction(accesscodesResource, listOptions)
 
 	_, err := c.Fake.Invokes(action, &hobbyfarmiov1.AccessCodeList{})
 	return err
@@ -119,8 +112,7 @@ func (c *FakeAccessCodes) DeleteCollection(options *v1.DeleteOptions, listOption
 // Patch applies the patch and returns the patched accessCode.
 func (c *FakeAccessCodes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *hobbyfarmiov1.AccessCode, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(accesscodesResource, c.ns, name, pt, data, subresources...), &hobbyfarmiov1.AccessCode{})
-
+		Invokes(testing.NewRootPatchSubresourceAction(accesscodesResource, name, pt, data, subresources...), &hobbyfarmiov1.AccessCode{})
 	if obj == nil {
 		return nil, err
 	}

@@ -32,7 +32,7 @@ import (
 // EnvironmentsGetter has a method to return a EnvironmentInterface.
 // A group's client should implement this interface.
 type EnvironmentsGetter interface {
-	Environments(namespace string) EnvironmentInterface
+	Environments() EnvironmentInterface
 }
 
 // EnvironmentInterface has methods to work with Environment resources.
@@ -51,14 +51,12 @@ type EnvironmentInterface interface {
 // environments implements EnvironmentInterface
 type environments struct {
 	client rest.Interface
-	ns     string
 }
 
 // newEnvironments returns a Environments
-func newEnvironments(c *HobbyfarmV1Client, namespace string) *environments {
+func newEnvironments(c *HobbyfarmV1Client) *environments {
 	return &environments{
 		client: c.RESTClient(),
-		ns:     namespace,
 	}
 }
 
@@ -66,7 +64,6 @@ func newEnvironments(c *HobbyfarmV1Client, namespace string) *environments {
 func (c *environments) Get(name string, options metav1.GetOptions) (result *v1.Environment, err error) {
 	result = &v1.Environment{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("environments").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -83,7 +80,6 @@ func (c *environments) List(opts metav1.ListOptions) (result *v1.EnvironmentList
 	}
 	result = &v1.EnvironmentList{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("environments").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -100,7 +96,6 @@ func (c *environments) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
-		Namespace(c.ns).
 		Resource("environments").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -111,7 +106,6 @@ func (c *environments) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *environments) Create(environment *v1.Environment) (result *v1.Environment, err error) {
 	result = &v1.Environment{}
 	err = c.client.Post().
-		Namespace(c.ns).
 		Resource("environments").
 		Body(environment).
 		Do().
@@ -123,7 +117,6 @@ func (c *environments) Create(environment *v1.Environment) (result *v1.Environme
 func (c *environments) Update(environment *v1.Environment) (result *v1.Environment, err error) {
 	result = &v1.Environment{}
 	err = c.client.Put().
-		Namespace(c.ns).
 		Resource("environments").
 		Name(environment.Name).
 		Body(environment).
@@ -135,7 +128,6 @@ func (c *environments) Update(environment *v1.Environment) (result *v1.Environme
 // Delete takes name of the environment and deletes it. Returns an error if one occurs.
 func (c *environments) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("environments").
 		Name(name).
 		Body(options).
@@ -150,7 +142,6 @@ func (c *environments) DeleteCollection(options *metav1.DeleteOptions, listOptio
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("environments").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -163,7 +154,6 @@ func (c *environments) DeleteCollection(options *metav1.DeleteOptions, listOptio
 func (c *environments) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Environment, err error) {
 	result = &v1.Environment{}
 	err = c.client.Patch(pt).
-		Namespace(c.ns).
 		Resource("environments").
 		SubResource(subresources...).
 		Name(name).

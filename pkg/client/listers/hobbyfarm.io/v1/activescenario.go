@@ -29,8 +29,8 @@ import (
 type ActiveScenarioLister interface {
 	// List lists all ActiveScenarios in the indexer.
 	List(selector labels.Selector) (ret []*v1.ActiveScenario, err error)
-	// ActiveScenarios returns an object that can list and get ActiveScenarios.
-	ActiveScenarios(namespace string) ActiveScenarioNamespaceLister
+	// Get retrieves the ActiveScenario from the index for a given name.
+	Get(name string) (*v1.ActiveScenario, error)
 	ActiveScenarioListerExpansion
 }
 
@@ -52,38 +52,9 @@ func (s *activeScenarioLister) List(selector labels.Selector) (ret []*v1.ActiveS
 	return ret, err
 }
 
-// ActiveScenarios returns an object that can list and get ActiveScenarios.
-func (s *activeScenarioLister) ActiveScenarios(namespace string) ActiveScenarioNamespaceLister {
-	return activeScenarioNamespaceLister{indexer: s.indexer, namespace: namespace}
-}
-
-// ActiveScenarioNamespaceLister helps list and get ActiveScenarios.
-type ActiveScenarioNamespaceLister interface {
-	// List lists all ActiveScenarios in the indexer for a given namespace.
-	List(selector labels.Selector) (ret []*v1.ActiveScenario, err error)
-	// Get retrieves the ActiveScenario from the indexer for a given namespace and name.
-	Get(name string) (*v1.ActiveScenario, error)
-	ActiveScenarioNamespaceListerExpansion
-}
-
-// activeScenarioNamespaceLister implements the ActiveScenarioNamespaceLister
-// interface.
-type activeScenarioNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all ActiveScenarios in the indexer for a given namespace.
-func (s activeScenarioNamespaceLister) List(selector labels.Selector) (ret []*v1.ActiveScenario, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.ActiveScenario))
-	})
-	return ret, err
-}
-
-// Get retrieves the ActiveScenario from the indexer for a given namespace and name.
-func (s activeScenarioNamespaceLister) Get(name string) (*v1.ActiveScenario, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+// Get retrieves the ActiveScenario from the index for a given name.
+func (s *activeScenarioLister) Get(name string) (*v1.ActiveScenario, error) {
+	obj, exists, err := s.indexer.GetByKey(name)
 	if err != nil {
 		return nil, err
 	}

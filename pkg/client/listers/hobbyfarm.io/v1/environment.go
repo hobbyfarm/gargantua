@@ -29,8 +29,8 @@ import (
 type EnvironmentLister interface {
 	// List lists all Environments in the indexer.
 	List(selector labels.Selector) (ret []*v1.Environment, err error)
-	// Environments returns an object that can list and get Environments.
-	Environments(namespace string) EnvironmentNamespaceLister
+	// Get retrieves the Environment from the index for a given name.
+	Get(name string) (*v1.Environment, error)
 	EnvironmentListerExpansion
 }
 
@@ -52,38 +52,9 @@ func (s *environmentLister) List(selector labels.Selector) (ret []*v1.Environmen
 	return ret, err
 }
 
-// Environments returns an object that can list and get Environments.
-func (s *environmentLister) Environments(namespace string) EnvironmentNamespaceLister {
-	return environmentNamespaceLister{indexer: s.indexer, namespace: namespace}
-}
-
-// EnvironmentNamespaceLister helps list and get Environments.
-type EnvironmentNamespaceLister interface {
-	// List lists all Environments in the indexer for a given namespace.
-	List(selector labels.Selector) (ret []*v1.Environment, err error)
-	// Get retrieves the Environment from the indexer for a given namespace and name.
-	Get(name string) (*v1.Environment, error)
-	EnvironmentNamespaceListerExpansion
-}
-
-// environmentNamespaceLister implements the EnvironmentNamespaceLister
-// interface.
-type environmentNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all Environments in the indexer for a given namespace.
-func (s environmentNamespaceLister) List(selector labels.Selector) (ret []*v1.Environment, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Environment))
-	})
-	return ret, err
-}
-
-// Get retrieves the Environment from the indexer for a given namespace and name.
-func (s environmentNamespaceLister) Get(name string) (*v1.Environment, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+// Get retrieves the Environment from the index for a given name.
+func (s *environmentLister) Get(name string) (*v1.Environment, error) {
+	obj, exists, err := s.indexer.GetByKey(name)
 	if err != nil {
 		return nil, err
 	}

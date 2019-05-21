@@ -31,7 +31,6 @@ import (
 // FakeActiveScenarios implements ActiveScenarioInterface
 type FakeActiveScenarios struct {
 	Fake *FakeHobbyfarmV1
-	ns   string
 }
 
 var activescenariosResource = schema.GroupVersionResource{Group: "hobbyfarm.io", Version: "v1", Resource: "activescenarios"}
@@ -41,8 +40,7 @@ var activescenariosKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version
 // Get takes name of the activeScenario, and returns the corresponding activeScenario object, and an error if there is any.
 func (c *FakeActiveScenarios) Get(name string, options v1.GetOptions) (result *hobbyfarmiov1.ActiveScenario, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(activescenariosResource, c.ns, name), &hobbyfarmiov1.ActiveScenario{})
-
+		Invokes(testing.NewRootGetAction(activescenariosResource, name), &hobbyfarmiov1.ActiveScenario{})
 	if obj == nil {
 		return nil, err
 	}
@@ -52,8 +50,7 @@ func (c *FakeActiveScenarios) Get(name string, options v1.GetOptions) (result *h
 // List takes label and field selectors, and returns the list of ActiveScenarios that match those selectors.
 func (c *FakeActiveScenarios) List(opts v1.ListOptions) (result *hobbyfarmiov1.ActiveScenarioList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(activescenariosResource, activescenariosKind, c.ns, opts), &hobbyfarmiov1.ActiveScenarioList{})
-
+		Invokes(testing.NewRootListAction(activescenariosResource, activescenariosKind, opts), &hobbyfarmiov1.ActiveScenarioList{})
 	if obj == nil {
 		return nil, err
 	}
@@ -74,15 +71,13 @@ func (c *FakeActiveScenarios) List(opts v1.ListOptions) (result *hobbyfarmiov1.A
 // Watch returns a watch.Interface that watches the requested activeScenarios.
 func (c *FakeActiveScenarios) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(activescenariosResource, c.ns, opts))
-
+		InvokesWatch(testing.NewRootWatchAction(activescenariosResource, opts))
 }
 
 // Create takes the representation of a activeScenario and creates it.  Returns the server's representation of the activeScenario, and an error, if there is any.
 func (c *FakeActiveScenarios) Create(activeScenario *hobbyfarmiov1.ActiveScenario) (result *hobbyfarmiov1.ActiveScenario, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(activescenariosResource, c.ns, activeScenario), &hobbyfarmiov1.ActiveScenario{})
-
+		Invokes(testing.NewRootCreateAction(activescenariosResource, activeScenario), &hobbyfarmiov1.ActiveScenario{})
 	if obj == nil {
 		return nil, err
 	}
@@ -92,8 +87,7 @@ func (c *FakeActiveScenarios) Create(activeScenario *hobbyfarmiov1.ActiveScenari
 // Update takes the representation of a activeScenario and updates it. Returns the server's representation of the activeScenario, and an error, if there is any.
 func (c *FakeActiveScenarios) Update(activeScenario *hobbyfarmiov1.ActiveScenario) (result *hobbyfarmiov1.ActiveScenario, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(activescenariosResource, c.ns, activeScenario), &hobbyfarmiov1.ActiveScenario{})
-
+		Invokes(testing.NewRootUpdateAction(activescenariosResource, activeScenario), &hobbyfarmiov1.ActiveScenario{})
 	if obj == nil {
 		return nil, err
 	}
@@ -103,14 +97,13 @@ func (c *FakeActiveScenarios) Update(activeScenario *hobbyfarmiov1.ActiveScenari
 // Delete takes name of the activeScenario and deletes it. Returns an error if one occurs.
 func (c *FakeActiveScenarios) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(activescenariosResource, c.ns, name), &hobbyfarmiov1.ActiveScenario{})
-
+		Invokes(testing.NewRootDeleteAction(activescenariosResource, name), &hobbyfarmiov1.ActiveScenario{})
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeActiveScenarios) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(activescenariosResource, c.ns, listOptions)
+	action := testing.NewRootDeleteCollectionAction(activescenariosResource, listOptions)
 
 	_, err := c.Fake.Invokes(action, &hobbyfarmiov1.ActiveScenarioList{})
 	return err
@@ -119,8 +112,7 @@ func (c *FakeActiveScenarios) DeleteCollection(options *v1.DeleteOptions, listOp
 // Patch applies the patch and returns the patched activeScenario.
 func (c *FakeActiveScenarios) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *hobbyfarmiov1.ActiveScenario, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(activescenariosResource, c.ns, name, pt, data, subresources...), &hobbyfarmiov1.ActiveScenario{})
-
+		Invokes(testing.NewRootPatchSubresourceAction(activescenariosResource, name, pt, data, subresources...), &hobbyfarmiov1.ActiveScenario{})
 	if obj == nil {
 		return nil, err
 	}

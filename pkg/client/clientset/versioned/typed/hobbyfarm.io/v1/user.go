@@ -32,7 +32,7 @@ import (
 // UsersGetter has a method to return a UserInterface.
 // A group's client should implement this interface.
 type UsersGetter interface {
-	Users(namespace string) UserInterface
+	Users() UserInterface
 }
 
 // UserInterface has methods to work with User resources.
@@ -51,14 +51,12 @@ type UserInterface interface {
 // users implements UserInterface
 type users struct {
 	client rest.Interface
-	ns     string
 }
 
 // newUsers returns a Users
-func newUsers(c *HobbyfarmV1Client, namespace string) *users {
+func newUsers(c *HobbyfarmV1Client) *users {
 	return &users{
 		client: c.RESTClient(),
-		ns:     namespace,
 	}
 }
 
@@ -66,7 +64,6 @@ func newUsers(c *HobbyfarmV1Client, namespace string) *users {
 func (c *users) Get(name string, options metav1.GetOptions) (result *v1.User, err error) {
 	result = &v1.User{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("users").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -83,7 +80,6 @@ func (c *users) List(opts metav1.ListOptions) (result *v1.UserList, err error) {
 	}
 	result = &v1.UserList{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("users").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -100,7 +96,6 @@ func (c *users) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
-		Namespace(c.ns).
 		Resource("users").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -111,7 +106,6 @@ func (c *users) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *users) Create(user *v1.User) (result *v1.User, err error) {
 	result = &v1.User{}
 	err = c.client.Post().
-		Namespace(c.ns).
 		Resource("users").
 		Body(user).
 		Do().
@@ -123,7 +117,6 @@ func (c *users) Create(user *v1.User) (result *v1.User, err error) {
 func (c *users) Update(user *v1.User) (result *v1.User, err error) {
 	result = &v1.User{}
 	err = c.client.Put().
-		Namespace(c.ns).
 		Resource("users").
 		Name(user.Name).
 		Body(user).
@@ -135,7 +128,6 @@ func (c *users) Update(user *v1.User) (result *v1.User, err error) {
 // Delete takes name of the user and deletes it. Returns an error if one occurs.
 func (c *users) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("users").
 		Name(name).
 		Body(options).
@@ -150,7 +142,6 @@ func (c *users) DeleteCollection(options *metav1.DeleteOptions, listOptions meta
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("users").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -163,7 +154,6 @@ func (c *users) DeleteCollection(options *metav1.DeleteOptions, listOptions meta
 func (c *users) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.User, err error) {
 	result = &v1.User{}
 	err = c.client.Patch(pt).
-		Namespace(c.ns).
 		Resource("users").
 		SubResource(subresources...).
 		Name(name).

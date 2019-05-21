@@ -28,32 +28,32 @@ type FakeHobbyfarmV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeHobbyfarmV1) AccessCodes(namespace string) v1.AccessCodeInterface {
-	return &FakeAccessCodes{c, namespace}
+func (c *FakeHobbyfarmV1) AccessCodes() v1.AccessCodeInterface {
+	return &FakeAccessCodes{c}
 }
 
-func (c *FakeHobbyfarmV1) ActiveScenarios(namespace string) v1.ActiveScenarioInterface {
-	return &FakeActiveScenarios{c, namespace}
+func (c *FakeHobbyfarmV1) ActiveScenarios() v1.ActiveScenarioInterface {
+	return &FakeActiveScenarios{c}
 }
 
-func (c *FakeHobbyfarmV1) Environments(namespace string) v1.EnvironmentInterface {
-	return &FakeEnvironments{c, namespace}
+func (c *FakeHobbyfarmV1) Environments() v1.EnvironmentInterface {
+	return &FakeEnvironments{c}
 }
 
-func (c *FakeHobbyfarmV1) Scenarios(namespace string) v1.ScenarioInterface {
-	return &FakeScenarios{c, namespace}
+func (c *FakeHobbyfarmV1) Scenarios() v1.ScenarioInterface {
+	return &FakeScenarios{c}
 }
 
-func (c *FakeHobbyfarmV1) Users(namespace string) v1.UserInterface {
-	return &FakeUsers{c, namespace}
+func (c *FakeHobbyfarmV1) Users() v1.UserInterface {
+	return &FakeUsers{c}
 }
 
-func (c *FakeHobbyfarmV1) VirtualMachines(namespace string) v1.VirtualMachineInterface {
-	return &FakeVirtualMachines{c, namespace}
+func (c *FakeHobbyfarmV1) VirtualMachines() v1.VirtualMachineInterface {
+	return &FakeVirtualMachines{c}
 }
 
-func (c *FakeHobbyfarmV1) VirtualMachineTypes(namespace string) v1.VirtualMachineTypeInterface {
-	return &FakeVirtualMachineTypes{c, namespace}
+func (c *FakeHobbyfarmV1) VirtualMachineTypes() v1.VirtualMachineTypeInterface {
+	return &FakeVirtualMachineTypes{c}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

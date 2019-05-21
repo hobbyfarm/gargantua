@@ -29,8 +29,8 @@ import (
 type VirtualMachineTypeLister interface {
 	// List lists all VirtualMachineTypes in the indexer.
 	List(selector labels.Selector) (ret []*v1.VirtualMachineType, err error)
-	// VirtualMachineTypes returns an object that can list and get VirtualMachineTypes.
-	VirtualMachineTypes(namespace string) VirtualMachineTypeNamespaceLister
+	// Get retrieves the VirtualMachineType from the index for a given name.
+	Get(name string) (*v1.VirtualMachineType, error)
 	VirtualMachineTypeListerExpansion
 }
 
@@ -52,38 +52,9 @@ func (s *virtualMachineTypeLister) List(selector labels.Selector) (ret []*v1.Vir
 	return ret, err
 }
 
-// VirtualMachineTypes returns an object that can list and get VirtualMachineTypes.
-func (s *virtualMachineTypeLister) VirtualMachineTypes(namespace string) VirtualMachineTypeNamespaceLister {
-	return virtualMachineTypeNamespaceLister{indexer: s.indexer, namespace: namespace}
-}
-
-// VirtualMachineTypeNamespaceLister helps list and get VirtualMachineTypes.
-type VirtualMachineTypeNamespaceLister interface {
-	// List lists all VirtualMachineTypes in the indexer for a given namespace.
-	List(selector labels.Selector) (ret []*v1.VirtualMachineType, err error)
-	// Get retrieves the VirtualMachineType from the indexer for a given namespace and name.
-	Get(name string) (*v1.VirtualMachineType, error)
-	VirtualMachineTypeNamespaceListerExpansion
-}
-
-// virtualMachineTypeNamespaceLister implements the VirtualMachineTypeNamespaceLister
-// interface.
-type virtualMachineTypeNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all VirtualMachineTypes in the indexer for a given namespace.
-func (s virtualMachineTypeNamespaceLister) List(selector labels.Selector) (ret []*v1.VirtualMachineType, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.VirtualMachineType))
-	})
-	return ret, err
-}
-
-// Get retrieves the VirtualMachineType from the indexer for a given namespace and name.
-func (s virtualMachineTypeNamespaceLister) Get(name string) (*v1.VirtualMachineType, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+// Get retrieves the VirtualMachineType from the index for a given name.
+func (s *virtualMachineTypeLister) Get(name string) (*v1.VirtualMachineType, error) {
+	obj, exists, err := s.indexer.GetByKey(name)
 	if err != nil {
 		return nil, err
 	}

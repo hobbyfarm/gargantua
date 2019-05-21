@@ -1,6 +1,8 @@
 import:
 - package: github.com/davecgh/go-spew/spew
   version: 782f4967f2dc4564575ca782fe2d04090b5faca8
+- package: github.com/dgrijalva/jwt-go
+  version: master
 - package: github.com/evanphx/json-patch
   version: 5858425f75500d40c52783dce87d085a483ce135
 - package: github.com/gogo/protobuf/proto
@@ -43,6 +45,10 @@ import:
   version: 94122c33edd36123c84d5368cfb2b69df93a0ec8
 - package: github.com/spf13/pflag
   version: 583c0c0531f06d5278b7d917446061adc344b5cd
+- package: golang.org/x/crypto/bcrypt
+  version: master
+- package: golang.org/x/crypto/blowfish
+  version: master
 - package: golang.org/x/crypto/ssh/terminal
   version: de0752318171da717af4ce24d0a2e8626afaeb11
 - package: golang.org/x/net/context

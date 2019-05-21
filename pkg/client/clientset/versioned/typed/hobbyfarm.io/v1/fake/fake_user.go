@@ -31,7 +31,6 @@ import (
 // FakeUsers implements UserInterface
 type FakeUsers struct {
 	Fake *FakeHobbyfarmV1
-	ns   string
 }
 
 var usersResource = schema.GroupVersionResource{Group: "hobbyfarm.io", Version: "v1", Resource: "users"}
@@ -41,8 +40,7 @@ var usersKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version: "v1", Ki
 // Get takes name of the user, and returns the corresponding user object, and an error if there is any.
 func (c *FakeUsers) Get(name string, options v1.GetOptions) (result *hobbyfarmiov1.User, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(usersResource, c.ns, name), &hobbyfarmiov1.User{})
-
+		Invokes(testing.NewRootGetAction(usersResource, name), &hobbyfarmiov1.User{})
 	if obj == nil {
 		return nil, err
 	}
@@ -52,8 +50,7 @@ func (c *FakeUsers) Get(name string, options v1.GetOptions) (result *hobbyfarmio
 // List takes label and field selectors, and returns the list of Users that match those selectors.
 func (c *FakeUsers) List(opts v1.ListOptions) (result *hobbyfarmiov1.UserList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(usersResource, usersKind, c.ns, opts), &hobbyfarmiov1.UserList{})
-
+		Invokes(testing.NewRootListAction(usersResource, usersKind, opts), &hobbyfarmiov1.UserList{})
 	if obj == nil {
 		return nil, err
 	}
@@ -74,15 +71,13 @@ func (c *FakeUsers) List(opts v1.ListOptions) (result *hobbyfarmiov1.UserList, e
 // Watch returns a watch.Interface that watches the requested users.
 func (c *FakeUsers) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(usersResource, c.ns, opts))
-
+		InvokesWatch(testing.NewRootWatchAction(usersResource, opts))
 }
 
 // Create takes the representation of a user and creates it.  Returns the server's representation of the user, and an error, if there is any.
 func (c *FakeUsers) Create(user *hobbyfarmiov1.User) (result *hobbyfarmiov1.User, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(usersResource, c.ns, user), &hobbyfarmiov1.User{})
-
+		Invokes(testing.NewRootCreateAction(usersResource, user), &hobbyfarmiov1.User{})
 	if obj == nil {
 		return nil, err
 	}
@@ -92,8 +87,7 @@ func (c *FakeUsers) Create(user *hobbyfarmiov1.User) (result *hobbyfarmiov1.User
 // Update takes the representation of a user and updates it. Returns the server's representation of the user, and an error, if there is any.
 func (c *FakeUsers) Update(user *hobbyfarmiov1.User) (result *hobbyfarmiov1.User, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(usersResource, c.ns, user), &hobbyfarmiov1.User{})
-
+		Invokes(testing.NewRootUpdateAction(usersResource, user), &hobbyfarmiov1.User{})
 	if obj == nil {
 		return nil, err
 	}
@@ -103,14 +97,13 @@ func (c *FakeUsers) Update(user *hobbyfarmiov1.User) (result *hobbyfarmiov1.User
 // Delete takes name of the user and deletes it. Returns an error if one occurs.
 func (c *FakeUsers) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(usersResource, c.ns, name), &hobbyfarmiov1.User{})
-
+		Invokes(testing.NewRootDeleteAction(usersResource, name), &hobbyfarmiov1.User{})
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeUsers) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(usersResource, c.ns, listOptions)
+	action := testing.NewRootDeleteCollectionAction(usersResource, listOptions)
 
 	_, err := c.Fake.Invokes(action, &hobbyfarmiov1.UserList{})
 	return err
@@ -119,8 +112,7 @@ func (c *FakeUsers) DeleteCollection(options *v1.DeleteOptions, listOptions v1.L
 // Patch applies the patch and returns the patched user.
 func (c *FakeUsers) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *hobbyfarmiov1.User, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(usersResource, c.ns, name, pt, data, subresources...), &hobbyfarmiov1.User{})
-
+		Invokes(testing.NewRootPatchSubresourceAction(usersResource, name, pt, data, subresources...), &hobbyfarmiov1.User{})
 	if obj == nil {
 		return nil, err
 	}

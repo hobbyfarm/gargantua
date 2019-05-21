@@ -32,7 +32,7 @@ import (
 // ActiveScenariosGetter has a method to return a ActiveScenarioInterface.
 // A group's client should implement this interface.
 type ActiveScenariosGetter interface {
-	ActiveScenarios(namespace string) ActiveScenarioInterface
+	ActiveScenarios() ActiveScenarioInterface
 }
 
 // ActiveScenarioInterface has methods to work with ActiveScenario resources.
@@ -51,14 +51,12 @@ type ActiveScenarioInterface interface {
 // activeScenarios implements ActiveScenarioInterface
 type activeScenarios struct {
 	client rest.Interface
-	ns     string
 }
 
 // newActiveScenarios returns a ActiveScenarios
-func newActiveScenarios(c *HobbyfarmV1Client, namespace string) *activeScenarios {
+func newActiveScenarios(c *HobbyfarmV1Client) *activeScenarios {
 	return &activeScenarios{
 		client: c.RESTClient(),
-		ns:     namespace,
 	}
 }
 
@@ -66,7 +64,6 @@ func newActiveScenarios(c *HobbyfarmV1Client, namespace string) *activeScenarios
 func (c *activeScenarios) Get(name string, options metav1.GetOptions) (result *v1.ActiveScenario, err error) {
 	result = &v1.ActiveScenario{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("activescenarios").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -83,7 +80,6 @@ func (c *activeScenarios) List(opts metav1.ListOptions) (result *v1.ActiveScenar
 	}
 	result = &v1.ActiveScenarioList{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("activescenarios").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -100,7 +96,6 @@ func (c *activeScenarios) Watch(opts metav1.ListOptions) (watch.Interface, error
 	}
 	opts.Watch = true
 	return c.client.Get().
-		Namespace(c.ns).
 		Resource("activescenarios").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -111,7 +106,6 @@ func (c *activeScenarios) Watch(opts metav1.ListOptions) (watch.Interface, error
 func (c *activeScenarios) Create(activeScenario *v1.ActiveScenario) (result *v1.ActiveScenario, err error) {
 	result = &v1.ActiveScenario{}
 	err = c.client.Post().
-		Namespace(c.ns).
 		Resource("activescenarios").
 		Body(activeScenario).
 		Do().
@@ -123,7 +117,6 @@ func (c *activeScenarios) Create(activeScenario *v1.ActiveScenario) (result *v1.
 func (c *activeScenarios) Update(activeScenario *v1.ActiveScenario) (result *v1.ActiveScenario, err error) {
 	result = &v1.ActiveScenario{}
 	err = c.client.Put().
-		Namespace(c.ns).
 		Resource("activescenarios").
 		Name(activeScenario.Name).
 		Body(activeScenario).
@@ -135,7 +128,6 @@ func (c *activeScenarios) Update(activeScenario *v1.ActiveScenario) (result *v1.
 // Delete takes name of the activeScenario and deletes it. Returns an error if one occurs.
 func (c *activeScenarios) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("activescenarios").
 		Name(name).
 		Body(options).
@@ -150,7 +142,6 @@ func (c *activeScenarios) DeleteCollection(options *metav1.DeleteOptions, listOp
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("activescenarios").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -163,7 +154,6 @@ func (c *activeScenarios) DeleteCollection(options *metav1.DeleteOptions, listOp
 func (c *activeScenarios) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ActiveScenario, err error) {
 	result = &v1.ActiveScenario{}
 	err = c.client.Patch(pt).
-		Namespace(c.ns).
 		Resource("activescenarios").
 		SubResource(subresources...).
 		Name(name).

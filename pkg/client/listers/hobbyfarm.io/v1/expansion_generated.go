@@ -22,54 +22,26 @@ package v1
 // AccessCodeLister.
 type AccessCodeListerExpansion interface{}
 
-// AccessCodeNamespaceListerExpansion allows custom methods to be added to
-// AccessCodeNamespaceLister.
-type AccessCodeNamespaceListerExpansion interface{}
-
 // ActiveScenarioListerExpansion allows custom methods to be added to
 // ActiveScenarioLister.
 type ActiveScenarioListerExpansion interface{}
-
-// ActiveScenarioNamespaceListerExpansion allows custom methods to be added to
-// ActiveScenarioNamespaceLister.
-type ActiveScenarioNamespaceListerExpansion interface{}
 
 // EnvironmentListerExpansion allows custom methods to be added to
 // EnvironmentLister.
 type EnvironmentListerExpansion interface{}
 
-// EnvironmentNamespaceListerExpansion allows custom methods to be added to
-// EnvironmentNamespaceLister.
-type EnvironmentNamespaceListerExpansion interface{}
-
 // ScenarioListerExpansion allows custom methods to be added to
 // ScenarioLister.
 type ScenarioListerExpansion interface{}
-
-// ScenarioNamespaceListerExpansion allows custom methods to be added to
-// ScenarioNamespaceLister.
-type ScenarioNamespaceListerExpansion interface{}
 
 // UserListerExpansion allows custom methods to be added to
 // UserLister.
 type UserListerExpansion interface{}
 
-// UserNamespaceListerExpansion allows custom methods to be added to
-// UserNamespaceLister.
-type UserNamespaceListerExpansion interface{}
-
 // VirtualMachineListerExpansion allows custom methods to be added to
 // VirtualMachineLister.
 type VirtualMachineListerExpansion interface{}
 
-// VirtualMachineNamespaceListerExpansion allows custom methods to be added to
-// VirtualMachineNamespaceLister.
-type VirtualMachineNamespaceListerExpansion interface{}
-
 // VirtualMachineTypeListerExpansion allows custom methods to be added to
 // VirtualMachineTypeLister.
 type VirtualMachineTypeListerExpansion interface{}
-
-// VirtualMachineTypeNamespaceListerExpansion allows custom methods to be added to
-// VirtualMachineTypeNamespaceLister.
-type VirtualMachineTypeNamespaceListerExpansion interface{}

@@ -4,7 +4,7 @@ import (
 	"flag"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/pkg/auth"
+	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"k8s.io/client-go/tools/cache"
@@ -46,12 +46,12 @@ func main() {
 
 	hfInformerFactory := hfInformers.NewSharedInformerFactory(hfClient, time.Second*30)
 
-	a, err := auth.NewAuth(hfInformerFactory)
+	a, err := authserver.NewAuthServer(hfClient, hfInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	a.Setup(r)
+	a.SetupRoutes(r)
 
 	hfInformerFactory.Start(stopCh)
 

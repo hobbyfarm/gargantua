@@ -41,32 +41,32 @@ type HobbyfarmV1Client struct {
 	restClient rest.Interface
 }
 
-func (c *HobbyfarmV1Client) AccessCodes(namespace string) AccessCodeInterface {
-	return newAccessCodes(c, namespace)
+func (c *HobbyfarmV1Client) AccessCodes() AccessCodeInterface {
+	return newAccessCodes(c)
 }
 
-func (c *HobbyfarmV1Client) ActiveScenarios(namespace string) ActiveScenarioInterface {
-	return newActiveScenarios(c, namespace)
+func (c *HobbyfarmV1Client) ActiveScenarios() ActiveScenarioInterface {
+	return newActiveScenarios(c)
 }
 
-func (c *HobbyfarmV1Client) Environments(namespace string) EnvironmentInterface {
-	return newEnvironments(c, namespace)
+func (c *HobbyfarmV1Client) Environments() EnvironmentInterface {
+	return newEnvironments(c)
 }
 
-func (c *HobbyfarmV1Client) Scenarios(namespace string) ScenarioInterface {
-	return newScenarios(c, namespace)
+func (c *HobbyfarmV1Client) Scenarios() ScenarioInterface {
+	return newScenarios(c)
 }
 
-func (c *HobbyfarmV1Client) Users(namespace string) UserInterface {
-	return newUsers(c, namespace)
+func (c *HobbyfarmV1Client) Users() UserInterface {
+	return newUsers(c)
 }
 
-func (c *HobbyfarmV1Client) VirtualMachines(namespace string) VirtualMachineInterface {
-	return newVirtualMachines(c, namespace)
+func (c *HobbyfarmV1Client) VirtualMachines() VirtualMachineInterface {
+	return newVirtualMachines(c)
 }
 
-func (c *HobbyfarmV1Client) VirtualMachineTypes(namespace string) VirtualMachineTypeInterface {
-	return newVirtualMachineTypes(c, namespace)
+func (c *HobbyfarmV1Client) VirtualMachineTypes() VirtualMachineTypeInterface {
+	return newVirtualMachineTypes(c)
 }
 
 // NewForConfig creates a new HobbyfarmV1Client for the given config.

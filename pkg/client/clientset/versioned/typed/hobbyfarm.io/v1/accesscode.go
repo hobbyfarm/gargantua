@@ -32,7 +32,7 @@ import (
 // AccessCodesGetter has a method to return a AccessCodeInterface.
 // A group's client should implement this interface.
 type AccessCodesGetter interface {
-	AccessCodes(namespace string) AccessCodeInterface
+	AccessCodes() AccessCodeInterface
 }
 
 // AccessCodeInterface has methods to work with AccessCode resources.
@@ -51,14 +51,12 @@ type AccessCodeInterface interface {
 // accessCodes implements AccessCodeInterface
 type accessCodes struct {
 	client rest.Interface
-	ns     string
 }
 
 // newAccessCodes returns a AccessCodes
-func newAccessCodes(c *HobbyfarmV1Client, namespace string) *accessCodes {
+func newAccessCodes(c *HobbyfarmV1Client) *accessCodes {
 	return &accessCodes{
 		client: c.RESTClient(),
-		ns:     namespace,
 	}
 }
 
@@ -66,7 +64,6 @@ func newAccessCodes(c *HobbyfarmV1Client, namespace string) *accessCodes {
 func (c *accessCodes) Get(name string, options metav1.GetOptions) (result *v1.AccessCode, err error) {
 	result = &v1.AccessCode{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("accesscodes").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -83,7 +80,6 @@ func (c *accessCodes) List(opts metav1.ListOptions) (result *v1.AccessCodeList, 
 	}
 	result = &v1.AccessCodeList{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("accesscodes").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -100,7 +96,6 @@ func (c *accessCodes) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
-		Namespace(c.ns).
 		Resource("accesscodes").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -111,7 +106,6 @@ func (c *accessCodes) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *accessCodes) Create(accessCode *v1.AccessCode) (result *v1.AccessCode, err error) {
 	result = &v1.AccessCode{}
 	err = c.client.Post().
-		Namespace(c.ns).
 		Resource("accesscodes").
 		Body(accessCode).
 		Do().
@@ -123,7 +117,6 @@ func (c *accessCodes) Create(accessCode *v1.AccessCode) (result *v1.AccessCode, 
 func (c *accessCodes) Update(accessCode *v1.AccessCode) (result *v1.AccessCode, err error) {
 	result = &v1.AccessCode{}
 	err = c.client.Put().
-		Namespace(c.ns).
 		Resource("accesscodes").
 		Name(accessCode.Name).
 		Body(accessCode).
@@ -135,7 +128,6 @@ func (c *accessCodes) Update(accessCode *v1.AccessCode) (result *v1.AccessCode, 
 // Delete takes name of the accessCode and deletes it. Returns an error if one occurs.
 func (c *accessCodes) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("accesscodes").
 		Name(name).
 		Body(options).
@@ -150,7 +142,6 @@ func (c *accessCodes) DeleteCollection(options *metav1.DeleteOptions, listOption
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("accesscodes").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -163,7 +154,6 @@ func (c *accessCodes) DeleteCollection(options *metav1.DeleteOptions, listOption
 func (c *accessCodes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.AccessCode, err error) {
 	result = &v1.AccessCode{}
 	err = c.client.Patch(pt).
-		Namespace(c.ns).
 		Resource("accesscodes").
 		SubResource(subresources...).
 		Name(name).

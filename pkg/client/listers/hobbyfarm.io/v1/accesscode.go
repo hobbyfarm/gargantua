@@ -29,8 +29,8 @@ import (
 type AccessCodeLister interface {
 	// List lists all AccessCodes in the indexer.
 	List(selector labels.Selector) (ret []*v1.AccessCode, err error)
-	// AccessCodes returns an object that can list and get AccessCodes.
-	AccessCodes(namespace string) AccessCodeNamespaceLister
+	// Get retrieves the AccessCode from the index for a given name.
+	Get(name string) (*v1.AccessCode, error)
 	AccessCodeListerExpansion
 }
 
@@ -52,38 +52,9 @@ func (s *accessCodeLister) List(selector labels.Selector) (ret []*v1.AccessCode,
 	return ret, err
 }
 
-// AccessCodes returns an object that can list and get AccessCodes.
-func (s *accessCodeLister) AccessCodes(namespace string) AccessCodeNamespaceLister {
-	return accessCodeNamespaceLister{indexer: s.indexer, namespace: namespace}
-}
-
-// AccessCodeNamespaceLister helps list and get AccessCodes.
-type AccessCodeNamespaceLister interface {
-	// List lists all AccessCodes in the indexer for a given namespace.
-	List(selector labels.Selector) (ret []*v1.AccessCode, err error)
-	// Get retrieves the AccessCode from the indexer for a given namespace and name.
-	Get(name string) (*v1.AccessCode, error)
-	AccessCodeNamespaceListerExpansion
-}
-
-// accessCodeNamespaceLister implements the AccessCodeNamespaceLister
-// interface.
-type accessCodeNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all AccessCodes in the indexer for a given namespace.
-func (s accessCodeNamespaceLister) List(selector labels.Selector) (ret []*v1.AccessCode, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.AccessCode))
-	})
-	return ret, err
-}
-
-// Get retrieves the AccessCode from the indexer for a given namespace and name.
-func (s accessCodeNamespaceLister) Get(name string) (*v1.AccessCode, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+// Get retrieves the AccessCode from the index for a given name.
+func (s *accessCodeLister) Get(name string) (*v1.AccessCode, error) {
+	obj, exists, err := s.indexer.GetByKey(name)
 	if err != nil {
 		return nil, err
 	}

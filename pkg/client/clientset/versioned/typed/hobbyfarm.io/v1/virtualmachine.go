@@ -32,7 +32,7 @@ import (
 // VirtualMachinesGetter has a method to return a VirtualMachineInterface.
 // A group's client should implement this interface.
 type VirtualMachinesGetter interface {
-	VirtualMachines(namespace string) VirtualMachineInterface
+	VirtualMachines() VirtualMachineInterface
 }
 
 // VirtualMachineInterface has methods to work with VirtualMachine resources.
@@ -52,14 +52,12 @@ type VirtualMachineInterface interface {
 // virtualMachines implements VirtualMachineInterface
 type virtualMachines struct {
 	client rest.Interface
-	ns     string
 }
 
 // newVirtualMachines returns a VirtualMachines
-func newVirtualMachines(c *HobbyfarmV1Client, namespace string) *virtualMachines {
+func newVirtualMachines(c *HobbyfarmV1Client) *virtualMachines {
 	return &virtualMachines{
 		client: c.RESTClient(),
-		ns:     namespace,
 	}
 }
 
@@ -67,7 +65,6 @@ func newVirtualMachines(c *HobbyfarmV1Client, namespace string) *virtualMachines
 func (c *virtualMachines) Get(name string, options metav1.GetOptions) (result *v1.VirtualMachine, err error) {
 	result = &v1.VirtualMachine{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("virtualmachines").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -84,7 +81,6 @@ func (c *virtualMachines) List(opts metav1.ListOptions) (result *v1.VirtualMachi
 	}
 	result = &v1.VirtualMachineList{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("virtualmachines").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -101,7 +97,6 @@ func (c *virtualMachines) Watch(opts metav1.ListOptions) (watch.Interface, error
 	}
 	opts.Watch = true
 	return c.client.Get().
-		Namespace(c.ns).
 		Resource("virtualmachines").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -112,7 +107,6 @@ func (c *virtualMachines) Watch(opts metav1.ListOptions) (watch.Interface, error
 func (c *virtualMachines) Create(virtualMachine *v1.VirtualMachine) (result *v1.VirtualMachine, err error) {
 	result = &v1.VirtualMachine{}
 	err = c.client.Post().
-		Namespace(c.ns).
 		Resource("virtualmachines").
 		Body(virtualMachine).
 		Do().
@@ -124,7 +118,6 @@ func (c *virtualMachines) Create(virtualMachine *v1.VirtualMachine) (result *v1.
 func (c *virtualMachines) Update(virtualMachine *v1.VirtualMachine) (result *v1.VirtualMachine, err error) {
 	result = &v1.VirtualMachine{}
 	err = c.client.Put().
-		Namespace(c.ns).
 		Resource("virtualmachines").
 		Name(virtualMachine.Name).
 		Body(virtualMachine).
@@ -139,7 +132,6 @@ func (c *virtualMachines) Update(virtualMachine *v1.VirtualMachine) (result *v1.
 func (c *virtualMachines) UpdateStatus(virtualMachine *v1.VirtualMachine) (result *v1.VirtualMachine, err error) {
 	result = &v1.VirtualMachine{}
 	err = c.client.Put().
-		Namespace(c.ns).
 		Resource("virtualmachines").
 		Name(virtualMachine.Name).
 		SubResource("status").
@@ -152,7 +144,6 @@ func (c *virtualMachines) UpdateStatus(virtualMachine *v1.VirtualMachine) (resul
 // Delete takes name of the virtualMachine and deletes it. Returns an error if one occurs.
 func (c *virtualMachines) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("virtualmachines").
 		Name(name).
 		Body(options).
@@ -167,7 +158,6 @@ func (c *virtualMachines) DeleteCollection(options *metav1.DeleteOptions, listOp
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("virtualmachines").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -180,7 +170,6 @@ func (c *virtualMachines) DeleteCollection(options *metav1.DeleteOptions, listOp
 func (c *virtualMachines) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.VirtualMachine, err error) {
 	result = &v1.VirtualMachine{}
 	err = c.client.Patch(pt).
-		Namespace(c.ns).
 		Resource("virtualmachines").
 		SubResource(subresources...).
 		Name(name).

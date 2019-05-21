@@ -53,35 +53,35 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 
 // AccessCodes returns a AccessCodeInformer.
 func (v *version) AccessCodes() AccessCodeInformer {
-	return &accessCodeInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &accessCodeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // ActiveScenarios returns a ActiveScenarioInformer.
 func (v *version) ActiveScenarios() ActiveScenarioInformer {
-	return &activeScenarioInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &activeScenarioInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Environments returns a EnvironmentInformer.
 func (v *version) Environments() EnvironmentInformer {
-	return &environmentInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &environmentInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Scenarios returns a ScenarioInformer.
 func (v *version) Scenarios() ScenarioInformer {
-	return &scenarioInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &scenarioInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Users returns a UserInformer.
 func (v *version) Users() UserInformer {
-	return &userInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &userInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // VirtualMachines returns a VirtualMachineInformer.
 func (v *version) VirtualMachines() VirtualMachineInformer {
-	return &virtualMachineInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &virtualMachineInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // VirtualMachineTypes returns a VirtualMachineTypeInformer.
 func (v *version) VirtualMachineTypes() VirtualMachineTypeInformer {
-	return &virtualMachineTypeInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &virtualMachineTypeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

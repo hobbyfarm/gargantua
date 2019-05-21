@@ -32,7 +32,7 @@ import (
 // ScenariosGetter has a method to return a ScenarioInterface.
 // A group's client should implement this interface.
 type ScenariosGetter interface {
-	Scenarios(namespace string) ScenarioInterface
+	Scenarios() ScenarioInterface
 }
 
 // ScenarioInterface has methods to work with Scenario resources.
@@ -51,14 +51,12 @@ type ScenarioInterface interface {
 // scenarios implements ScenarioInterface
 type scenarios struct {
 	client rest.Interface
-	ns     string
 }
 
 // newScenarios returns a Scenarios
-func newScenarios(c *HobbyfarmV1Client, namespace string) *scenarios {
+func newScenarios(c *HobbyfarmV1Client) *scenarios {
 	return &scenarios{
 		client: c.RESTClient(),
-		ns:     namespace,
 	}
 }
 
@@ -66,7 +64,6 @@ func newScenarios(c *HobbyfarmV1Client, namespace string) *scenarios {
 func (c *scenarios) Get(name string, options metav1.GetOptions) (result *v1.Scenario, err error) {
 	result = &v1.Scenario{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("scenarios").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -83,7 +80,6 @@ func (c *scenarios) List(opts metav1.ListOptions) (result *v1.ScenarioList, err 
 	}
 	result = &v1.ScenarioList{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("scenarios").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -100,7 +96,6 @@ func (c *scenarios) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
-		Namespace(c.ns).
 		Resource("scenarios").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -111,7 +106,6 @@ func (c *scenarios) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 func (c *scenarios) Create(scenario *v1.Scenario) (result *v1.Scenario, err error) {
 	result = &v1.Scenario{}
 	err = c.client.Post().
-		Namespace(c.ns).
 		Resource("scenarios").
 		Body(scenario).
 		Do().
@@ -123,7 +117,6 @@ func (c *scenarios) Create(scenario *v1.Scenario) (result *v1.Scenario, err erro
 func (c *scenarios) Update(scenario *v1.Scenario) (result *v1.Scenario, err error) {
 	result = &v1.Scenario{}
 	err = c.client.Put().
-		Namespace(c.ns).
 		Resource("scenarios").
 		Name(scenario.Name).
 		Body(scenario).
@@ -135,7 +128,6 @@ func (c *scenarios) Update(scenario *v1.Scenario) (result *v1.Scenario, err erro
 // Delete takes name of the scenario and deletes it. Returns an error if one occurs.
 func (c *scenarios) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("scenarios").
 		Name(name).
 		Body(options).
@@ -150,7 +142,6 @@ func (c *scenarios) DeleteCollection(options *metav1.DeleteOptions, listOptions 
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("scenarios").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -163,7 +154,6 @@ func (c *scenarios) DeleteCollection(options *metav1.DeleteOptions, listOptions 
 func (c *scenarios) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Scenario, err error) {
 	result = &v1.Scenario{}
 	err = c.client.Patch(pt).
-		Namespace(c.ns).
 		Resource("scenarios").
 		SubResource(subresources...).
 		Name(name).

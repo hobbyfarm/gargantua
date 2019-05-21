@@ -31,7 +31,6 @@ import (
 // FakeVirtualMachines implements VirtualMachineInterface
 type FakeVirtualMachines struct {
 	Fake *FakeHobbyfarmV1
-	ns   string
 }
 
 var virtualmachinesResource = schema.GroupVersionResource{Group: "hobbyfarm.io", Version: "v1", Resource: "virtualmachines"}
@@ -41,8 +40,7 @@ var virtualmachinesKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version
 // Get takes name of the virtualMachine, and returns the corresponding virtualMachine object, and an error if there is any.
 func (c *FakeVirtualMachines) Get(name string, options v1.GetOptions) (result *hobbyfarmiov1.VirtualMachine, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(virtualmachinesResource, c.ns, name), &hobbyfarmiov1.VirtualMachine{})
-
+		Invokes(testing.NewRootGetAction(virtualmachinesResource, name), &hobbyfarmiov1.VirtualMachine{})
 	if obj == nil {
 		return nil, err
 	}
@@ -52,8 +50,7 @@ func (c *FakeVirtualMachines) Get(name string, options v1.GetOptions) (result *h
 // List takes label and field selectors, and returns the list of VirtualMachines that match those selectors.
 func (c *FakeVirtualMachines) List(opts v1.ListOptions) (result *hobbyfarmiov1.VirtualMachineList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(virtualmachinesResource, virtualmachinesKind, c.ns, opts), &hobbyfarmiov1.VirtualMachineList{})
-
+		Invokes(testing.NewRootListAction(virtualmachinesResource, virtualmachinesKind, opts), &hobbyfarmiov1.VirtualMachineList{})
 	if obj == nil {
 		return nil, err
 	}
@@ -74,15 +71,13 @@ func (c *FakeVirtualMachines) List(opts v1.ListOptions) (result *hobbyfarmiov1.V
 // Watch returns a watch.Interface that watches the requested virtualMachines.
 func (c *FakeVirtualMachines) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(virtualmachinesResource, c.ns, opts))
-
+		InvokesWatch(testing.NewRootWatchAction(virtualmachinesResource, opts))
 }
 
 // Create takes the representation of a virtualMachine and creates it.  Returns the server's representation of the virtualMachine, and an error, if there is any.
 func (c *FakeVirtualMachines) Create(virtualMachine *hobbyfarmiov1.VirtualMachine) (result *hobbyfarmiov1.VirtualMachine, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(virtualmachinesResource, c.ns, virtualMachine), &hobbyfarmiov1.VirtualMachine{})
-
+		Invokes(testing.NewRootCreateAction(virtualmachinesResource, virtualMachine), &hobbyfarmiov1.VirtualMachine{})
 	if obj == nil {
 		return nil, err
 	}
@@ -92,8 +87,7 @@ func (c *FakeVirtualMachines) Create(virtualMachine *hobbyfarmiov1.VirtualMachin
 // Update takes the representation of a virtualMachine and updates it. Returns the server's representation of the virtualMachine, and an error, if there is any.
 func (c *FakeVirtualMachines) Update(virtualMachine *hobbyfarmiov1.VirtualMachine) (result *hobbyfarmiov1.VirtualMachine, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(virtualmachinesResource, c.ns, virtualMachine), &hobbyfarmiov1.VirtualMachine{})
-
+		Invokes(testing.NewRootUpdateAction(virtualmachinesResource, virtualMachine), &hobbyfarmiov1.VirtualMachine{})
 	if obj == nil {
 		return nil, err
 	}
@@ -104,8 +98,7 @@ func (c *FakeVirtualMachines) Update(virtualMachine *hobbyfarmiov1.VirtualMachin
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeVirtualMachines) UpdateStatus(virtualMachine *hobbyfarmiov1.VirtualMachine) (*hobbyfarmiov1.VirtualMachine, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(virtualmachinesResource, "status", c.ns, virtualMachine), &hobbyfarmiov1.VirtualMachine{})
-
+		Invokes(testing.NewRootUpdateSubresourceAction(virtualmachinesResource, "status", virtualMachine), &hobbyfarmiov1.VirtualMachine{})
 	if obj == nil {
 		return nil, err
 	}
@@ -115,14 +108,13 @@ func (c *FakeVirtualMachines) UpdateStatus(virtualMachine *hobbyfarmiov1.Virtual
 // Delete takes name of the virtualMachine and deletes it. Returns an error if one occurs.
 func (c *FakeVirtualMachines) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(virtualmachinesResource, c.ns, name), &hobbyfarmiov1.VirtualMachine{})
-
+		Invokes(testing.NewRootDeleteAction(virtualmachinesResource, name), &hobbyfarmiov1.VirtualMachine{})
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeVirtualMachines) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(virtualmachinesResource, c.ns, listOptions)
+	action := testing.NewRootDeleteCollectionAction(virtualmachinesResource, listOptions)
 
 	_, err := c.Fake.Invokes(action, &hobbyfarmiov1.VirtualMachineList{})
 	return err
@@ -131,8 +123,7 @@ func (c *FakeVirtualMachines) DeleteCollection(options *v1.DeleteOptions, listOp
 // Patch applies the patch and returns the patched virtualMachine.
 func (c *FakeVirtualMachines) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *hobbyfarmiov1.VirtualMachine, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(virtualmachinesResource, c.ns, name, pt, data, subresources...), &hobbyfarmiov1.VirtualMachine{})
-
+		Invokes(testing.NewRootPatchSubresourceAction(virtualmachinesResource, name, pt, data, subresources...), &hobbyfarmiov1.VirtualMachine{})
 	if obj == nil {
 		return nil, err
 	}
