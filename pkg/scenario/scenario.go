@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"net/http"
 	"encoding/json"
+	"strconv"
 )
 
 const (
@@ -37,7 +38,7 @@ type PreparedScenario struct {
 	Id string `json:"id"`
 	Name string `json:"name"`
 	Description string `json:"description"`
-	Steps []PreparedScenarioStep `json:"steps"`
+	StepCount int `json:"stepcount"`
 }
 
 func NewScenario(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*Scenario, error) {
@@ -56,6 +57,8 @@ func NewScenario(authClient *authclient.AuthClient, acClient *accesscode.AccessC
 
 func (s Scenario) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/scenario/list", s.ListScenarioFunc)
+	r.HandleFunc("/scenario/{scenario_id}", s.GetScenarioFunc)
+	r.HandleFunc("/scenario/{scenario_id}/step/{step_id:[0-9]+}", s.GetScenarioStepFunc)
 	glog.V(2).Infof("set up route")
 }
 
@@ -71,9 +74,87 @@ func (s Scenario) prepareScenario(scenario hfv1.Scenario) (PreparedScenario, err
 		steps = append(steps, PreparedScenarioStep{step.Title, step.Content})
 	}
 
-	ps.Steps = steps
+	ps.StepCount = len(scenario.Spec.Steps)
 
 	return ps, nil
+}
+
+func (s Scenario) getPreparedScenarioStepById(id string, step int) (PreparedScenarioStep, error){
+	scenario, err := s.getScenarioById(id)
+	if err != nil {
+		return PreparedScenarioStep{}, fmt.Errorf("error while retrieving scenario step")
+	}
+
+	if step >= 0 && len(scenario.Spec.Steps) > step {
+		stepContent := scenario.Spec.Steps[step]
+		return PreparedScenarioStep{stepContent.Title, stepContent.Content}, nil
+	}
+
+	return PreparedScenarioStep{}, fmt.Errorf("error while retrieving scenario step, most likely doesn't exist in index")
+}
+
+func (s Scenario) getPreparedScenarioById(id string) (PreparedScenario, error) {
+	scenario, err := s.getScenarioById(id)
+
+	if err != nil {
+		return PreparedScenario{}, fmt.Errorf("error while retrieving scenario %v", err)
+	}
+
+	preparedScenario, err := s.prepareScenario(scenario)
+
+	if err != nil {
+		return PreparedScenario{}, fmt.Errorf("error while preparing scenario %v", err)
+	}
+
+	return preparedScenario, nil
+}
+
+
+func (s Scenario) GetScenarioFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get scenarios")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	scenario, err := s.getPreparedScenarioById(vars["scenario_id"])
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf("scenario %s not found", vars["scenario_id"]))
+		returnok 
+	}
+	encodedScenario, err := json.Marshal(scenario)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedScenario)
+}
+func (s Scenario) GetScenarioStepFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get scenario steps")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	step_id, err := strconv.Atoi(vars["step_id"])
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf("scenario %s step %s not found", vars["scenario_id"], vars["step_id"]))
+		return
+	}
+	step, err := s.getPreparedScenarioStepById(vars["scenario_id"], step_id)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf("scenario %s not found", vars["scenario_id"]))
+		return
+	}
+	encodedStep, err := json.Marshal(step)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedStep)
+
 }
 
 func (s Scenario) ListScenarioFunc(w http.ResponseWriter, r *http.Request) {
