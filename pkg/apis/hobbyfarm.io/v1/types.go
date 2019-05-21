@@ -101,10 +101,16 @@ type ScenarioList struct {
 }
 
 type ScenarioSpec struct {
+	Id string	`json:"id"`
 	Name string `json:"name"`
 	Description string `json:"description"`
+	Steps []ScenarioStep `json:"steps"`
 }
 
+type ScenarioStep struct {
+	Title string `json:"title"`
+	Content string `json:"content"`
+}
 
 // +genclient
 // +genclient:noStatus

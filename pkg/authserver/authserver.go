@@ -142,7 +142,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		glog.Errorf("error while hashing password for email %s", email)
-		util.ReturnHTTPMessage(w, r, 500, "error", "error working on password")
+		util.ReturnHTTPMessage(w, r, 500, "error","error working on password")
 		return
 	}
 

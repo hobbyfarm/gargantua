@@ -4,9 +4,12 @@ import (
 	"flag"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/hobbyfarm/gargantua/pkg/accesscode"
+	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/scenario"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"github.com/hobbyfarm/gargantua/pkg/signals"
@@ -46,12 +49,25 @@ func main() {
 
 	hfInformerFactory := hfInformers.NewSharedInformerFactory(hfClient, time.Second*30)
 
-	a, err := authserver.NewAuthServer(hfClient, hfInformerFactory)
+	authServer, err := authserver.NewAuthServer(hfClient, hfInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	a.SetupRoutes(r)
+	authClient, err := authclient.NewAuthClient(hfClient, hfInformerFactory)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	acClient, err := accesscode.NewAccessCodeClient(hfClient, hfInformerFactory)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	scenario, err := scenario.NewScenario(authClient, acClient, hfClient, hfInformerFactory)
+
+	authServer.SetupRoutes(r)
+	scenario.SetupRoutes(r)
 
 	hfInformerFactory.Start(stopCh)
 

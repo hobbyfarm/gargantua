@@ -1,0 +1,9 @@
+apiVersion: hobbyfarm.io/v1
+kind: AccessCode
+metadata:
+  name: ac-ljhlkjhlkjhl
+spec:
+  code: kyletutorials
+  description: "test description"
+  scenarios:
+  - uuid-test-lol-123
