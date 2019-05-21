@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"golang.org/x/crypto/bcrypt"
@@ -25,10 +26,6 @@ type AuthServer struct {
 	userIndexer cache.Indexer
 }
 
-type AuthClient struct {
-
-}
-
 func NewAuthServer(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (AuthServer, error) {
 	a := AuthServer{}
 	a.hfClientSet = hfClientSet
@@ -42,7 +39,37 @@ func NewAuthServer(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInfor
 func (a AuthServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/auth/registerwithaccesscode", a.RegisterWithAccessCodeFunc)
 	r.HandleFunc("/auth/authenticate", a.AuthNFunc)
+	//r.HandleFunc("/auth/test", a.AuthN)
 	glog.V(2).Infof("set up route")
+}
+
+func (a AuthServer) AuthN(w http.ResponseWriter, r *http.Request) error {
+	var finalToken string
+	token := r.Header.Get("Authorization")
+
+	if len(token) == 0 {
+		glog.Errorf("no bearer token passed")
+		//util.ReturnHTTPMessage(w, r, 403, "forbidden", "no token passed")
+		return fmt.Errorf("authentication failed")
+	}
+
+	splitToken := strings.Split(token, "Bearer")
+	finalToken = strings.TrimSpace(splitToken[1])
+
+	glog.V(2).Infof("token passed in was: %s", finalToken)
+
+	user, err := a.ValidateJWT(finalToken)
+
+	if err != nil {
+		glog.Errorf("error validating user %v", err)
+		//util.ReturnHTTPMessage(w, r, 403, "forbidden", "forbidden")
+		return fmt.Errorf("authentication failed")
+	}
+
+	glog.V(2).Infof("validated user %s!", user.Spec.Email)
+
+	//util.ReturnHTTPMessage(w, r, 200, "success", "test successful. valid token")
+	return nil
 }
 
 func emailIndexer(obj interface{}) ([]string, error) {
@@ -153,5 +180,63 @@ func (a AuthServer) AuthNFunc(w http.ResponseWriter, r *http.Request) {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "login failed")
 		return
 	}
-	util.ReturnHTTPMessage(w, r, 200, "authorized", "<token-goes-here>")
+
+	token, err := GenerateJWT(user)
+
+	if err != nil {
+		glog.Error(err)
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "authorized", token)
+}
+
+func GenerateJWT(user hfv1.User) (string, error) {
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"email": user.Spec.Email,
+	})
+
+	// Sign and get the complete encoded token as a string using the secret
+	tokenString, err := token.SignedString([]byte(user.Spec.Password))
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
+func (a AuthServer) ValidateJWT(tokenString string) (hfv1.User, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Don't forget to validate the alg is what you expect:
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+		var user hfv1.User
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			var err error
+			user, err = a.getUserByEmail(fmt.Sprint(claims["email"]))
+			if err != nil {
+				glog.Errorf("could not find user that matched token %s", fmt.Sprint(claims["email"]))
+				return hfv1.User{}, fmt.Errorf("could not find user that matched token %s", fmt.Sprint(claims["email"]))
+			}
+		}
+		// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
+		return []byte(user.Spec.Password), nil
+	})
+
+	if err != nil {
+		glog.Errorf("error while validating user: %v", err)
+		return hfv1.User{}, err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		user, err := a.getUserByEmail(fmt.Sprint(claims["email"]))
+		if err != nil {
+			return hfv1.User{}, err
+		} else {
+			return user, nil
+		}
+	}
+	glog.Errorf("error while validating user")
+	return hfv1.User{}, fmt.Errorf("error while validating user")
 }
