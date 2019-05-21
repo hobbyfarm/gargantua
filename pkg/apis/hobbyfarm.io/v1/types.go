@@ -2,8 +2,6 @@ package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net"
-	"time"
 )
 
 // +genclient
@@ -33,8 +31,8 @@ type VirtualMachineStatus struct {
 	Status				string		`json:"status"` // default is nothing, but could be one of the following: starting, running, stopped, terminated
 	Allocated			bool		`json:"allocated"`
 	ActiveScenarioID	string		`json:"active_scenario_id"` // should only be populated when `allocated:true`
-	PublicIP			net.IPAddr	`json:"public_ip"`
-	PrivateIP			net.IPAddr	`json:"private_ip"`
+	PublicIP			string	`json:"public_ip"`
+	PrivateIP			string	`json:"private_ip"`
 	Hostname			string		`json:"hostname"` // ideally <hostname>.<enviroment dnssuffix> should be the FQDN to this machine
 }
 
@@ -85,6 +83,30 @@ type AWSEnvironmentSpec struct {
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+type Scenario struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              ScenarioSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ScenarioList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Scenario `json:"items"`
+}
+
+type ScenarioSpec struct {
+	Name string `json:"name"`
+	Description string `json:"description"`
+}
+
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 type ActiveScenario struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -105,8 +127,8 @@ type ActiveScenarioSpec struct {
 }
 
 type ActiveScenarioStatus struct {
-	StartTime	time.Time	`json:"start_time"`
-	ExpirationTime	time.Time	`json:"end_time"`
+	StartTime	string	`json:"start_time"`
+	ExpirationTime	string	`json:"end_time"`
 }
 
 // +genclient
@@ -134,4 +156,52 @@ type VirtualMachineTypeSpec struct {
 	Image 	string	`json:"image"` // ubuntu-18.04
 	CPU		int		`json:"cpu"`
 	Memory	int		`json:"memory"`
+}
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type AccessCode struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              AccessCodeSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type AccessCodeList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []AccessCode `json:"items"`
+}
+
+type AccessCodeSpec struct {
+	Code	string	`json:"code"`
+	Description string `json:"description"`
+	Scenarios		[]string	`json:"scenarios"`
+}
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type User struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              UserSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type UserList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []User `json:"items"`
+}
+
+type UserSpec struct {
+	Email string `json:"email"`
+	Password string `json:"password"`
+	AccessCodes []string `json:"access_codes"`
 }

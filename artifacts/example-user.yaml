@@ -1,0 +1,7 @@
+apiVersion: hobbyfarm.io/v1
+kind: User
+metadata:
+  name: u-asadfsadf
+spec:
+  email: chris.kim@rancher.com
+  password: lololnotmypassword

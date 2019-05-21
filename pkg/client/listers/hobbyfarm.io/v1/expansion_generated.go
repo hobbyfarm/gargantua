@@ -18,6 +18,14 @@ limitations under the License.
 
 package v1
 
+// AccessCodeListerExpansion allows custom methods to be added to
+// AccessCodeLister.
+type AccessCodeListerExpansion interface{}
+
+// AccessCodeNamespaceListerExpansion allows custom methods to be added to
+// AccessCodeNamespaceLister.
+type AccessCodeNamespaceListerExpansion interface{}
+
 // ActiveScenarioListerExpansion allows custom methods to be added to
 // ActiveScenarioLister.
 type ActiveScenarioListerExpansion interface{}
@@ -33,6 +41,22 @@ type EnvironmentListerExpansion interface{}
 // EnvironmentNamespaceListerExpansion allows custom methods to be added to
 // EnvironmentNamespaceLister.
 type EnvironmentNamespaceListerExpansion interface{}
+
+// ScenarioListerExpansion allows custom methods to be added to
+// ScenarioLister.
+type ScenarioListerExpansion interface{}
+
+// ScenarioNamespaceListerExpansion allows custom methods to be added to
+// ScenarioNamespaceLister.
+type ScenarioNamespaceListerExpansion interface{}
+
+// UserListerExpansion allows custom methods to be added to
+// UserLister.
+type UserListerExpansion interface{}
+
+// UserNamespaceListerExpansion allows custom methods to be added to
+// UserNamespaceLister.
+type UserNamespaceListerExpansion interface{}
 
 // VirtualMachineListerExpansion allows custom methods to be added to
 // VirtualMachineLister.

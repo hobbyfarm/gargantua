@@ -33,8 +33,14 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&VirtualMachineTypeList{},
 		&Environment{},
 		&EnvironmentList{},
+		&Scenario{},
+		&ScenarioList{},
 		&ActiveScenario{},
 		&ActiveScenarioList{},
+		&AccessCode{},
+		&AccessCodeList{},
+		&User{},
+		&UserList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

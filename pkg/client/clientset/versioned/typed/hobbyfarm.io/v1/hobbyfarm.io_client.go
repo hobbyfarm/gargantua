@@ -27,8 +27,11 @@ import (
 
 type HobbyfarmV1Interface interface {
 	RESTClient() rest.Interface
+	AccessCodesGetter
 	ActiveScenariosGetter
 	EnvironmentsGetter
+	ScenariosGetter
+	UsersGetter
 	VirtualMachinesGetter
 	VirtualMachineTypesGetter
 }
@@ -38,12 +41,24 @@ type HobbyfarmV1Client struct {
 	restClient rest.Interface
 }
 
+func (c *HobbyfarmV1Client) AccessCodes(namespace string) AccessCodeInterface {
+	return newAccessCodes(c, namespace)
+}
+
 func (c *HobbyfarmV1Client) ActiveScenarios(namespace string) ActiveScenarioInterface {
 	return newActiveScenarios(c, namespace)
 }
 
 func (c *HobbyfarmV1Client) Environments(namespace string) EnvironmentInterface {
 	return newEnvironments(c, namespace)
+}
+
+func (c *HobbyfarmV1Client) Scenarios(namespace string) ScenarioInterface {
+	return newScenarios(c, namespace)
+}
+
+func (c *HobbyfarmV1Client) Users(namespace string) UserInterface {
+	return newUsers(c, namespace)
 }
 
 func (c *HobbyfarmV1Client) VirtualMachines(namespace string) VirtualMachineInterface {

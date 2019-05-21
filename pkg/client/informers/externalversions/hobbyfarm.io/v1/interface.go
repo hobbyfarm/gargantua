@@ -24,10 +24,16 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// AccessCodes returns a AccessCodeInformer.
+	AccessCodes() AccessCodeInformer
 	// ActiveScenarios returns a ActiveScenarioInformer.
 	ActiveScenarios() ActiveScenarioInformer
 	// Environments returns a EnvironmentInformer.
 	Environments() EnvironmentInformer
+	// Scenarios returns a ScenarioInformer.
+	Scenarios() ScenarioInformer
+	// Users returns a UserInformer.
+	Users() UserInformer
 	// VirtualMachines returns a VirtualMachineInformer.
 	VirtualMachines() VirtualMachineInformer
 	// VirtualMachineTypes returns a VirtualMachineTypeInformer.
@@ -45,6 +51,11 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
+// AccessCodes returns a AccessCodeInformer.
+func (v *version) AccessCodes() AccessCodeInformer {
+	return &accessCodeInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
 // ActiveScenarios returns a ActiveScenarioInformer.
 func (v *version) ActiveScenarios() ActiveScenarioInformer {
 	return &activeScenarioInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
@@ -53,6 +64,16 @@ func (v *version) ActiveScenarios() ActiveScenarioInformer {
 // Environments returns a EnvironmentInformer.
 func (v *version) Environments() EnvironmentInformer {
 	return &environmentInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// Scenarios returns a ScenarioInformer.
+func (v *version) Scenarios() ScenarioInformer {
+	return &scenarioInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// Users returns a UserInformer.
+func (v *version) Users() UserInformer {
+	return &userInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // VirtualMachines returns a VirtualMachineInformer.

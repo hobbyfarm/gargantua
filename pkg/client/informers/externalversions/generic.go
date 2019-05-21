@@ -53,10 +53,16 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=hobbyfarm.io, Version=v1
+	case v1.SchemeGroupVersion.WithResource("accesscodes"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().AccessCodes().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("activescenarios"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().ActiveScenarios().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("environments"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Environments().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("scenarios"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Scenarios().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("users"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Users().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("virtualmachines"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().VirtualMachines().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("virtualmachinetypes"):

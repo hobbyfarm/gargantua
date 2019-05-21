@@ -28,12 +28,24 @@ type FakeHobbyfarmV1 struct {
 	*testing.Fake
 }
 
+func (c *FakeHobbyfarmV1) AccessCodes(namespace string) v1.AccessCodeInterface {
+	return &FakeAccessCodes{c, namespace}
+}
+
 func (c *FakeHobbyfarmV1) ActiveScenarios(namespace string) v1.ActiveScenarioInterface {
 	return &FakeActiveScenarios{c, namespace}
 }
 
 func (c *FakeHobbyfarmV1) Environments(namespace string) v1.EnvironmentInterface {
 	return &FakeEnvironments{c, namespace}
+}
+
+func (c *FakeHobbyfarmV1) Scenarios(namespace string) v1.ScenarioInterface {
+	return &FakeScenarios{c, namespace}
+}
+
+func (c *FakeHobbyfarmV1) Users(namespace string) v1.UserInterface {
+	return &FakeUsers{c, namespace}
 }
 
 func (c *FakeHobbyfarmV1) VirtualMachines(namespace string) v1.VirtualMachineInterface {
