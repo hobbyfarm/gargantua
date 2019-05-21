@@ -122,7 +122,7 @@ func (s Scenario) GetScenarioFunc(w http.ResponseWriter, r *http.Request) {
 	scenario, err := s.getPreparedScenarioById(vars["scenario_id"])
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf("scenario %s not found", vars["scenario_id"]))
-		returnok 
+		return
 	}
 	encodedScenario, err := json.Marshal(scenario)
 	if err != nil {
