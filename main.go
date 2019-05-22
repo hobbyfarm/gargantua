@@ -9,8 +9,10 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/pkg/scenario"
+	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
+	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenariosessionclient"
+	"github.com/hobbyfarm/gargantua/pkg/scenariosessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/shell"
 	"github.com/hobbyfarm/gargantua/pkg/signals"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
@@ -68,9 +70,13 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	scenario, err := scenario.NewScenario(authClient, acClient, hfClient, hfInformerFactory)
+	scenarioServer, err := scenarioserver.NewScenarioServer(authClient, acClient, hfClient, hfInformerFactory)
 
-	ssClient, err := scenariosessionclient.NewScenarioSessionClient(hfClient, hfInformerFactory)
+	//scenarioClient, err := scenarioclient.NewScenarioClient(scenarioServer)
+
+	ssServer, err := scenariosessionserver.NewScenarioSessionServer(authClient, hfClient, hfInformerFactory)
+
+	ssClient, err := scenariosessionclient.NewScenarioSessionClient(ssServer)
 
 	vmServer, err := vmserver.NewVMServer(authClient, ssClient, hfClient, hfInformerFactory)
 
@@ -78,8 +84,9 @@ func main() {
 
 	shellProxy, err := shell.NewShellProxy(authClient, vmClient, ssClient)
 
+	ssServer.SetupRoutes(r)
 	authServer.SetupRoutes(r)
-	scenario.SetupRoutes(r)
+	scenarioServer.SetupRoutes(r)
 	vmServer.SetupRoutes(r)
 	shellProxy.SetupRoutes(r)
 

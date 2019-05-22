@@ -1,7 +1,10 @@
 apiVersion: hobbyfarm.io/v1
 kind: User
 metadata:
-  name: u-asadfsadf
+  name: u-rr53u4n2uj
 spec:
-  email: chris.kim@rancher.com
-  password: lololnotmypassword
+  access_codes:
+  - kyletutorials
+  email: testuser@rancher.com
+  id: u-rr53u4n2uj
+  password: $2a$10$967j.T6GhDGBlwGi4FnGUOk6Ai/70LYMtl8hMpb2vq12cc1Fy9eLm

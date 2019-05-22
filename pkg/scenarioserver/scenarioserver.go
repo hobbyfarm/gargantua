@@ -41,7 +41,7 @@ type PreparedScenario struct {
 	StepCount int `json:"stepcount"`
 }
 
-func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*Scenario, error) {
+func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioServer, error) {
 	scenario := ScenarioServer{}
 
 	scenario.hfClientSet = hfClientset
