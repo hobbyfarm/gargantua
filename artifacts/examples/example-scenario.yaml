@@ -3,7 +3,7 @@ kind: Scenario
 metadata:
   name: s-asfsafsafadfsadf
 spec:
-  id: uuid-test-lol-123
+  id: s-asfsafsafadfsadf
   name: "How to not be bad"
   description: "in 5 easy steps, we will teach you how to not be bad"
   steps:

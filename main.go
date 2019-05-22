@@ -10,7 +10,11 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/scenario"
+	"github.com/hobbyfarm/gargantua/pkg/scenariosessionclient"
+	"github.com/hobbyfarm/gargantua/pkg/shell"
 	"github.com/hobbyfarm/gargantua/pkg/signals"
+	"github.com/hobbyfarm/gargantua/pkg/vmclient"
+	"github.com/hobbyfarm/gargantua/pkg/vmserver"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"net/http"
@@ -66,15 +70,30 @@ func main() {
 
 	scenario, err := scenario.NewScenario(authClient, acClient, hfClient, hfInformerFactory)
 
+	ssClient, err := scenariosessionclient.NewScenarioSessionClient(hfClient, hfInformerFactory)
+
+	vmServer, err := vmserver.NewVMServer(authClient, ssClient, hfClient, hfInformerFactory)
+
+	vmClient, err := vmclient.NewVirtualMachineClient(vmServer)
+
+	shellProxy, err := shell.NewShellProxy(authClient, vmClient, ssClient)
+
 	authServer.SetupRoutes(r)
 	scenario.SetupRoutes(r)
+	vmServer.SetupRoutes(r)
+	shellProxy.SetupRoutes(r)
 
 	hfInformerFactory.Start(stopCh)
 
-	if ok := cache.WaitForCacheSync(stopCh, hfInformerFactory.Hobbyfarm().V1().Users().Informer().HasSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh,
+		hfInformerFactory.Hobbyfarm().V1().Users().Informer().HasSynced,
+		hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced,
+		//hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced,
+		//hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer().HasSynced,
+		); !ok {
 		glog.Fatalf("failed to wait for caches to sync")
 	}
-
+		glog.Info("listening on 80")
 	http.ListenAndServe(":80", r)
 }
 
