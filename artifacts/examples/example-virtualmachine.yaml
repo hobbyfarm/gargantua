@@ -4,13 +4,13 @@ metadata:
   name: vm-vmvmvmvmv
 spec:
   id: vm-vmvmvmvmv
-  vmtemplate: ubuntu1804-docker1
+  user: u-rr53u4n2uj
+  vm_template_id: ubuntu1804-docker1
+  vm_claim_id: vm-vmvmvmvmv
   keypair_name: lolmykeypair
 status:
   status: running
   allocated: true
-  scenario_session_id:
-  scenario_machine_name: rancher
   public_ip: "10.4.2.1"
   private_ip: "172.0.0.1"
   environment_id: e-asdfsafa

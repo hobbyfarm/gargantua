@@ -14,5 +14,5 @@ spec:
     - title: "step 3: asdfr things"
       content: "you shouasdfd"
   virtualmachines:
-    rancher: ubuntu1804-docker1
-    node01: ubuntu1804-docker1
+    - rancher: ubuntu1804-docker1
+      node01: ubuntu1804-docker1

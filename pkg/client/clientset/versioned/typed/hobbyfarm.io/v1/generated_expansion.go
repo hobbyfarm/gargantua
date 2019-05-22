@@ -30,4 +30,6 @@ type UserExpansion interface{}
 
 type VirtualMachineExpansion interface{}
 
+type VirtualMachineClaimExpansion interface{}
+
 type VirtualMachineTemplateExpansion interface{}

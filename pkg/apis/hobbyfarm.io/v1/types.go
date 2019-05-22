@@ -25,24 +25,55 @@ type VirtualMachineList struct {
 
 type VirtualMachineSpec struct {
 	Id						string		`json:"id"`
-	VirtualMachineTemplateId string		`json:"vmtemplate"`
+	VirtualMachineTemplateId string		`json:"vm_template_id"`
 	KeyPair			       string 		`json:"keypair_name"` // this refers to the secret name for the keypair
+	VirtualMachineClaimId	string		`json:"vm_claim_id"`
+	UserId					string		`json:"user"`
 }
 
 type VirtualMachineStatus struct {
 	Status				string		`json:"status"` // default is nothing, but could be one of the following: starting, running, stopped, terminated
 	Allocated			bool		`json:"allocated"`
-	ScenarioSessionID	string		`json:"scenario_session_id"` // should only be populated when `allocated:true`
-	MachineName			string		`json:"scenario_machine_name"`
 	PublicIP			string		`json:"public_ip"`
 	PrivateIP			string		`json:"private_ip"`
 	EnvironmentId		string		`json:"environment_id"`
 	Hostname			string		`json:"hostname"` // ideally <hostname>.<enviroment dnssuffix> should be the FQDN to this machine
 }
 
+// +genclient
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 type VirtualMachineClaim struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              VirtualMachineClaimSpec `json:"spec"`
+	Status			VirtualMachineClaimStatus `json:"status,omitempty"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type VirtualMachineClaimList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []VirtualMachineClaim `json:"items"`
+}
+
+type VirtualMachineClaimSpec struct {
 	Id		string	`json:"id"`
-	RequestedTemplate	string `json:"requested_template"`
+	UserId  string  `json:"user"`
+	VirtualMachines map[string]VirtualMachineClaimVM `json:"vm"`
+	VirtualMachineClassId string `json:"vm_class_id"`
+}
+
+type VirtualMachineClaimStatus struct {
+	Bound	bool	`json:"bound"`
+	Ready   bool 	`json:"ready"`
+}
+
+type VirtualMachineClaimVM struct {
+	Template    string  `json:"template"`
+	VirtualMachineId	string	`json:"vm_id"`
 }
 
 // +genclient
@@ -142,7 +173,7 @@ type ScenarioSpec struct {
 	Name string `json:"name"`
 	Description string `json:"description"`
 	Steps []ScenarioStep `json:"steps"`
-	VirtualMachines map[string]string `json:"virtualmachines"`
+	VirtualMachines []map[string]string `json:"virtualmachines"`
 }
 
 type ScenarioStep struct {
@@ -173,7 +204,7 @@ type ScenarioSessionSpec struct {
 	Id 			string			`json:"id"`
 	ScenarioId	string			`json:"scenario"`
 	UserId		string			`json:"user"`
-	Vm			map[string]string	`json:"vm"`
+	VmClaimSet		[]string	`json:"vm_claim"`
 }
 
 type ScenarioSessionStatus struct {

@@ -6,9 +6,8 @@ spec:
   id: ss-bnbnbnbnjkbn
   scenario: s-asfsafsafadfsadf
   user: u-rr53u4n2uj
-  vm:
-    rancher: vm-vmvmvmvmv
-    node01: vm-mvmvmvmv
+  vm_claim:
+    - vmc-xxxxxyyyyz
 status:
   active: true
   StartTime: never

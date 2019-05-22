@@ -36,6 +36,8 @@ type Interface interface {
 	Users() UserInformer
 	// VirtualMachines returns a VirtualMachineInformer.
 	VirtualMachines() VirtualMachineInformer
+	// VirtualMachineClaims returns a VirtualMachineClaimInformer.
+	VirtualMachineClaims() VirtualMachineClaimInformer
 	// VirtualMachineTemplates returns a VirtualMachineTemplateInformer.
 	VirtualMachineTemplates() VirtualMachineTemplateInformer
 }
@@ -79,6 +81,11 @@ func (v *version) Users() UserInformer {
 // VirtualMachines returns a VirtualMachineInformer.
 func (v *version) VirtualMachines() VirtualMachineInformer {
 	return &virtualMachineInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// VirtualMachineClaims returns a VirtualMachineClaimInformer.
+func (v *version) VirtualMachineClaims() VirtualMachineClaimInformer {
+	return &virtualMachineClaimInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // VirtualMachineTemplates returns a VirtualMachineTemplateInformer.

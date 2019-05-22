@@ -1,0 +1,18 @@
+apiVersion: hobbyfarm.io/v1
+kind: VirtualMachineClaim
+metadata:
+  name: vmc-xxxxxyyyyz
+spec:
+  id: vmc-xxxxxyyyyz
+  user: u-rr53u4n2uj
+  vm:
+    rancher:
+      vm_id: vm-vmvmvmvmv
+      template: yes123
+    node01:
+      vm_id: vm-mvmvmvmv
+      template: yes123
+  vm_class_id: vmclass-sdfasdfa
+status:
+  bound: true
+  ready: true

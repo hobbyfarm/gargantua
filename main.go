@@ -9,12 +9,11 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
-	"github.com/hobbyfarm/gargantua/pkg/scenariosessionclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenariosessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/shell"
 	"github.com/hobbyfarm/gargantua/pkg/signals"
+	"github.com/hobbyfarm/gargantua/pkg/vmclaimserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
 	"github.com/hobbyfarm/gargantua/pkg/vmserver"
 	"k8s.io/client-go/tools/cache"
@@ -76,27 +75,35 @@ func main() {
 
 	ssServer, err := scenariosessionserver.NewScenarioSessionServer(authClient, hfClient, hfInformerFactory)
 
-	ssClient, err := scenariosessionclient.NewScenarioSessionClient(ssServer)
+	//ssClient, err := scenariosessionclient.NewScenarioSessionClient(ssServer)
 
-	vmServer, err := vmserver.NewVMServer(authClient, ssClient, hfClient, hfInformerFactory)
+	vmServer, err := vmserver.NewVMServer(authClient, hfClient, hfInformerFactory)
 
 	vmClient, err := vmclient.NewVirtualMachineClient(vmServer)
 
-	shellProxy, err := shell.NewShellProxy(authClient, vmClient, ssClient)
+	vmClaimServer, err := vmclaimserver.NewVMClaimServer(authClient, hfClient, hfInformerFactory)
+
+	//vmClaimClient, err := vmclaimclient.NewVMClaimClient(vmClient)
+
+	shellProxy, err := shell.NewShellProxy(authClient, vmClient)
 
 	ssServer.SetupRoutes(r)
 	authServer.SetupRoutes(r)
 	scenarioServer.SetupRoutes(r)
 	vmServer.SetupRoutes(r)
 	shellProxy.SetupRoutes(r)
+	vmClaimServer.SetupRoutes(r)
 
 	hfInformerFactory.Start(stopCh)
 
 	if ok := cache.WaitForCacheSync(stopCh,
 		hfInformerFactory.Hobbyfarm().V1().Users().Informer().HasSynced,
 		hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced,
-		//hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced,
-		//hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer().HasSynced,
+		hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer().HasSynced,
+		hfInformerFactory.Hobbyfarm().V1().Scenarios().Informer().HasSynced,
+		hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced,
+		hfInformerFactory.Hobbyfarm().V1().AccessCodes().Informer().HasSynced,
+		//hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced,,
 		); !ok {
 		glog.Fatalf("failed to wait for caches to sync")
 	}
