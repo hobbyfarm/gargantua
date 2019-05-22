@@ -1,9 +1,9 @@
 package util
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
-	"encoding/json"
 )
 
 type HTTPMessage struct {
@@ -64,7 +64,7 @@ func GetHTTPErrorCode(httpStatus int) string {
 }
 func UniqueStringSlice(stringSlice []string) []string {
 	keys := make(map[string]bool)
-	list := []string{}
+	var list []string
 	for _, entry := range stringSlice {
 		if _, value := keys[entry]; !value {
 			keys[entry] = true

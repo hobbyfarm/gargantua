@@ -32,16 +32,16 @@ func (c *FakeHobbyfarmV1) AccessCodes() v1.AccessCodeInterface {
 	return &FakeAccessCodes{c}
 }
 
-func (c *FakeHobbyfarmV1) ActiveScenarios() v1.ActiveScenarioInterface {
-	return &FakeActiveScenarios{c}
-}
-
 func (c *FakeHobbyfarmV1) Environments() v1.EnvironmentInterface {
 	return &FakeEnvironments{c}
 }
 
 func (c *FakeHobbyfarmV1) Scenarios() v1.ScenarioInterface {
 	return &FakeScenarios{c}
+}
+
+func (c *FakeHobbyfarmV1) ScenarioSessions() v1.ScenarioSessionInterface {
+	return &FakeScenarioSessions{c}
 }
 
 func (c *FakeHobbyfarmV1) Users() v1.UserInterface {
@@ -52,8 +52,8 @@ func (c *FakeHobbyfarmV1) VirtualMachines() v1.VirtualMachineInterface {
 	return &FakeVirtualMachines{c}
 }
 
-func (c *FakeHobbyfarmV1) VirtualMachineTypes() v1.VirtualMachineTypeInterface {
-	return &FakeVirtualMachineTypes{c}
+func (c *FakeHobbyfarmV1) VirtualMachineTemplates() v1.VirtualMachineTemplateInterface {
+	return &FakeVirtualMachineTemplates{c}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

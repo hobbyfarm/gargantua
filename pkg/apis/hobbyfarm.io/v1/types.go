@@ -24,17 +24,54 @@ type VirtualMachineList struct {
 }
 
 type VirtualMachineSpec struct {
-	VMType			string		`json:"vmtype"`
-	KeyPair			string		`json:"keypair_name"` // this refers to the secret name for the keypair
+	Id						string		`json:"id"`
+	VirtualMachineTemplateId string		`json:"vmtemplate"`
+	KeyPair			       string 		`json:"keypair_name"` // this refers to the secret name for the keypair
 }
 
 type VirtualMachineStatus struct {
 	Status				string		`json:"status"` // default is nothing, but could be one of the following: starting, running, stopped, terminated
 	Allocated			bool		`json:"allocated"`
-	ActiveScenarioID	string		`json:"active_scenario_id"` // should only be populated when `allocated:true`
-	PublicIP			string	`json:"public_ip"`
-	PrivateIP			string	`json:"private_ip"`
+	ScenarioSessionID	string		`json:"scenario_session_id"` // should only be populated when `allocated:true`
+	MachineName			string		`json:"scenario_machine_name"`
+	PublicIP			string		`json:"public_ip"`
+	PrivateIP			string		`json:"private_ip"`
+	EnvironmentId		string		`json:"environment_id"`
 	Hostname			string		`json:"hostname"` // ideally <hostname>.<enviroment dnssuffix> should be the FQDN to this machine
+}
+
+type VirtualMachineClaim struct {
+	Id		string	`json:"id"`
+	RequestedTemplate	string `json:"requested_template"`
+}
+
+// +genclient
+// +genclient:noStatus
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type VirtualMachineTemplate struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              VirtualMachineTemplateSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type VirtualMachineTemplateList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []VirtualMachineTemplate `json:"items"`
+}
+
+// VM type is a genercized collection of information about a VM. this includes things like
+// cpu, ram, disk, etc.
+type VirtualMachineTemplateSpec struct {
+	Id		string 	`json:"id"`
+	Name	string	`json:"name"` // 2x4, etc.
+	Image 	string	`json:"image"` // ubuntu-18.04
+	CPU		int		`json:"cpu"`
+	Memory	int		`json:"memory"`
 }
 
 // +genclient
@@ -77,7 +114,7 @@ type AWSEnvironmentSpec struct {
 	AvailabilityZone	string `json:"az"`
 	VPC					string	`json:"vpc"`
 	Subnet				string	`json:"subnet"`
-	TypeMapping			map[string]string `json:"type_mapping"`
+	TemplateMapping			map[string]string `json:"template_mapping"`
 	// @todo: finish filling this in
 }
 
@@ -105,6 +142,7 @@ type ScenarioSpec struct {
 	Name string `json:"name"`
 	Description string `json:"description"`
 	Steps []ScenarioStep `json:"steps"`
+	VirtualMachines map[string]string `json:"virtualmachines"`
 }
 
 type ScenarioStep struct {
@@ -113,60 +151,35 @@ type ScenarioStep struct {
 }
 
 // +genclient
-// +genclient:noStatus
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type ActiveScenario struct {
+type ScenarioSession struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              ActiveScenarioSpec `json:"spec"`
+	Spec              ScenarioSessionSpec `json:"spec"`
+	Status			  ScenarioSessionStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type ActiveScenarioList struct {
+type ScenarioSessionList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
-	Items           []ActiveScenario `json:"items"`
+	Items           []ScenarioSession `json:"items"`
 }
 
-type ActiveScenarioSpec struct {
-	Scenario	string	`json:"scenario"`
-	User		string	`json:"user"`
+type ScenarioSessionSpec struct {
+	Id 			string			`json:"id"`
+	ScenarioId	string			`json:"scenario"`
+	UserId		string			`json:"user"`
+	Vm			map[string]string	`json:"vm"`
 }
 
-type ActiveScenarioStatus struct {
-	StartTime	string	`json:"start_time"`
+type ScenarioSessionStatus struct {
+	Active 		bool		`json:"active"`
+	StartTime	string		`json:"start_time"`
 	ExpirationTime	string	`json:"end_time"`
-}
-
-// +genclient
-// +genclient:noStatus
-// +genclient:nonNamespaced
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type VirtualMachineType struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              VirtualMachineTypeSpec `json:"spec"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type VirtualMachineTypeList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-	Items           []VirtualMachineType `json:"items"`
-}
-
-// VM type is a genercized collection of information about a VM. this includes things like
-// cpu, ram, disk, etc.
-type VirtualMachineTypeSpec struct {
-	Name	string	`json:"name"` // 2x4, etc.
-	Image 	string	`json:"image"` // ubuntu-18.04
-	CPU		int		`json:"cpu"`
-	Memory	int		`json:"memory"`
 }
 
 // +genclient
@@ -214,6 +227,7 @@ type UserList struct {
 }
 
 type UserSpec struct {
+	Id string `json:"id"`
 	Email string `json:"email"`
 	Password string `json:"password"`
 	AccessCodes []string `json:"access_codes"`

@@ -28,12 +28,12 @@ import (
 type HobbyfarmV1Interface interface {
 	RESTClient() rest.Interface
 	AccessCodesGetter
-	ActiveScenariosGetter
 	EnvironmentsGetter
 	ScenariosGetter
+	ScenarioSessionsGetter
 	UsersGetter
 	VirtualMachinesGetter
-	VirtualMachineTypesGetter
+	VirtualMachineTemplatesGetter
 }
 
 // HobbyfarmV1Client is used to interact with features provided by the hobbyfarm.io group.
@@ -45,16 +45,16 @@ func (c *HobbyfarmV1Client) AccessCodes() AccessCodeInterface {
 	return newAccessCodes(c)
 }
 
-func (c *HobbyfarmV1Client) ActiveScenarios() ActiveScenarioInterface {
-	return newActiveScenarios(c)
-}
-
 func (c *HobbyfarmV1Client) Environments() EnvironmentInterface {
 	return newEnvironments(c)
 }
 
 func (c *HobbyfarmV1Client) Scenarios() ScenarioInterface {
 	return newScenarios(c)
+}
+
+func (c *HobbyfarmV1Client) ScenarioSessions() ScenarioSessionInterface {
+	return newScenarioSessions(c)
 }
 
 func (c *HobbyfarmV1Client) Users() UserInterface {
@@ -65,8 +65,8 @@ func (c *HobbyfarmV1Client) VirtualMachines() VirtualMachineInterface {
 	return newVirtualMachines(c)
 }
 
-func (c *HobbyfarmV1Client) VirtualMachineTypes() VirtualMachineTypeInterface {
-	return newVirtualMachineTypes(c)
+func (c *HobbyfarmV1Client) VirtualMachineTemplates() VirtualMachineTemplateInterface {
+	return newVirtualMachineTemplates(c)
 }
 
 // NewForConfig creates a new HobbyfarmV1Client for the given config.

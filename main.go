@@ -10,9 +10,9 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/scenario"
+	"github.com/hobbyfarm/gargantua/pkg/signals"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-	"github.com/hobbyfarm/gargantua/pkg/signals"
 	"net/http"
 	"time"
 )

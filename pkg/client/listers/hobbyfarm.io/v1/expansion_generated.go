@@ -22,10 +22,6 @@ package v1
 // AccessCodeLister.
 type AccessCodeListerExpansion interface{}
 
-// ActiveScenarioListerExpansion allows custom methods to be added to
-// ActiveScenarioLister.
-type ActiveScenarioListerExpansion interface{}
-
 // EnvironmentListerExpansion allows custom methods to be added to
 // EnvironmentLister.
 type EnvironmentListerExpansion interface{}
@@ -33,6 +29,10 @@ type EnvironmentListerExpansion interface{}
 // ScenarioListerExpansion allows custom methods to be added to
 // ScenarioLister.
 type ScenarioListerExpansion interface{}
+
+// ScenarioSessionListerExpansion allows custom methods to be added to
+// ScenarioSessionLister.
+type ScenarioSessionListerExpansion interface{}
 
 // UserListerExpansion allows custom methods to be added to
 // UserLister.
@@ -42,6 +42,6 @@ type UserListerExpansion interface{}
 // VirtualMachineLister.
 type VirtualMachineListerExpansion interface{}
 
-// VirtualMachineTypeListerExpansion allows custom methods to be added to
-// VirtualMachineTypeLister.
-type VirtualMachineTypeListerExpansion interface{}
+// VirtualMachineTemplateListerExpansion allows custom methods to be added to
+// VirtualMachineTemplateLister.
+type VirtualMachineTemplateListerExpansion interface{}

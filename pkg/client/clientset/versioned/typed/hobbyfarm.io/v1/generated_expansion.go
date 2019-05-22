@@ -20,14 +20,14 @@ package v1
 
 type AccessCodeExpansion interface{}
 
-type ActiveScenarioExpansion interface{}
-
 type EnvironmentExpansion interface{}
 
 type ScenarioExpansion interface{}
+
+type ScenarioSessionExpansion interface{}
 
 type UserExpansion interface{}
 
 type VirtualMachineExpansion interface{}
 
-type VirtualMachineTypeExpansion interface{}
+type VirtualMachineTemplateExpansion interface{}

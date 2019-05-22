@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
-	"github.com/hobbyfarm/gargantua/pkg/util"
-	"golang.org/x/crypto/bcrypt"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/util"
+	"golang.org/x/crypto/bcrypt"
 	"k8s.io/client-go/tools/cache"
 	"net/http"
 	"strings"
@@ -132,8 +132,9 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	hasher := sha256.New()
 	hasher.Write([]byte(email))
 	sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:10]
-
-	newUser.Name = "u-" + strings.ToLower(sha)
+	id := "u-" + strings.ToLower(sha)
+	newUser.Name = id
+	newUser.Spec.Id = id
 	accessCodes :=  make([]string, 1)
 	accessCodes[0] = access_code
 	newUser.Spec.AccessCodes = accessCodes

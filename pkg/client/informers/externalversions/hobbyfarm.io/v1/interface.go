@@ -26,18 +26,18 @@ import (
 type Interface interface {
 	// AccessCodes returns a AccessCodeInformer.
 	AccessCodes() AccessCodeInformer
-	// ActiveScenarios returns a ActiveScenarioInformer.
-	ActiveScenarios() ActiveScenarioInformer
 	// Environments returns a EnvironmentInformer.
 	Environments() EnvironmentInformer
 	// Scenarios returns a ScenarioInformer.
 	Scenarios() ScenarioInformer
+	// ScenarioSessions returns a ScenarioSessionInformer.
+	ScenarioSessions() ScenarioSessionInformer
 	// Users returns a UserInformer.
 	Users() UserInformer
 	// VirtualMachines returns a VirtualMachineInformer.
 	VirtualMachines() VirtualMachineInformer
-	// VirtualMachineTypes returns a VirtualMachineTypeInformer.
-	VirtualMachineTypes() VirtualMachineTypeInformer
+	// VirtualMachineTemplates returns a VirtualMachineTemplateInformer.
+	VirtualMachineTemplates() VirtualMachineTemplateInformer
 }
 
 type version struct {
@@ -56,11 +56,6 @@ func (v *version) AccessCodes() AccessCodeInformer {
 	return &accessCodeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// ActiveScenarios returns a ActiveScenarioInformer.
-func (v *version) ActiveScenarios() ActiveScenarioInformer {
-	return &activeScenarioInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
-}
-
 // Environments returns a EnvironmentInformer.
 func (v *version) Environments() EnvironmentInformer {
 	return &environmentInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
@@ -69,6 +64,11 @@ func (v *version) Environments() EnvironmentInformer {
 // Scenarios returns a ScenarioInformer.
 func (v *version) Scenarios() ScenarioInformer {
 	return &scenarioInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// ScenarioSessions returns a ScenarioSessionInformer.
+func (v *version) ScenarioSessions() ScenarioSessionInformer {
+	return &scenarioSessionInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Users returns a UserInformer.
@@ -81,7 +81,7 @@ func (v *version) VirtualMachines() VirtualMachineInformer {
 	return &virtualMachineInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// VirtualMachineTypes returns a VirtualMachineTypeInformer.
-func (v *version) VirtualMachineTypes() VirtualMachineTypeInformer {
-	return &virtualMachineTypeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+// VirtualMachineTemplates returns a VirtualMachineTemplateInformer.
+func (v *version) VirtualMachineTemplates() VirtualMachineTemplateInformer {
+	return &virtualMachineTemplateInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

@@ -55,18 +55,18 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=hobbyfarm.io, Version=v1
 	case v1.SchemeGroupVersion.WithResource("accesscodes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().AccessCodes().Informer()}, nil
-	case v1.SchemeGroupVersion.WithResource("activescenarios"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().ActiveScenarios().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("environments"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Environments().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("scenarios"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Scenarios().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("scenariosessions"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().ScenarioSessions().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("users"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Users().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("virtualmachines"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().VirtualMachines().Informer()}, nil
-	case v1.SchemeGroupVersion.WithResource("virtualmachinetypes"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().VirtualMachineTypes().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("virtualmachinetemplates"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().VirtualMachineTemplates().Informer()}, nil
 
 	}
 
