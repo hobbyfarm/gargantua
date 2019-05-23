@@ -9,9 +9,11 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"k8s.io/client-go/tools/cache"
 	"net/http"
+	"time"
 )
 
 const (
@@ -20,13 +22,15 @@ const (
 
 type ScenarioSessionServer struct {
 	hfClientSet *hfClientset.Clientset
+	scenarioClient *scenarioclient.ScenarioClient
 	auth *authclient.AuthClient
 	ssIndexer cache.Indexer
 }
 
-func NewScenarioSessionServer(authClient *authclient.AuthClient, hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioSessionServer, error) {
+func NewScenarioSessionServer(authClient *authclient.AuthClient, scenarioClient *scenarioclient.ScenarioClient, hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioSessionServer, error) {
 	a := ScenarioSessionServer{}
 	a.hfClientSet = hfClientSet
+	a.scenarioClient = scenarioClient
 	a.auth = authClient
 	inf := hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer()
 	indexers := map[string]cache.IndexFunc{ssIndex: ssIdIndexer}
@@ -42,7 +46,77 @@ func (sss ScenarioSessionServer) SetupRoutes(r *mux.Router) {
 }
 
 func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := sss.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create scenario sessions")
+		return
+	}
 
+	scenarioId := r.PostFormValue("scenario")
+
+	if scenarioId == "" {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no scenario id passed in")
+		return
+	}
+	random := util.RandStringRunes(10)
+
+	scenario, err := sss.scenarioClient.GetScenarioById(scenarioId)
+	if err != nil {
+		glog.Errorf("scenario not found %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "no scenario found")
+		return
+	}
+
+	scenarioSessionName := util.GenerateResourceName("ss", random, 10)
+	scenarioSession := hfv1.ScenarioSession{}
+
+	scenarioSession.Name = scenarioSessionName
+	scenarioSession.Spec.Id = scenarioSessionName
+	scenarioSession.Spec.ScenarioId = scenario.Spec.Id
+	scenarioSession.Spec.UserId = user.Spec.Id
+
+	scenarioSession.Spec.VmClaimSet = make([]string, len(scenario.Spec.VirtualMachines))
+	for index, vmset := range scenario.Spec.VirtualMachines {
+		virtualMachineClaim := hfv1.VirtualMachineClaim{}
+		vmcId := util.GenerateResourceName("vmc", util.RandStringRunes(10), 10)
+		virtualMachineClaim.Spec.Id = vmcId
+		virtualMachineClaim.Name = vmcId
+		virtualMachineClaim.Spec.VirtualMachines = make(map[string]hfv1.VirtualMachineClaimVM)
+		for vmName, vmTemplateName := range vmset {
+			virtualMachineClaim.Spec.VirtualMachines[vmName] = hfv1.VirtualMachineClaimVM{vmTemplateName, ""}
+		}
+		virtualMachineClaim.Spec.UserId = user.Spec.Id
+		virtualMachineClaim.Spec.VirtualMachineClassId = "default"
+		virtualMachineClaim.Status.Bound = false
+		virtualMachineClaim.Status.Ready = false
+
+		createdVmClaim, err := sss.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Create(&virtualMachineClaim)
+		if err != nil {
+			glog.Errorf("error creating vm claim %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "error", "something happened")
+			return
+		}
+		scenarioSession.Spec.VmClaimSet[index] = createdVmClaim.Spec.Id
+	}
+
+	now := time.Now()
+	scenarioSession.Status.StartTime = now.String()
+	duration, _ := time.ParseDuration("4h")
+
+	scenarioSession.Status.ExpirationTime = now.Add(duration).String()
+	scenarioSession.Status.Active = true
+
+	createdScenarioSession, err := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Create(&scenarioSession)
+
+	if err != nil {
+		glog.Errorf("error creating scenario session %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "something happened")
+		return
+	}
+
+	glog.V(2).Infof("created scenario session ID %s", createdScenarioSession.Spec.Id)
+	util.ReturnHTTPMessage(w, r, 201, "created", createdScenarioSession.Spec.Id)
+	return
 }
 
 func (sss ScenarioSessionServer) GetScenarioSessionFunc(w http.ResponseWriter, r *http.Request) {

@@ -9,6 +9,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenariosessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/shell"
@@ -71,9 +72,9 @@ func main() {
 
 	scenarioServer, err := scenarioserver.NewScenarioServer(authClient, acClient, hfClient, hfInformerFactory)
 
-	//scenarioClient, err := scenarioclient.NewScenarioClient(scenarioServer)
+	scenarioClient, err := scenarioclient.NewScenarioClient(scenarioServer)
 
-	ssServer, err := scenariosessionserver.NewScenarioSessionServer(authClient, hfClient, hfInformerFactory)
+	ssServer, err := scenariosessionserver.NewScenarioSessionServer(authClient, scenarioClient, hfClient, hfInformerFactory)
 
 	//ssClient, err := scenariosessionclient.NewScenarioSessionClient(ssServer)
 

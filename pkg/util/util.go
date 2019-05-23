@@ -1,9 +1,15 @@
 package util
 
 import (
+	"crypto/sha256"
+	"encoding/base32"
 	"encoding/json"
+	"fmt"
+	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type HTTPMessage struct {
@@ -72,4 +78,27 @@ func UniqueStringSlice(stringSlice []string) []string {
 		}
 	}
 	return list
+}
+
+func GenerateResourceName(prefix string, input string, hashlength int) string {
+	hasher := sha256.New()
+	hasher.Write([]byte(input))
+	sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:hashlength]
+	resourceName := fmt.Sprintf("%s-", prefix) + strings.ToLower(sha)
+
+	return resourceName
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandStringRunes(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
