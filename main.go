@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
+	"github.com/cloudflare/cfssl/log"
 	"github.com/golang/glog"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
@@ -97,6 +99,9 @@ func main() {
 
 	hfInformerFactory.Start(stopCh)
 
+	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
+	corsOrigins := handlers.AllowedOrigins([]string{"*"})
+
 	if ok := cache.WaitForCacheSync(stopCh,
 		hfInformerFactory.Hobbyfarm().V1().Users().Informer().HasSynced,
 		hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced,
@@ -104,11 +109,12 @@ func main() {
 		hfInformerFactory.Hobbyfarm().V1().Scenarios().Informer().HasSynced,
 		hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced,
 		hfInformerFactory.Hobbyfarm().V1().AccessCodes().Informer().HasSynced,
-		//hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced,,
-		); !ok {
+	//hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced,,
+	); !ok {
 		glog.Fatalf("failed to wait for caches to sync")
 	}
-		glog.Info("listening on 80")
-	http.ListenAndServe(":80", r)
-}
+	glog.Info("listening on 80")
 
+	http.Handle("/", r)
+	log.Fatal(http.ListenAndServe(":80", handlers.CORS(corsHeaders, corsOrigins)(r)))
+}
