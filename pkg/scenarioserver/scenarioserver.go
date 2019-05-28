@@ -21,24 +21,22 @@ const (
 )
 
 type ScenarioServer struct {
-
-	auth *authclient.AuthClient
-	hfClientSet *hfClientset.Clientset
-	acClient *accesscode.AccessCodeClient
+	auth            *authclient.AuthClient
+	hfClientSet     *hfClientset.Clientset
+	acClient        *accesscode.AccessCodeClient
 	scenarioIndexer cache.Indexer
-
 }
 
 type PreparedScenarioStep struct {
-	Title string `json:"title"`
+	Title   string `json:"title"`
 	Content string `json:"content"`
 }
 
 type PreparedScenario struct {
-	Id string `json:"id"`
-	Name string `json:"name"`
+	Id          string `json:"id"`
+	Name        string `json:"name"`
 	Description string `json:"description"`
-	StepCount int `json:"stepcount"`
+	StepCount   int    `json:"stepcount"`
 }
 
 func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioServer, error) {
@@ -54,11 +52,10 @@ func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.A
 	return &scenario, nil
 }
 
-
 func (s ScenarioServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/scenario/list", s.ListScenarioFunc)
-	r.HandleFunc("/scenario/{scenario_id}", s.GetScenarioFunc)
-	r.HandleFunc("/scenario/{scenario_id}/step/{step_id:[0-9]+}", s.GetScenarioStepFunc)
+	r.HandleFunc("/scenario/list", s.ListScenarioFunc).Methods("GET")
+	r.HandleFunc("/scenario/{scenario_id}", s.GetScenarioFunc).Methods("GET")
+	r.HandleFunc("/scenario/{scenario_id}/step/{step_id:[0-9]+}", s.GetScenarioStepFunc).Methods("GET")
 	glog.V(2).Infof("set up route")
 }
 
@@ -79,7 +76,7 @@ func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario) (PreparedScenari
 	return ps, nil
 }
 
-func (s ScenarioServer) getPreparedScenarioStepById(id string, step int) (PreparedScenarioStep, error){
+func (s ScenarioServer) getPreparedScenarioStepById(id string, step int) (PreparedScenarioStep, error) {
 	scenario, err := s.GetScenarioById(id)
 	if err != nil {
 		return PreparedScenarioStep{}, fmt.Errorf("error while retrieving scenario step")
@@ -108,7 +105,6 @@ func (s ScenarioServer) getPreparedScenarioById(id string) (PreparedScenario, er
 
 	return preparedScenario, nil
 }
-
 
 func (s ScenarioServer) GetScenarioFunc(w http.ResponseWriter, r *http.Request) {
 	_, err := s.auth.AuthN(w, r)
@@ -209,7 +205,7 @@ func (s ScenarioServer) GetScenarioById(id string) (hfv1.Scenario, error) {
 	}
 
 	if len(obj) < 1 {
-		return hfv1.Scenario{} , fmt.Errorf("error while retrieving scenario by ID %s", id)
+		return hfv1.Scenario{}, fmt.Errorf("error while retrieving scenario by ID %s", id)
 	}
 
 	scenario, ok := obj[0].(*hfv1.Scenario)
