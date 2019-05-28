@@ -62,7 +62,7 @@ func (s ScenarioServer) SetupRoutes(r *mux.Router) {
 func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario) (PreparedScenario, error) {
 	ps := PreparedScenario{}
 
-	ps.Name = scenario.Name
+	ps.Name = scenario.Spec.Name
 	ps.Id = scenario.Spec.Id
 	ps.Description = scenario.Spec.Description
 
