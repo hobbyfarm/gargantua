@@ -1,17 +1,17 @@
 package vmclaimserver
 
 import (
-"encoding/json"
-"fmt"
-"github.com/golang/glog"
-"github.com/gorilla/mux"
-hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-"github.com/hobbyfarm/gargantua/pkg/authclient"
-hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-"github.com/hobbyfarm/gargantua/pkg/util"
-"k8s.io/client-go/tools/cache"
-"net/http"
+	"encoding/json"
+	"fmt"
+	"github.com/golang/glog"
+	"github.com/gorilla/mux"
+	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/util"
+	"k8s.io/client-go/tools/cache"
+	"net/http"
 )
 
 const (
@@ -19,12 +19,10 @@ const (
 )
 
 type VMClaimServer struct {
-
-	auth *authclient.AuthClient
+	auth        *authclient.AuthClient
 	hfClientSet *hfClientset.Clientset
 
 	vmClaimIndexer cache.Indexer
-
 }
 
 func NewVMClaimServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*VMClaimServer, error) {
@@ -69,7 +67,7 @@ func (vmcs VMClaimServer) GetVirtualMachineClaimById(id string) (hfv1.VirtualMac
 }
 
 func (vmcs VMClaimServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/vmclaim/{vm_claim_id}", vmcs.GetVMClaimFunc)
+	r.HandleFunc("/vmclaim/{vm_claim_id}", vmcs.GetVMClaimFunc).Methods("GET")
 	glog.V(2).Infof("set up routes")
 }
 

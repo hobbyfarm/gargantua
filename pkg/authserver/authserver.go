@@ -37,8 +37,8 @@ func NewAuthServer(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInfor
 }
 
 func (a AuthServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/auth/registerwithaccesscode", a.RegisterWithAccessCodeFunc)
-	r.HandleFunc("/auth/authenticate", a.AuthNFunc)
+	r.HandleFunc("/auth/registerwithaccesscode", a.RegisterWithAccessCodeFunc).Methods("POST")
+	r.HandleFunc("/auth/authenticate", a.AuthNFunc).Methods("POST")
 	//r.HandleFunc("/auth/test", a.AuthN)
 	glog.V(2).Infof("set up route")
 }
@@ -135,7 +135,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	id := "u-" + strings.ToLower(sha)
 	newUser.Name = id
 	newUser.Spec.Id = id
-	accessCodes :=  make([]string, 1)
+	accessCodes := make([]string, 1)
 	accessCodes[0] = access_code
 	newUser.Spec.AccessCodes = accessCodes
 	newUser.Spec.Email = email
@@ -143,7 +143,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		glog.Errorf("error while hashing password for email %s", email)
-		util.ReturnHTTPMessage(w, r, 500, "error","error working on password")
+		util.ReturnHTTPMessage(w, r, 500, "error", "error working on password")
 		return
 	}
 
