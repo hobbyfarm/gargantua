@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
@@ -201,6 +202,8 @@ func GenerateJWT(user hfv1.User) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"email": user.Spec.Email,
+		"nbf":   time.Now().Unix(),                     // not valid before now
+		"exp":   time.Now().Add(time.Hour * 24).Unix(), // expire in 24 hours
 	})
 
 	// Sign and get the complete encoded token as a string using the secret

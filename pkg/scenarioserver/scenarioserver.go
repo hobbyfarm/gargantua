@@ -33,10 +33,11 @@ type PreparedScenarioStep struct {
 }
 
 type PreparedScenario struct {
-	Id          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	StepCount   int    `json:"stepcount"`
+	Id              string              `json:"id"`
+	Name            string              `json:"name"`
+	Description     string              `json:"description"`
+	StepCount       int                 `json:"stepcount"`
+	VirtualMachines []map[string]string `json:"virtualmachines"`
 }
 
 func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioServer, error) {
@@ -62,9 +63,10 @@ func (s ScenarioServer) SetupRoutes(r *mux.Router) {
 func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario) (PreparedScenario, error) {
 	ps := PreparedScenario{}
 
-	ps.Name = scenario.Name
+	ps.Name = scenario.Spec.Name
 	ps.Id = scenario.Spec.Id
 	ps.Description = scenario.Spec.Description
+	ps.VirtualMachines = scenario.Spec.VirtualMachines
 
 	var steps []PreparedScenarioStep
 	for _, step := range scenario.Spec.Steps {
