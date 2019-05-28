@@ -121,6 +121,11 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	// should we reconcile based on the access code posted in? nah
 	_, err := a.getUserByEmail(email)
 
+	if len(email) == 0 || len(access_code) == 0 || len(password) == 0 {
+		util.ReturnHTTPMessage(w, r, 400, "error", "invalid input. required fields: email, access_code, password")
+		return
+	}
+
 	if err == nil {
 		// the user was found, we should return info
 		util.ReturnHTTPMessage(w, r, 409, "error", "user already exists")
@@ -154,6 +159,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		glog.Errorf("error creating new user for email %s: %v", email, err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "error creating user")
+		return
 	}
 
 	glog.V(2).Infof("created user %s", email)
