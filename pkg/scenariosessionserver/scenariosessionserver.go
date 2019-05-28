@@ -21,10 +21,10 @@ const (
 )
 
 type ScenarioSessionServer struct {
-	hfClientSet *hfClientset.Clientset
+	hfClientSet    *hfClientset.Clientset
 	scenarioClient *scenarioclient.ScenarioClient
-	auth *authclient.AuthClient
-	ssIndexer cache.Indexer
+	auth           *authclient.AuthClient
+	ssIndexer      cache.Indexer
 }
 
 func NewScenarioSessionServer(authClient *authclient.AuthClient, scenarioClient *scenarioclient.ScenarioClient, hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioSessionServer, error) {
@@ -40,8 +40,8 @@ func NewScenarioSessionServer(authClient *authclient.AuthClient, scenarioClient 
 }
 
 func (sss ScenarioSessionServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/session/new", sss.NewScenarioSessionFunc)
-	r.HandleFunc("/session/{scenario_session_id}", sss.GetScenarioSessionFunc)
+	r.HandleFunc("/session/new", sss.NewScenarioSessionFunc).Methods("POST")
+	r.HandleFunc("/session/{scenario_session_id}", sss.GetScenarioSessionFunc).Methods("GET")
 	glog.V(2).Infof("set up routes")
 }
 
