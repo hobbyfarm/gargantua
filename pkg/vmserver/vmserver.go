@@ -1,15 +1,15 @@
 package vmserver
 
 import (
-"encoding/json"
+	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
-"github.com/gorilla/mux"
-hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-"github.com/hobbyfarm/gargantua/pkg/authclient"
-hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-"github.com/hobbyfarm/gargantua/pkg/util"
+	"github.com/gorilla/mux"
+	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/util"
 	"k8s.io/client-go/tools/cache"
 	"net/http"
 )
@@ -19,12 +19,10 @@ const (
 )
 
 type VMServer struct {
-
-	auth *authclient.AuthClient
+	auth        *authclient.AuthClient
 	hfClientSet *hfClientset.Clientset
 
 	vmIndexer cache.Indexer
-
 }
 
 func NewVMServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*VMServer, error) {
@@ -69,7 +67,7 @@ func (vms VMServer) GetVirtualMachineById(id string) (hfv1.VirtualMachine, error
 }
 
 func (vms VMServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/vm/{vm_id}", vms.GetVMFunc)
+	r.HandleFunc("/vm/{vm_id}", vms.GetVMFunc).Methods("GET")
 	glog.V(2).Infof("set up routes")
 }
 
