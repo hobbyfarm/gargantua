@@ -4,8 +4,10 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
+	"k8s.io/client-go/kubernetes"
 	"net/http"
 )
 
@@ -14,13 +16,18 @@ type ShellProxy struct {
 	auth *authclient.AuthClient
 	vmClient *vmclient.VirtualMachineClient
 
+	hfClient *hfClientset.Clientset
+	kubeClient *kubernetes.Clientset
+
 }
 
-func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.VirtualMachineClient) (*ShellProxy, error) {
+func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.VirtualMachineClient, hfClientSet *hfClientset.Clientset, kubeClient *kubernetes.Clientset) (*ShellProxy, error) {
 	shellProxy := ShellProxy{}
 
 	shellProxy.auth = authClient
 	shellProxy.vmClient = vmClient
+	shellProxy.hfClient = hfClientSet
+	shellProxy.kubeClient = kubeClient
 
 	return &shellProxy, nil
 }

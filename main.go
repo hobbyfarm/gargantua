@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"github.com/cloudflare/cfssl/log"
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -19,6 +18,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/vmclaimserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
 	"github.com/hobbyfarm/gargantua/pkg/vmserver"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"net/http"
@@ -55,6 +55,11 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
+	}
+
 	hfInformerFactory := hfInformers.NewSharedInformerFactory(hfClient, time.Second*30)
 
 	authServer, err := authserver.NewAuthServer(hfClient, hfInformerFactory)
@@ -88,7 +93,7 @@ func main() {
 
 	//vmClaimClient, err := vmclaimclient.NewVMClaimClient(vmClient)
 
-	shellProxy, err := shell.NewShellProxy(authClient, vmClient)
+	shellProxy, err := shell.NewShellProxy(authClient, vmClient, hfClient, kubeClient)
 
 	ssServer.SetupRoutes(r)
 	authServer.SetupRoutes(r)
@@ -116,5 +121,5 @@ func main() {
 	glog.Info("listening on 80")
 
 	http.Handle("/", r)
-	log.Fatal(http.ListenAndServe(":80", handlers.CORS(corsHeaders, corsOrigins)(r)))
+	glog.Fatal(http.ListenAndServe(":80", handlers.CORS(corsHeaders, corsOrigins)(r)))
 }
