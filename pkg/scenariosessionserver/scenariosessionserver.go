@@ -115,7 +115,11 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 	}
 
 	glog.V(2).Infof("created scenario session ID %s", createdScenarioSession.Spec.Id)
-	util.ReturnHTTPMessage(w, r, 201, "created", createdScenarioSession.Spec.Id)
+	encodedSS, err := json.Marshal(createdScenarioSession.Spec)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 201, "created", encodedSS)
 	return
 }
 
