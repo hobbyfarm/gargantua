@@ -8,7 +8,6 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
-	"github.com/kr/pty"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -134,27 +133,19 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, tty, err := pty.Open()
-	if err != nil {
-		glog.Errorf("unable to setup local pty: %s", err)
-		util.ReturnHTTPMessage(w, r, 500, "error", "could not setup local pty")
-		return
-	}
-
-	defer tty.Close()
-
-	sess.Stdout = tty
-	sess.Stdin = tty
-	sess.Stderr = tty
-
 	go func() {
-		io.Copy(stdout, tty)
+		pip, _ := sess.StdoutPipe()
+		io.Copy(stdout, pip)
 	}()
+
 	go func() {
-		io.Copy(stderr, tty)
+		pip, _ := sess.StderrPipe()
+		io.Copy(stderr, pip)
 	}()
+
 	go func() {
-		io.Copy(tty, stdin)
+		pip, _ := sess.StdinPipe()
+		io.Copy(pip, stdin)
 	}()
 
 	err = sess.RequestPty("xterm", 40, 80, ssh.TerminalModes{ssh.ECHO: 1, ssh.TTY_OP_ISPEED: 14400, ssh.TTY_OP_OSPEED: 14400})
