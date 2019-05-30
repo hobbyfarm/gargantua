@@ -3,22 +3,24 @@ package shell
 import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
+	"golang.org/x/crypto/ssh"
+	"io"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"net/http"
 )
 
 type ShellProxy struct {
-
-	auth *authclient.AuthClient
+	auth     *authclient.AuthClient
 	vmClient *vmclient.VirtualMachineClient
 
-	hfClient *hfClientset.Clientset
+	hfClient   *hfClientset.Clientset
 	kubeClient *kubernetes.Clientset
-
 }
 
 func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.VirtualMachineClient, hfClientSet *hfClientset.Clientset, kubeClient *kubernetes.Clientset) (*ShellProxy, error) {
@@ -32,18 +34,17 @@ func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.Virtual
 	return &shellProxy, nil
 }
 
-
 func (sp ShellProxy) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/shell/{vm_id}/connect", sp.ConnectFunc)
 	glog.V(2).Infof("set up routes")
 }
 
 func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := sp.auth.AuthN(w, r)
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
-		return
-	}
+	//user, err := sp.auth.AuthN(w, r)
+	//if err != nil {
+	//	util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
+	//	return
+	//}
 
 	vars := mux.Vars(r)
 
@@ -62,10 +63,98 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if vm.Spec.UserId != user.Spec.Id {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "you do not have access to shell")
+	//if vm.Spec.UserId != user.Spec.Id {
+	//	util.ReturnHTTPMessage(w, r, 403, "forbidden", "you do not have access to shell")
+	//	return
+	//}
+
+	glog.Infof("Going to upgrade connection now... %s", vm.Spec.Id)
+
+	// ok first get the secret for the vm
+	secret, err := sp.kubeClient.CoreV1().Secrets("default").Get(vm.Spec.KeyPair, v1.GetOptions{}) // idk?
+	if err != nil {
+		glog.Errorf("did not find secret for virtual machine")
+		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
 		return
 	}
 
-	glog.Infof("Going to upgrade connection now... %s", vm.Spec.Id)
+	// parse the private key
+	signer, err := ssh.ParsePrivateKey(secret.Data["private_key"])
+	if err != nil {
+		glog.Errorf("did not correctly parse private key")
+		util.ReturnHTTPMessage(w, r, 500, "error", "unable to parse private key")
+		return
+	}
+
+	// now use the secret and ssh off to something
+	config := &ssh.ClientConfig{
+		User: "rancher",
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	// dial the instance
+	sshConn, err := ssh.Dial("tcp", vm.Status.PrivateIP+":22", config)
+	if err != nil {
+		glog.Errorf("did not connect ssh successfully: %s", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "could not establish ssh session to vm")
+		return
+	}
+
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+
+	conn, _ := upgrader.Upgrade(w, r, nil) // upgrade to websocket
+
+	wrapper := NewWSWrapper(conn, websocket.TextMessage)
+	stdout := wrapper
+	stderr := wrapper
+
+	stdin := &InputWrapper{ws: conn}
+
+	sess, err := sshConn.NewSession()
+	if err != nil {
+		glog.Errorf("did not setup ssh session properly")
+		util.ReturnHTTPMessage(w, r, 500, "error", "could not setup ssh session")
+		return
+	}
+
+	go func() {
+		rdr, err := sess.StdoutPipe()
+		if err != nil {
+			glog.Errorf("error setting up stdout: %s", err)
+		}
+		io.Copy(stdout, rdr)
+	}()
+
+	go func() {
+		rdr, err := sess.StderrPipe()
+		if err != nil {
+			glog.Errorf("error setting up stderr: %s", err)
+		}
+		io.Copy(stderr, rdr)
+	}()
+
+	go func() {
+		wtr, err := sess.StdinPipe()
+		if err != nil {
+			glog.Errorf("error setting up stdin: %s", err)
+		}
+		io.Copy(wtr, stdin)
+	}()
+
+	err = sess.RequestPty("xterm", 40, 80, ssh.TerminalModes{ssh.ECHO: 1, ssh.TTY_OP_ISPEED: 14400, ssh.TTY_OP_OSPEED: 14400})
+	if err != nil {
+		glog.Error(err)
+	}
+	err = sess.Shell()
+	if err != nil {
+		glog.Error(err)
+	}
+
+	defer sess.Close()
 }

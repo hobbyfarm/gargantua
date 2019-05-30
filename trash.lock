@@ -33,6 +33,8 @@ import:
   version: v1.4.0
 - package: github.com/gorilla/mux
   version: v1.7.1
+- package: github.com/gorilla/websocket
+  version: v1.4.0
 - package: github.com/hashicorp/golang-lru
   version: 20f1fb78b0740ba8c3cb143a61e86ba5c8669768
 - package: github.com/hashicorp/golang-lru/simplelru
@@ -50,6 +52,12 @@ import:
 - package: golang.org/x/crypto/bcrypt
   version: master
 - package: golang.org/x/crypto/blowfish
+  version: master
+- package: golang.org/x/crypto/internal/chacha20
+  version: master
+- package: golang.org/x/crypto/internal/subtle
+  version: master
+- package: golang.org/x/crypto/ssh
   version: master
 - package: golang.org/x/crypto/ssh/terminal
   version: de0752318171da717af4ce24d0a2e8626afaeb11
