@@ -8,6 +8,7 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
+	"github.com/kr/pty"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -108,7 +109,17 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 		WriteBufferSize: 1024,
 	}
 
-	conn, _ := upgrader.Upgrade(w, r, nil) // upgrade to websocket
+	// todo - HACK
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil) // upgrade to websocket
+	if err != nil {
+		glog.Errorf("error upgrading: %s", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "error upgrading to websocket")
+		return
+	}
 
 	wrapper := NewWSWrapper(conn, websocket.TextMessage)
 	stdout := wrapper
@@ -123,28 +134,27 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go func() {
-		rdr, err := sess.StdoutPipe()
-		if err != nil {
-			glog.Errorf("error setting up stdout: %s", err)
-		}
-		io.Copy(stdout, rdr)
-	}()
+	_, tty, err := pty.Open()
+	if err != nil {
+		glog.Errorf("unable to setup local pty: %s", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "could not setup local pty")
+		return
+	}
+
+	defer tty.Close()
+
+	sess.Stdout = tty
+	sess.Stdin = tty
+	sess.Stderr = tty
 
 	go func() {
-		rdr, err := sess.StderrPipe()
-		if err != nil {
-			glog.Errorf("error setting up stderr: %s", err)
-		}
-		io.Copy(stderr, rdr)
+		io.Copy(stdout, tty)
 	}()
-
 	go func() {
-		wtr, err := sess.StdinPipe()
-		if err != nil {
-			glog.Errorf("error setting up stdin: %s", err)
-		}
-		io.Copy(wtr, stdin)
+		io.Copy(stderr, tty)
+	}()
+	go func() {
+		io.Copy(tty, stdin)
 	}()
 
 	err = sess.RequestPty("xterm", 40, 80, ssh.TerminalModes{ssh.ECHO: 1, ssh.TTY_OP_ISPEED: 14400, ssh.TTY_OP_OSPEED: 14400})
@@ -156,5 +166,7 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 		glog.Error(err)
 	}
 
-	defer sess.Close()
+	//sess.Wait()
+	//
+	//defer sess.Close()
 }
