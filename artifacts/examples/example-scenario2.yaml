@@ -1,18 +1,14 @@
 apiVersion: hobbyfarm.io/v1
 kind: Scenario
 metadata:
-  name: s-eamon
+  name: s-scenario2
 spec:
-  id: s-eamon
-  name: "High-Availability Rancher Installation"
-  description: "In this scenario, we will install Rancher on an RKE cluster and expose Rancher to the internet using an nginx proxy"
+  id: s-scenario2
+  name: SGlnaC1BdmFpbGFiaWxpdHkgUmFuY2hlciBJbnN0YWxsYXRpb24K
+  description: SW4gdGhpcyBzY2VuYXJpbywgd2Ugd2lsbCBpbnN0YWxsIFJhbmNoZXIgb24gYW4gUktFIGNsdXN0ZXIgYW5kIGV4cG9zZSBSYW5jaGVyIHRvIHRoZSBpbnRlcm5ldCB1c2luZyBhbiBuZ2lueCBwcm94eQo=
   steps:
-  - title: "step 1: live anywhere but where bad people live"
-    content: "you should not live in bad land navigate to https://{{rancher-public-hostname}}"
-  - title: "step 2: other things"
-    content: "you shouasdfasdfe in bad land"
-  - title: "step 3: asdfr things"
-    content: "you shouasdfd"
+  - title: c3RlcDEK
+    content: Y29udGVudDEK
   virtualmachines:
   - rancher01: ubuntu1804-docker1
     rancher02: ubuntu1804-docker1

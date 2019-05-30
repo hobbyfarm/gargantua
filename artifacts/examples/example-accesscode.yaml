@@ -7,3 +7,6 @@ spec:
   description: "test description"
   scenarios:
   - s-asfsafsafadfsadf
+  - s-scenario2
+  - s-scenario3
+  - s-scenario4

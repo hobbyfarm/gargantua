@@ -1,0 +1,17 @@
+apiVersion: hobbyfarm.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm-demo49
+spec:
+  id: vm-demo49
+  user:
+  vm_template_id: ubuntu1804-docker1
+  vm_claim_id:
+  keypair_name: lolmykeypair
+status:
+  status: running
+  allocated: false
+  public_ip: "54.174.64.35"
+  private_ip: "54.174.64.35"
+  environment_id: e-asdfsafa
+  hostname: ip-54-174-64-35

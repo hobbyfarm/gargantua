@@ -31,11 +31,13 @@ import (
 var (
 	localMasterUrl  string
 	localKubeconfig string
+	disableControllers bool
 )
 
 func init() {
 	flag.StringVar(&localKubeconfig, "kubeconfig", "", "Path to kubeconfig of local cluster. Only required if out-of-cluster.")
 	flag.StringVar(&localMasterUrl, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.BoolVar(&disableControllers, "disablecontrollers", false, "Disable the controllers")
 }
 
 func main() {
@@ -129,18 +131,21 @@ func main() {
 
 
 	var wg sync.WaitGroup
+	wg.Add(1)
+	if !disableControllers {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			environmentController.Run(stopCh)
+		}()
 
-	wg.Add(3)
+		go func() {
+			defer wg.Done()
+			vmClaimController.Run(stopCh)
+		}()
+	}
+
 	glog.Info("listening on 80")
-	go func() {
-		defer wg.Done()
-		environmentController.Run(stopCh)
-	}()
-
-	go func() {
-		defer wg.Done()
-		vmClaimController.Run(stopCh)
-	}()
 
 	go func() {
 		defer wg.Done()
