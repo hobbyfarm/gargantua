@@ -101,12 +101,10 @@ type VirtualMachineTemplateSpec struct {
 	Id		string 	`json:"id"`
 	Name	string	`json:"name"` // 2x4, etc.
 	Image 	string	`json:"image"` // ubuntu-18.04
-	CPU		int		`json:"cpu"`
-	Memory	int		`json:"memory"`
+	Resources CMSStruct `json:"resources"`
 }
 
 // +genclient
-// +genclient:noStatus
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -114,6 +112,7 @@ type Environment struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              EnvironmentSpec `json:"spec"`
+	Status 			  EnvironmentStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -133,6 +132,18 @@ type EnvironmentSpec struct {
 	Provider				string	`json:"provider"` // aws,vsphere,azure,custom ;)
 	VsphereEnvironmentSpec	VsphereEnvironmentSpec `json:"vsphere_env_spec,omitempty"`
 	AWSEnvironmentSpec 		AWSEnvironmentSpec `json:"aws_env_spec,omitempty"`
+}
+
+type EnvironmentStatus struct {
+	Capacity					CMSStruct `json:"capacity"`
+	Used						CMSStruct `json:"used"`
+	AvailableCount				map[string]int `json:"available_count"`
+}
+
+type CMSStruct struct {
+	CPU		int `json:"cpu"` // cores
+	Memory  int `json:"memory"` // in MB
+	Storage int `json:"storage"` // in GB
 }
 
 type VsphereEnvironmentSpec struct {

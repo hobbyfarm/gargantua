@@ -7,12 +7,12 @@ spec:
   user: u-rr53u4n2uj
   vm:
     rancher:
-      vm_id: vm-vmvmvmvmv
-      template: yes123
+      vm_id:
+      template: ubuntu1804-docker1
     node01:
-      vm_id: vm-mvmvmvmv
-      template: yes123
+      vm_id:
+      template: ubuntu1804-docker1
   vm_class_id: vmclass-sdfasdfa
 status:
-  bound: true
-  ready: true
+  bound: false
+  ready: false

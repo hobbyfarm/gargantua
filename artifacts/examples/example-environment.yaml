@@ -1,0 +1,13 @@
+apiVersion: hobbyfarm.io/v1
+kind: Environment
+metadata:
+  name: e-asdfsafa
+spec:
+  display_name: "Example Environment"
+  dnssuffix: example.hobbyfarm.io
+  provider: custom
+status:
+  capacity:
+    cpu: 64
+    memory: 131072
+    storage: 256

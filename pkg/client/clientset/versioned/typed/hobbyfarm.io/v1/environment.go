@@ -39,6 +39,7 @@ type EnvironmentsGetter interface {
 type EnvironmentInterface interface {
 	Create(*v1.Environment) (*v1.Environment, error)
 	Update(*v1.Environment) (*v1.Environment, error)
+	UpdateStatus(*v1.Environment) (*v1.Environment, error)
 	Delete(name string, options *metav1.DeleteOptions) error
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.Environment, error)
@@ -119,6 +120,21 @@ func (c *environments) Update(environment *v1.Environment) (result *v1.Environme
 	err = c.client.Put().
 		Resource("environments").
 		Name(environment.Name).
+		Body(environment).
+		Do().
+		Into(result)
+	return
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+
+func (c *environments) UpdateStatus(environment *v1.Environment) (result *v1.Environment, err error) {
+	result = &v1.Environment{}
+	err = c.client.Put().
+		Resource("environments").
+		Name(environment.Name).
+		SubResource("status").
 		Body(environment).
 		Do().
 		Into(result)

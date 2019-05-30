@@ -10,6 +10,8 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/controllers/environment"
+	"github.com/hobbyfarm/gargantua/pkg/controllers/vmclaimcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenariosessionserver"
@@ -22,6 +24,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -95,6 +98,9 @@ func main() {
 
 	shellProxy, err := shell.NewShellProxy(authClient, vmClient, hfClient, kubeClient)
 
+	environmentController, err := environment.NewEnvironmentController(hfClient, hfInformerFactory)
+	vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory)
+
 	ssServer.SetupRoutes(r)
 	authServer.SetupRoutes(r)
 	scenarioServer.SetupRoutes(r)
@@ -118,8 +124,29 @@ func main() {
 	); !ok {
 		glog.Fatalf("failed to wait for caches to sync")
 	}
-	glog.Info("listening on 80")
 
 	http.Handle("/", r)
-	glog.Fatal(http.ListenAndServe(":80", handlers.CORS(corsHeaders, corsOrigins)(r)))
+
+
+	var wg sync.WaitGroup
+
+	wg.Add(3)
+	glog.Info("listening on 80")
+	go func() {
+		defer wg.Done()
+		environmentController.Run(stopCh)
+	}()
+
+	go func() {
+		defer wg.Done()
+		vmClaimController.Run(stopCh)
+	}()
+
+	go func() {
+		defer wg.Done()
+		glog.Fatal(http.ListenAndServe(":80", handlers.CORS(corsHeaders, corsOrigins)(r)))
+	}()
+
+	wg.Wait()
+
 }

@@ -53,9 +53,15 @@ import:
   version: master
 - package: golang.org/x/crypto/blowfish
   version: master
+- package: golang.org/x/crypto/curve25519
+  version: master
+- package: golang.org/x/crypto/ed25519
+  version: master
 - package: golang.org/x/crypto/internal/chacha20
   version: master
 - package: golang.org/x/crypto/internal/subtle
+  version: master
+- package: golang.org/x/crypto/poly1305
   version: master
 - package: golang.org/x/crypto/ssh
   version: master
