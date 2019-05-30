@@ -26,6 +26,7 @@ import (
 	versioned "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hobbyfarmio "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions/hobbyfarm.io"
 	internalinterfaces "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions/internalinterfaces"
+	terraformcontrollercattleio "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions/terraformcontroller.cattle.io"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -173,8 +174,13 @@ type SharedInformerFactory interface {
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
 	Hobbyfarm() hobbyfarmio.Interface
+	Terraformcontroller() terraformcontrollercattleio.Interface
 }
 
 func (f *sharedInformerFactory) Hobbyfarm() hobbyfarmio.Interface {
 	return hobbyfarmio.New(f, f.namespace, f.tweakListOptions)
+}
+
+func (f *sharedInformerFactory) Terraformcontroller() terraformcontrollercattleio.Interface {
+	return terraformcontrollercattleio.New(f, f.namespace, f.tweakListOptions)
 }

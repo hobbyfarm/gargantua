@@ -22,6 +22,8 @@ import (
 	clientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hobbyfarmv1 "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
 	fakehobbyfarmv1 "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1/fake"
+	terraformcontrollerv1 "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/typed/terraformcontroller.cattle.io/v1"
+	faketerraformcontrollerv1 "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/typed/terraformcontroller.cattle.io/v1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -74,4 +76,9 @@ var _ clientset.Interface = &Clientset{}
 // HobbyfarmV1 retrieves the HobbyfarmV1Client
 func (c *Clientset) HobbyfarmV1() hobbyfarmv1.HobbyfarmV1Interface {
 	return &fakehobbyfarmv1.FakeHobbyfarmV1{Fake: &c.Fake}
+}
+
+// TerraformcontrollerV1 retrieves the TerraformcontrollerV1Client
+func (c *Clientset) TerraformcontrollerV1() terraformcontrollerv1.TerraformcontrollerV1Interface {
+	return &faketerraformcontrollerv1.FakeTerraformcontrollerV1{Fake: &c.Fake}
 }

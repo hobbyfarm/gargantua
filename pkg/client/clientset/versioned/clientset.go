@@ -20,6 +20,7 @@ package versioned
 
 import (
 	hobbyfarmv1 "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	terraformcontrollerv1 "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/typed/terraformcontroller.cattle.io/v1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -28,18 +29,25 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	HobbyfarmV1() hobbyfarmv1.HobbyfarmV1Interface
+	TerraformcontrollerV1() terraformcontrollerv1.TerraformcontrollerV1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	hobbyfarmV1 *hobbyfarmv1.HobbyfarmV1Client
+	hobbyfarmV1           *hobbyfarmv1.HobbyfarmV1Client
+	terraformcontrollerV1 *terraformcontrollerv1.TerraformcontrollerV1Client
 }
 
 // HobbyfarmV1 retrieves the HobbyfarmV1Client
 func (c *Clientset) HobbyfarmV1() hobbyfarmv1.HobbyfarmV1Interface {
 	return c.hobbyfarmV1
+}
+
+// TerraformcontrollerV1 retrieves the TerraformcontrollerV1Client
+func (c *Clientset) TerraformcontrollerV1() terraformcontrollerv1.TerraformcontrollerV1Interface {
+	return c.terraformcontrollerV1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -62,6 +70,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
+	cs.terraformcontrollerV1, err = terraformcontrollerv1.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
 
 	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfig(&configShallowCopy)
 	if err != nil {
@@ -75,6 +87,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
 	cs.hobbyfarmV1 = hobbyfarmv1.NewForConfigOrDie(c)
+	cs.terraformcontrollerV1 = terraformcontrollerv1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -84,6 +97,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.hobbyfarmV1 = hobbyfarmv1.New(c)
+	cs.terraformcontrollerV1 = terraformcontrollerv1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs
