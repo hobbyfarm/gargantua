@@ -4,6 +4,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type VmStatus string
+
+const (
+	VmStatusRFP VmStatus = "readyforprovisioning"
+	VmStatusProvisioned VmStatus = "provisioned"
+	VmStatusRunning VmStatus = "running"
+	VmStatusTerminating VmStatus = "terminating"
+
+)
+
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -34,7 +44,7 @@ type VirtualMachineSpec struct {
 }
 
 type VirtualMachineStatus struct {
-	Status				string		`json:"status"` // default is nothing, but could be one of the following: readyforprovision, provisioning, starting, running, stopped, terminating
+	Status				VmStatus		`json:"status"` // default is nothing, but could be one of the following: readyforprovisioning, provisioning, running, terminating
 	Allocated			bool		`json:"allocated"`
 	Tainted				bool		`json:"tainted"`
 	PublicIP			string		`json:"public_ip"`
@@ -73,6 +83,7 @@ type VirtualMachineClaimSpec struct {
 type VirtualMachineClaimStatus struct {
 	Bound	bool	`json:"bound"`
 	Ready   bool 	`json:"ready"`
+	Tainted	bool	`json:"tainted"` // If tainted, we should delete the VM's underneath then delete ourself...
 }
 
 type VirtualMachineClaimVM struct {
@@ -249,6 +260,7 @@ type ScenarioSessionSpec struct {
 
 type ScenarioSessionStatus struct {
 	Active 		bool		`json:"active"`
+	Finished	bool		`json:"finished"`
 	StartTime	string		`json:"start_time"`
 	ExpirationTime	string	`json:"end_time"`
 }
@@ -276,6 +288,7 @@ type AccessCodeSpec struct {
 	Code	string	`json:"code"`
 	Description string `json:"description"`
 	Scenarios		[]string	`json:"scenarios"`
+	Expiration	string	`json:"expiration"`
 }
 
 // +genclient

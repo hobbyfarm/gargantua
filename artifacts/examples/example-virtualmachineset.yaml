@@ -3,8 +3,8 @@ kind: VirtualMachineSet
 metadata:
   name: myvmset
 spec:
-  count: 5
+  count: 10
   environment: e-asdfsafa
   vm_template: ubuntu1604-docker1
-  base_name: myvm
+  base_name: myvmd
 status:

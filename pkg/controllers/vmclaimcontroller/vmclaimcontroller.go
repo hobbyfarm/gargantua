@@ -5,6 +5,7 @@ import (
 	"github.com/golang/glog"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
@@ -207,7 +208,7 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, temp
 	assigned := false
 	vmId := ""
 	for _, vm := range vms.Items {
-		if !vm.Status.Allocated && vm.Status.Status == "running" && vm.Status.EnvironmentId == environmentId  && vm.Spec.VirtualMachineTemplateId == template {
+		if !vm.Status.Allocated && vm.Status.Status == hfv1.VmStatusRunning && vm.Status.EnvironmentId == environmentId  && vm.Spec.VirtualMachineTemplateId == template {
 			// we can assign this vm
 			assigned = true
 			vmId = vm.Spec.Id

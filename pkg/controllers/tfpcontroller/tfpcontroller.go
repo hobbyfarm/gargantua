@@ -14,6 +14,7 @@ import (
 	k8sv1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -108,7 +109,6 @@ func (t *TerraformProvisionerController) Run(stopCh <-chan struct{}) error {
 	glog.Info("Starting environment controller worker")
 	go wait.Until(t.runTFPWorker, time.Second, stopCh)
 	glog.Info("Started environment controller worker")
-	//if ok := cache.WaitForCacheSync(stopCh, )
 	<-stopCh
 	return nil
 }
@@ -122,8 +122,6 @@ func (t *TerraformProvisionerController) runTFPWorker() {
 func (t *TerraformProvisionerController) processNextVM() bool {
 	obj, shutdown := t.vmWorkqueue.Get()
 
-	glog.V(4).Infof("processing VM")
-
 	if shutdown {
 		return false
 	}
@@ -133,13 +131,12 @@ func (t *TerraformProvisionerController) processNextVM() bool {
 		_, objName, err := cache.SplitMetaNamespaceKey(obj.(string)) // this is actually not necessary because VM's are not namespaced yet...
 		if err != nil {
 			glog.Errorf("error while splitting meta namespace key %v", err)
-			//e.vmWorkqueue.AddRateLimited(obj)
 			return nil
 		}
 
 		vm, err := t.vmLister.Get(objName)
 		if err != nil {
-			glog.Errorf("error while retrieving virtual machine %s, likely deleted %v", objName, err)
+			glog.Errorf("error while retrieving virtual machine %s, likely deleted, forgetting in queue %v", objName, err)
 			t.vmWorkqueue.Forget(obj)
 			return nil
 		}
@@ -179,7 +176,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				t.removeFinalizer(vm)
 			}
 		}
-		if vm.Status.Status == "readyforprovisioning" {
+		if vm.Status.Status == hfv1.VmStatusRFP {
 			vmt, err := t.vmtLister.Get(vm.Spec.VirtualMachineTemplateId)
 			if err != nil {
 				glog.Errorf("error getting vmt %v", err)
@@ -308,7 +305,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 					}
 				}
 				toUpdate.Spec.KeyPair = keypair.Name
-				toUpdate.Status.Status = "provisioned"
+				toUpdate.Status.Status = hfv1.VmStatusProvisioned
 				toUpdate.Status.TFState = tfs.Name
 				toUpdate.Finalizers = []string{"tfp.controllers.hobbyfarm.io"}
 
@@ -325,17 +322,48 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			glog.V(5).Infof("provisioned vm %s", vm.Name)
 			return nil
 
-		} else if vm.Status.Status == "provisioned" {
+		} else if vm.Status.Status == hfv1.VmStatusProvisioned {
 			// let's check the status of our tf provision
-			tfState, err := t.tfsLister.States(provisionNS).Get(vm.Status.TFState)
+			/*tfState, err := t.tfsLister.States(provisionNS).Get(vm.Status.TFState)
 			if err != nil {
 				if apierrors.IsNotFound(err) {
 					return fmt.Errorf("execution not found")
 				}
 				return nil
+			} */
+			// TEMPORARY WORKAROUND UNTIL WE FIGURE OUT A BETTER WAY TO DO THIS
+
+			if vm.Status.TFState == "" {
+				return fmt.Errorf("tf state was blank in object")
 			}
 
-			tfExec, err := t.tfeLister.Executions(provisionNS).Get(tfState.Status.ExecutionName)
+			tfExecs, err := t.tfeLister.List(labels.Set{
+				"state":  string(vm.Status.TFState),
+			}.AsSelector())
+
+			if err != nil {
+				return fmt.Errorf("executions not found for tf state")
+			}
+
+			var newestTimestamp *metav1.Time
+			var tfExec *tfv1.Execution
+			if len(tfExecs) == 0 {
+				return fmt.Errorf("no execs found")
+			}
+
+			newestTimestamp = &tfExecs[0].CreationTimestamp
+			tfExec = tfExecs[0]
+			for _, e := range tfExecs {
+				if newestTimestamp.Before(&e.CreationTimestamp) {
+					newestTimestamp = &e.CreationTimestamp
+					tfExec = e
+				}
+			}
+			// END TEMPORARY WORKAROUND
+
+			//executionName := tfState.Status.ExecutionName
+			/*
+			tfExec, err := t.tfeLister.Executions(provisionNS).Get(executionName)
 			if err != nil {
 				//glog.Error(err)
 				if apierrors.IsNotFound(err) {
@@ -343,10 +371,11 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				}
 				return nil
 			}
-
+			*/
 			if tfExec.Status.Outputs == "" {
 				return fmt.Errorf("execution output was empty")
 			}
+
 			var tfOutput map[string]map[string]string
 
 			err = json.Unmarshal([]byte(tfExec.Status.Outputs), &tfOutput)
@@ -377,7 +406,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 					toUpdate.Status.PublicIP = translatePrivToPub(env.Spec.IPTranslationMap,tfOutput["private_ip"]["value"])
 				}
 				toUpdate.Status.Hostname = tfOutput["hostname"]["value"]
-				toUpdate.Status.Status = "running"
+				toUpdate.Status.Status = hfv1.VmStatusRunning
 
 				toUpdate, updateErr := t.hfClientSet.HobbyfarmV1().VirtualMachines().Update(toUpdate)
 				if err := t.verifyVM(toUpdate); err != nil {
@@ -409,10 +438,6 @@ func translatePrivToPub(translationMap map[string]string, priv string) string {
 		return translation + "." + splitIp[3]
 	}
 	return ""
-
-}
-
-type tfOutput struct {
 
 }
 

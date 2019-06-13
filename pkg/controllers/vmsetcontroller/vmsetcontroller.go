@@ -251,6 +251,12 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 							Name: vmset.Name,
 							UID: vmset.UID,
 						},
+						{
+							APIVersion: "v1",
+							Kind: "Environment",
+							Name: env.Name,
+							UID: env.UID,
+						},
 					},
 					Labels: map[string]string{
 						"vmset": vmset.Name,
@@ -266,7 +272,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 					VirtualMachineSetId: vmset.Name,
 				},
 				Status: hfv1.VirtualMachineStatus{
-					Status: "readyforprovisioning",
+					Status: hfv1.VmStatusRFP,
 					Allocated: false,
 					Tainted: false,
 					PublicIP: "",
@@ -285,7 +291,6 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 				glog.Error(err)
 			}
 		}
-
 	}
 
 	// no matter what we should list the vm's and delete the ones that are ready for deletion

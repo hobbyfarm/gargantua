@@ -71,7 +71,7 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 	glog.Infof("Going to upgrade connection now... %s", vm.Spec.Id)
 
 	// ok first get the secret for the vm
-	secret, err := sp.kubeClient.CoreV1().Secrets("default").Get(vm.Spec.KeyPair, v1.GetOptions{}) // idk?
+	secret, err := sp.kubeClient.CoreV1().Secrets("hobbyfarm").Get(vm.Spec.KeyPair, v1.GetOptions{}) // idk?
 	if err != nil {
 		glog.Errorf("did not find secret for virtual machine")
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
@@ -88,7 +88,7 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 
 	// now use the secret and ssh off to something
 	config := &ssh.ClientConfig{
-		User: "rancher",
+		User: "ubuntu",
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
