@@ -34,6 +34,7 @@ type HobbyfarmV1Interface interface {
 	UsersGetter
 	VirtualMachinesGetter
 	VirtualMachineClaimsGetter
+	VirtualMachineSetsGetter
 	VirtualMachineTemplatesGetter
 }
 
@@ -68,6 +69,10 @@ func (c *HobbyfarmV1Client) VirtualMachines() VirtualMachineInterface {
 
 func (c *HobbyfarmV1Client) VirtualMachineClaims() VirtualMachineClaimInterface {
 	return newVirtualMachineClaims(c)
+}
+
+func (c *HobbyfarmV1Client) VirtualMachineSets() VirtualMachineSetInterface {
+	return newVirtualMachineSets(c)
 }
 
 func (c *HobbyfarmV1Client) VirtualMachineTemplates() VirtualMachineTemplateInterface {

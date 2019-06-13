@@ -56,6 +56,10 @@ func (c *FakeHobbyfarmV1) VirtualMachineClaims() v1.VirtualMachineClaimInterface
 	return &FakeVirtualMachineClaims{c}
 }
 
+func (c *FakeHobbyfarmV1) VirtualMachineSets() v1.VirtualMachineSetInterface {
+	return &FakeVirtualMachineSets{c}
+}
+
 func (c *FakeHobbyfarmV1) VirtualMachineTemplates() v1.VirtualMachineTemplateInterface {
 	return &FakeVirtualMachineTemplates{c}
 }

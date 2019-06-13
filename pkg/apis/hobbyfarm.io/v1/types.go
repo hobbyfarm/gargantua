@@ -29,15 +29,19 @@ type VirtualMachineSpec struct {
 	KeyPair			       string 		`json:"keypair_name"` // this refers to the secret name for the keypair
 	VirtualMachineClaimId	string		`json:"vm_claim_id"`
 	UserId					string		`json:"user"`
+	Provision				bool		`json:"provision"`
+	VirtualMachineSetId		string		`json:"vm_set_id"`
 }
 
 type VirtualMachineStatus struct {
-	Status				string		`json:"status"` // default is nothing, but could be one of the following: starting, running, stopped, terminated
+	Status				string		`json:"status"` // default is nothing, but could be one of the following: readyforprovision, provisioning, starting, running, stopped, terminating
 	Allocated			bool		`json:"allocated"`
+	Tainted				bool		`json:"tainted"`
 	PublicIP			string		`json:"public_ip"`
 	PrivateIP			string		`json:"private_ip"`
 	EnvironmentId		string		`json:"environment_id"`
 	Hostname			string		`json:"hostname"` // ideally <hostname>.<enviroment dnssuffix> should be the FQDN to this machine
+	TFState				string		`json:"tfstate,omitempty"` // Terraform state name
 }
 
 // +genclient
@@ -130,8 +134,9 @@ type EnvironmentSpec struct {
 	DisplayName				string	`json:"display_name"`
 	DNSSuffix   			string	`json:"dnssuffix"`
 	Provider				string	`json:"provider"` // aws,vsphere,azure,custom ;)
-	VsphereEnvironmentSpec	VsphereEnvironmentSpec `json:"vsphere_env_spec,omitempty"`
-	AWSEnvironmentSpec 		AWSEnvironmentSpec `json:"aws_env_spec,omitempty"`
+	TemplateMapping			map[string]map[string]string `json:"template_mapping"` //  lol
+	EnvironmentSpecifics		map[string]string `json:"environment_specifics"`
+	IPTranslationMap		map[string]string `json:"ip_translation_map"`
 }
 
 type EnvironmentStatus struct {
@@ -146,18 +151,42 @@ type CMSStruct struct {
 	Storage int `json:"storage"` // in GB
 }
 
-type VsphereEnvironmentSpec struct {
-	Credentials string `json:"credentials"` // string that refers to the secret name for vSphere environment credentials
+// +genclient
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type VirtualMachineSet struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec	VirtualMachineSetSpec `json:"spec"`
+	Status	VirtualMachineSetStatus	`json:"status"`
 }
 
-type AWSEnvironmentSpec struct {
-	Credentials 		string `json:"credentials"`
-	Region      		string `json:"region"`
-	AvailabilityZone	string `json:"az"`
-	VPC					string	`json:"vpc"`
-	Subnet				string	`json:"subnet"`
-	TemplateMapping			map[string]string `json:"template_mapping"`
-	// @todo: finish filling this in
+type VirtualMachineSetSpec struct {
+	Count int `json:"count"`
+	Environment string `json:"environment"`
+	VMTemplate string `json:"vm_template"`
+	BaseName	string	`json:"base_name"`
+}
+
+type VirtualMachineSetStatus struct {
+	Machines []VirtualMachineProvision	`json:"machines"`
+	AvailableCount int	`json:"available"`
+	ProvisionedCount	int	`json:"provisioned"`
+}
+
+type VirtualMachineProvision struct {
+	VirtualMachineName string `json:"vm_name"`
+	TFControllerState string `json:"tfc_state"`
+	TFControllerCM	string	`json:"tfc_cm"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type VirtualMachineSetList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items	[]VirtualMachineSet	`json:"items"`
 }
 
 // +genclient

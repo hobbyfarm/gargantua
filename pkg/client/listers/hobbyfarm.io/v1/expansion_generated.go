@@ -46,6 +46,10 @@ type VirtualMachineListerExpansion interface{}
 // VirtualMachineClaimLister.
 type VirtualMachineClaimListerExpansion interface{}
 
+// VirtualMachineSetListerExpansion allows custom methods to be added to
+// VirtualMachineSetLister.
+type VirtualMachineSetListerExpansion interface{}
+
 // VirtualMachineTemplateListerExpansion allows custom methods to be added to
 // VirtualMachineTemplateLister.
 type VirtualMachineTemplateListerExpansion interface{}

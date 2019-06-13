@@ -33,6 +33,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&VirtualMachineTemplateList{},
 		&VirtualMachineClaim{},
 		&VirtualMachineClaimList{},
+		&VirtualMachineSet{},
+		&VirtualMachineSetList{},
 		&Environment{},
 		&EnvironmentList{},
 		&Scenario{},

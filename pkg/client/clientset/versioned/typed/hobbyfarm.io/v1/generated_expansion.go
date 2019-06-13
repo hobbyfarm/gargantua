@@ -32,4 +32,6 @@ type VirtualMachineExpansion interface{}
 
 type VirtualMachineClaimExpansion interface{}
 
+type VirtualMachineSetExpansion interface{}
+
 type VirtualMachineTemplateExpansion interface{}

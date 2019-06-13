@@ -1,0 +1,10 @@
+apiVersion: hobbyfarm.io/v1
+kind: VirtualMachineSet
+metadata:
+  name: myvmset
+spec:
+  count: 5
+  environment: e-asdfsafa
+  vm_template: ubuntu1604-docker1
+  base_name: myvm
+status:

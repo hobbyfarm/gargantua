@@ -1,11 +1,18 @@
 package util
 
 import (
+	"bytes"
+	"crypto/rsa"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base32"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
-	"math/rand"
+	mrand "math/rand"
+	"github.com/golang/glog"
+	"golang.org/x/crypto/ssh"
 	"net/http"
 	"strconv"
 	"strings"
@@ -90,7 +97,7 @@ func GenerateResourceName(prefix string, input string, hashlength int) string {
 }
 
 func init() {
-	rand.Seed(time.Now().UnixNano())
+	mrand.Seed(time.Now().UnixNano())
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -98,7 +105,47 @@ var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 func RandStringRunes(n int) string {
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+		b[i] = letterRunes[mrand.Intn(len(letterRunes))]
 	}
 	return string(b)
+}
+
+// borrowed from longhorn
+func ResourceVersionAtLeast(curr, min string) bool {
+	if curr == "" || min == "" {
+		return true
+	}
+	currVersion, err := strconv.ParseInt(curr, 10, 64)
+	if err != nil {
+		glog.Errorf("datastore: failed to parse current resource version %v: %v", curr, err)
+		return false
+	}
+	minVersion, err := strconv.ParseInt(min, 10, 64)
+	if err != nil {
+		glog.Errorf("datastore: failed to parse minimal resource version %v: %v", min, err)
+		return false
+	}
+	return currVersion >= minVersion
+}
+
+func GenKeyPair() (string, string, error) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return "", "", err
+	}
+
+	privateKeyPEM := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)}
+	var private bytes.Buffer
+	if err := pem.Encode(&private, privateKeyPEM); err != nil {
+		return "", "", err
+	}
+
+	// generate public key
+	pub, err := ssh.NewPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return "", "", err
+	}
+
+	public := ssh.MarshalAuthorizedKey(pub)
+	return string(public), private.String(), nil
 }

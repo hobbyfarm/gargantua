@@ -1,11 +1,11 @@
 apiVersion: hobbyfarm.io/v1
 kind: VirtualMachineTemplate
 metadata:
-  name: ubuntu1804-docker1
+  name: ubuntu1604-docker1
 spec:
-  id: ubuntu1804-docker1
-  name: ubuntu1804-docker1
-  image: ubuntu1804
+  id: ubuntu1604-docker1
+  name: ubuntu1604-docker1
+  image: ubuntu1604
   resources:
     cpu: 2
     memory: 4096

@@ -49,6 +49,8 @@ import:
   version: 94122c33edd36123c84d5368cfb2b69df93a0ec8
 - package: github.com/pkg/errors
   version: v0.8.1
+- package: github.com/rancher/terraform-controller
+  version: d84a071f63c5149f3eb3d1dbb55f5c2afe4a5a01
 - package: github.com/rancher/wrangler/pkg/condition
   version: v0.1.0
 - package: github.com/rancher/wrangler/pkg/genericcondition

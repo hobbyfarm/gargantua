@@ -207,7 +207,7 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, temp
 	assigned := false
 	vmId := ""
 	for _, vm := range vms.Items {
-		if !vm.Status.Allocated && vm.Status.EnvironmentId == environmentId  && vm.Spec.VirtualMachineTemplateId == template {
+		if !vm.Status.Allocated && vm.Status.Status == "running" && vm.Status.EnvironmentId == environmentId  && vm.Spec.VirtualMachineTemplateId == template {
 			// we can assign this vm
 			assigned = true
 			vmId = vm.Spec.Id

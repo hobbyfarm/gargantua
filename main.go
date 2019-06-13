@@ -11,7 +11,9 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/environment"
+	"github.com/hobbyfarm/gargantua/pkg/controllers/tfpcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmclaimcontroller"
+	"github.com/hobbyfarm/gargantua/pkg/controllers/vmsetcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenariosessionserver"
@@ -102,6 +104,8 @@ func main() {
 
 	environmentController, err := environment.NewEnvironmentController(hfClient, hfInformerFactory)
 	vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory)
+	tfpController, err := tfpcontroller.NewTerraformProvisionerController(kubeClient, hfClient, hfInformerFactory)
+	vmSetController, err := vmsetcontroller.NewVirtualMachineSetController(hfClient, hfInformerFactory)
 
 	ssServer.SetupRoutes(r)
 	authServer.SetupRoutes(r)
@@ -133,7 +137,7 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	if !disableControllers {
-		wg.Add(2)
+		wg.Add(4)
 		go func() {
 			defer wg.Done()
 			environmentController.Run(stopCh)
@@ -142,6 +146,16 @@ func main() {
 		go func() {
 			defer wg.Done()
 			vmClaimController.Run(stopCh)
+		}()
+
+		go func() {
+			defer wg.Done()
+			tfpController.Run(stopCh)
+		}()
+
+		go func() {
+			defer wg.Done()
+			vmSetController.Run(stopCh)
 		}()
 	}
 

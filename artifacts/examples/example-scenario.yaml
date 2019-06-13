@@ -1,18 +1,14 @@
 apiVersion: hobbyfarm.io/v1
 kind: Scenario
 metadata:
-  name: s-asfsafsafadfsadf
+  name: s-x93jfm20slmn2
 spec:
-  id: s-asfsafsafadfsadf
-  name: "How to not be bad"
-  description: "in 5 easy steps, we will teach you how to not be bad"
+  id: s-x93jfm20slmn2
+  name: "U2luZ2xlLU5vZGUgUmFuY2hlciBJbnN0YWxsCg=="
+  description: "aW4gNSBlYXN5IHN0ZXBzLCB3ZSB3aWxsIHRlYWNoIHlvdSBob3cgdG8gbm90IGJlIGJhZAo="
   steps:
-    - title: "step 1: live anywhere but where bad people live"
-      content: "you should not live in bad land navigate to https://{{rancher-public-hostname}}"
-    - title: "step 2: other things"
-      content: "you shouasdfasdfe in bad land"
-    - title: "step 3: asdfr things"
-      content: "you shouasdfd"
+  - title: "dGVzdGluZwo="
+    content: "dGVzdGluZwo="
   virtualmachines:
-    - rancher: ubuntu1804-docker1
-      node01: ubuntu1804-docker1
+  - rancher: ubuntu1604-docker1
+    node01: ubuntu1604-docker1

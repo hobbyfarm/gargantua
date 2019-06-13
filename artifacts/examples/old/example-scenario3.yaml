@@ -1,0 +1,15 @@
+apiVersion: hobbyfarm.io/v1
+kind: Scenario
+metadata:
+  name: s-scenario3
+spec:
+  id: s-scenario3
+  name: U3VibWFyaW5lciBUdXRvcmlhbAo=
+  description: SW4gdGhpcyB0dXRvcmlhbCwgd2Ugd2lsbCBiZSB3YWxraW5nIHRocm91Z2ggc2V0dGluZyB1cCB0d28ga3ViZXJuZXRlcyBjbHVzdGVycyBhbmQgaW5zdGFsbGluZyBTdWJtYXJpbmVyIHRvIGNvbm5lY3QgdGhlbSB0b2dldGhlci4K
+  steps:
+  - title: c3RlcDEK
+    content: Y29udGVudDEK
+  virtualmachines:
+  - rancher01: ubuntu1804-docker1
+    rancher02: ubuntu1804-docker1
+    rancher03: ubuntu1804-docker1
