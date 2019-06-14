@@ -24,6 +24,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
 	"github.com/hobbyfarm/gargantua/pkg/vmserver"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"net/http"
@@ -35,12 +36,14 @@ var (
 	localMasterUrl  string
 	localKubeconfig string
 	disableControllers bool
+	shellServer bool
 )
 
 func init() {
 	flag.StringVar(&localKubeconfig, "kubeconfig", "", "Path to kubeconfig of local cluster. Only required if out-of-cluster.")
 	flag.StringVar(&localMasterUrl, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.BoolVar(&disableControllers, "disablecontrollers", false, "Disable the controllers")
+	flag.BoolVar(&shellServer, "shellserver", false, "Be a shell server")
 }
 
 func main() {
@@ -53,9 +56,13 @@ func main() {
 	glog.V(2).Infof("Starting")
 	r := mux.NewRouter()
 
-	cfg, err := clientcmd.BuildConfigFromFlags(localMasterUrl, localKubeconfig)
+	cfg, err := rest.InClusterConfig()
+
 	if err != nil {
-		glog.Fatalf("Error building kubeconfig: %s", err.Error())
+		cfg, err = clientcmd.BuildConfigFromFlags(localMasterUrl, localKubeconfig)
+		if err != nil {
+			glog.Fatalf("Error building kubeconfig: %s", err.Error())
+		}
 	}
 
 	hfClient, err := hfClientset.NewForConfig(cfg)
@@ -108,13 +115,17 @@ func main() {
 	vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory)
 	tfpController, err := tfpcontroller.NewTerraformProvisionerController(kubeClient, hfClient, hfInformerFactory)
 	vmSetController, err := vmsetcontroller.NewVirtualMachineSetController(hfClient, hfInformerFactory)
-
-	ssServer.SetupRoutes(r)
-	authServer.SetupRoutes(r)
-	scenarioServer.SetupRoutes(r)
-	vmServer.SetupRoutes(r)
-	shellProxy.SetupRoutes(r)
-	vmClaimServer.SetupRoutes(r)
+	if shellServer {
+		glog.V(2).Infof("starting as a shell server")
+		shellProxy.SetupRoutes(r)
+	} else {
+		ssServer.SetupRoutes(r)
+		authServer.SetupRoutes(r)
+		scenarioServer.SetupRoutes(r)
+		vmServer.SetupRoutes(r)
+		shellProxy.SetupRoutes(r)
+		vmClaimServer.SetupRoutes(r)
+	}
 
 	hfInformerFactory.Start(stopCh)
 

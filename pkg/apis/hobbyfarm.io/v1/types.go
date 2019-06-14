@@ -52,6 +52,7 @@ type VirtualMachineStatus struct {
 	EnvironmentId		string		`json:"environment_id"`
 	Hostname			string		`json:"hostname"` // ideally <hostname>.<enviroment dnssuffix> should be the FQDN to this machine
 	TFState				string		`json:"tfstate,omitempty"` // Terraform state name
+	WsEndpoint			string		`json:"ws_endpoint"`
 }
 
 // +genclient
@@ -148,6 +149,7 @@ type EnvironmentSpec struct {
 	TemplateMapping			map[string]map[string]string `json:"template_mapping"` //  lol
 	EnvironmentSpecifics		map[string]string `json:"environment_specifics"`
 	IPTranslationMap		map[string]string `json:"ip_translation_map"`
+	WsEndpoint				string		`json:"ws_endpoint"`
 }
 
 type EnvironmentStatus struct {

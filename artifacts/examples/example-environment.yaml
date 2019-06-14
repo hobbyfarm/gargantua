@@ -15,6 +15,7 @@ spec:
     endpoint: "http://rvm.fremont.rancherlabs.com"
   ip_translation_map:
     172.17.2: "184.105.214"
+  ws_endpoint: "https://ws.example.com"
 status:
   capacity:
     cpu: 80

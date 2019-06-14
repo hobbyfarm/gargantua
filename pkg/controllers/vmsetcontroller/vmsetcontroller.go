@@ -275,6 +275,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 					Status: hfv1.VmStatusRFP,
 					Allocated: false,
 					Tainted: false,
+					WsEndpoint: env.Spec.WsEndpoint,
 					PublicIP: "",
 					PrivateIP: "",
 					EnvironmentId: env.Name,

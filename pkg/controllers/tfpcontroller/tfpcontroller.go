@@ -204,6 +204,10 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				config[k] = v
 			}
 
+			for k, v := range envTemplateInfo {
+				config[k] = v
+			}
+
 			config["name"] = vm.Name
 			config["public_key"] = pubKey
 			config["cpu"] = strconv.Itoa(vmt.Spec.Resources.CPU)
@@ -264,13 +268,24 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 
 			moduleName, exists := envTemplateInfo["module"]
 			if !exists {
-				glog.Errorf("module name does not exist")
+				moduleName, exists = config["module"]
+				if !exists {
+					glog.Errorf("module name does not exist")
+				}
+			}
+
+			if moduleName == "" {
 				return fmt.Errorf("module name does not exist")
 			}
 
 			executorImage, exists := envTemplateInfo["executor_image"]
 			if !exists {
-				glog.Errorf("executor image does not exist")
+				executorImage, exists = config["executor_image"]
+				if !exists {
+					glog.Errorf("executor image does not exist")
+				}
+			}
+			if executorImage == "" {
 				return fmt.Errorf("executorimage does not exist")
 			}
 
@@ -287,6 +302,17 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 					DestroyOnDelete: true,
 					ModuleName: moduleName,
 				},
+			}
+
+			credentialsSecret, exists := envTemplateInfo["cred_secret"]
+			if !exists{
+				credentialsSecret, exists = config["cred_secret"]
+				if !exists {
+					glog.Errorf("cred secret does not exist in env template")
+				}
+			}
+			if credentialsSecret != "" {
+				tfs.Spec.Variables.SecretNames = []string{credentialsSecret}
 			}
 
 			tfs, err = t.tfClientset.TerraformcontrollerV1().States(provisionNS).Create(tfs)
