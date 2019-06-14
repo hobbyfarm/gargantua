@@ -104,10 +104,10 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 	}
 
 	now := time.Now()
-	scenarioSession.Status.StartTime = now.String()
-	duration, _ := time.ParseDuration("1h")
+	scenarioSession.Status.StartTime = now.Format(time.UnixDate)
+	duration, _ := time.ParseDuration("1m")
 
-	scenarioSession.Status.ExpirationTime = now.Add(duration).String()
+	scenarioSession.Status.ExpirationTime = now.Add(duration).Format(time.UnixDate)
 	scenarioSession.Status.Active = true
 
 	createdScenarioSession, err := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Create(&scenarioSession)
@@ -147,7 +147,7 @@ func (sss ScenarioSessionServer) FinishedScenarioSessionFunc(w http.ResponseWrit
 		return
 	}
 
-	now := time.Now().String()
+	now := time.Now().Format(time.UnixDate)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Get(scenarioSessionId, metav1.GetOptions{})
@@ -198,7 +198,7 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 	now := time.Now()
 	duration, _ := time.ParseDuration("1h")
 
-	expiration := now.Add(duration).String()
+	expiration := now.Add(duration).Format(time.UnixDate)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Get(scenarioSessionId, metav1.GetOptions{})

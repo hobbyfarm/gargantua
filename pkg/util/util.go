@@ -13,6 +13,9 @@ import (
 	mrand "math/rand"
 	"github.com/golang/glog"
 	"golang.org/x/crypto/ssh"
+	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -148,4 +151,76 @@ func GenKeyPair() (string, string, error) {
 
 	public := ssh.MarshalAuthorizedKey(pub)
 	return string(public), private.String(), nil
+}
+
+func VerifyVM(vmLister hfListers.VirtualMachineLister, vm *hfv1.VirtualMachine) error {
+	var err error
+	glog.V(5).Infof("Verifying vm %s", vm.Name)
+	for i := 0; i < 150000; i++ {
+		var fromCache *hfv1.VirtualMachine
+		fromCache, err = vmLister.Get(vm.Name)
+		if err != nil {
+			glog.Error(err)
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return err
+		}
+		if ResourceVersionAtLeast(fromCache.ResourceVersion, vm.ResourceVersion) {
+			glog.V(5).Infof("resource version matched for %s", vm.Name)
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	glog.Errorf("resource version didn't match for in time%s", vm.Name)
+	return nil
+}
+
+func VerifyVMSet(vmSetLister hfListers.VirtualMachineSetLister, vms *hfv1.VirtualMachineSet) error {
+	var err error
+	glog.V(5).Infof("Verifying vms %s", vms.Name)
+	for i := 0; i < 150000; i++ {
+		var fromCache *hfv1.VirtualMachineSet
+		fromCache, err = vmSetLister.Get(vms.Name)
+		if err != nil {
+			glog.Error(err)
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return err
+		}
+		if ResourceVersionAtLeast(fromCache.ResourceVersion, vms.ResourceVersion) {
+			glog.V(5).Infof("resource version matched for %s", vms.Name)
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	glog.Errorf("resource version didn't match for in time %s", vms.Name)
+	return nil
+
+}
+
+
+func VerifyScenarioSession(ssLister hfListers.ScenarioSessionLister, ss *hfv1.ScenarioSession) error {
+	var err error
+	glog.V(5).Infof("Verifying ss %s", ss.Name)
+	for i := 0; i < 150000; i++ {
+		var fromCache *hfv1.ScenarioSession
+		fromCache, err = ssLister.Get(ss.Name)
+		if err != nil {
+			glog.Error(err)
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return err
+		}
+		if ResourceVersionAtLeast(fromCache.ResourceVersion, ss.ResourceVersion) {
+			glog.V(5).Infof("resource version matched for %s", ss.Name)
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	glog.Errorf("resource version didn't match for in time %s", ss.Name)
+	return nil
+
 }

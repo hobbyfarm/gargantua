@@ -17,6 +17,6 @@ spec:
     172.17.2: "184.105.214"
 status:
   capacity:
-    cpu: 64
-    memory: 131072
-    storage: 256
+    cpu: 80
+    memory: 614400
+    storage: 500

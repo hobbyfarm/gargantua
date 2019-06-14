@@ -286,7 +286,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 				glog.Error(err)
 			}
 
-			err = v.verifyVM(vm)
+			err = util.VerifyVM(v.vmLister, vm)
 			if err != nil {
 				glog.Error(err)
 			}
@@ -392,7 +392,7 @@ func (v *VirtualMachineSetController) updateVMSetCount(vmSetName string, active 
 			return updateErr
 		}
 
-		err := v.verifyVMSet(vms)
+		err := util.VerifyVMSet(v.vmSetLister, vms)
 		if err != nil {
 			glog.Error(err)
 		}
@@ -406,50 +406,3 @@ func (v *VirtualMachineSetController) updateVMSetCount(vmSetName string, active 
 	return nil
 }
 
-func (v *VirtualMachineSetController) verifyVMSet(vms *hfv1.VirtualMachineSet) error {
-	var err error
-	glog.V(5).Infof("Verifying vms %s", vms.Name)
-	for i := 0; i < 50; i++ {
-		var fromCache *hfv1.VirtualMachineSet
-		fromCache, err = v.vmSetLister.Get(vms.Name)
-		if err != nil {
-			glog.Error(err)
-			if apierrors.IsNotFound(err) {
-				continue
-			}
-			return err
-		}
-		if util.ResourceVersionAtLeast(fromCache.ResourceVersion, vms.ResourceVersion) {
-			glog.V(5).Infof("resource version matched for %s", vms.Name)
-			return nil
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	glog.Errorf("resource version didn't match for in time %s", vms.Name)
-	return nil
-
-}
-
-func (v *VirtualMachineSetController) verifyVM(vm *hfv1.VirtualMachine) error {
-	var err error
-	glog.V(5).Infof("Verifying vm %s", vm.Name)
-	for i := 0; i < 150000; i++ {
-		var fromCache *hfv1.VirtualMachine
-		fromCache, err = v.vmLister.Get(vm.Name)
-		if err != nil {
-			glog.Error(err)
-			if apierrors.IsNotFound(err) {
-				continue
-			}
-			return err
-		}
-		if util.ResourceVersionAtLeast(fromCache.ResourceVersion, vm.ResourceVersion) {
-			glog.V(5).Infof("resource version matched for %s", vm.Name)
-			return nil
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	glog.Errorf("resource version didn't match for in time%s", vm.Name)
-	return nil
-
-}

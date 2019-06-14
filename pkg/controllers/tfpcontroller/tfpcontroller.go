@@ -310,7 +310,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				toUpdate.Finalizers = []string{"tfp.controllers.hobbyfarm.io"}
 
 				toUpdate, updateErr := t.hfClientSet.HobbyfarmV1().VirtualMachines().Update(toUpdate)
-				if err := t.verifyVM(toUpdate); err != nil {
+				if err := util.VerifyVM(t.vmLister, toUpdate); err != nil {
 					glog.Errorf("error while verifying machine!!! %s", toUpdate.Name)
 				}
 				return updateErr
@@ -409,7 +409,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				toUpdate.Status.Status = hfv1.VmStatusRunning
 
 				toUpdate, updateErr := t.hfClientSet.HobbyfarmV1().VirtualMachines().Update(toUpdate)
-				if err := t.verifyVM(toUpdate); err != nil {
+				if err := util.VerifyVM(t.vmLister, toUpdate); err != nil {
 					glog.Errorf("error while verifying machine!!! %s", toUpdate.Name)
 				}
 				return updateErr
@@ -458,7 +458,7 @@ func (t *TerraformProvisionerController) removeFinalizer(vm *hfv1.VirtualMachine
 		toUpdate.Finalizers = []string{}
 		glog.V(5).Infof("removing vm finalizer for %s", vm.Name)
 		toUpdate, updateErr := t.hfClientSet.HobbyfarmV1().VirtualMachines().Update(toUpdate)
-		if err := t.verifyVM(toUpdate); err != nil {
+		if err := util.VerifyVM(t.vmLister, toUpdate); err != nil {
 			glog.Errorf("error while verifying machine!!! %s", toUpdate.Name)
 		}
 		return updateErr
@@ -468,28 +468,4 @@ func (t *TerraformProvisionerController) removeFinalizer(vm *hfv1.VirtualMachine
 		glog.Errorf("error while updating vm object while setting terminating %v", retryErr)
 	}
 	return retryErr
-}
-
-func (t *TerraformProvisionerController) verifyVM(vm *hfv1.VirtualMachine) error {
-	var err error
-	glog.V(5).Infof("Verifying vm %s", vm.Name)
-	for i := 0; i < 25; i++ {
-		var fromCache *hfv1.VirtualMachine
-		fromCache, err = t.vmLister.Get(vm.Name)
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				break
-			}
-			glog.Error(err)
-			return err
-		}
-		if util.ResourceVersionAtLeast(fromCache.ResourceVersion, vm.ResourceVersion) {
-			glog.V(5).Infof("resource version matched for %s", vm.Name)
-			return nil
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	glog.Errorf("resource version didn't match for in time%s", vm.Name)
-	return nil
-
 }
