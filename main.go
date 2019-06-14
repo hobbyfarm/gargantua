@@ -33,10 +33,10 @@ import (
 )
 
 var (
-	localMasterUrl  string
-	localKubeconfig string
+	localMasterUrl     string
+	localKubeconfig    string
 	disableControllers bool
-	shellServer bool
+	shellServer        bool
 )
 
 func init() {
@@ -131,6 +131,7 @@ func main() {
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
 	corsOrigins := handlers.AllowedOrigins([]string{"*"})
+	corsMethods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"})
 
 	if ok := cache.WaitForCacheSync(stopCh,
 		hfInformerFactory.Hobbyfarm().V1().Users().Informer().HasSynced,
@@ -145,7 +146,6 @@ func main() {
 	}
 
 	http.Handle("/", r)
-
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -181,7 +181,7 @@ func main() {
 
 	go func() {
 		defer wg.Done()
-		glog.Fatal(http.ListenAndServe(":80", handlers.CORS(corsHeaders, corsOrigins)(r)))
+		glog.Fatal(http.ListenAndServe(":80", handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
 	}()
 
 	wg.Wait()
