@@ -40,11 +40,11 @@ func (sp ShellProxy) SetupRoutes(r *mux.Router) {
 }
 
 func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
-	//user, err := sp.auth.AuthN(w, r)
-	//if err != nil {
-	//	util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
-	//	return
-	//}
+	user, err := sp.auth.AuthWS(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
+		return
+	}
 
 	vars := mux.Vars(r)
 
@@ -63,10 +63,10 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//if vm.Spec.UserId != user.Spec.Id {
-	//	util.ReturnHTTPMessage(w, r, 403, "forbidden", "you do not have access to shell")
-	//	return
-	//}
+	if vm.Spec.UserId != user.Spec.Id {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "you do not have access to shell")
+		return
+	}
 
 	glog.Infof("Going to upgrade connection now... %s", vm.Spec.Id)
 

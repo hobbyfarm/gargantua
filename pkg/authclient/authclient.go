@@ -63,22 +63,22 @@ func (a AuthClient) getUserByEmail(email string) (hfv1.User, error) {
 
 }
 
-func (a AuthClient) AuthN(w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
-	var finalToken string
-	token := r.Header.Get("Authorization")
+func (a AuthClient) AuthWS(w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
+	token := r.URL.Query().Get("auth")
 
 	if len(token) == 0 {
-		glog.Errorf("no bearer token passed")
+		glog.Errorf("no auth token passed in websocket query string")
 		//util.ReturnHTTPMessage(w, r, 403, "forbidden", "no token passed")
 		return hfv1.User{}, fmt.Errorf("authentication failed")
 	}
 
-	splitToken := strings.Split(token, "Bearer")
-	finalToken = strings.TrimSpace(splitToken[1])
+	return a.performAuth(token)
+}
 
-	glog.V(2).Infof("token passed in was: %s", finalToken)
+func (a AuthClient) performAuth(token string) (hfv1.User, error) {
+	glog.V(2).Infof("token passed in was: %s", token)
 
-	user, err := a.ValidateJWT(finalToken)
+	user, err := a.ValidateJWT(token)
 
 	if err != nil {
 		glog.Errorf("error validating user %v", err)
@@ -90,6 +90,23 @@ func (a AuthClient) AuthN(w http.ResponseWriter, r *http.Request) (hfv1.User, er
 
 	//util.ReturnHTTPMessage(w, r, 200, "success", "test successful. valid token")
 	return user, nil
+}
+
+func (a AuthClient) AuthN(w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
+	token := r.Header.Get("Authorization")
+
+	if len(token) == 0 {
+		glog.Errorf("no bearer token passed")
+		//util.ReturnHTTPMessage(w, r, 403, "forbidden", "no token passed")
+		return hfv1.User{}, fmt.Errorf("authentication failed")
+	}
+
+	var finalToken string
+
+	splitToken := strings.Split(token, "Bearer")
+	finalToken = strings.TrimSpace(splitToken[1])
+
+	return a.performAuth(finalToken)
 }
 
 func (a AuthClient) ValidateJWT(tokenString string) (hfv1.User, error) {
