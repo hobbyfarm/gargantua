@@ -105,7 +105,7 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 
 	now := time.Now()
 	scenarioSession.Status.StartTime = now.Format(time.UnixDate)
-	duration, _ := time.ParseDuration("1m")
+	duration, _ := time.ParseDuration("5m")
 
 	scenarioSession.Status.ExpirationTime = now.Add(duration).Format(time.UnixDate)
 	scenarioSession.Status.Active = true
@@ -196,7 +196,7 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 	}
 
 	now := time.Now()
-	duration, _ := time.ParseDuration("1h")
+	duration, _ := time.ParseDuration("5m")
 
 	expiration := now.Add(duration).Format(time.UnixDate)
 
