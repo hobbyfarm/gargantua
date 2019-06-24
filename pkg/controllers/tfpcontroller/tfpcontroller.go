@@ -163,18 +163,19 @@ func (t *TerraformProvisionerController) processNextVM() bool {
 
 func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine) error {
 	if vm.Spec.Provision {
-		glog.V(5).Infof("vm spec was to provision %s", vm.Name)
+		//glog.V(5).Infof("vm spec was to provision %s", vm.Name)
 		if vm.DeletionTimestamp != nil {
 			glog.V(5).Infof("destroying virtual machine")
+			util.EnsureVMNotReady(t.hfClientSet, t.vmLister, vm.Name)
 			if vm.Status.TFState == "" {
 				// vm already deleted let's delete our finalizer
 				t.removeFinalizer(vm)
 			}
-
 			stateDel := t.tfClientset.TerraformcontrollerV1().States(provisionNS).Delete(vm.Status.TFState, &metav1.DeleteOptions{})
 			if stateDel != nil {
 				t.removeFinalizer(vm)
 			}
+			return nil
 		}
 		if vm.Status.Status == hfv1.VmStatusRFP {
 			vmt, err := t.vmtLister.Get(vm.Spec.VirtualMachineTemplateId)
@@ -333,6 +334,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				toUpdate.Spec.KeyPair = keypair.Name
 				toUpdate.Status.Status = hfv1.VmStatusProvisioned
 				toUpdate.Status.TFState = tfs.Name
+				toUpdate.Labels["ready"] = "false"
 				toUpdate.Finalizers = []string{"tfp.controllers.hobbyfarm.io"}
 
 				toUpdate, updateErr := t.hfClientSet.HobbyfarmV1().VirtualMachines().Update(toUpdate)
@@ -368,13 +370,13 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			}.AsSelector())
 
 			if err != nil {
-				return fmt.Errorf("executions not found for tf state")
+				return fmt.Errorf("no executions found for terraform state")
 			}
 
 			var newestTimestamp *metav1.Time
 			var tfExec *tfv1.Execution
 			if len(tfExecs) == 0 {
-				return fmt.Errorf("no execs found")
+				return fmt.Errorf("no executions found for terraform state")
 			}
 
 			newestTimestamp = &tfExecs[0].CreationTimestamp
@@ -413,10 +415,11 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				glog.Error(err)
 				return fmt.Errorf("error getting environment")
 			}
-			glog.V(5).Infof("private ip is: %s", tfOutput["private_ip"]["value"])
+			glog.V(8).Infof("private ip is: %s", tfOutput["private_ip"]["value"])
 
 			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 				toUpdate, err := t.vmLister.Get(vm.Name)
+				old := toUpdate.DeepCopy()
 				if err != nil {
 					if apierrors.IsNotFound(err) {
 						return nil
@@ -433,7 +436,11 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				}
 				toUpdate.Status.Hostname = tfOutput["hostname"]["value"]
 				toUpdate.Status.Status = hfv1.VmStatusRunning
+				toUpdate.Labels["ready"] = "true"
 
+				if reflect.DeepEqual(old.Spec, toUpdate.Spec) && reflect.DeepEqual(old.Status, toUpdate.Status) && reflect.DeepEqual(old.Labels, toUpdate.Labels) {
+					return nil
+				}
 				toUpdate, updateErr := t.hfClientSet.HobbyfarmV1().VirtualMachines().Update(toUpdate)
 				if err := util.VerifyVM(t.vmLister, toUpdate); err != nil {
 					glog.Errorf("error while verifying machine!!! %s", toUpdate.Name)
@@ -447,9 +454,8 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 
 		}
 	} else {
-		glog.V(5).Infof("vm %s was not a provisioned vm", vm.Name)
+		glog.V(8).Infof("vm %s was not a provisioned vm", vm.Name)
 	}
-	//glog.Infof("no provision action required here")
 	return nil
 }
 

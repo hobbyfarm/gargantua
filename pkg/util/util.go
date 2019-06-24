@@ -10,12 +10,16 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"k8s.io/client-go/util/retry"
 	mrand "math/rand"
 	"github.com/golang/glog"
 	"golang.org/x/crypto/ssh"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"net/http"
 	"strconv"
 	"strings"
@@ -200,6 +204,30 @@ func VerifyVMSet(vmSetLister hfListers.VirtualMachineSetLister, vms *hfv1.Virtua
 
 }
 
+func VerifyVMClaim(vmClaimLister hfListers.VirtualMachineClaimLister, vmc *hfv1.VirtualMachineClaim) error {
+	var err error
+	glog.V(5).Infof("Verifying vms %s", vmc.Name)
+	for i := 0; i < 150000; i++ {
+		var fromCache *hfv1.VirtualMachineClaim
+		fromCache, err = vmClaimLister.Get(vmc.Name)
+		if err != nil {
+			glog.Error(err)
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return err
+		}
+		if ResourceVersionAtLeast(fromCache.ResourceVersion, vmc.ResourceVersion) {
+			glog.V(5).Infof("resource version matched for %s", vmc.Name)
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	glog.Errorf("resource version didn't match for in time %s", vmc.Name)
+	return nil
+
+}
+
 
 func VerifyScenarioSession(ssLister hfListers.ScenarioSessionLister, ss *hfv1.ScenarioSession) error {
 	var err error
@@ -223,4 +251,33 @@ func VerifyScenarioSession(ssLister hfListers.ScenarioSessionLister, ss *hfv1.Sc
 	glog.Errorf("resource version didn't match for in time %s", ss.Name)
 	return nil
 
+}
+
+func  EnsureVMNotReady(hfClientset *hfClientset.Clientset, vmLister hfListers.VirtualMachineLister, vmName string) error {
+	glog.V(5).Infof("ensuring VM %s is not ready", vmName)
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		result, getErr := hfClientset.HobbyfarmV1().VirtualMachines().Get(vmName, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+		result.Labels["ready"] = "false"
+
+		result, updateErr := hfClientset.HobbyfarmV1().VirtualMachines().Update(result)
+		if updateErr != nil {
+			return updateErr
+		}
+		glog.V(4).Infof("updated result for vm")
+
+		verifyErr := VerifyVM(vmLister, result)
+
+		if verifyErr != nil {
+			return verifyErr
+		}
+		return nil
+	})
+	if retryErr != nil {
+		return retryErr
+	}
+
+	return nil
 }

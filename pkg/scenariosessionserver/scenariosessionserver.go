@@ -20,6 +20,8 @@ import (
 
 const (
 	ssIndex = "sss.hobbyfarm.io/scenariosession-id-index"
+	newSSTimeout = "5m"
+	keepaliveSSTimeout = "5m"
 )
 
 type ScenarioSessionServer struct {
@@ -105,7 +107,7 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 
 	now := time.Now()
 	scenarioSession.Status.StartTime = now.Format(time.UnixDate)
-	duration, _ := time.ParseDuration("5m")
+	duration, _ := time.ParseDuration(newSSTimeout)
 
 	scenarioSession.Status.ExpirationTime = now.Add(duration).Format(time.UnixDate)
 	scenarioSession.Status.Active = true
@@ -157,7 +159,7 @@ func (sss ScenarioSessionServer) FinishedScenarioSessionFunc(w http.ResponseWrit
 
 		result.Status.ExpirationTime = now
 		result.Status.Active = false
-		result.Status.Finished = true
+		result.Status.Finished = false
 
 		_, updateErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Update(result)
 		glog.V(4).Infof("updated result for environment")
@@ -196,7 +198,7 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 	}
 
 	now := time.Now()
-	duration, _ := time.ParseDuration("5m")
+	duration, _ := time.ParseDuration(keepaliveSSTimeout)
 
 	expiration := now.Add(duration).Format(time.UnixDate)
 

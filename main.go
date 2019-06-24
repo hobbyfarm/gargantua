@@ -10,7 +10,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/pkg/controllers/environment"
+	//"github.com/hobbyfarm/gargantua/pkg/controllers/environment"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/scenariosession"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/tfpcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmclaimcontroller"
@@ -25,7 +25,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/vmserver"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/cache"
+	//"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"net/http"
 	"sync"
@@ -53,7 +53,7 @@ func main() {
 	stopCh := signals.SetupSignalHandler()
 
 	flag.Parse()
-	glog.V(2).Infof("Starting")
+	glog.V(2).Infof("Starting Gargantua")
 	r := mux.NewRouter()
 
 	cfg, err := rest.InClusterConfig()
@@ -93,37 +93,49 @@ func main() {
 	}
 
 	scenarioServer, err := scenarioserver.NewScenarioServer(authClient, acClient, hfClient, hfInformerFactory)
+	if err != nil {
+		glog.Fatal(err)
+	}
 
 	scenarioClient, err := scenarioclient.NewScenarioClient(scenarioServer)
+	if err != nil {
+		glog.Fatal(err)
+	}
 
 	ssServer, err := scenariosessionserver.NewScenarioSessionServer(authClient, scenarioClient, hfClient, hfInformerFactory)
-
-	//ssClient, err := scenariosessionclient.NewScenarioSessionClient(ssServer)
+	if err != nil {
+		glog.Fatal(err)
+	}
 
 	vmServer, err := vmserver.NewVMServer(authClient, hfClient, hfInformerFactory)
+	if err != nil {
+		glog.Fatal(err)
+	}
 
 	vmClient, err := vmclient.NewVirtualMachineClient(vmServer)
+	if err != nil {
+		glog.Fatal(err)
+	}
 
 	vmClaimServer, err := vmclaimserver.NewVMClaimServer(authClient, hfClient, hfInformerFactory)
-
-	//vmClaimClient, err := vmclaimclient.NewVMClaimClient(vmClient)
+	if err != nil {
+		glog.Fatal(err)
+	}
 
 	shellProxy, err := shell.NewShellProxy(authClient, vmClient, hfClient, kubeClient)
+	if err != nil {
+		glog.Fatal(err)
+	}
 
-	environmentController, err := environment.NewEnvironmentController(hfClient, hfInformerFactory)
-	scenarioSessionController, err := scenariosession.NewScenarioSessionController(hfClient, hfInformerFactory)
-	vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory)
-	tfpController, err := tfpcontroller.NewTerraformProvisionerController(kubeClient, hfClient, hfInformerFactory)
-	vmSetController, err := vmsetcontroller.NewVirtualMachineSetController(hfClient, hfInformerFactory)
 	if shellServer {
-		glog.V(2).Infof("starting as a shell server")
+		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
 	} else {
 		ssServer.SetupRoutes(r)
 		authServer.SetupRoutes(r)
 		scenarioServer.SetupRoutes(r)
 		vmServer.SetupRoutes(r)
-		shellProxy.SetupRoutes(r)
+		//shellProxy.SetupRoutes(r)
 		vmClaimServer.SetupRoutes(r)
 	}
 
@@ -133,29 +145,52 @@ func main() {
 	corsOrigins := handlers.AllowedOrigins([]string{"*"})
 	corsMethods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"})
 
-	if ok := cache.WaitForCacheSync(stopCh,
+	/* if ok := cache.WaitForCacheSync(stopCh,
 		hfInformerFactory.Hobbyfarm().V1().Users().Informer().HasSynced,
 		hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced,
 		hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer().HasSynced,
 		hfInformerFactory.Hobbyfarm().V1().Scenarios().Informer().HasSynced,
 		hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced,
 		hfInformerFactory.Hobbyfarm().V1().AccessCodes().Informer().HasSynced,
-	//hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced,,
+		hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced,,
 	); !ok {
 		glog.Fatalf("failed to wait for caches to sync")
-	}
+	} */
 
 	http.Handle("/", r)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
 	if !disableControllers {
+		/*
+		environmentController, err := environment.NewEnvironmentController(hfClient, hfInformerFactory)
+		if err != nil {
+			glog.Fatal(err)
+		}
+		*/
+		scenarioSessionController, err := scenariosession.NewScenarioSessionController(hfClient, hfInformerFactory)
+		if err != nil {
+			glog.Fatal(err)
+		}
+		vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory)
+		if err != nil {
+			glog.Fatal(err)
+		}
+		tfpController, err := tfpcontroller.NewTerraformProvisionerController(kubeClient, hfClient, hfInformerFactory)
+		if err != nil {
+			glog.Fatal(err)
+		}
+		vmSetController, err := vmsetcontroller.NewVirtualMachineSetController(hfClient, hfInformerFactory)
+		if err != nil {
+			glog.Fatal(err)
+		}
+
 		wg.Add(5)
+		/*
 		go func() {
 			defer wg.Done()
 			environmentController.Run(stopCh)
 		}()
-
+		*/
 		go func() {
 			defer wg.Done()
 			scenarioSessionController.Run(stopCh)
@@ -178,6 +213,8 @@ func main() {
 	}
 
 	glog.Info("listening on 80")
+
+	wg.Add(1)
 
 	go func() {
 		defer wg.Done()

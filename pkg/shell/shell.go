@@ -96,7 +96,7 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// dial the instance
-	sshConn, err := ssh.Dial("tcp", vm.Status.PrivateIP+":22", config)
+	sshConn, err := ssh.Dial("tcp", vm.Status.PublicIP+":22", config)
 	if err != nil {
 		glog.Errorf("did not connect ssh successfully: %s", err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "could not establish ssh session to vm")
