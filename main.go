@@ -10,6 +10,8 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	//"k8s.io/client-go/tools/cache"
+
 	//"github.com/hobbyfarm/gargantua/pkg/controllers/environment"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/scenariosession"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/tfpcontroller"
@@ -139,23 +141,26 @@ func main() {
 		vmClaimServer.SetupRoutes(r)
 	}
 
-	hfInformerFactory.Start(stopCh)
-
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
 	corsOrigins := handlers.AllowedOrigins([]string{"*"})
 	corsMethods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"})
-
-	/* if ok := cache.WaitForCacheSync(stopCh,
+	/*
+	glog.V(6).Infof("Waiting for informers to synchronize")
+	if ok := cache.WaitForCacheSync(stopCh,
 		hfInformerFactory.Hobbyfarm().V1().Users().Informer().HasSynced,
 		hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced,
 		hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer().HasSynced,
 		hfInformerFactory.Hobbyfarm().V1().Scenarios().Informer().HasSynced,
 		hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced,
 		hfInformerFactory.Hobbyfarm().V1().AccessCodes().Informer().HasSynced,
-		hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced,,
+		hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced,
+		//hfInformerFactory.Hobbyfarm().V1().Environments().Informer().HasSynced,
+		hfInformerFactory.Hobbyfarm().V1().VirtualMachineSets().Informer().HasSynced,
 	); !ok {
 		glog.Fatalf("failed to wait for caches to sync")
-	} */
+	}
+	glog.V(6).Infof("Informers have synchronized")
+	*/
 
 	http.Handle("/", r)
 
@@ -167,6 +172,7 @@ func main() {
 			glog.Fatal(err)
 		}
 		*/
+		glog.V(2).Infof("Starting controllers")
 		scenarioSessionController, err := scenariosession.NewScenarioSessionController(hfClient, hfInformerFactory)
 		if err != nil {
 			glog.Fatal(err)
@@ -184,7 +190,7 @@ func main() {
 			glog.Fatal(err)
 		}
 
-		wg.Add(5)
+		wg.Add(4)
 		/*
 		go func() {
 			defer wg.Done()
@@ -212,6 +218,7 @@ func main() {
 		}()
 	}
 
+	hfInformerFactory.Start(stopCh)
 	glog.Info("listening on 80")
 
 	wg.Add(1)

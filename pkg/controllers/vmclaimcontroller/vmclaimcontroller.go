@@ -32,8 +32,10 @@ type VMClaimController struct {
 func NewVMClaimController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*VMClaimController, error) {
 	vmClaimController := VMClaimController{}
 	vmClaimController.hfClientSet = hfClientSet
+
 	vmClaimController.vmLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Lister()
 	vmClaimController.vmClaimLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Lister()
+
 	vmClaimController.vmClaimWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "VMClaims")
 
 	vmClaimInformer := hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer()

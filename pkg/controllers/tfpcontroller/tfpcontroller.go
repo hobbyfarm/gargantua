@@ -60,19 +60,22 @@ func NewTerraformProvisionerController(k8sClientSet *k8s.Clientset, hfClientSet 
 	tfpController.tfClientset = hfClientSet
 	tfpController.k8sClientset = k8sClientSet
 
-	tfpController.vmSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
-	tfpController.vmtSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced
-	tfpController.envSynced = hfInformerFactory.Hobbyfarm().V1().Environments().Informer().HasSynced
-	tfpController.tfsSynced = hfInformerFactory.Terraformcontroller().V1().States().Informer().HasSynced
-	tfpController.tfeSynced = hfInformerFactory.Terraformcontroller().V1().Executions().Informer().HasSynced
 	tfpController.vmWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "VM")
 
 	tfpController.vmLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Lister()
+	tfpController.vmSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
+
 	tfpController.envLister = hfInformerFactory.Hobbyfarm().V1().Environments().Lister()
+	tfpController.envSynced = hfInformerFactory.Hobbyfarm().V1().Environments().Informer().HasSynced
+
 	tfpController.vmtLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Lister()
+	tfpController.vmtSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced
 
 	tfpController.tfsLister = hfInformerFactory.Terraformcontroller().V1().States().Lister()
+	tfpController.tfsSynced = hfInformerFactory.Terraformcontroller().V1().States().Informer().HasSynced
+
 	tfpController.tfeLister = hfInformerFactory.Terraformcontroller().V1().Executions().Lister()
+	tfpController.tfeSynced = hfInformerFactory.Terraformcontroller().V1().Executions().Informer().HasSynced
 
 	vmInformer := hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer()
 
@@ -101,14 +104,14 @@ func (t *TerraformProvisionerController) enqueueVM(obj interface{}) {
 func (t *TerraformProvisionerController) Run(stopCh <-chan struct{}) error {
 	defer t.vmWorkqueue.ShutDown()
 
-	glog.V(4).Infof("Starting environment controller")
+	glog.V(4).Infof("Starting TFP controller")
 	glog.Info("Waiting for informer caches to sync")
-	if ok := cache.WaitForCacheSync(stopCh, t.vmSynced, t.envSynced, t.tfsSynced, t.tfeSynced, t.vmtSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, t.vmSynced, t.envSynced, t.vmtSynced, t.tfsSynced, t.tfeSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
-	glog.Info("Starting environment controller worker")
+	glog.Info("Starting TFP controller worker")
 	go wait.Until(t.runTFPWorker, time.Second, stopCh)
-	glog.Info("Started environment controller worker")
+	glog.Info("Started TFP controller worker")
 	<-stopCh
 	return nil
 }
@@ -490,8 +493,8 @@ func (t *TerraformProvisionerController) removeFinalizer(vm *hfv1.VirtualMachine
 		toUpdate.Finalizers = []string{}
 		glog.V(5).Infof("removing vm finalizer for %s", vm.Name)
 		toUpdate, updateErr := t.hfClientSet.HobbyfarmV1().VirtualMachines().Update(toUpdate)
-		if err := util.VerifyVM(t.vmLister, toUpdate); err != nil {
-			glog.Errorf("error while verifying machine!!! %s", toUpdate.Name)
+		if err := util.VerifyVMDeleted(t.vmLister, toUpdate); err != nil {
+			glog.Errorf("error while verifying machine deleted!!! %s", toUpdate.Name)
 		}
 		return updateErr
 	})

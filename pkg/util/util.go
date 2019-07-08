@@ -180,6 +180,24 @@ func VerifyVM(vmLister hfListers.VirtualMachineLister, vm *hfv1.VirtualMachine) 
 	return nil
 }
 
+func VerifyVMDeleted(vmLister hfListers.VirtualMachineLister, vm *hfv1.VirtualMachine) error {
+	var err error
+	glog.V(5).Infof("Verifying vm %s", vm.Name)
+	for i := 0; i < 150000; i++ {
+		_, err = vmLister.Get(vm.Name)
+		if err != nil {
+			glog.Error(err)
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			continue
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	glog.Errorf("vm doesn't appear to have been deleted in time: %s", vm.Name)
+	return nil
+}
+
 func VerifyVMSet(vmSetLister hfListers.VirtualMachineSetLister, vms *hfv1.VirtualMachineSet) error {
 	var err error
 	glog.V(5).Infof("Verifying vms %s", vms.Name)

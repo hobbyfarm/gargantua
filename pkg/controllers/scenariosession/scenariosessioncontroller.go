@@ -33,7 +33,7 @@ func NewScenarioSessionController(hfClientSet *hfClientset.Clientset, hfInformer
 	ssController := ScenarioSessionController{}
 	ssController.hfClientSet = hfClientSet
 	ssController.vmSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
-	ssController.vmcSynced = hfInformerFactory.Hobbyfarm().V1().Environments().Informer().HasSynced
+	ssController.vmcSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced
 	ssController.ssSynced = hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer().HasSynced
 
 	ssController.ssWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ScenarioSession")
