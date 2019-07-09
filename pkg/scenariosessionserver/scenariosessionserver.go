@@ -20,6 +20,8 @@ import (
 
 const (
 	ssIndex = "sss.hobbyfarm.io/scenariosession-id-index"
+	newSSTimeout = "5m"
+	keepaliveSSTimeout = "5m"
 )
 
 type ScenarioSessionServer struct {
@@ -71,6 +73,35 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 		return
 	}
 
+	// now we should check for existing scenario sessions
+
+	scenarioSessions, err := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().List(metav1.ListOptions{})
+
+	if err != nil {
+		glog.Error(err)
+	}
+	now := time.Now()
+
+	for _, v := range scenarioSessions.Items {
+		expires, err := time.Parse(time.UnixDate, v.Status.ExpirationTime)
+		if err != nil {
+			continue
+		}
+		if v.Spec.UserId == user.Spec.Id &&
+			v.Spec.ScenarioId == scenario.Spec.Id &&
+			!v.Status.Finished &&
+			v.Status.Active && expires.After(now) {
+				// we should just return this scenario session...
+			encodedSS, err := json.Marshal(v.Spec)
+			if err != nil {
+				glog.Error(err)
+			}
+			util.ReturnHTTPContent(w, r, 200, "exists", encodedSS)
+			return
+		}
+
+	}
+
 	scenarioSessionName := util.GenerateResourceName("ss", random, 10)
 	scenarioSession := hfv1.ScenarioSession{}
 
@@ -103,12 +134,12 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 		scenarioSession.Spec.VmClaimSet[index] = createdVmClaim.Spec.Id
 	}
 
-	now := time.Now()
 	scenarioSession.Status.StartTime = now.Format(time.UnixDate)
-	duration, _ := time.ParseDuration("5m")
+	duration, _ := time.ParseDuration(newSSTimeout)
 
 	scenarioSession.Status.ExpirationTime = now.Add(duration).Format(time.UnixDate)
 	scenarioSession.Status.Active = true
+	scenarioSession.Status.Finished = false
 
 	createdScenarioSession, err := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Create(&scenarioSession)
 
@@ -157,7 +188,7 @@ func (sss ScenarioSessionServer) FinishedScenarioSessionFunc(w http.ResponseWrit
 
 		result.Status.ExpirationTime = now
 		result.Status.Active = false
-		result.Status.Finished = true
+		result.Status.Finished = false
 
 		_, updateErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Update(result)
 		glog.V(4).Infof("updated result for environment")
@@ -196,7 +227,7 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 	}
 
 	now := time.Now()
-	duration, _ := time.ParseDuration("5m")
+	duration, _ := time.ParseDuration(keepaliveSSTimeout)
 
 	expiration := now.Add(duration).Format(time.UnixDate)
 

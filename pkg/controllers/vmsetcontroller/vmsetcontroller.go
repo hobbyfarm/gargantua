@@ -43,6 +43,7 @@ const (
 func NewVirtualMachineSetController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*VirtualMachineSetController, error) {
 	vmSetController := VirtualMachineSetController{}
 	vmSetController.hfClientSet = hfClientSet
+
 	vmSetController.vmSetSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineSets().Informer().HasSynced
 	vmSetController.vmSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
 	vmSetController.envSynced = hfInformerFactory.Hobbyfarm().V1().Environments().Informer().HasSynced
@@ -130,7 +131,7 @@ func (v *VirtualMachineSetController) Run(stopCh <-chan struct{}) error {
 
 	glog.V(4).Infof("Starting vm set")
 	glog.Info("Waiting for informer caches to sync")
-	if ok := cache.WaitForCacheSync(stopCh, v.vmSynced, v.vmSetSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, v.vmSynced, v.vmSetSynced, v.vmTemplateSynced, v.envSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 	glog.Info("Starting vm set controller worker")
@@ -150,14 +151,14 @@ func (v *VirtualMachineSetController) runVMSetWorker() {
 func (v *VirtualMachineSetController) processNextVMSet() bool {
 	obj, shutdown := v.vmSetWorkqueue.Get()
 
-	glog.V(4).Infof("processing VMSet")
+	glog.V(8).Infof("processing VMSet")
 
 	if shutdown {
 		return false
 	}
 	err := func() error {
 		defer v.vmSetWorkqueue.Done(obj)
-		glog.V(4).Infof("processing vm in env controller: %v", obj)
+		glog.V(4).Infof("processing vms in vmset controller: %v", obj)
 		_, objName, err := cache.SplitMetaNamespaceKey(obj.(string)) // this is actually not necessary because VM's are not namespaced yet...
 		if err != nil {
 			glog.Errorf("error while splitting meta namespace key %v", err)
@@ -192,7 +193,11 @@ func (v *VirtualMachineSetController) processNextVMSet() bool {
 
 func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.VirtualMachineSet) error {
 
-	if vmset.Spec.Count >= vmset.Status.ProvisionedCount { // if desired count is greater than the current provisioned
+	currentVMs, err := v.vmLister.List(labels.Set{
+		"vmset": vmset.Name,
+	}.AsSelector())
+
+	if len(currentVMs) < vmset.Spec.Count { // if desired count is greater than the current provisioned
 		// 1. let's check the environment to see if there is available capacity
 		// 2. if available capacity is available let's create new VM's
 		env, err := v.envLister.Get(vmset.Spec.Environment)
@@ -260,6 +265,10 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 					},
 					Labels: map[string]string{
 						"vmset": vmset.Name,
+						"template": vmt.Spec.Id,
+						"environment": env.Name,
+						"bound": "false",
+						"ready": "false",
 					},
 				},
 				Spec: hfv1.VirtualMachineSpec{
@@ -406,4 +415,3 @@ func (v *VirtualMachineSetController) updateVMSetCount(vmSetName string, active 
 
 	return nil
 }
-

@@ -33,7 +33,7 @@ func NewScenarioSessionController(hfClientSet *hfClientset.Clientset, hfInformer
 	ssController := ScenarioSessionController{}
 	ssController.hfClientSet = hfClientSet
 	ssController.vmSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
-	ssController.vmcSynced = hfInformerFactory.Hobbyfarm().V1().Environments().Informer().HasSynced
+	ssController.vmcSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced
 	ssController.ssSynced = hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer().HasSynced
 
 	ssController.ssWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ScenarioSession")
@@ -98,7 +98,7 @@ func (s *ScenarioSessionController) processNextScenarioSession() bool {
 
 	err := func() error {
 		defer s.ssWorkqueue.Done(obj)
-		glog.V(4).Infof("processing ss in ss controller: %v", obj)
+		glog.V(8).Infof("processing ss in ss controller: %v", obj)
 		_, objName, err := cache.SplitMetaNamespaceKey(obj.(string))
 		if err != nil {
 			glog.Errorf("error while splitting meta namespace key %v", err)
@@ -111,7 +111,7 @@ func (s *ScenarioSessionController) processNextScenarioSession() bool {
 			glog.Error(err)
 		}
 		s.ssWorkqueue.Forget(obj)
-		glog.V(4).Infof("ss processed by endpoint controller %v", objName)
+		glog.V(8).Infof("ss processed by scenario session controller %v", objName)
 
 		return nil
 
@@ -132,6 +132,7 @@ func (s *ScenarioSessionController) reconcileScenarioSession(ssName string) erro
 	if err != nil {
 		return err
 	}
+
 	now := time.Now()
 
 	expires, err := time.Parse(time.UnixDate, ss.Status.ExpirationTime)
@@ -195,7 +196,7 @@ func (s *ScenarioSessionController) taintVM(vmName string) error {
 		if getErr != nil {
 			return getErr
 		}
-
+		result.Labels["ready"] = "false"
 		result.Status.Tainted = true
 
 		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachines().Update(result)
