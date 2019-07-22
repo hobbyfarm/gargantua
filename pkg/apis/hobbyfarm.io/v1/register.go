@@ -45,6 +45,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&AccessCodeList{},
 		&User{},
 		&UserList{},
+		&ScheduledEvent{},
+		&ScheduledEventList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

@@ -10,6 +10,8 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
+
 	//"k8s.io/client-go/tools/cache"
 
 	//"github.com/hobbyfarm/gargantua/pkg/controllers/environment"
@@ -177,6 +179,10 @@ func main() {
 		if err != nil {
 			glog.Fatal(err)
 		}
+		scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory)
+		if err != nil {
+			glog.Fatal(err)
+		}
 		vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory)
 		if err != nil {
 			glog.Fatal(err)
@@ -190,7 +196,7 @@ func main() {
 			glog.Fatal(err)
 		}
 
-		wg.Add(4)
+		wg.Add(5)
 		/*
 		go func() {
 			defer wg.Done()
@@ -200,6 +206,11 @@ func main() {
 		go func() {
 			defer wg.Done()
 			scenarioSessionController.Run(stopCh)
+		}()
+
+		go func() {
+			defer wg.Done()
+			scheduledEventController.Run(stopCh)
 		}()
 
 		go func() {

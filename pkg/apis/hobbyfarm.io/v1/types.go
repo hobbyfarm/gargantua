@@ -5,13 +5,15 @@ import (
 )
 
 type VmStatus string
+type CapacityMode string
 
 const (
 	VmStatusRFP VmStatus = "readyforprovisioning"
 	VmStatusProvisioned VmStatus = "provisioned"
 	VmStatusRunning VmStatus = "running"
 	VmStatusTerminating VmStatus = "terminating"
-
+	CapacityModeRaw CapacityMode = "raw"
+	CapacityModeCount CapacityMode = "count"
 )
 
 // +genclient
@@ -118,6 +120,7 @@ type VirtualMachineTemplateSpec struct {
 	Name	string	`json:"name"` // 2x4, etc.
 	Image 	string	`json:"image"` // ubuntu-18.04
 	Resources CMSStruct `json:"resources"`
+	CountMap	map[string]string `json:"count_map"`
 }
 
 // +genclient
@@ -150,10 +153,12 @@ type EnvironmentSpec struct {
 	EnvironmentSpecifics		map[string]string `json:"environment_specifics"`
 	IPTranslationMap		map[string]string `json:"ip_translation_map"`
 	WsEndpoint				string		`json:"ws_endpoint"`
+	CapacityMode			CapacityMode `json:"capacity_mode"`
+	CountCapacity			map[string]int
+	Capacity				CMSStruct `json:"capacity"`
 }
 
 type EnvironmentStatus struct {
-	Capacity					CMSStruct `json:"capacity"`
 	Used						CMSStruct `json:"used"`
 	AvailableCount				map[string]int `json:"available_count"`
 }
@@ -291,6 +296,7 @@ type AccessCodeSpec struct {
 	Description string `json:"description"`
 	Scenarios		[]string	`json:"scenarios"`
 	Expiration	string	`json:"expiration"`
+	VirtualMachineSets []string `json:"vmsets"`
 }
 
 // +genclient
@@ -318,3 +324,40 @@ type UserSpec struct {
 	Password string `json:"password"`
 	AccessCodes []string `json:"access_codes"`
 }
+
+// +genclient
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ScheduledEvent struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              ScheduledEventSpec `json:"spec"`
+	Status			  ScheduledEventStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ScheduledEventList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []ScheduledEvent `json:"items"`
+}
+
+type ScheduledEventSpec struct {
+	StartTime string `json:"start_time"`
+	EndTime string `json:"end_time"`
+	RequiredVirtualMachines map[string]map[string]int `json:"required_vms"`// map of environment to a map of strings it should be environment: vm template: count
+	AccessCode string `json:"access_code"`
+	Scenarios []string `json:"scenarios"`
+}
+
+type ScheduledEventStatus struct {
+	AccessCodeId	string 	`json:"access_code"`
+	VirtualMachineSets []string 	`json:"vmsets"`
+	Active	bool	`json:"active"`
+	Provisioned bool	`json:"provisioned"`
+	Ready	bool	`json:"ready"`
+	Finished	bool	`json:"finished"`
+}
+

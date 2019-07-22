@@ -44,6 +44,10 @@ func (c *FakeHobbyfarmV1) ScenarioSessions() v1.ScenarioSessionInterface {
 	return &FakeScenarioSessions{c}
 }
 
+func (c *FakeHobbyfarmV1) ScheduledEvents() v1.ScheduledEventInterface {
+	return &FakeScheduledEvents{c}
+}
+
 func (c *FakeHobbyfarmV1) Users() v1.UserInterface {
 	return &FakeUsers{c}
 }
