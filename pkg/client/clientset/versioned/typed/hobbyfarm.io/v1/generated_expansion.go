@@ -26,6 +26,8 @@ type ScenarioExpansion interface{}
 
 type ScenarioSessionExpansion interface{}
 
+type ScheduledEventExpansion interface{}
+
 type UserExpansion interface{}
 
 type VirtualMachineExpansion interface{}

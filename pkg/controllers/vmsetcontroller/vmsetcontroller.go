@@ -1,18 +1,18 @@
 package vmsetcontroller
 
 import (
-"fmt"
-"github.com/golang/glog"
-hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"fmt"
+	"github.com/golang/glog"
+	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/util"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
-"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
@@ -22,20 +22,21 @@ hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
 )
 
 type VirtualMachineSetController struct {
-	hfClientSet *hfClientset.Clientset
+	hfClientSet    *hfClientset.Clientset
 	vmSetWorkqueue workqueue.RateLimitingInterface
-	vmWorkqueue workqueue.RateLimitingInterface
+	vmWorkqueue    workqueue.RateLimitingInterface
 
-	vmSetLister hfListers.VirtualMachineSetLister
-	vmLister hfListers.VirtualMachineLister
-	envLister hfListers.EnvironmentLister
+	vmSetLister      hfListers.VirtualMachineSetLister
+	vmLister         hfListers.VirtualMachineLister
+	envLister        hfListers.EnvironmentLister
 	vmTemplateLister hfListers.VirtualMachineTemplateLister
 
-	vmSetSynced cache.InformerSynced
-	vmSynced cache.InformerSynced
-	envSynced cache.InformerSynced
+	vmSetSynced      cache.InformerSynced
+	vmSynced         cache.InformerSynced
+	envSynced        cache.InformerSynced
 	vmTemplateSynced cache.InformerSynced
 }
+
 const (
 	vmEnvironmentIndex = "vm.vmclaim.controllers.hobbyfarm.io/environment-index"
 )
@@ -66,7 +67,7 @@ func NewVirtualMachineSetController(hfClientSet *hfClientset.Clientset, hfInform
 			vmSetController.enqueueVMSet(new)
 		},
 		DeleteFunc: vmSetController.enqueueVMSet,
-	}, time.Second * 30)
+	}, time.Second*30)
 
 	vmInformer := hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer()
 
@@ -76,7 +77,7 @@ func NewVirtualMachineSetController(hfClientSet *hfClientset.Clientset, hfInform
 			vmSetController.handleVM(new)
 		},
 		DeleteFunc: vmSetController.handleVM,
-	},  time.Second * 30)
+	}, time.Second*30)
 	return &vmSetController, nil
 }
 
@@ -209,86 +210,52 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		}
 
 		vmt, err := v.vmTemplateLister.Get(vmset.Spec.VMTemplate)
-
-		availableStorage := env.Status.Capacity.Storage - env.Status.Used.Storage
-		availableMemory := env.Status.Capacity.Memory - env.Status.Used.Memory
-		availableCPU := env.Status.Capacity.CPU - env.Status.Used.CPU
-		glog.V(5).Infof("available cpu: %d, mem: %d, storage: %d", availableCPU, availableMemory, availableStorage)
-		numberOfVMCPU := availableCPU/vmt.Spec.Resources.CPU
-		numberofVMMemory := availableMemory/vmt.Spec.Resources.Memory
-		numberofVMStorage := availableStorage/vmt.Spec.Resources.Storage
-
-		glog.V(5).Infof("calculated cpu: %d, mem: %d, storage: %d", numberOfVMCPU, numberofVMMemory, numberofVMStorage)
-
-		capable := numberOfVMCPU
-		if numberofVMMemory < capable {
-			capable = numberofVMMemory
+		if err != nil {
+			return fmt.Errorf("error while retrieving virtual machine template %s %v", vmset.Spec.VMTemplate, err)
 		}
-		if numberofVMStorage < capable {
-			capable = numberofVMStorage
-		}
-
-		glog.V(5).Infof("counted number of capable vms for env %s is: %d", env.Name, capable)
-
 		needed := vmset.Spec.Count - vmset.Status.ProvisionedCount
 
-
-		glog.V(5).Infof("counted number of needed vms for env %s is: %d", env.Name, needed)
-
-		pCount := 0
-		if needed > capable {
-			pCount = capable
-		} else {
-			pCount = needed
-		}
-
-		glog.V(5).Infof("provisioning %d vms", pCount)
+		glog.V(5).Infof("provisioning %d vms", needed)
 		// this code is so... verbose...
-		for i := 0; i < pCount; i++ {
+		for i := 0; i < needed; i++ {
 			vmName := strings.Join([]string{vmset.Spec.BaseName, fmt.Sprintf("%08x", rand.Uint32())}, "-")
 			vm := &hfv1.VirtualMachine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: vmName,
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion: "v1",
-							Kind: "VirtualMachineSet",
-							Name: vmset.Name,
-							UID: vmset.UID,
-						},
-						{
-							APIVersion: "v1",
-							Kind: "Environment",
-							Name: env.Name,
-							UID: env.UID,
+							APIVersion: "hobbyfarm.io/v1",
+							Kind:       "VirtualMachineSet",
+							Name:       vmset.Name,
+							UID:        vmset.UID,
 						},
 					},
 					Labels: map[string]string{
-						"vmset": vmset.Name,
-						"template": vmt.Spec.Id,
+						"vmset":       vmset.Name,
+						"template":    vmt.Spec.Id,
 						"environment": env.Name,
-						"bound": "false",
-						"ready": "false",
+						"bound":       "false",
+						"ready":       "false",
 					},
 				},
 				Spec: hfv1.VirtualMachineSpec{
-					Id: vmName,
+					Id:                       vmName,
 					VirtualMachineTemplateId: vmt.Spec.Id,
-					KeyPair: "",
-					VirtualMachineClaimId: "",
-					UserId: "",
-					Provision: true,
-					VirtualMachineSetId: vmset.Name,
+					KeyPair:                  "",
+					VirtualMachineClaimId:    "",
+					UserId:                   "",
+					Provision:                true,
+					VirtualMachineSetId:      vmset.Name,
 				},
 				Status: hfv1.VirtualMachineStatus{
-					Status: hfv1.VmStatusRFP,
-					Allocated: false,
-					Tainted: false,
-					WsEndpoint: env.Spec.WsEndpoint,
-					PublicIP: "",
-					PrivateIP: "",
+					Status:        hfv1.VmStatusRFP,
+					Allocated:     false,
+					Tainted:       false,
+					WsEndpoint:    env.Spec.WsEndpoint,
+					PublicIP:      "",
+					PrivateIP:     "",
 					EnvironmentId: env.Name,
-					Hostname: "",
+					Hostname:      "",
 				},
 			}
 			vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Create(vm)
@@ -306,7 +273,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 	// no matter what we should list the vm's and delete the ones that are ready for deletion
 
 	vms, err := v.vmLister.List(labels.Set{
-		"vmset":  string(vmset.Name),
+		"vmset": string(vmset.Name),
 	}.AsSelector())
 
 	if err != nil {
@@ -323,7 +290,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 	}
 
 	vms, err = v.vmLister.List(labels.Set{
-		"vmset":  string(vmset.Name),
+		"vmset": string(vmset.Name),
 	}.AsSelector())
 
 	if err != nil {
@@ -363,7 +330,6 @@ func (v *VirtualMachineSetController) deleteVM(vm *hfv1.VirtualMachine) error {
 	}
 	return nil
 }
-
 
 func (v *VirtualMachineSetController) createVM(vm *hfv1.VirtualMachine) error {
 	vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Create(vm)

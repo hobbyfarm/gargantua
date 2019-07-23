@@ -32,6 +32,8 @@ type Interface interface {
 	Scenarios() ScenarioInformer
 	// ScenarioSessions returns a ScenarioSessionInformer.
 	ScenarioSessions() ScenarioSessionInformer
+	// ScheduledEvents returns a ScheduledEventInformer.
+	ScheduledEvents() ScheduledEventInformer
 	// Users returns a UserInformer.
 	Users() UserInformer
 	// VirtualMachines returns a VirtualMachineInformer.
@@ -73,6 +75,11 @@ func (v *version) Scenarios() ScenarioInformer {
 // ScenarioSessions returns a ScenarioSessionInformer.
 func (v *version) ScenarioSessions() ScenarioSessionInformer {
 	return &scenarioSessionInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// ScheduledEvents returns a ScheduledEventInformer.
+func (v *version) ScheduledEvents() ScheduledEventInformer {
+	return &scheduledEventInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Users returns a UserInformer.

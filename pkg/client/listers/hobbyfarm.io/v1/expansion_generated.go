@@ -34,6 +34,10 @@ type ScenarioListerExpansion interface{}
 // ScenarioSessionLister.
 type ScenarioSessionListerExpansion interface{}
 
+// ScheduledEventListerExpansion allows custom methods to be added to
+// ScheduledEventLister.
+type ScheduledEventListerExpansion interface{}
+
 // UserListerExpansion allows custom methods to be added to
 // UserLister.
 type UserListerExpansion interface{}

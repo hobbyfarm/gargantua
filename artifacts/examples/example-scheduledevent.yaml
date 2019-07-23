@@ -1,0 +1,17 @@
+apiVersion: hobbyfarm.io/v1
+kind: ScheduledEvent
+metadata:
+  name: testing-se
+spec:
+  start_time: Fri Jul 19 00:58:00 UTC 2019
+  end_time: Fri Jul 19 01:00:00 UTC 2019
+  required_vms:
+    aws-hf-us-east-1:
+      ubuntu1604-docker1: 4
+    aws-hf-us-east-2:
+      ubuntu1604-docker1: 8
+  access_code: testing-se-ac
+  scenarios:
+    - s-x93jfm20slmn2
+status:
+  active: true

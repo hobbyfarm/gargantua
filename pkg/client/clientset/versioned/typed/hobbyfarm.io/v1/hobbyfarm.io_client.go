@@ -31,6 +31,7 @@ type HobbyfarmV1Interface interface {
 	EnvironmentsGetter
 	ScenariosGetter
 	ScenarioSessionsGetter
+	ScheduledEventsGetter
 	UsersGetter
 	VirtualMachinesGetter
 	VirtualMachineClaimsGetter
@@ -57,6 +58,10 @@ func (c *HobbyfarmV1Client) Scenarios() ScenarioInterface {
 
 func (c *HobbyfarmV1Client) ScenarioSessions() ScenarioSessionInterface {
 	return newScenarioSessions(c)
+}
+
+func (c *HobbyfarmV1Client) ScheduledEvents() ScheduledEventInterface {
+	return newScheduledEvents(c)
 }
 
 func (c *HobbyfarmV1Client) Users() UserInterface {
