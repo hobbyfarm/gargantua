@@ -24,3 +24,5 @@ spec:
         - -alsologtostderr
         - -v=9
       serviceAccount: gargantua-controllers
+      imagePullSecrets:
+      - name: pipeline-docker-registry

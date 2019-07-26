@@ -26,3 +26,5 @@ spec:
         - -shellserver
         - -disablecontrollers
       serviceAccount: gargantua-shell
+      imagePullSecrets:
+      - name: pipeline-docker-registry

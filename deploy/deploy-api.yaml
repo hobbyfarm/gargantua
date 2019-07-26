@@ -25,3 +25,5 @@ spec:
           - -disablecontrollers
         imagePullPolicy: Always
       serviceAccount: gargantua-api
+      imagePullSecrets:
+      - name: pipeline-docker-registry
