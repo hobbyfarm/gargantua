@@ -17,10 +17,10 @@ stages:
 - name: Deploy
   steps:
   - applyYamlConfig:
-      path: ./deploy-api.yaml
+      path: ./deploy/deploy-api.yaml
   - applyYamlConfig:
-      path: ./deploy-controllers.yaml
+      path: ./deploy/deploy-controllers.yaml
   - applyYamlConfig:
-      path: ./deploy-shell.yaml
+      path: ./deploy/deploy-shell.yaml
 timeout: 60
 notification: {}
