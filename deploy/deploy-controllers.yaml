@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gargantua-controllers
+  labels:
+    app: gargantua-controllers
+  namespace: hobbyfarm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gargantua-controllers
+  template:
+    metadata:
+      labels:
+        app: gargantua-controllers
+    spec:
+      containers:
+      - name: gargantua
+        image: ${CICD_IMAGE}:${CICD_EXECUTION_SEQUENCE}
+        imagePullPolicy: Always
+        command:
+        - /usr/local/bin/gargantua
+        - -alsologtostderr
+        - -v=9
+      serviceAccount: gargantua-controllers

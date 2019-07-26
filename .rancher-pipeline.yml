@@ -1,10 +1,26 @@
 stages:
-- name: build
+- name: Build
   steps:
   - runScriptConfig:
-      image: golang:latest
+      image: golang:1.12
       shellScript: |-
-        go get
-        go build
+        mkdir -p /go/src/github.com/hobbyfarm
+        ln -s `pwd` /go/src/github.com/hobbyfarm/gargantua
+        cd /go/src/github.com/hobbyfarm/gargantua
+        go build -o bin/gargantua
+- name: Publish
+  steps:
+  - publishImageConfig:
+      dockerfilePath: ./Dockerfile
+      buildContext: .
+      tag: gargantua:${CICD_EXECUTION_SEQUENCE}
+- name: Deploy
+  steps:
+  - applyYamlConfig:
+      path: ./deploy-api.yaml
+  - applyYamlConfig:
+      path: ./deploy-controllers.yaml
+  - applyYamlConfig:
+      path: ./deploy-shell.yaml
 timeout: 60
 notification: {}
