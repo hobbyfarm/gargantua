@@ -11,6 +11,7 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
+	"github.com/hobbyfarm/gargantua/pkg/util"
 
 	//"k8s.io/client-go/tools/cache"
 

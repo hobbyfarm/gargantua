@@ -299,3 +299,29 @@ func  EnsureVMNotReady(hfClientset *hfClientset.Clientset, vmLister hfListers.Vi
 
 	return nil
 }
+
+func MaxNumberOfVirtualMachineDuringPeriod(hfClientset *hfClientset.Clientset, environment string, startString string, endString string) (int, error) {
+
+	duration, _ := time.ParseDuration("30m")
+
+	start, err := time.Parse(time.UnixDate, startString)
+
+	if err != nil {
+		glog.Errorf("error parsing start time %v", err)
+	}
+
+	start = start.Round(duration)
+
+	end, err := time.Parse(time.UnixDate, endString)
+
+	if err != nil {
+		glog.Errorf("error parsing end time %v", err)
+	}
+
+	end = end.Round(duration)
+
+	for i := start; i.Before(end) || i.Equal(end); i = i.Add(duration) {
+		glog.V(8).Infof("Checking time at %s", i.Format(time.UnixDate))
+	}
+	return 0, nil
+}
