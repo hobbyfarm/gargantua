@@ -46,6 +46,7 @@ func (es EnvironmentServer) getEnvironment(id string) (hfv1.Environment, error) 
 
 func (es EnvironmentServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/environment/{environment_id}", es.GetEnvironmentFunc).Methods("GET")
+	r.HandleFunc("/environment/{environment_id}/available", es.PostEnvironmentAvailableFunc).Methods("POST")
 	glog.V(2).Infof("set up routes for environment server")
 }
 
@@ -87,4 +88,49 @@ func (es EnvironmentServer) GetEnvironmentFunc(w http.ResponseWriter, r *http.Re
 	util.ReturnHTTPContent(w, r, 200, "success", encodedEnvironment)
 
 	glog.V(2).Infof("retrieved environment %s", environment.Name)
+}
+
+func (es EnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := es.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get environment")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	start := r.PostFormValue("start")
+	end := r.PostFormValue("end")
+	if start == "" || end == "" {
+		util.ReturnHTTPMessage(w, r, 400, "bad request", "start or end time not provided")
+		return
+	}
+
+	environmentId := vars["environment_id"]
+
+	if len(environmentId) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no environment id passed in")
+		return
+	}
+
+	environment, err := es.getEnvironment(environmentId)
+
+	if err != nil {
+		glog.Errorf("error while retrieving environment %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "no environment found")
+		return
+	}
+	max, err := util.MaxAvailableDuringPeriod(es.hfClientSet, environmentId, start, end)
+	if err != nil {
+		glog.Errorf("error while getting max available %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "error getting max available vms for environment")
+	}
+
+	encodedEnvironment, err := json.Marshal(max)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedEnvironment)
+
+	glog.V(2).Infof("retrieved max available in environment %s", environment.Name)
 }

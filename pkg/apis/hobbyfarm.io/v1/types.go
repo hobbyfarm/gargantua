@@ -154,7 +154,7 @@ type EnvironmentSpec struct {
 	IPTranslationMap		map[string]string `json:"ip_translation_map"`
 	WsEndpoint				string		`json:"ws_endpoint"`
 	CapacityMode			CapacityMode `json:"capacity_mode"`
-	CountCapacity			map[string]int
+	CountCapacity			map[string]int `json:"count_capacity"`
 	Capacity				CMSStruct `json:"capacity"`
 }
 
