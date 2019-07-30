@@ -124,6 +124,7 @@ func (es EnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, 
 	if err != nil {
 		glog.Errorf("error while getting max available %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "error getting max available vms for environment")
+		return
 	}
 
 	encodedEnvironment, err := json.Marshal(max)
