@@ -346,6 +346,9 @@ type ScheduledEventList struct {
 }
 
 type ScheduledEventSpec struct {
+	Creator string `json:"creator"`
+	Name string `json:"event_name"`
+	Description string `json:"description"`
 	StartTime string `json:"start_time"`
 	EndTime string `json:"end_time"`
 	RequiredVirtualMachines map[string]map[string]int `json:"required_vms"`// map of environment to a map of strings it should be environment: vm template: count

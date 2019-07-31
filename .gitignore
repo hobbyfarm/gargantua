@@ -12,3 +12,4 @@
 *.out
 gargantua
 .idea
+artifacts/testing
