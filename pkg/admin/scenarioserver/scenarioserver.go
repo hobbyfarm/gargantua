@@ -113,7 +113,9 @@ func (a AdminScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 
 	preparedScenarios := []PreparedScenario{}
 	for _, s := range scenarios.Items {
-		preparedScenarios = append(preparedScenarios, PreparedScenario{s.Name,s.Spec})
+		pScenario := PreparedScenario{s.Name,s.Spec}
+		pScenario.Steps = nil
+		preparedScenarios = append(preparedScenarios, pScenario)
 	}
 
 	encodedScenarios, err := json.Marshal(preparedScenarios)
