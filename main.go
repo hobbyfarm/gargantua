@@ -9,6 +9,7 @@ import (
 	adminEnvironmentServer "github.com/hobbyfarm/gargantua/pkg/admin/environmentserver"
 	adminScenarioServer "github.com/hobbyfarm/gargantua/pkg/admin/scenarioserver"
 	adminScheduledEventServer "github.com/hobbyfarm/gargantua/pkg/admin/scheduledeventserver"
+	adminUserServer "github.com/hobbyfarm/gargantua/pkg/admin/userserver"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
@@ -84,7 +85,7 @@ func main() {
 
 	hfInformerFactory := hfInformers.NewSharedInformerFactory(hfClient, time.Second*30)
 
-	authServer, err := authserver.NewAuthServer(hfClient, hfInformerFactory)
+	authServer, err := authserver.NewAuthServer(hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -149,6 +150,11 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	adminUServer, err := adminUserServer.NewAdminUserServer(authClient, hfClient)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
 	if shellServer {
 		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
@@ -162,6 +168,7 @@ func main() {
 		adminEnvServer.SetupRoutes(r)
 		adminScenServer.SetupRoutes(r)
 		adminSEServer.SetupRoutes(r)
+		adminUServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})

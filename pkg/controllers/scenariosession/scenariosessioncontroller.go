@@ -157,6 +157,11 @@ func (s *ScenarioSessionController) reconcileScenarioSession(ssName string) erro
 					glog.Error(taintErr)
 				}
 			}
+
+			taintErr := s.taintVMC(vmcObj.Name)
+			if taintErr != nil {
+				glog.Error(taintErr)
+			}
 		}
 
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -210,6 +215,33 @@ func (s *ScenarioSessionController) taintVM(vmName string) error {
 		if verifyErr != nil {
 			return verifyErr
 		}
+		return nil
+	})
+	if retryErr != nil {
+		return retryErr
+	}
+
+	return nil
+}
+
+func (s *ScenarioSessionController) taintVMC(vmcName string) error {
+	glog.V(5).Infof("tainting VMC %s", vmcName)
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		result, getErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(vmcName, metav1.GetOptions{})
+		if getErr != nil {
+			return getErr
+		}
+		result.Status.Tainted = true
+
+		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Update(result)
+		if updateErr != nil {
+			return updateErr
+		}
+		verifyErr := util.VerifyVMClaim(s.vmcLister, result)
+		if verifyErr != nil {
+			return verifyErr
+		}
+		glog.V(4).Infof("updated result for vmc")
 		return nil
 	})
 	if retryErr != nil {

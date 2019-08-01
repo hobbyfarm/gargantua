@@ -9,10 +9,10 @@ import (
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"golang.org/x/crypto/bcrypt"
-	"k8s.io/client-go/tools/cache"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/retry"
 	"net/http"
 	"strings"
 	"time"
@@ -24,16 +24,11 @@ const (
 
 type AuthServer struct {
 	hfClientSet *hfClientset.Clientset
-	userIndexer cache.Indexer
 }
 
-func NewAuthServer(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (AuthServer, error) {
+func NewAuthServer(hfClientSet *hfClientset.Clientset) (AuthServer, error) {
 	a := AuthServer{}
 	a.hfClientSet = hfClientSet
-	inf := hfInformerFactory.Hobbyfarm().V1().Users().Informer()
-	indexers := map[string]cache.IndexFunc{emailIndex: emailIndexer}
-	inf.AddIndexers(indexers)
-	a.userIndexer = inf.GetIndexer()
 	return a, nil
 }
 
@@ -63,7 +58,6 @@ func (a AuthServer) AuthN(w http.ResponseWriter, r *http.Request) error {
 
 	if err != nil {
 		glog.Errorf("error validating user %v", err)
-		//util.ReturnHTTPMessage(w, r, 403, "forbidden", "forbidden")
 		return fmt.Errorf("authentication failed")
 	}
 
@@ -73,35 +67,24 @@ func (a AuthServer) AuthN(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func emailIndexer(obj interface{}) ([]string, error) {
-	user, ok := obj.(*hfv1.User)
-	if !ok {
-		return []string{}, nil
-	}
-	return []string{user.Spec.Email}, nil
-}
-
 func (a AuthServer) getUserByEmail(email string) (hfv1.User, error) {
 	if len(email) == 0 {
 		return hfv1.User{}, fmt.Errorf("email passed in was empty")
 	}
 
-	obj, err := a.userIndexer.ByIndex(emailIndex, email)
+	users, err := a.hfClientSet.HobbyfarmV1().Users().List(metav1.ListOptions{})
+
 	if err != nil {
-		return hfv1.User{}, fmt.Errorf("error while retrieving user by e-mail: %s with error: %v", email, err)
+		return hfv1.User{}, fmt.Errorf("error while retrieving user list")
 	}
 
-	if len(obj) < 1 {
-		return hfv1.User{}, fmt.Errorf("user not found by email: %s", email)
+	for _, user := range users.Items {
+		if user.Spec.Email == email {
+			return user, nil
+		}
 	}
 
-	user, ok := obj[0].(*hfv1.User)
-
-	if !ok {
-		return hfv1.User{}, fmt.Errorf("error while converting user found by email to object: %s", email)
-	}
-
-	return *user, nil
+	return hfv1.User{}, fmt.Errorf("user not found")
 
 }
 
@@ -113,24 +96,17 @@ func (a AuthServer) getUserByEmail(email string) (hfv1.User, error) {
 // spits out json with status:
 //
 
-func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
+func (a AuthServer) NewUser(email string, password string) (string, error) {
 
-	email := r.PostFormValue("email")
-	access_code := r.PostFormValue("access_code")
-	password := r.PostFormValue("password")
-	// should we reconcile based on the access code posted in? nah
-	_, err := a.getUserByEmail(email)
-
-	if len(email) == 0 || len(access_code) == 0 || len(password) == 0 {
-		util.ReturnHTTPMessage(w, r, 400, "error", "invalid input. required fields: email, access_code, password")
-		return
+	if len(email) == 0 || len(password) == 0 {
+		return "", fmt.Errorf("error creating user, email or password field blank")
 	}
+
+	_, err := a.getUserByEmail(email)
 
 	if err == nil {
 		// the user was found, we should return info
-		util.ReturnHTTPMessage(w, r, 409, "error", "user already exists")
-		return
+		return "", fmt.Errorf("user already exists")
 	}
 
 	newUser := hfv1.User{}
@@ -141,16 +117,11 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	id := "u-" + strings.ToLower(sha)
 	newUser.Name = id
 	newUser.Spec.Id = id
-	accessCodes := make([]string, 1)
-	accessCodes[0] = access_code
-	newUser.Spec.AccessCodes = accessCodes
 	newUser.Spec.Email = email
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		glog.Errorf("error while hashing password for email %s", email)
-		util.ReturnHTTPMessage(w, r, 500, "error", "error working on password")
-		return
+		return "", fmt.Errorf("error while hashing password for email %s", email)
 	}
 
 	newUser.Spec.Password = string(passwordHash)
@@ -158,8 +129,161 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	_, err = a.hfClientSet.HobbyfarmV1().Users().Create(&newUser)
 
 	if err != nil {
-		glog.Errorf("error creating new user for email %s: %v", email, err)
-		util.ReturnHTTPMessage(w, r, 500, "error", "error creating user")
+		return "", fmt.Errorf("error creating user")
+	}
+
+	return id, nil
+}
+
+func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
+	if len(userId) == 0 || len(accessCode) == 0 {
+		return fmt.Errorf("bad parameters passed, %s:%s", userId, accessCode)
+	}
+
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(userId, metav1.GetOptions{})
+
+		if err != nil {
+			return fmt.Errorf("error retrieving user")
+		}
+
+		if len(user.Spec.AccessCodes) == 0 {
+			user.Spec.AccessCodes = []string{accessCode}
+		} else {
+			for _, ac := range user.Spec.AccessCodes {
+				if ac == accessCode {
+					return fmt.Errorf("access code already added to user")
+				}
+			}
+		}
+
+		user.Spec.AccessCodes = append(user.Spec.AccessCodes, accessCode)
+
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(user)
+		return updateErr
+	})
+
+	if retryErr != nil {
+		return retryErr
+	}
+
+	return nil
+}
+
+func (a AuthServer) RemoveAccessCode(userId string, accessCode string) error {
+	if len(userId) == 0 || len(accessCode) == 0 {
+		return fmt.Errorf("bad parameters passed, %s:%s", userId, accessCode)
+	}
+
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(userId, metav1.GetOptions{})
+
+		if err != nil {
+			return fmt.Errorf("error retrieving user")
+		}
+
+		var newAccessCodes []string
+
+		if len(user.Spec.AccessCodes) == 0 {
+			// there were no access codes at this point so what are we doing
+			return nil
+		} else {
+			found := false
+			for _, ac := range user.Spec.AccessCodes {
+				if ac == accessCode {
+					found = true
+				} else {
+					newAccessCodes = append(newAccessCodes, ac)
+				}
+			}
+			if !found {
+				// the access code wasn't found so no update required
+				return nil
+			}
+		}
+
+		user.Spec.AccessCodes = newAccessCodes
+
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(user)
+		return updateErr
+	})
+
+	if retryErr != nil {
+		return retryErr
+	}
+
+	return nil
+}
+
+func (a AuthServer) ChangePassword(userId string, oldPassword string, newPassword string) error {
+	if len(userId) == 0 || len(oldPassword) == 0 || len(newPassword) == 0 {
+		return fmt.Errorf("bad parameters passed, %s", userId)
+	}
+
+	user, err := a.hfClientSet.HobbyfarmV1().Users().Get(userId, metav1.GetOptions{})
+	if err != nil {
+		glog.Errorf("error retrieving user: %v", err)
+		return fmt.Errorf("error retrieving user")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(oldPassword), []byte(user.Spec.Password))
+
+	if err != nil {
+		glog.Errorf("old password incorrect for user ID %s: %v", userId, err)
+		return fmt.Errorf("bad password change")
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("error while hashing password for email %s", user.Spec.Email)
+	}
+
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(userId, metav1.GetOptions{})
+
+		if err != nil {
+			return fmt.Errorf("error retrieving user")
+		}
+
+		user.Spec.Password = string(passwordHash)
+
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(user)
+		return updateErr
+	})
+
+	if retryErr != nil {
+		return retryErr
+	}
+
+	return nil
+}
+
+func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+
+	email := r.PostFormValue("email")
+	accessCode := r.PostFormValue("access_code")
+	password := r.PostFormValue("password")
+	// should we reconcile based on the access code posted in? nah
+
+	if len(email) == 0 || len(accessCode) == 0 || len(password) == 0 {
+		util.ReturnHTTPMessage(w, r, 400, "error", "invalid input. required fields: email, access_code, password")
+		return
+	}
+
+	userId, err := a.NewUser(email, password)
+
+	if err != nil {
+		glog.Errorf("error creating user %s %v", email, err)
+		util.ReturnHTTPMessage(w, r, 400, "error", "error creating user")
+		return
+	}
+
+	err = a.AddAccessCode(userId, accessCode)
+
+	if err != nil {
+		glog.Errorf("error creating user %s %v", email, err)
+		util.ReturnHTTPMessage(w, r, 400, "error", "error creating user")
 		return
 	}
 

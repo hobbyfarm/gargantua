@@ -114,6 +114,12 @@ func (v *VMClaimController) processNextVMClaim() bool {
 			return nil
 		}
 
+		if vmClaim.Status.Tainted {
+			v.vmClaimWorkqueue.Forget(obj)
+			glog.V(8).Infof("vm claim %s tainted, forgetting", objName)
+			return nil
+		}
+
 		if vmClaim.Status.Bound {
 			v.vmClaimWorkqueue.Forget(obj)
 			glog.V(8).Infof("vm claim %s already bound, forgetting", objName)
