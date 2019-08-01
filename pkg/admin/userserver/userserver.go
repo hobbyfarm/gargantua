@@ -47,9 +47,9 @@ func (a AdminUserServer) getUser(id string) (hfv1.User, error) {
 }
 
 func (a AdminUserServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/a/user/{id}", a.GetFunc).Methods("GET")
-	r.HandleFunc("/a/user/", a.UpdateFunc).Methods("PUT")
 	r.HandleFunc("/a/user/list", a.ListFunc).Methods("GET")
+	r.HandleFunc("/a/user/{id}", a.GetFunc).Methods("GET")
+	r.HandleFunc("/a/user", a.UpdateFunc).Methods("PUT")
 	glog.V(2).Infof("set up routes for User server")
 }
 
