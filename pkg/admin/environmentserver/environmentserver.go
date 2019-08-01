@@ -45,8 +45,8 @@ func (a AdminEnvironmentServer) getEnvironment(id string) (hfv1.Environment, err
 }
 
 func (a AdminEnvironmentServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/a/environment/{id}", a.GetFunc).Methods("GET")
 	r.HandleFunc("/a/environment/list", a.ListFunc).Methods("GET")
+	r.HandleFunc("/a/environment/{id}", a.GetFunc).Methods("GET")
 	r.HandleFunc("/a/environment/{environment_id}/available", a.PostEnvironmentAvailableFunc).Methods("POST")
 	glog.V(2).Infof("set up routes for environment server")
 }

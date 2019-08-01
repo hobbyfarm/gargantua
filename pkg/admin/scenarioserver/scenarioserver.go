@@ -50,9 +50,9 @@ func (a AdminScenarioServer) getScenario(id string) (hfv1.Scenario, error) {
 
 func (a AdminScenarioServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/scenario/new", a.CreateFunc).Methods("POST")
-	r.HandleFunc("/a/scenario/{id}", a.GetFunc).Methods("GET")
-	r.HandleFunc("/a/scenario/", a.UpdateFunc).Methods("PUT")
 	r.HandleFunc("/a/scenario/list", a.ListFunc).Methods("GET")
+	r.HandleFunc("/a/scenario/{id}", a.GetFunc).Methods("GET")
+	r.HandleFunc("/a/scenario/{id}", a.UpdateFunc).Methods("PUT")
 	glog.V(2).Infof("set up routes for Scenario server")
 }
 
@@ -202,7 +202,9 @@ func (a AdminScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	id := r.PostFormValue("id")
+	vars := mux.Vars(r)
+
+	id := vars["id"]
 	if id == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID passed in")
 		return

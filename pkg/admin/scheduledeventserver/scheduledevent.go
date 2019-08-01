@@ -52,7 +52,7 @@ func (a AdminScheduledEventServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/scheduledevent/list", a.ListFunc).Methods("GET")
 	r.HandleFunc("/a/scheduledevent/new", a.CreateFunc).Methods("POST")
 	r.HandleFunc("/a/scheduledevent/{id}", a.GetFunc).Methods("GET")
-	r.HandleFunc("/a/scheduledevent/update", a.UpdateFunc).Methods("PUT")
+	r.HandleFunc("/a/scheduledevent/{id}", a.UpdateFunc).Methods("PUT")
 	glog.V(2).Infof("set up routes for admin scheduledevent server")
 }
 
@@ -226,7 +226,9 @@ func (a AdminScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	id := r.PostFormValue("id")
+	vars := mux.Vars(r)
+
+	id := vars["id"]
 	if id == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID passed in")
 		return
