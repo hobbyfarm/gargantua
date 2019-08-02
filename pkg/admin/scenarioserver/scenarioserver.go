@@ -166,7 +166,7 @@ func (a AdminScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = json.Unmarshal([]byte(rawVirtualMachines), virtualmachines)
+	err = json.Unmarshal([]byte(rawVirtualMachines), &virtualmachines)
 	if err != nil {
 		glog.Errorf("error while unmarshaling VMs %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -245,7 +245,7 @@ func (a AdminScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) 
 
 		if rawVirtualMachines != "" {
 				virtualmachines := []map[string]string{}
-				err = json.Unmarshal([]byte(rawVirtualMachines), virtualmachines)
+				err = json.Unmarshal([]byte(rawVirtualMachines), &virtualmachines)
 				if err != nil {
 					glog.Errorf("error while unmarshaling VMs %v", err)
 					return fmt.Errorf("bad")

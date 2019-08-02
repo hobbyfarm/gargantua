@@ -171,7 +171,7 @@ func (a AdminScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Req
 
 	requiredVMUnmarshaled := map[string]map[string]int{}
 
-	err = json.Unmarshal([]byte(requiredVM), requiredVMUnmarshaled)
+	err = json.Unmarshal([]byte(requiredVM), &requiredVMUnmarshaled)
 	if err != nil {
 		glog.Errorf("error while unmarshaling required VM's %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -275,7 +275,7 @@ func (a AdminScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Req
 		if requiredVM != "" {
 			requiredVMUnmarshaled := map[string]map[string]int{}
 
-			err = json.Unmarshal([]byte(requiredVM), requiredVMUnmarshaled)
+			err = json.Unmarshal([]byte(requiredVM), &requiredVMUnmarshaled)
 			if err != nil {
 				glog.Errorf("error while unmarshaling required VM's %v", err)
 				return fmt.Errorf("bad")
