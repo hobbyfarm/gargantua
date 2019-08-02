@@ -160,7 +160,7 @@ func (a AdminUserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		if accesscodes != "" {
 			var acUnmarshaled []string
 
-			err = json.Unmarshal([]byte(accesscodes), acUnmarshaled)
+			err = json.Unmarshal([]byte(accesscodes), &acUnmarshaled)
 			if err != nil {
 				glog.Errorf("error while unmarshaling steps %v", err)
 				return fmt.Errorf("bad")

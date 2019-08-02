@@ -179,7 +179,7 @@ func (a AdminScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Req
 	}
 
 	scenarios := []string{}
-	err = json.Unmarshal([]byte(scenariosRaw), scenarios)
+	err = json.Unmarshal([]byte(scenariosRaw), &scenarios)
 	if err != nil {
 		glog.Errorf("error while unmarshaling required VM's %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -290,7 +290,7 @@ func (a AdminScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Req
 		if scenariosRaw != "" {
 			if !scheduledEvent.Status.Provisioned { // we can't change the scenarios after the scheduled event was provisioned
 				scenarios := []string{}
-				err = json.Unmarshal([]byte(scenariosRaw), scenarios)
+				err = json.Unmarshal([]byte(scenariosRaw), &scenarios)
 				if err != nil {
 					glog.Errorf("error while unmarshaling required VM's %v", err)
 					return fmt.Errorf("bad")

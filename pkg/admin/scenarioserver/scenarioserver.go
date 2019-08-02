@@ -159,7 +159,7 @@ func (a AdminScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) 
 	steps := []hfv1.ScenarioStep{}
 	virtualmachines := []map[string]string{}
 
-	err = json.Unmarshal([]byte(rawSteps), steps)
+	err = json.Unmarshal([]byte(rawSteps), &steps)
 	if err != nil {
 		glog.Errorf("error while unmarshaling steps %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -235,7 +235,7 @@ func (a AdminScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) 
 		if rawSteps != "" {
 			steps := []hfv1.ScenarioStep{}
 
-			err = json.Unmarshal([]byte(rawSteps), rawSteps)
+			err = json.Unmarshal([]byte(rawSteps), &steps)
 			if err != nil {
 				glog.Errorf("error while unmarshaling steps %v", err)
 				return fmt.Errorf("bad")
