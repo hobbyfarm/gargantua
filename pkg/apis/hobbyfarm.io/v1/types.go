@@ -79,6 +79,8 @@ type VirtualMachineClaimList struct {
 type VirtualMachineClaimSpec struct {
 	Id		string	`json:"id"`
 	UserId  string  `json:"user"`
+	RestrictedBind bool `json:"restricted_bind"`
+	RestrictedBindValue string `json:"restricted_bind_value"`
 	VirtualMachines map[string]VirtualMachineClaimVM `json:"vm"`
 	VirtualMachineClassId string `json:"vm_class_id"`
 }
@@ -150,7 +152,7 @@ type EnvironmentSpec struct {
 	DNSSuffix   			string	`json:"dnssuffix"`
 	Provider				string	`json:"provider"` // aws,vsphere,azure,custom ;)
 	TemplateMapping			map[string]map[string]string `json:"template_mapping"` //  lol
-	EnvironmentSpecifics		map[string]string `json:"environment_specifics"`
+	EnvironmentSpecifics	map[string]string `json:"environment_specifics"`
 	IPTranslationMap		map[string]string `json:"ip_translation_map"`
 	WsEndpoint				string		`json:"ws_endpoint"`
 	CapacityMode			CapacityMode `json:"capacity_mode"`
@@ -185,6 +187,8 @@ type VirtualMachineSetSpec struct {
 	Environment string `json:"environment"`
 	VMTemplate string `json:"vm_template"`
 	BaseName	string	`json:"base_name"`
+	RestrictedBind	bool `json:"restricted_bind"`
+	RestrictedBindValue string `json:"restricted_bind_value"`
 }
 
 type VirtualMachineSetStatus struct {
@@ -232,6 +236,7 @@ type ScenarioSpec struct {
 	Description string `json:"description"`
 	Steps []ScenarioStep `json:"steps"`
 	VirtualMachines []map[string]string `json:"virtualmachines"`
+	KeepAliveDuration string `json:"keepalive_duration"`
 }
 
 type ScenarioStep struct {
@@ -263,6 +268,7 @@ type ScenarioSessionSpec struct {
 	ScenarioId	string			`json:"scenario"`
 	UserId		string			`json:"user"`
 	VmClaimSet		[]string	`json:"vm_claim"`
+	AccessCode  string			`json:"access_code"`
 }
 
 type ScenarioSessionStatus struct {
@@ -297,6 +303,8 @@ type AccessCodeSpec struct {
 	Scenarios		[]string	`json:"scenarios"`
 	Expiration	string	`json:"expiration"`
 	VirtualMachineSets []string `json:"vmsets"`
+	RestrictedBind bool `json:"restricted_bind"`
+	RestrictedBindValue string `json:"restricted_bind_value"`
 }
 
 // +genclient
@@ -353,6 +361,8 @@ type ScheduledEventSpec struct {
 	EndTime string `json:"end_time"`
 	RequiredVirtualMachines map[string]map[string]int `json:"required_vms"`// map of environment to a map of strings it should be environment: vm template: count
 	AccessCode string `json:"access_code"`
+	RestrictedBind bool	`json:"restricted_bind"` // if restricted_bind is true, we need to make the scenario sessions when they get created only bind to vmsets that are created by this scheduledevent
+	RestrictedBindValue string `json:"restricted_bind_value"`
 	Scenarios []string `json:"scenarios"`
 }
 

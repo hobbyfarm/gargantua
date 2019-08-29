@@ -95,7 +95,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	acClient, err := accesscode.NewAccessCodeClient(hfClient, hfInformerFactory)
+	acClient, err := accesscode.NewAccessCodeClient(hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	ssServer, err := scenariosessionserver.NewScenarioSessionServer(authClient, scenarioClient, hfClient, hfInformerFactory)
+	ssServer, err := scenariosessionserver.NewScenarioSessionServer(authClient, acClient, scenarioClient, hfClient, hfInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}

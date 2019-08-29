@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
@@ -27,15 +28,17 @@ const (
 type ScenarioSessionServer struct {
 	hfClientSet    *hfClientset.Clientset
 	scenarioClient *scenarioclient.ScenarioClient
+	accessCodeClient *accesscode.AccessCodeClient
 	auth           *authclient.AuthClient
 	ssIndexer      cache.Indexer
 }
 
-func NewScenarioSessionServer(authClient *authclient.AuthClient, scenarioClient *scenarioclient.ScenarioClient, hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioSessionServer, error) {
+func NewScenarioSessionServer(authClient *authclient.AuthClient, accessCodeClient *accesscode.AccessCodeClient, scenarioClient *scenarioclient.ScenarioClient, hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioSessionServer, error) {
 	a := ScenarioSessionServer{}
 	a.hfClientSet = hfClientSet
 	a.scenarioClient = scenarioClient
 	a.auth = authClient
+	a.accessCodeClient = accessCodeClient
 	inf := hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer()
 	indexers := map[string]cache.IndexFunc{ssIndex: ssIdIndexer}
 	inf.AddIndexers(indexers)
@@ -60,6 +63,32 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 
 	scenarioId := r.PostFormValue("scenario")
 
+	accessCode := r.PostFormValue("access_code")
+
+	restrictedBind := false
+	restrictedBindVal := ""
+
+	if accessCode == "" {
+		accessCode, err = sss.accessCodeClient.GetClosestAccessCodeForScenario(user.Spec.Id, scenarioId)
+		if err != nil {
+			glog.Error(err)
+			util.ReturnHTTPMessage(w, r, 500, "error", "error retrieving access code applicable to scenario")
+			return
+		}
+	}
+
+	// we should validate the user can use this access code
+	// let's figure out the restricted bind value
+	accessCodeObj, err  := sss.hfClientSet.HobbyfarmV1().AccessCodes().Get(accessCode, metav1.GetOptions{})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "could not retrieve access code")
+		return
+	}
+	if accessCodeObj.Spec.RestrictedBind {
+		restrictedBind = accessCodeObj.Spec.RestrictedBind
+		restrictedBindVal = accessCodeObj.Spec.RestrictedBindValue
+	}
+
 	if scenarioId == "" {
 		util.ReturnHTTPMessage(w, r, 500, "error", "no scenario id passed in")
 		return
@@ -82,6 +111,7 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 	}
 	now := time.Now()
 
+	// should we check the scenario sessions list for the restricted bind value and match if one is passed in? probably...
 	for _, v := range scenarioSessions.Items {
 		expires, err := time.Parse(time.UnixDate, v.Status.ExpirationTime)
 		if err != nil {
@@ -125,6 +155,13 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 		virtualMachineClaim.Status.Bound = false
 		virtualMachineClaim.Status.Ready = false
 
+		if restrictedBind {
+			virtualMachineClaim.Spec.RestrictedBind = restrictedBind
+			virtualMachineClaim.Spec.RestrictedBindValue = restrictedBindVal
+		} else {
+			virtualMachineClaim.Spec.RestrictedBind = false
+		}
+
 		createdVmClaim, err := sss.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Create(&virtualMachineClaim)
 		if err != nil {
 			glog.Errorf("error creating vm claim %v", err)
@@ -134,8 +171,16 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 		scenarioSession.Spec.VmClaimSet[index] = createdVmClaim.Spec.Id
 	}
 
+	var ssTimeout string
+
+	if scenario.Spec.KeepAliveDuration != "" {
+		ssTimeout = scenario.Spec.KeepAliveDuration
+	} else {
+		ssTimeout = newSSTimeout
+	}
+
 	scenarioSession.Status.StartTime = now.Format(time.UnixDate)
-	duration, _ := time.ParseDuration(newSSTimeout)
+	duration, _ := time.ParseDuration(ssTimeout)
 
 	scenarioSession.Status.ExpirationTime = now.Add(duration).Format(time.UnixDate)
 	scenarioSession.Status.Active = true
@@ -226,8 +271,24 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 		return
 	}
 
+	scenario, err := sss.scenarioClient.GetScenarioById(ss.Spec.ScenarioId)
+
+	if err != nil {
+		glog.Errorf("error retrieving scenario %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "error getting scenario")
+		return
+	}
+
+	var ssTimeout string
+
+	if scenario.Spec.KeepAliveDuration != "" {
+		ssTimeout = scenario.Spec.KeepAliveDuration
+	} else {
+		ssTimeout = newSSTimeout
+	}
+
 	now := time.Now()
-	duration, _ := time.ParseDuration(keepaliveSSTimeout)
+	duration, _ := time.ParseDuration(ssTimeout)
 
 	expiration := now.Add(duration).Format(time.UnixDate)
 

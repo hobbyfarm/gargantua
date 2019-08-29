@@ -285,6 +285,12 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 						BaseName:    vmsRand,
 					},
 				}
+				if se.Spec.RestrictedBind {
+					vms.Spec.RestrictedBind = true
+					vms.Spec.RestrictedBindValue = se.Spec.RestrictedBindValue
+				} else {
+					vms.Spec.RestrictedBind = false
+				}
 				vms, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().Create(vms)
 				if err != nil {
 					glog.Error(err)
@@ -311,6 +317,13 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 				VirtualMachineSets: vmSets,
 				Expiration:         se.Spec.EndTime,
 			},
+		}
+
+		if se.Spec.RestrictedBind {
+			ac.Spec.RestrictedBind = true
+			ac.Spec.RestrictedBindValue = se.Spec.RestrictedBindValue
+		} else {
+			ac.Spec.RestrictedBind = false
 		}
 
 		ac, err = s.hfClientSet.HobbyfarmV1().AccessCodes().Create(ac)

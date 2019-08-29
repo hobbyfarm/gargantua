@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
+	"math/rand"
 	"time"
 )
 type VMClaimController struct {
@@ -152,15 +153,32 @@ func (v *VMClaimController) processNextVMClaim() bool {
 
 		var chosenEnvironmentId string
 
-		for _, env := range envList.Items {
+		environments := envList.Items
+
+		rand.Seed(time.Now().UnixNano())
+
+		rand.Shuffle(len(environments), func(i, j int) {
+			environments[i], environments[j] = environments[j], environments[i]
+		})
+
+		for _, env := range environments {
 			acceptable := true
 			for t, n := range needed {
-				vms, err := v.vmLister.List(labels.Set{
+
+				vmLabels := labels.Set{
 					"bound": "false",
 					"environment": env.Name,
 					"ready": "true", // do we really want to be marking ready as a label
 					"template": t,
-				}.AsSelector())
+				}
+				if vmClaim.Spec.RestrictedBind {
+					vmLabels["restrictedbind"] = "true"
+					vmLabels["restrictedbindvalue"] = vmClaim.Spec.RestrictedBindValue
+				} else {
+					vmLabels["restrictedbind"] = "false"
+				}
+
+				vms, err := v.vmLister.List(vmLabels.AsSelector())
 
 				if err != nil {
 					glog.Error(err)
@@ -188,7 +206,7 @@ func (v *VMClaimController) processNextVMClaim() bool {
 
 		for name, vmStruct := range vmClaim.Spec.VirtualMachines {
 			if vmStruct.VirtualMachineId == "" {
-				vmId, err := v.assignNextFreeVM(vmClaim.Spec.Id, vmClaim.Spec.UserId, vmStruct.Template, chosenEnvironmentId)
+				vmId, err := v.assignNextFreeVM(vmClaim.Spec.Id, vmClaim.Spec.UserId, vmStruct.Template, chosenEnvironmentId, vmClaim.Spec.RestrictedBind, vmClaim.Spec.RestrictedBindValue)
 				if err != nil {
 					glog.Fatalf("error while assigning next free VM %v", err)
 				}
@@ -216,13 +234,23 @@ func (v *VMClaimController) processNextVMClaim() bool {
 	return true
 }
 
-func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, template string, environmentId string) (string, error) {
-	vms, err := v.vmLister.List(labels.Set{
+func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, template string, environmentId string, restrictedBind bool, restrictedBindValue string) (string, error) {
+
+	vmLabels := labels.Set{
 		"bound": "false",
 		"environment": environmentId,
 		"ready": "true",
 		"template": template,
-	}.AsSelector())
+	}
+
+	if restrictedBind {
+		vmLabels["restrictedbind"] = "true"
+		vmLabels["restrictedbindvalue"] = restrictedBindValue
+	} else {
+		vmLabels["restrictedbind"] = "false"
+	}
+
+	vms, err := v.vmLister.List(vmLabels.AsSelector())
 
 	if err != nil {
 		return  "", fmt.Errorf("error while listing all vms %v", err)
@@ -272,32 +300,6 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, temp
 	}
 
 	return vmId, fmt.Errorf("unknown error while assigning next free vm")
-
-}
-
-func (v *VMClaimController) rollbackAssignmentOfVM(vmId string) (error) {
-
-			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachines().Get(vmId, metav1.GetOptions{})
-				if getErr != nil {
-					return fmt.Errorf("Error retrieving latest version of Virtual Machine %s: %v", vmId, getErr)
-				}
-
-				result.Status.Allocated = false
-				result.Spec.VirtualMachineClaimId = ""
-				result.Spec.UserId = ""
-
-				_, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachines().Update(result)
-				glog.V(4).Infof("updated result for virtual machine")
-
-
-				return updateErr
-			})
-			if retryErr != nil {
-				return fmt.Errorf("Error updating Virtual Machine: %s, %v", vmId, retryErr)
-			}
-
-	return fmt.Errorf("unknown error while rolling back assignment of vm")
 
 }
 

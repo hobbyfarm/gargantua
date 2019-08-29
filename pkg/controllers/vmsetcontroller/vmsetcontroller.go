@@ -258,6 +258,12 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 					Hostname:      "",
 				},
 			}
+			if vmset.Spec.RestrictedBind {
+				vm.ObjectMeta.Labels["restrictedbind"] = "true"
+				vm.ObjectMeta.Labels["restrictedbindvalue"] = vmset.Spec.RestrictedBindValue
+			} else {
+				vm.ObjectMeta.Labels["restrictedbind"] = "false"
+			}
 			vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Create(vm)
 			if err != nil {
 				glog.Error(err)

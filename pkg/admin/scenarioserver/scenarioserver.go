@@ -150,6 +150,8 @@ func (a AdminScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) 
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no steps passed in")
 		return
 	}
+	keepaliveDuration := r.PostFormValue("keepalive_duration")
+	// we won't error if no keep alive duration is passed in or if it's blank because we'll default elsewhere
 	rawVirtualMachines := r.PostFormValue("virtualmachines")
 	if rawVirtualMachines == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no virtualmachines passed in")
@@ -185,6 +187,7 @@ func (a AdminScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) 
 	scenario.Spec.Description = description
 	scenario.Spec.VirtualMachines = virtualmachines
 	scenario.Spec.Steps = steps
+	scenario.Spec.KeepAliveDuration = keepaliveDuration
 
 	scenario, err = a.hfClientSet.HobbyfarmV1().Scenarios().Create(scenario)
 	if err != nil {
@@ -223,6 +226,7 @@ func (a AdminScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) 
 		name := r.PostFormValue("name")
 		description := r.PostFormValue("description")
 		rawSteps := r.PostFormValue("steps")
+		keepaliveDuration := r.PostFormValue("keepalive_duration")
 		rawVirtualMachines := r.PostFormValue("virtualmachines")
 
 		if name != "" {
@@ -230,6 +234,9 @@ func (a AdminScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) 
 		}
 		if description != "" {
 			scenario.Spec.Description = description
+		}
+		if keepaliveDuration != "" {
+			scenario.Spec.KeepAliveDuration = keepaliveDuration
 		}
 
 		if rawSteps != "" {
