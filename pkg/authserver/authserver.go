@@ -140,6 +140,8 @@ func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 		return fmt.Errorf("bad parameters passed, %s:%s", userId, accessCode)
 	}
 
+	accessCode = strings.ToLower(accessCode)
+
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(userId, metav1.GetOptions{})
 
@@ -175,6 +177,8 @@ func (a AuthServer) RemoveAccessCode(userId string, accessCode string) error {
 		return fmt.Errorf("bad parameters passed, %s:%s", userId, accessCode)
 	}
 
+	accessCode = strings.ToLower(accessCode)
+	
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(userId, metav1.GetOptions{})
 
@@ -262,7 +266,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	r.ParseForm()
 
 	email := r.PostFormValue("email")
-	accessCode := r.PostFormValue("access_code")
+	accessCode := strings.ToLower(r.PostFormValue("access_code"))
 	password := r.PostFormValue("password")
 	// should we reconcile based on the access code posted in? nah
 
