@@ -63,7 +63,8 @@ func (acc AccessCodeClient) GetAccessCodes(codes []string, expiredOk bool) ([]hf
 				}
 
 				if time.Now().After(expiration) { // if the access code is expired don't return any scenarios
-					return nil, nil
+					glog.V(4).Infof("access code %s was expired at %s", accessCode.Name, accessCode.Spec.Expiration)
+					continue
 				}
 			}
 		}
