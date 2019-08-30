@@ -49,7 +49,9 @@ func (acc AccessCodeClient) GetAccessCodes(codes []string, expiredOk bool) ([]hf
 		}
 
 		if !found {
-			return nil, fmt.Errorf("access code not found")
+			//return nil, fmt.Errorf("access code not found")
+			glog.V(4).Infof("access code %s seems to be invalid", code)
+			continue
 		}
 
 		if !expiredOk {
@@ -122,11 +124,13 @@ func (acc AccessCodeClient) GetClosestAccessCodeForScenario(userID string, scena
 	}
 
 	sort.Slice(accessCodes, func(i, j int) bool {
-		if accessCodes[i].Spec.Expiration == "" {
-			return false
-		}
-		if accessCodes[j].Spec.Expiration == "" {
-			return true
+		if accessCodes[i].Spec.Expiration == "" || accessCodes[j].Spec.Expiration == "" {
+			if accessCodes[i].Spec.Expiration == "" {
+				return false
+			}
+			if accessCodes[j].Spec.Expiration == "" {
+				return true
+			}
 		}
 		iExp, err := time.Parse(time.UnixDate, accessCodes[i].Spec.Expiration)
 		if err != nil {
