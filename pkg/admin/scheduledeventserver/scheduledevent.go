@@ -169,6 +169,14 @@ func (a AdminScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	restrictionDisabled := false
+	restrictionDisabledRaw := r.PostFormValue("disable_restriction")
+	if restrictionDisabledRaw == "" {
+		restrictionDisabled = false
+	} else {
+		restrictionDisabled = true
+	}
+
 	requiredVMUnmarshaled := map[string]map[string]int{}
 
 	err = json.Unmarshal([]byte(requiredVM), &requiredVMUnmarshaled)
@@ -207,6 +215,13 @@ func (a AdminScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Req
 	scheduledEvent.Status.Provisioned = false
 	scheduledEvent.Status.AccessCodeId = ""
 	scheduledEvent.Status.VirtualMachineSets = []string{}
+
+	if restrictionDisabled {
+		scheduledEvent.Spec.RestrictedBind = false
+	} else {
+		scheduledEvent.Spec.RestrictedBind = true
+		scheduledEvent.Spec.RestrictedBindValue = "se-" + strings.ToLower(sha)
+	}
 
 	scheduledEvent, err = a.hfClientSet.HobbyfarmV1().ScheduledEvents().Create(scheduledEvent)
 	if err != nil {
