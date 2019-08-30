@@ -64,6 +64,7 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 	scenarioId := r.PostFormValue("scenario")
 
 	accessCode := r.PostFormValue("access_code")
+	glog.V(4).Infof("access code passed in was %s", accessCode)
 
 	restrictedBind := false
 	restrictedBindVal := ""

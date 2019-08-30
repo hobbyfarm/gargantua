@@ -141,5 +141,5 @@ func (acc AccessCodeClient) GetClosestAccessCodeForScenario(userID string, scena
 
 	glog.V(6).Infof("Access code list was %v", accessCodes)
 
-	return accessCodes[0].Spec.Code, nil
+	return accessCodes[0].Name, nil
 }
