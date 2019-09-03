@@ -367,7 +367,7 @@ type ScheduledEventSpec struct {
 }
 
 type ScheduledEventStatus struct {
-	AccessCodeId	string 	`json:"access_code"`
+	AccessCodeId	string 	`json:"access_code_id"`
 	VirtualMachineSets []string 	`json:"vmsets"`
 	Active	bool	`json:"active"`
 	Provisioned bool	`json:"provisioned"`
