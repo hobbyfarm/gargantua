@@ -178,7 +178,7 @@ func (a AuthServer) RemoveAccessCode(userId string, accessCode string) error {
 	}
 
 	accessCode = strings.ToLower(accessCode)
-	
+
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(userId, metav1.GetOptions{})
 
