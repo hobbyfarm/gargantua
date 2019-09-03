@@ -145,34 +145,31 @@ func (a AdminScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) 
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no description passed in")
 		return
 	}
-	rawSteps := r.PostFormValue("steps")
-	if rawSteps == "" {
-		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no steps passed in")
-		return
-	}
+
 	keepaliveDuration := r.PostFormValue("keepalive_duration")
 	// we won't error if no keep alive duration is passed in or if it's blank because we'll default elsewhere
-	rawVirtualMachines := r.PostFormValue("virtualmachines")
-	if rawVirtualMachines == "" {
-		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no virtualmachines passed in")
-		return
-	}
 
 	steps := []hfv1.ScenarioStep{}
 	virtualmachines := []map[string]string{}
 
-	err = json.Unmarshal([]byte(rawSteps), &steps)
-	if err != nil {
-		glog.Errorf("error while unmarshaling steps %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
-		return
+	rawSteps := r.PostFormValue("steps")
+	if rawSteps != "" {
+		err = json.Unmarshal([]byte(rawSteps), &steps)
+		if err != nil {
+			glog.Errorf("error while unmarshaling steps %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
 	}
 
-	err = json.Unmarshal([]byte(rawVirtualMachines), &virtualmachines)
-	if err != nil {
-		glog.Errorf("error while unmarshaling VMs %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
-		return
+	rawVirtualMachines := r.PostFormValue("virtualmachines")
+	if rawVirtualMachines != "" {
+		err = json.Unmarshal([]byte(rawVirtualMachines), &virtualmachines)
+		if err != nil {
+			glog.Errorf("error while unmarshaling VMs %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
 	}
 
 	scenario := &hfv1.Scenario{}
