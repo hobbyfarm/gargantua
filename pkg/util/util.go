@@ -353,6 +353,9 @@ func MaxAvailableDuringPeriod(hfClientset *hfClientset.Clientset, environment st
 
 	maxRaws := make([]hfv1.CMSStruct, 1)
 	maxCounts := map[string]int{}
+	for t, c := range environmentFromK8s.Spec.CountCapacity {
+		maxCounts[t] = c
+	}
 	for i := start; i.Before(end) || i.Equal(end); i = i.Add(duration) {
 		glog.V(8).Infof("Checking time at %s", i.Format(time.UnixDate))
 		maxRaw := hfv1.CMSStruct{}
