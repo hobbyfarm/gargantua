@@ -198,6 +198,12 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		"vmset": vmset.Name,
 	}.AsSelector())
 
+	if len(currentVMs) > vmset.Spec.Count {
+		// if the desired number of vms is less than the current number of VM's
+		// let's go through and taint/delete the ones that don't belong
+
+	}
+
 	if len(currentVMs) < vmset.Spec.Count { // if desired count is greater than the current provisioned
 		// 1. let's check the environment to see if there is available capacity
 		// 2. if available capacity is available let's create new VM's
@@ -257,6 +263,12 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 					EnvironmentId: env.Name,
 					Hostname:      "",
 				},
+			}
+			if vmset.Spec.RestrictedBind {
+				vm.ObjectMeta.Labels["restrictedbind"] = "true"
+				vm.ObjectMeta.Labels["restrictedbindvalue"] = vmset.Spec.RestrictedBindValue
+			} else {
+				vm.ObjectMeta.Labels["restrictedbind"] = "false"
 			}
 			vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Create(vm)
 			if err != nil {

@@ -2,32 +2,95 @@ package accesscode
 
 import (
 	"fmt"
+	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	"k8s.io/client-go/tools/cache"
-)
-
-const (
-	acIndex = "acc.hobbyfarm.io/code-index"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"time"
+	"sort"
 )
 
 type AccessCodeClient struct {
-
 	hfClientSet *hfClientset.Clientset
-	accessCodeIndexer cache.Indexer
+}
+
+func NewAccessCodeClient(hfClientset *hfClientset.Clientset) (*AccessCodeClient, error) {
+	acc := AccessCodeClient{}
+	acc.hfClientSet = hfClientset
+	return &acc, nil
+}
+
+func (acc AccessCodeClient) GetSomething(code string) (error) {
+	return nil
+}
+
+func (acc AccessCodeClient) GetAccessCodes(codes []string, expiredOk bool) ([]hfv1.AccessCode, error) {
+	if len(codes) == 0 {
+		return nil, fmt.Errorf("code list passed in was less than 0")
+	}
+
+	accessCodeList, err := acc.hfClientSet.HobbyfarmV1().AccessCodes().List(metav1.ListOptions{})
+
+	if err != nil {
+		return nil, fmt.Errorf("error while retrieving access codes %v", err)
+	}
+
+	var accessCodes []hfv1.AccessCode
+
+	for _, code := range codes {
+		found := false
+		var accessCode hfv1.AccessCode
+		for _, ac := range accessCodeList.Items {
+			if ac.Spec.Code == code {
+				found = true
+				accessCode = ac
+				break
+			}
+		}
+
+		if !found {
+			//return nil, fmt.Errorf("access code not found")
+			glog.V(4).Infof("access code %s seems to be invalid", code)
+			continue
+		}
+
+		if !expiredOk {
+			if accessCode.Spec.Expiration != "" {
+				expiration, err := time.Parse(time.UnixDate, accessCode.Spec.Expiration)
+
+				if err != nil {
+					return nil, fmt.Errorf("error while parsing expiration time for access code %s %v", code, err)
+				}
+
+				if time.Now().After(expiration) { // if the access code is expired don't return any scenarios
+					glog.V(4).Infof("access code %s was expired at %s", accessCode.Name, accessCode.Spec.Expiration)
+					continue
+				}
+			}
+		}
+		accessCodes = append(accessCodes, accessCode)
+	}
+
+	return accessCodes, nil
 
 }
 
-func NewAccessCodeClient(hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*AccessCodeClient, error) {
-	acc := AccessCodeClient{}
+func (acc AccessCodeClient) GetAccessCode(code string, expiredOk bool) (hfv1.AccessCode, error) {
+	if len(code) == 0 {
+		return hfv1.AccessCode{}, fmt.Errorf("code was empty")
+	}
 
-	acc.hfClientSet = hfClientset
-	inf := hfInformerFactory.Hobbyfarm().V1().AccessCodes().Informer()
-	indexers := map[string]cache.IndexFunc{acIndex: acIndexer}
-	inf.AddIndexers(indexers)
-	acc.accessCodeIndexer = inf.GetIndexer()
-	return &acc, nil
+	accessCodes, err := acc.GetAccessCodes([]string{code}, false)
+
+	if err != nil {
+		return hfv1.AccessCode{}, fmt.Errorf("access code (%s) not found: %v", code, err)
+	}
+
+	if len(accessCodes) != 1 {
+		return hfv1.AccessCode{}, fmt.Errorf("insane result found")
+	}
+
+	return accessCodes[0], nil
 }
 
 func (acc AccessCodeClient) GetScenarioIds(code string) ([]string, error) {
@@ -37,29 +100,51 @@ func (acc AccessCodeClient) GetScenarioIds(code string) ([]string, error) {
 		return ids, fmt.Errorf("code was empty")
 	}
 
-	obj, err := acc.accessCodeIndexer.ByIndex(acIndex, code)
+	accessCode, err := acc.GetAccessCode(code, false)
 
 	if err != nil {
-		return ids, fmt.Errorf("error while retrieving access code %s %v", code, err)
-	}
-
-	if len(obj) < 1 {
-		return ids, fmt.Errorf("error while retrieving access code %s", code)
-	}
-
-	accessCode, ok := obj[0].(*hfv1.AccessCode)
-
-	if !ok {
-		return ids, fmt.Errorf("error while retrieving access code %s %v", code, ok)
+		return ids, fmt.Errorf("error finding access code %s: %v", code, err)
 	}
 
 	return accessCode.Spec.Scenarios, nil
 }
 
-func acIndexer(obj interface{}) ([]string, error) {
-	accessCode, ok := obj.(*hfv1.AccessCode)
-	if !ok {
-		return []string{}, nil
+func (acc AccessCodeClient) GetClosestAccessCodeForScenario(userID string, scenario string) (string, error) {
+	// basically let's get all of the access codes, sort them by expiration, and start going down the list looking for access codes.
+
+	user, err := acc.hfClientSet.HobbyfarmV1().Users().Get(userID, metav1.GetOptions{}) // @TODO: FIX THIS TO NOT DIRECTLY CALL USER
+
+	if err != nil {
+		return "", fmt.Errorf("error retrieving user: %v", err)
 	}
-	return []string{accessCode.Spec.Code}, nil
+
+	accessCodes, err := acc.GetAccessCodes(user.Spec.AccessCodes, false)
+
+	if err != nil {
+		return "", fmt.Errorf("access codes were not found %v", err)
+	}
+
+	sort.Slice(accessCodes, func(i, j int) bool {
+		if accessCodes[i].Spec.Expiration == "" || accessCodes[j].Spec.Expiration == "" {
+			if accessCodes[i].Spec.Expiration == "" {
+				return false
+			}
+			if accessCodes[j].Spec.Expiration == "" {
+				return true
+			}
+		}
+		iExp, err := time.Parse(time.UnixDate, accessCodes[i].Spec.Expiration)
+		if err != nil {
+			return false
+		}
+		jExp, err := time.Parse(time.UnixDate, accessCodes[j].Spec.Expiration)
+		if err != nil {
+			return true
+		}
+		return iExp.Before(jExp)
+	})
+
+	glog.V(6).Infof("Access code list was %v", accessCodes)
+
+	return accessCodes[0].Name, nil
 }

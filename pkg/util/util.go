@@ -299,3 +299,138 @@ func  EnsureVMNotReady(hfClientset *hfClientset.Clientset, vmLister hfListers.Vi
 
 	return nil
 }
+
+// pending rename...
+type Maximus struct {
+	CapacityMode			hfv1.CapacityMode `json:"capacity_mode"`
+	AvailableCount			map[string]int `json:"available_count"`
+	AvailableCapacity		hfv1.CMSStruct `json:"available_capacity"`
+}
+
+func MaxAvailableDuringPeriod(hfClientset *hfClientset.Clientset, environment string, startString string, endString string) (Maximus, error) {
+
+	duration, _ := time.ParseDuration("30m")
+
+	start, err := time.Parse(time.UnixDate, startString)
+
+	if err != nil {
+		return Maximus{}, fmt.Errorf("error parsing start time %v", err)
+	}
+
+	start = start.Round(duration)
+
+	end, err := time.Parse(time.UnixDate, endString)
+
+	if err != nil {
+		return Maximus{}, fmt.Errorf("error parsing end time %v", err)
+	}
+
+	end = end.Round(duration)
+
+	environmentFromK8s, err := hfClientset.HobbyfarmV1().Environments().Get(environment, metav1.GetOptions{})
+
+	if err != nil {
+		return Maximus{}, fmt.Errorf("error retrieving environment %v", err)
+	}
+
+	vmTemplatesFromK8s, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
+
+	if err != nil {
+		return Maximus{}, fmt.Errorf("error retrieving virtual machine templates %v", err)
+	}
+
+	vmTemplateResources := map[string]hfv1.CMSStruct{}
+
+	for _, vmTemplateInfo := range vmTemplatesFromK8s.Items {
+		vmTemplateResources[vmTemplateInfo.Name] = vmTemplateInfo.Spec.Resources
+	}
+
+	scheduledEvents, err := hfClientset.HobbyfarmV1().ScheduledEvents().List(metav1.ListOptions{})
+
+	if err != nil {
+		return Maximus{}, fmt.Errorf("error retrieving scheduled events %v", err)
+	}
+
+	maxRaws := make([]hfv1.CMSStruct, 1)
+	maxCounts := map[string]int{}
+	for t, c := range environmentFromK8s.Spec.CountCapacity {
+		maxCounts[t] = c
+	}
+	for i := start; i.Before(end) || i.Equal(end); i = i.Add(duration) {
+		glog.V(8).Infof("Checking time at %s", i.Format(time.UnixDate))
+		maxRaw := hfv1.CMSStruct{}
+		currentMaxCount := map[string]int{}
+		for _, se := range scheduledEvents.Items {
+			if vmMapping, ok := se.Spec.RequiredVirtualMachines[environment]; ok {
+				seStart, err := time.Parse(time.UnixDate, se.Spec.StartTime)
+				if err != nil {
+					return Maximus{}, fmt.Errorf("error parsing scheduled event start %v", err)
+				}
+				seEnd, err := time.Parse(time.UnixDate, se.Spec.EndTime)
+				if err != nil {
+					return Maximus{}, fmt.Errorf("error parsing scheduled event end %v", err)
+				}
+				// i is the checking time
+				// if the time to be checked is after or equal to the start time of the scheduled event
+				// and if i is before or equal to the end of the scheduled event
+				if (i.After(seStart) || i.Equal(seStart)) && (i.Before(seEnd) || i.Equal(seEnd)) {
+					if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeRaw {
+						for vmTemplateName, vmTemplateCount := range vmMapping {
+							if vmTemplateR, ok := vmTemplateResources[vmTemplateName]; ok {
+									maxRaw.CPU = vmTemplateR.CPU*vmTemplateCount
+									maxRaw.Memory = vmTemplateR.Memory*vmTemplateCount
+									maxRaw.Storage = vmTemplateR.Storage*vmTemplateCount
+							} else {
+								return Maximus{}, fmt.Errorf("error retrieving vm template %s resources %v", vmTemplateName, err)
+							}
+						}
+					} else if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeCount {
+						for vmTemplateName, vmTemplateCount := range vmMapping {
+							currentMaxCount[vmTemplateName] = currentMaxCount[vmTemplateName] + vmTemplateCount
+						}
+					} else {
+						return Maximus{}, fmt.Errorf("environment %s had unexpected capacity mode %s", environment, environmentFromK8s.Spec.CapacityMode)
+					}
+				}
+			}
+		}
+		maxRaws = append(maxRaws, maxRaw)
+		if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeCount {
+			for vmt, currentCount := range currentMaxCount {
+				if maxCount, ok := maxCounts[vmt]; ok {
+					if maxCount < currentCount {
+						maxCounts[vmt] = currentCount
+					}
+				} else {
+					maxCounts[vmt] = currentCount
+				}
+			}
+		}
+	}
+	max := Maximus{}
+	max.CapacityMode = environmentFromK8s.Spec.CapacityMode
+	if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeRaw {
+		maxCPU := 0
+		maxMem := 0
+		maxStorage := 0
+		for _, raw := range maxRaws {
+			if maxCPU < raw.CPU {
+				maxCPU = raw.CPU
+			}
+			if maxMem < raw.Memory {
+				maxMem = raw.Memory
+			}
+			if maxStorage < raw.Storage {
+				maxStorage = raw.Storage
+			}
+		}
+		max.AvailableCapacity.CPU = environmentFromK8s.Spec.Capacity.CPU - maxCPU
+		max.AvailableCapacity.Memory = environmentFromK8s.Spec.Capacity.Memory - maxMem
+		max.AvailableCapacity.Storage = environmentFromK8s.Spec.Capacity.Storage - maxStorage
+	} else if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeCount {
+		max.AvailableCount = maxCounts
+	} else {
+		return Maximus{}, fmt.Errorf("environment %s had unexpected capacity mode %s", environment, environmentFromK8s.Spec.CapacityMode)
+	}
+	return max, nil
+}
