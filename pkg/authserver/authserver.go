@@ -3,11 +3,13 @@ package authserver
 import (
 	"crypto/sha256"
 	"encoding/base32"
+	"encoding/json"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"golang.org/x/crypto/bcrypt"
@@ -23,19 +25,24 @@ const (
 )
 
 type AuthServer struct {
+	auth *authclient.AuthClient
 	hfClientSet *hfClientset.Clientset
 }
 
-func NewAuthServer(hfClientSet *hfClientset.Clientset) (AuthServer, error) {
+func NewAuthServer(authClient *authclient.AuthClient, hfClientSet *hfClientset.Clientset) (AuthServer, error) {
 	a := AuthServer{}
+	a.auth = authClient
 	a.hfClientSet = hfClientSet
 	return a, nil
 }
 
 func (a AuthServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/auth/registerwithaccesscode", a.RegisterWithAccessCodeFunc).Methods("POST")
+	r.HandleFunc("/auth/accesscode", a.ListAccessCodeFunc).Methods("GET")
+	r.HandleFunc("/auth/accesscode", a.AddAccessCodeFunc).Methods("POST")
+	r.HandleFunc("/auth/accesscode", a.RemoveAccessCodeFunc).Methods("DELETE")
+	r.HandleFunc("/auth/changepassword", a.ChangePasswordFunc).Methods("POST")
 	r.HandleFunc("/auth/authenticate", a.AuthNFunc).Methods("POST")
-	//r.HandleFunc("/auth/test", a.AuthN)
 	glog.V(2).Infof("set up route")
 }
 
@@ -135,6 +142,101 @@ func (a AuthServer) NewUser(email string, password string) (string, error) {
 	return id, nil
 }
 
+func (a AuthServer) ChangePasswordFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := a.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get accesscode")
+		return
+	}
+
+	r.ParseForm()
+
+	oldPassword := r.PostFormValue("old_password")
+	newPassword := r.PostFormValue("new_password")
+
+	err = a.ChangePassword(user.Spec.Id, oldPassword, newPassword)
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", fmt.Sprintf("error changing password for user %s", user.Name))
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "success", fmt.Sprintf("password changed"))
+
+	glog.V(2).Infof("changed password for user %s", user.Spec.Email)
+}
+
+func (a AuthServer) ListAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := a.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get accesscode")
+		return
+	}
+
+	latestUser, err := a.hfClientSet.HobbyfarmV1().Users().Get(user.Name, metav1.GetOptions{})
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", fmt.Sprintf("error retrieving user %s", user.Name))
+		return
+	}
+
+	encodedACList, err := json.Marshal(latestUser.Spec.AccessCodes)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedACList)
+
+	glog.V(2).Infof("retrieved accesscode list for user %s", user.Spec.Email)
+}
+
+func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := a.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get accesscode")
+		return
+	}
+
+	r.ParseForm()
+
+	accessCode := strings.ToLower(r.PostFormValue("access_code"))
+
+	err = a.AddAccessCode(user.Spec.Id, accessCode)
+
+	if err != nil {
+		glog.Error(err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "error adding access code")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "success", accessCode)
+
+	glog.V(2).Infof("added accesscode %s to user %s", accessCode, user.Spec.Email)
+}
+
+func (a AuthServer) RemoveAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := a.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get accesscode")
+		return
+	}
+
+	r.ParseForm()
+
+	accessCode := strings.ToLower(r.PostFormValue("access_code"))
+
+	err = a.RemoveAccessCode(user.Spec.Id, accessCode)
+
+	if err != nil {
+		glog.Error(err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "error removing access code")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "success", accessCode)
+
+	glog.V(2).Infof("removed accesscode %s to user %s", accessCode, user.Spec.Email)
+}
+
 func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 	if len(userId) == 0 || len(accessCode) == 0 {
 		return fmt.Errorf("bad parameters passed, %s:%s", userId, accessCode)
@@ -150,7 +252,7 @@ func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 		}
 
 		if len(user.Spec.AccessCodes) == 0 {
-			user.Spec.AccessCodes = []string{accessCode}
+			user.Spec.AccessCodes = []string{}
 		} else {
 			for _, ac := range user.Spec.AccessCodes {
 				if ac == accessCode {
@@ -183,14 +285,16 @@ func (a AuthServer) RemoveAccessCode(userId string, accessCode string) error {
 		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(userId, metav1.GetOptions{})
 
 		if err != nil {
-			return fmt.Errorf("error retrieving user")
+			return fmt.Errorf("error retrieving user %s", userId)
 		}
 
 		var newAccessCodes []string
 
+		newAccessCodes = make([]string, 0)
+
 		if len(user.Spec.AccessCodes) == 0 {
 			// there were no access codes at this point so what are we doing
-			return nil
+			return fmt.Errorf("accesscode %s for user %s was not found", accessCode, userId)
 		} else {
 			found := false
 			for _, ac := range user.Spec.AccessCodes {
