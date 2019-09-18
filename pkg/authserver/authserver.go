@@ -40,7 +40,7 @@ func (a AuthServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/auth/registerwithaccesscode", a.RegisterWithAccessCodeFunc).Methods("POST")
 	r.HandleFunc("/auth/accesscode", a.ListAccessCodeFunc).Methods("GET")
 	r.HandleFunc("/auth/accesscode", a.AddAccessCodeFunc).Methods("POST")
-	r.HandleFunc("/auth/accesscode", a.RemoveAccessCodeFunc).Methods("DELETE")
+	r.HandleFunc("/auth/accesscode/{access_code}", a.RemoveAccessCodeFunc).Methods("DELETE")
 	r.HandleFunc("/auth/changepassword", a.ChangePasswordFunc).Methods("POST")
 	r.HandleFunc("/auth/authenticate", a.AuthNFunc).Methods("POST")
 	glog.V(2).Infof("set up route")
@@ -220,9 +220,9 @@ func (a AuthServer) RemoveAccessCodeFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	r.ParseForm()
+	vars := mux.Vars(r)
 
-	accessCode := strings.ToLower(r.PostFormValue("access_code"))
+	accessCode := strings.ToLower(vars["access_code"])
 
 	err = a.RemoveAccessCode(user.Spec.Id, accessCode)
 
