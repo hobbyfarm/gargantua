@@ -334,7 +334,7 @@ func (a AuthServer) ChangePassword(userId string, oldPassword string, newPasswor
 		return fmt.Errorf("error retrieving user")
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(oldPassword), []byte(user.Spec.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(user.Spec.Password), []byte(oldPassword))
 
 	if err != nil {
 		glog.Errorf("old password incorrect for user ID %s: %v", userId, err)
