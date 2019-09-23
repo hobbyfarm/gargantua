@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 	"net/http"
+	"strings"
 )
 
 type AdminUserServer struct {
@@ -145,6 +146,7 @@ func (a AdminUserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		email := r.PostFormValue("email")
 		password := r.PostFormValue("password")
 		accesscodes := r.PostFormValue("accesscodes")
+		admin := r.PostFormValue("admin")
 
 		if email != "" {
 			user.Spec.Email = email
@@ -166,6 +168,14 @@ func (a AdminUserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("bad")
 			}
 			user.Spec.AccessCodes = acUnmarshaled
+		}
+
+		if admin != "" {
+			if strings.ToLower(admin) == "true" {
+				user.Spec.Admin = true
+			} else {
+				user.Spec.Admin = false
+			}
 		}
 
 		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(user)

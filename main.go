@@ -86,12 +86,12 @@ func main() {
 
 	hfInformerFactory := hfInformers.NewSharedInformerFactory(hfClient, time.Second*30)
 
-	authServer, err := authserver.NewAuthServer(hfClient)
+	authClient, err := authclient.NewAuthClient(hfClient, hfInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	authClient, err := authclient.NewAuthClient(hfClient, hfInformerFactory)
+	authServer, err := authserver.NewAuthServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}

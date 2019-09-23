@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type AdminScheduledEventServer struct {
@@ -262,6 +263,16 @@ func (a AdminScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Req
 			return fmt.Errorf("bad")
 		}
 
+		beginTime, err := time.Parse(time.UnixDate, scheduledEvent.Spec.StartTime)
+		if err != nil {
+			return err
+		}
+
+		if beginTime.Before(time.Now()) {
+			util.ReturnHTTPMessage(w, r, 303, "toolate", "too late")
+			return fmt.Errorf("too late")
+		}
+
 		name := r.PostFormValue("name")
 		description := r.PostFormValue("description")
 		startTime := r.PostFormValue("start_time")
@@ -297,9 +308,9 @@ func (a AdminScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Req
 			}
 			scheduledEvent.Spec.RequiredVirtualMachines = requiredVMUnmarshaled
 
-			if scheduledEvent.Status.Provisioned {
-				scheduledEvent.Status.Provisioned = false
-			}
+			//if scheduledEvent.Status.Provisioned {
+			//	scheduledEvent.Status.Provisioned = false
+			//}
 		}
 
 		if scenariosRaw != "" {
