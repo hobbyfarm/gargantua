@@ -23,6 +23,7 @@ const (
 	ssIndex = "sss.hobbyfarm.io/scenariosession-id-index"
 	newSSTimeout = "5m"
 	keepaliveSSTimeout = "5m"
+	pauseSSTimeout = "1h"
 )
 
 type ScenarioSessionServer struct {
@@ -51,7 +52,9 @@ func (sss ScenarioSessionServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/session/{scenario_session_id}", sss.GetScenarioSessionFunc).Methods("GET")
 	r.HandleFunc("/session/{scenario_session_id}/finished", sss.FinishedScenarioSessionFunc).Methods("PUT")
 	r.HandleFunc("/session/{scenario_session_id}/keepalive", sss.KeepAliveScenarioSessionFunc).Methods("PUT")
-	glog.V(2).Infof("set up routes")
+	r.HandleFunc("/session/{scenario_session_id}/pause", sss.PauseScenarioSessionFunc).Methods("PUT")
+	r.HandleFunc("/session/{scenario_session_id}/resume", sss.ResumeScenarioSessionFunc).Methods("PUT")
+	glog.V(2).Infof("set up routes for scenario session server")
 }
 
 func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r *http.Request) {
@@ -272,6 +275,12 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 		return
 	}
 
+	if ss.Status.Paused {
+		glog.V(4).Infof("Scenario session %s was paused, returning paused", ss.Spec.Id)
+		util.ReturnHTTPMessage(w, r, 304, "paused", "scenario session is paused")
+		return
+	}
+
 	scenario, err := sss.scenarioClient.GetScenarioById(ss.Spec.ScenarioId)
 
 	if err != nil {
@@ -314,6 +323,139 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 	}
 
 	util.ReturnHTTPMessage(w, r, 204, "updated", "updated scenario session")
+	return
+}
+
+func (sss ScenarioSessionServer) PauseScenarioSessionFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := sss.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to pause scenario sessions")
+		return
+	}
+	vars := mux.Vars(r)
+
+	scenarioSessionId := vars["scenario_session_id"]
+	if len(scenarioSessionId) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no scenario session id passed in")
+		return
+	}
+
+	ss, err := sss.GetScenarioSessionById(scenarioSessionId)
+	if ss.Spec.UserId != user.Spec.Id {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no scenario session found that matches this user")
+		return
+	}
+
+	scenario, err := sss.scenarioClient.GetScenarioById(ss.Spec.ScenarioId)
+
+	if err != nil {
+		glog.Errorf("error retrieving scenario %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "error getting scenario")
+		return
+	}
+
+	var ssTimeout string
+
+	if scenario.Spec.PauseDuration != "" {
+		ssTimeout = scenario.Spec.PauseDuration
+	} else {
+		ssTimeout = pauseSSTimeout
+	}
+
+	now := time.Now()
+	duration, _ := time.ParseDuration(ssTimeout)
+
+	pauseExpiration := now.Add(duration).Format(time.UnixDate)
+
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		result, getErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Get(scenarioSessionId, metav1.GetOptions{})
+		if getErr != nil {
+			return fmt.Errorf("error retrieving latest version of Scenario Session %s: %v", scenarioSessionId, getErr)
+		}
+
+		result.Status.PausedTime = pauseExpiration
+		result.Status.Paused = true
+
+		_, updateErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Update(result)
+		glog.V(4).Infof("updated result for scenario session")
+
+		return updateErr
+	})
+
+	if retryErr != nil {
+		glog.Errorf("error creating scenario session %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "something happened")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 204, "updated", "updated scenario session")
+	return
+}
+
+func (sss ScenarioSessionServer) ResumeScenarioSessionFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := sss.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to pause scenario sessions")
+		return
+	}
+	vars := mux.Vars(r)
+
+	scenarioSessionId := vars["scenario_session_id"]
+	if len(scenarioSessionId) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no scenario session id passed in")
+		return
+	}
+
+	ss, err := sss.GetScenarioSessionById(scenarioSessionId)
+	if ss.Spec.UserId != user.Spec.Id {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no scenario session found that matches this user")
+		return
+	}
+
+	scenario, err := sss.scenarioClient.GetScenarioById(ss.Spec.ScenarioId)
+
+	if err != nil {
+		glog.Errorf("error retrieving scenario %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "error getting scenario")
+		return
+	}
+
+	var ssTimeout string
+
+	if scenario.Spec.KeepAliveDuration != "" {
+		ssTimeout = scenario.Spec.KeepAliveDuration
+	} else {
+		ssTimeout = keepaliveSSTimeout
+	}
+
+	now := time.Now()
+	duration, _ := time.ParseDuration(ssTimeout)
+
+	newExpiration := now.Add(duration).Format(time.UnixDate)
+
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		result, getErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Get(scenarioSessionId, metav1.GetOptions{})
+		if getErr != nil {
+			return fmt.Errorf("error retrieving latest version of Scenario Session %s: %v", scenarioSessionId, getErr)
+		}
+
+		result.Status.PausedTime = ""
+		result.Status.ExpirationTime = newExpiration
+		result.Status.Paused = false
+
+		_, updateErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Update(result)
+		glog.V(4).Infof("updated result for scenario session")
+
+		return updateErr
+	})
+
+	if retryErr != nil {
+		glog.Errorf("error creating scenario session %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "something happened")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 204, "updated", "resumed scenario session")
 	return
 }
 

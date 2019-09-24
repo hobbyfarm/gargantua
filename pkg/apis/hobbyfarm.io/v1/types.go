@@ -237,6 +237,8 @@ type ScenarioSpec struct {
 	Steps []ScenarioStep `json:"steps"`
 	VirtualMachines []map[string]string `json:"virtualmachines"`
 	KeepAliveDuration string `json:"keepalive_duration"`
+	PauseDuration     string `json:"pause_duration"`
+	Pauseable bool    `json:"pauseable"`
 }
 
 type ScenarioStep struct {
@@ -272,6 +274,8 @@ type ScenarioSessionSpec struct {
 }
 
 type ScenarioSessionStatus struct {
+	Paused      bool        `json:"paused"`
+	PausedTime  string      `json:"paused_time"`
 	Active 		bool		`json:"active"`
 	Finished	bool		`json:"finished"`
 	StartTime	string		`json:"start_time"`
