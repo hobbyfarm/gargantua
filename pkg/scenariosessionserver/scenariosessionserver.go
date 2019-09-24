@@ -23,7 +23,7 @@ const (
 	ssIndex = "sss.hobbyfarm.io/scenariosession-id-index"
 	newSSTimeout = "5m"
 	keepaliveSSTimeout = "5m"
-	pauseSSTimeout = "1h"
+	pauseSSTimeout = "2h"
 )
 
 type ScenarioSessionServer struct {
