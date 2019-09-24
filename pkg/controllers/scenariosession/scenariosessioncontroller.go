@@ -143,7 +143,19 @@ func (s *ScenarioSessionController) reconcileScenarioSession(ssName string) erro
 
 	if expires.Before(now) && !ss.Status.Finished {
 		// we need to set the scenario session to finished and delete the vm's
+		if ss.Status.Paused && ss.Status.PausedTime != "" {
+			pausedExpiration, err := time.Parse(time.UnixDate, ss.Status.PausedTime)
+			if err != nil {
+				glog.Error(err)
+			}
 
+			if pausedExpiration.After(now) {
+				glog.V(4).Infof("Scenario session %s was paused, and the pause expiration is after now, skipping clean up.", ss.Spec.Id)
+				return nil
+			}
+
+			glog.V(4).Infof("Scenario session %s was paused, but the pause expiration was before now, so cleaning up.", ss.Spec.Id)
+		}
 		for _, vmc := range ss.Spec.VmClaimSet {
 			vmcObj, err := s.vmcLister.Get(vmc)
 

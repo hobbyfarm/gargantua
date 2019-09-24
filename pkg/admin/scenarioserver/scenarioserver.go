@@ -172,6 +172,10 @@ func (a AdminScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+
+	pauseable := r.PostFormValue("pauseable")
+	pause_duration := r.PostFormValue("pause_duration")
+
 	scenario := &hfv1.Scenario{}
 
 	hasher := sha256.New()
@@ -185,6 +189,17 @@ func (a AdminScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) 
 	scenario.Spec.VirtualMachines = virtualmachines
 	scenario.Spec.Steps = steps
 	scenario.Spec.KeepAliveDuration = keepaliveDuration
+
+	scenario.Spec.Pauseable = false
+	if pauseable != "" {
+		if strings.ToLower(pauseable) == "true" {
+			scenario.Spec.Pauseable = true
+		}
+	}
+
+	if pause_duration != "" {
+		scenario.Spec.PauseDuration = pause_duration
+	}
 
 	scenario, err = a.hfClientSet.HobbyfarmV1().Scenarios().Create(scenario)
 	if err != nil {
@@ -223,6 +238,8 @@ func (a AdminScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) 
 		name := r.PostFormValue("name")
 		description := r.PostFormValue("description")
 		rawSteps := r.PostFormValue("steps")
+		pauseable := r.PostFormValue("pauseable")
+		pause_duration := r.PostFormValue("pause_duration")
 		keepaliveDuration := r.PostFormValue("keepalive_duration")
 		rawVirtualMachines := r.PostFormValue("virtualmachines")
 
@@ -234,6 +251,18 @@ func (a AdminScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) 
 		}
 		if keepaliveDuration != "" {
 			scenario.Spec.KeepAliveDuration = keepaliveDuration
+		}
+
+		if pauseable != "" {
+			if strings.ToLower(pauseable) == "true" {
+				scenario.Spec.Pauseable = true
+			} else {
+				scenario.Spec.Pauseable = false
+			}
+		}
+
+		if pause_duration != "" {
+			scenario.Spec.PauseDuration = pause_duration
 		}
 
 		if rawSteps != "" {
