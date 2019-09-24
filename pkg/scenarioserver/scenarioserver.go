@@ -38,6 +38,7 @@ type PreparedScenario struct {
 	Description     string              `json:"description"`
 	StepCount       int                 `json:"stepcount"`
 	VirtualMachines []map[string]string `json:"virtualmachines"`
+	Pauseable		bool				`json:"pauseable"`
 }
 
 func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioServer, error) {
@@ -67,6 +68,7 @@ func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario) (PreparedScenari
 	ps.Id = scenario.Spec.Id
 	ps.Description = scenario.Spec.Description
 	ps.VirtualMachines = scenario.Spec.VirtualMachines
+	ps.Pauseable = scenario.Spec.Pauseable
 
 	var steps []PreparedScenarioStep
 	for _, step := range scenario.Spec.Steps {

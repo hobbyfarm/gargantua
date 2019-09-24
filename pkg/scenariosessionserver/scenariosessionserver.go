@@ -277,7 +277,19 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 
 	if ss.Status.Paused {
 		glog.V(4).Infof("Scenario session %s was paused, returning paused", ss.Spec.Id)
-		util.ReturnHTTPMessage(w, r, 304, "paused", "scenario session is paused")
+
+		now := time.Now()
+		pauseExpiration, err := time.Parse(time.UnixDate, ss.Status.PausedTime)
+
+		if err != nil {
+			glog.Error(err)
+			util.ReturnHTTPMessage(w, r, 304, "paused", "scenario session is paused")
+			return
+		}
+
+		timeUntilExpiration := pauseExpiration.Sub(now)
+
+		util.ReturnHTTPMessage(w, r, 304, "paused", timeUntilExpiration.String())
 		return
 	}
 
@@ -351,6 +363,12 @@ func (sss ScenarioSessionServer) PauseScenarioSessionFunc(w http.ResponseWriter,
 	if err != nil {
 		glog.Errorf("error retrieving scenario %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "error getting scenario")
+		return
+	}
+
+	if !scenario.Spec.Pauseable {
+		glog.Errorf("scenario is not pauseable %s", scenario.Spec.Id)
+		util.ReturnHTTPMessage(w, r, 500, "error", "not pauseable")
 		return
 	}
 
