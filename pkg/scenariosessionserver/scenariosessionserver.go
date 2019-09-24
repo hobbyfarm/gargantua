@@ -289,7 +289,7 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 
 		timeUntilExpiration := pauseExpiration.Sub(now)
 
-		util.ReturnHTTPMessage(w, r, 304, "paused", timeUntilExpiration.String())
+		util.ReturnHTTPMessage(w, r, 202, "paused", timeUntilExpiration.String())
 		return
 	}
 
@@ -334,7 +334,7 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 		return
 	}
 
-	util.ReturnHTTPMessage(w, r, 204, "updated", "updated scenario session")
+	util.ReturnHTTPMessage(w, r, 202, "keepalived", "keepalive successful")
 	return
 }
 
