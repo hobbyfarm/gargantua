@@ -32,6 +32,14 @@ func (c *FakeHobbyfarmV1) AccessCodes() v1.AccessCodeInterface {
 	return &FakeAccessCodes{c}
 }
 
+func (c *FakeHobbyfarmV1) DynamicBindConfigurations() v1.DynamicBindConfigurationInterface {
+	return &FakeDynamicBindConfigurations{c}
+}
+
+func (c *FakeHobbyfarmV1) DynamicBindRequests() v1.DynamicBindRequestInterface {
+	return &FakeDynamicBindRequests{c}
+}
+
 func (c *FakeHobbyfarmV1) Environments() v1.EnvironmentInterface {
 	return &FakeEnvironments{c}
 }

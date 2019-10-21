@@ -26,6 +26,10 @@ import (
 type Interface interface {
 	// AccessCodes returns a AccessCodeInformer.
 	AccessCodes() AccessCodeInformer
+	// DynamicBindConfigurations returns a DynamicBindConfigurationInformer.
+	DynamicBindConfigurations() DynamicBindConfigurationInformer
+	// DynamicBindRequests returns a DynamicBindRequestInformer.
+	DynamicBindRequests() DynamicBindRequestInformer
 	// Environments returns a EnvironmentInformer.
 	Environments() EnvironmentInformer
 	// Scenarios returns a ScenarioInformer.
@@ -60,6 +64,16 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // AccessCodes returns a AccessCodeInformer.
 func (v *version) AccessCodes() AccessCodeInformer {
 	return &accessCodeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// DynamicBindConfigurations returns a DynamicBindConfigurationInformer.
+func (v *version) DynamicBindConfigurations() DynamicBindConfigurationInformer {
+	return &dynamicBindConfigurationInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// DynamicBindRequests returns a DynamicBindRequestInformer.
+func (v *version) DynamicBindRequests() DynamicBindRequestInformer {
+	return &dynamicBindRequestInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Environments returns a EnvironmentInformer.

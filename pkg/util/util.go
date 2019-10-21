@@ -300,6 +300,60 @@ func  EnsureVMNotReady(hfClientset *hfClientset.Clientset, vmLister hfListers.Vi
 	return nil
 }
 
+func AvailableRawCapacity(hfClientset *hfClientset.Clientset, capacity hfv1.CMSStruct, virtualMachines []hfv1.VirtualMachine) *hfv1.CMSStruct {
+	vmTemplates, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("unable to list virtual machine templates, got error %v", err)
+		return nil
+	}
+
+	currentUsage := hfv1.CMSStruct{}
+	for _, vm := range virtualMachines {
+		for _, vmTemplate := range vmTemplates.Items {
+			if vmTemplate.Spec.Id == vm.Spec.VirtualMachineTemplateId {
+				currentUsage.CPU = currentUsage.CPU + vmTemplate.Spec.Resources.CPU
+				currentUsage.Memory = currentUsage.Memory + vmTemplate.Spec.Resources.Memory
+				currentUsage.Storage = currentUsage.Storage + vmTemplate.Spec.Resources.Storage
+			}
+		}
+	}
+
+	availableCapacity := hfv1.CMSStruct{}
+
+	availableCapacity.CPU = capacity.CPU - currentUsage.CPU
+	availableCapacity.Memory = capacity.Memory - currentUsage.Memory
+	availableCapacity.Storage = capacity.Storage - currentUsage.Storage
+
+	return &availableCapacity
+}
+
+func MaxVMCountRaw(hfClientset *hfClientset.Clientset, vmTemplateId string, available hfv1.CMSStruct) int {
+	vmTemplates, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("unable to list virtual machine templates, got error %v", err)
+		return nil
+	}
+
+	maxCount := 0
+
+	for _, vmTemplate := range vmTemplates.Items {
+		if vmTemplateId == vmTemplate.Spec.Id {
+			maxCount = available.CPU / vmTemplate.Spec.Resources.CPU
+
+			if available.Memory/vmTemplate.Spec.Resources.Memory > maxCount {
+				maxCount = available.Memory / vmTemplate.Spec.Resources.Memory
+			}
+
+			if available.Storage/vmTemplate.Spec.Resources.Storage > maxCount {
+				maxCount = available.Storage / vmTemplate.Spec.Resources.Storage
+			}
+			break
+		}
+	}
+	return maxCount
+
+}
+
 // pending rename...
 type Maximus struct {
 	CapacityMode			hfv1.CapacityMode `json:"capacity_mode"`

@@ -22,6 +22,14 @@ package v1
 // AccessCodeLister.
 type AccessCodeListerExpansion interface{}
 
+// DynamicBindConfigurationListerExpansion allows custom methods to be added to
+// DynamicBindConfigurationLister.
+type DynamicBindConfigurationListerExpansion interface{}
+
+// DynamicBindRequestListerExpansion allows custom methods to be added to
+// DynamicBindRequestLister.
+type DynamicBindRequestListerExpansion interface{}
+
 // EnvironmentListerExpansion allows custom methods to be added to
 // EnvironmentLister.
 type EnvironmentListerExpansion interface{}
