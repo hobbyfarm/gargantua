@@ -361,6 +361,7 @@ func MaxAvailableDuringPeriod(hfClientset *hfClientset.Clientset, environment st
 		maxRaw := hfv1.CMSStruct{}
 		currentMaxCount := map[string]int{}
 		for _, se := range scheduledEvents.Items {
+			glog.V(4).Infof("Checking scheduled event %s", se.Spec.Name)
 			if vmMapping, ok := se.Spec.RequiredVirtualMachines[environment]; ok {
 				seStart, err := time.Parse(time.UnixDate, se.Spec.StartTime)
 				if err != nil {
@@ -373,7 +374,8 @@ func MaxAvailableDuringPeriod(hfClientset *hfClientset.Clientset, environment st
 				// i is the checking time
 				// if the time to be checked is after or equal to the start time of the scheduled event
 				// and if i is before or equal to the end of the scheduled event
-				if (i.After(seStart) || i.Equal(seStart)) && (i.Before(seEnd) || i.Equal(seEnd)) {
+				if i.Equal(seStart) || i.Equal(seEnd) || (i.Before(seEnd) && i.After(seStart)) {
+					glog.V(4).Infof("Scheduled Event %s was within the time period")
 					if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeRaw {
 						for vmTemplateName, vmTemplateCount := range vmMapping {
 							if vmTemplateR, ok := vmTemplateResources[vmTemplateName]; ok {
@@ -386,6 +388,7 @@ func MaxAvailableDuringPeriod(hfClientset *hfClientset.Clientset, environment st
 						}
 					} else if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeCount {
 						for vmTemplateName, vmTemplateCount := range vmMapping {
+							glog.V(4).Infof("SE VM Template %s Count was %d", vmTemplateName, vmTemplateCount)
 							currentMaxCount[vmTemplateName] = currentMaxCount[vmTemplateName] + vmTemplateCount
 						}
 					} else {
@@ -397,8 +400,10 @@ func MaxAvailableDuringPeriod(hfClientset *hfClientset.Clientset, environment st
 		maxRaws = append(maxRaws, maxRaw)
 		if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeCount {
 			for vmt, currentCount := range currentMaxCount {
+				glog.V(4).Infof("currentCount for vmt %s is %d", vmt, currentCount)
 				if maxCount, ok := maxCounts[vmt]; ok {
-					if maxCount < currentCount {
+					glog.V(4).Infof("Current max count for vmt %s is %d", vmt, maxCount)
+					if maxCount > currentCount {
 						maxCounts[vmt] = currentCount
 					}
 				} else {
