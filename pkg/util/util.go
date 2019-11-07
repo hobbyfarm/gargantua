@@ -357,9 +357,11 @@ func MaxAvailableDuringPeriod(hfClientset *hfClientset.Clientset, environment st
 
 	maxRaws := make([]hfv1.CMSStruct, 1)
 	maxCounts := map[string]int{}
-	for t, c := range environmentFromK8s.Spec.CountCapacity {
+	maxCounts = make(map[string]int)
+	// maxCount will be the largest number of virtual machines allocated from the environment
+	/*for t, c := range environmentFromK8s.Spec.CountCapacity {
 		maxCounts[t] = c
-	}
+	}*/
 	for i := start; i.Before(end) || i.Equal(end); i = i.Add(duration) {
 		glog.V(8).Infof("Checking time at %s", i.Format(time.UnixDate))
 		maxRaw := hfv1.CMSStruct{}
@@ -407,7 +409,7 @@ func MaxAvailableDuringPeriod(hfClientset *hfClientset.Clientset, environment st
 				glog.V(4).Infof("currentCount for vmt %s is %d", vmt, currentCount)
 				if maxCount, ok := maxCounts[vmt]; ok {
 					glog.V(4).Infof("Current max count for vmt %s is %d", vmt, maxCount)
-					if maxCount > currentCount {
+					if maxCount < currentCount {
 						maxCounts[vmt] = currentCount
 					}
 				} else {
@@ -437,7 +439,18 @@ func MaxAvailableDuringPeriod(hfClientset *hfClientset.Clientset, environment st
 		max.AvailableCapacity.Memory = environmentFromK8s.Spec.Capacity.Memory - maxMem
 		max.AvailableCapacity.Storage = environmentFromK8s.Spec.Capacity.Storage - maxStorage
 	} else if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeCount {
-		max.AvailableCount = maxCounts
+		max.AvailableCount = make(map[string]int)
+		for k, v := range environmentFromK8s.Spec.CountCapacity {
+			max.AvailableCount[k] = v
+		}
+		for vmt, count := range maxCounts {
+			if vmtCap, ok := environmentFromK8s.Spec.CountCapacity[vmt]; ok {
+				max.AvailableCount[vmt] = vmtCap - count
+			} else {
+				glog.Errorf("Error looking for maximum count capacity of virtual machine template %s", vmt)
+				max.AvailableCount[vmt] = 0
+			}
+		}
 	} else {
 		return Maximus{}, fmt.Errorf("environment %s had unexpected capacity mode %s", environment, environmentFromK8s.Spec.CapacityMode)
 	}
