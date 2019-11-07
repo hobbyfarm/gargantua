@@ -12,6 +12,7 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"encoding/base64"
 	"k8s.io/client-go/util/retry"
 	"net/http"
 	"strings"
@@ -52,6 +53,7 @@ func (a AdminScenarioServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/scenario/new", a.CreateFunc).Methods("POST")
 	r.HandleFunc("/a/scenario/list", a.ListFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}", a.GetFunc).Methods("GET")
+	r.HandleFunc("/a/scenario/{id}/printable", a.PrintFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}", a.UpdateFunc).Methods("PUT")
 	glog.V(2).Infof("set up routes for Scenario server")
 }
@@ -94,6 +96,65 @@ func (a AdminScenarioServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPContent(w, r, 200, "success", encodedScenario)
 
 	glog.V(2).Infof("retrieved scenario %s", scenario.Name)
+}
+
+func (a AdminScenarioServer) PrintFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := a.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get Scenario")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	id := vars["id"]
+
+	if len(id) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
+		return
+	}
+
+	scenario, err := a.getScenario(id)
+
+	if err != nil {
+		glog.Errorf("error while retrieving scenario %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "no scenario found")
+		return
+	}
+
+	var content string
+
+	name, err := base64.StdEncoding.DecodeString(scenario.Spec.Name)
+	if err != nil {
+		glog.Errorf("Error decoding title of scenario: %s %v", scenario.Name, err)
+	}
+	description, err := base64.StdEncoding.DecodeString(scenario.Spec.Description)
+	if err != nil {
+		glog.Errorf("Error decoding description of scenario: %s %v", scenario.Name, err)
+	}
+
+	content = fmt.Sprintf("# %s\n%s\n\n", name, description)
+
+	for i, s := range scenario.Spec.Steps {
+
+		title, err := base64.StdEncoding.DecodeString(s.Title)
+		if err != nil {
+			glog.Errorf("Error decoding title of scenario: %s step %d: %v", scenario.Name, i, err)
+		}
+
+		content = content + fmt.Sprintf("## Step %d: %s\n", i+1, string(title))
+
+		stepContent, err := base64.StdEncoding.DecodeString(s.Content)
+		if err != nil {
+			glog.Errorf("Error decoding content of scenario: %s step %d: %v", scenario.Name, i, err)
+		}
+
+		content = content + fmt.Sprintf("%s\n", string(stepContent))
+	}
+
+	util.ReturnHTTPRaw(w, r, content)
+
+	glog.V(2).Infof("retrieved scenario and rendered for printability %s", scenario.Name)
 }
 
 func (a AdminScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request) {

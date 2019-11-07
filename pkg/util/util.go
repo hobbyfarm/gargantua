@@ -68,6 +68,10 @@ func ReturnHTTPContent(w http.ResponseWriter, r *http.Request, httpStatus int, m
 	enc.Encode(err)
 }
 
+func ReturnHTTPRaw(w http.ResponseWriter, r *http.Request, content string) {
+	fmt.Fprintf(w, "%s", content)
+}
+
 func GetHTTPErrorCode(httpStatus int) string {
 	switch httpStatus {
 	case 401:
