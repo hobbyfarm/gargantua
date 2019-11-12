@@ -296,6 +296,47 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 					glog.Error(err)
 				}
 			}
+
+			// create the dynamic bind configurations
+			dbcRand := fmt.Sprintf("%08x", rand.Uint32())
+			dbcName := strings.Join([]string{"se", se.Name, "dbc", dbcRand}, "-")
+			dbc := &hfv1.DynamicBindConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: dbcName,
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "hobbyfarm.io/v1",
+							Kind:       "ScheduledEvent",
+							Name:       se.Name,
+							UID:        se.UID,
+						},
+					},
+					Labels: map[string]string{
+						"environment":    env.Name,
+						"scheduledevent": se.Name,
+					},
+				},
+				Spec: hfv1.DynamicBindConfigurationSpec{
+					Id: dbcName,
+					Environment: envName,
+					BaseName: dbcRand,
+					BurstCountCapacity: vmtMap,
+				},
+			}
+
+			if se.Spec.RestrictedBind {
+				dbc.Spec.RestrictedBind = true
+				dbc.Spec.RestrictedBindValue = se.Spec.RestrictedBindValue
+				dbc.ObjectMeta.Labels["restrictedbind"] = "true"
+				dbc.ObjectMeta.Labels["restrictedbindvalue"] = se.Spec.RestrictedBindValue
+			} else {
+				dbc.ObjectMeta.Labels["restrictedbind"] = "false"
+			}
+
+			_, err = s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().Create(dbc)
+			if err != nil {
+				glog.Errorf("error creating dynamic bind configuration %v", err)
+			}
 		}
 
 		ac := &hfv1.AccessCode{

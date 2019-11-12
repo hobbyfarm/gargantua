@@ -417,7 +417,6 @@ type DynamicBindConfigurationSpec struct {
 	RestrictedBindValue	string	`json:"restricted_bind_value"`
 	BurstCountCapacity		map[string]int `json:"burst_count_capacity"`
 	BurstCapacity			CMSStruct `json:"burst_capacity"`
-
 }
 
 // How do we determine environment capacity today? We use a utility that checks all of the vmsets for the environment
