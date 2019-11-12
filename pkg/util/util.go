@@ -331,29 +331,35 @@ func AvailableRawCapacity(hfClientset *hfClientset.Clientset, capacity hfv1.CMSS
 	return &availableCapacity
 }
 
-func MaxVMCountRaw(hfClientset *hfClientset.Clientset, vmTemplateId string, available hfv1.CMSStruct) int {
-	vmTemplates, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
+func MaxVMCountsRaw(hfClientset *hfClientset.Clientset, vmTemplates map[string]int, available hfv1.CMSStruct) int {
+	vmTemplatesFromK8s, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("unable to list virtual machine templates, got error %v", err)
-		return nil
+		return 0
 	}
 
 	maxCount := 0
 
-	for _, vmTemplate := range vmTemplates.Items {
-		if vmTemplateId == vmTemplate.Spec.Id {
-			maxCount = available.CPU / vmTemplate.Spec.Resources.CPU
+	var neededResources hfv1.CMSStruct
 
-			if available.Memory/vmTemplate.Spec.Resources.Memory > maxCount {
-				maxCount = available.Memory / vmTemplate.Spec.Resources.Memory
-			}
-
-			if available.Storage/vmTemplate.Spec.Resources.Storage > maxCount {
-				maxCount = available.Storage / vmTemplate.Spec.Resources.Storage
-			}
-			break
+	for _, vmTemplate := range vmTemplatesFromK8s.Items {
+		if vmtCount, ok := vmTemplates[vmTemplate.Name]; ok {
+			neededResources.CPU = neededResources.CPU + vmTemplate.Spec.Resources.CPU * vmtCount
+			neededResources.Memory = neededResources.Memory + vmTemplate.Spec.Resources.Memory * vmtCount
+			neededResources.Storage = neededResources.Storage + vmTemplate.Spec.Resources.Storage * vmtCount
 		}
 	}
+
+	maxCount = available.CPU / neededResources.CPU
+
+	if available.Memory/neededResources.Memory > maxCount {
+		maxCount = available.Memory / neededResources.Memory
+	}
+
+	if available.Storage/neededResources.Storage > maxCount {
+		maxCount = available.Storage / neededResources.Storage
+	}
+
 	return maxCount
 
 }

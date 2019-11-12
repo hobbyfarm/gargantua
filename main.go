@@ -15,6 +15,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/controllers/dynamicbindcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
 
 	//"k8s.io/client-go/tools/cache"
@@ -231,7 +232,12 @@ func main() {
 			glog.Fatal(err)
 		}
 
-		wg.Add(5)
+		dynamicBindController, err := dynamicbindcontroller.NewDynamicBindController(hfClient, hfInformerFactory)
+		if err != nil {
+			glog.Fatal(err)
+		}
+
+		wg.Add(6)
 		/*
 		go func() {
 			defer wg.Done()
@@ -261,6 +267,11 @@ func main() {
 		go func() {
 			defer wg.Done()
 			vmSetController.Run(stopCh)
+		}()
+
+		go func() {
+			defer wg.Done()
+			dynamicBindController.Run(stopCh)
 		}()
 	}
 

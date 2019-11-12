@@ -82,10 +82,13 @@ type VirtualMachineClaimSpec struct {
 	RestrictedBind bool `json:"restricted_bind"`
 	RestrictedBindValue string `json:"restricted_bind_value"`
 	VirtualMachines map[string]VirtualMachineClaimVM `json:"vm"`
-	VirtualMachineClassId string `json:"vm_class_id"`
+	DynamicCapable bool `json:"dynamic_bind_capable"`
 }
 
 type VirtualMachineClaimStatus struct {
+	BindMode string `json:"bind_mode"`
+	StaticBindAttempts int `json:"static_bind_attempts"`
+	DynamicBindRequestId string `json:"dynamic_bind_request_id"`
 	Bound	bool	`json:"bound"`
 	Ready   bool 	`json:"ready"`
 	Tainted	bool	`json:"tainted"` // If tainted, we should delete the VM's underneath then delete ourself...
@@ -408,13 +411,13 @@ type DynamicBindConfigurationList struct {
 
 type DynamicBindConfigurationSpec struct {
 	Id string `json:"id"`
-	MaxCount int	`json:"max_count"`
-	Environments	[]string	`json:"environments"`
-	VirtualMachineTemplate string `json:"vm_template"`
+	Environment string	`json:"environment"`
 	BaseName	string	`json:"base_name"`
 	RestrictedBind	bool	`json:"restricted_bind"`
 	RestrictedBindValue	string	`json:"restricted_bind_value"`
-	Scenarios []string `json:"scenarios"`
+	BurstCountCapacity		map[string]int `json:"burst_count_capacity"`
+	BurstCapacity			CMSStruct `json:"burst_capacity"`
+
 }
 
 // How do we determine environment capacity today? We use a utility that checks all of the vmsets for the environment
@@ -441,10 +444,13 @@ type DynamicBindRequestList struct {
 type DynamicBindRequestSpec struct {
 	Id string `json:"id"`
 	VirtualMachineClaim string `json:"vm_claim"`
-	DynamicBindConfiguration string `json:"dynamic_bind_configuration_id"`
+	Attempts int `json:"attempts"`
 }
 
 type DynamicBindRequestStatus struct {
+	CurrentAttempts		 int `json:"current_attempts"`
+	Expired			bool	`json:"expired"`
 	Fulfilled		 bool `json:"fulfilled"`
-	VirtualMachineId string `json:"virtual_machine_id"`
+	DynamicBindConfigurationId string `json:"dynamic_bind_configuration_id"`
+	VirtualMachineIds map[string]string `json:"virtual_machines_id"`
 }

@@ -155,9 +155,9 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 			virtualMachineClaim.Spec.VirtualMachines[vmName] = hfv1.VirtualMachineClaimVM{vmTemplateName, ""}
 		}
 		virtualMachineClaim.Spec.UserId = user.Spec.Id
-		virtualMachineClaim.Spec.VirtualMachineClassId = "default"
 		virtualMachineClaim.Status.Bound = false
 		virtualMachineClaim.Status.Ready = false
+		virtualMachineClaim.Spec.DynamicCapable = true
 
 		if restrictedBind {
 			virtualMachineClaim.Spec.RestrictedBind = restrictedBind
