@@ -300,6 +300,11 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 			// create the dynamic bind configurations
 			dbcRand := fmt.Sprintf("%08x", rand.Uint32())
 			dbcName := strings.Join([]string{"se", se.Name, "dbc", dbcRand}, "-")
+			emptyCap := hfv1.CMSStruct{
+				0,
+				0,
+				0,
+			}
 			dbc := &hfv1.DynamicBindConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: dbcName,
@@ -321,6 +326,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 					Environment: envName,
 					BaseName: dbcRand,
 					BurstCountCapacity: vmtMap,
+					BurstCapacity: emptyCap,
 				},
 			}
 

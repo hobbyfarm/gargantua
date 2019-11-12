@@ -1,0 +1,16 @@
+apiVersion: hobbyfarm.io/v1
+kind: DynamicBindConfiguration
+metadata:
+  name: testing-dbc
+spec:
+  id: testing-dbc
+  environment: fmt-vs
+  base_name: omgomgomg
+  restricted_bind: true
+  restricted_bind_value: xyz123
+  burst_count_capacity:
+    ubuntu1604-docker: 2
+  burst_capacity:
+    cpu: 0
+    memory: 0
+    storage: 0
