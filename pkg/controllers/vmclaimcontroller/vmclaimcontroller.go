@@ -147,11 +147,12 @@ func (v *VMClaimController) processNextVMClaim() bool {
 
 					if vm.Status.Status != hfv1.VmStatusRunning {
 						vmClaimIsReady = false
+						break
 					}
 				} else {
 					glog.Errorf("found vm claim marked as bound but vm ID was not populated")
-					v.vmClaimWorkqueue.AddRateLimited(obj)
-					return nil
+					vmClaimIsReady = false
+					break
 				}
 			}
 
@@ -161,6 +162,9 @@ func (v *VMClaimController) processNextVMClaim() bool {
 				glog.V(8).Infof("vm claim %s is now bound and ready, forgetting", objName)
 				return nil
 			}
+			glog.V(8).Infof("vm claim %s is not ready yet, requeuing", objName)
+			v.vmClaimWorkqueue.AddRateLimited(obj)
+			return nil
 		}
 
 		if vmClaim.Status.BindMode == "dynamic" {
