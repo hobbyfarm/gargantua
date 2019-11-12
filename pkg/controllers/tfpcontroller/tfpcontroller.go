@@ -29,7 +29,9 @@ import (
 
 type TerraformProvisionerController struct {
 	hfClientSet *hfClientset.Clientset
-	vmWorkqueue workqueue.RateLimitingInterface
+	//vmWorkqueue workqueue.RateLimitingInterface
+
+	vmWorkqueue workqueue.Interface
 
 	k8sClientset *k8s.Clientset
 
@@ -60,7 +62,9 @@ func NewTerraformProvisionerController(k8sClientSet *k8s.Clientset, hfClientSet 
 	tfpController.tfClientset = hfClientSet
 	tfpController.k8sClientset = k8sClientSet
 
-	tfpController.vmWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "VM")
+	//tfpController.vmWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "VM")
+
+	tfpController.vmWorkqueue = workqueue.New()
 
 	tfpController.vmLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Lister()
 	tfpController.vmSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
@@ -98,7 +102,8 @@ func (t *TerraformProvisionerController) enqueueVM(obj interface{}) {
 		return
 	}
 	glog.V(8).Infof("Enqueueing vm %s", key)
-	t.vmWorkqueue.AddRateLimited(key)
+	//t.vmWorkqueue.AddRateLimited(key)
+	t.vmWorkqueue.Add(key)
 }
 
 func (t *TerraformProvisionerController) Run(stopCh <-chan struct{}) error {
@@ -140,17 +145,18 @@ func (t *TerraformProvisionerController) processNextVM() bool {
 		vm, err := t.vmLister.Get(objName)
 		if err != nil {
 			glog.Errorf("error while retrieving virtual machine %s, likely deleted, forgetting in queue %v", objName, err)
-			t.vmWorkqueue.Forget(obj)
+			//t.vmWorkqueue.Forget(obj)
 			return nil
 		}
 
 		err = t.handleProvision(vm)
 
 		if err != nil {
-			t.vmWorkqueue.AddRateLimited(obj)
+			//t.vmWorkqueue.AddRateLimited(obj)
+			t.vmWorkqueue.Add(obj)
 			glog.Error(err)
 		}
-		t.vmWorkqueue.Forget(obj)
+		//t.vmWorkqueue.Forget(obj)
 		glog.V(4).Infof("vm processed by endpoint controller %v", objName)
 
 		return nil
