@@ -175,7 +175,11 @@ func (a AdminScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Req
 	if restrictionDisabledRaw == "" {
 		restrictionDisabled = false
 	} else {
-		restrictionDisabled = true
+		if strings.ToLower(restrictionDisabledRaw) == "false" {
+			restrictionDisabled = false
+		} else {
+			restrictionDisabled = true
+		}
 	}
 
 	requiredVMUnmarshaled := map[string]map[string]int{}
