@@ -157,6 +157,9 @@ func (v *VMClaimController) processNextVMClaim() bool {
 
 			if vmClaimIsReady {
 				v.updateVMClaimStatus(true, true, vmClaim.Spec.Id)
+				v.vmClaimWorkqueue.Forget(obj)
+				glog.V(8).Infof("vm claim %s is now bound and ready, forgetting", objName)
+				return nil
 			}
 		}
 
