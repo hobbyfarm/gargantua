@@ -177,8 +177,8 @@ func (v *VMClaimController) processNextVMClaim() bool {
 					for vmName, vmId := range dynamicBindRequest.Status.VirtualMachineIds {
 						v.updateVMClaimWithVM(vmName, vmId, objName)
 					}
+					v.updateVMClaimStatus(true, false, objName)
 				}
-				v.updateVMClaimStatus(true, false, objName)
 			} else {
 				v.updateVMClaimBindMode("static", "", vmClaim.Spec.Id)
 			}
