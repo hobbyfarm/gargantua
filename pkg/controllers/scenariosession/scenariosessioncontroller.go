@@ -206,7 +206,7 @@ func (s *ScenarioSessionController) reconcileScenarioSession(ssName string) erro
 			return retryErr
 		}
 	} else if expires.Before(now) && ss.Status.Finished {
-		
+		glog.V(8).Infof("scenario session %s is finished and expired before now", ssName)
 	} else {
 		glog.V(8).Infof("adding scenario session %s to workqueue after %s", ssName, timeUntilExpires.String())
 		s.ssWorkqueue.AddAfter(ssName, timeUntilExpires)
