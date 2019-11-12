@@ -89,7 +89,7 @@ func NewTerraformProvisionerController(k8sClientSet *k8s.Clientset, hfClientSet 
 			tfpController.enqueueVM(new)
 		},
 		DeleteFunc: tfpController.enqueueVM,
-	}, time.Second*30)
+	}, time.Minute*30)
 
 	return &tfpController, nil
 }

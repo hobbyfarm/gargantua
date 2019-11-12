@@ -43,7 +43,7 @@ func NewDynamicBindController(hfClientSet *hfClientset.Clientset, hfInformerFact
 			dynamicBindController.enqueueDynamicBindRequest(new)
 		},
 		DeleteFunc: dynamicBindController.enqueueDynamicBindRequest,
-	}, time.Second*30)
+	}, time.Minute*30)
 
 	return &dynamicBindController, nil
 }
