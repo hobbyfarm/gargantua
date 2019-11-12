@@ -109,7 +109,7 @@ func (t *TerraformProvisionerController) enqueueVM(obj interface{}) {
 func (t *TerraformProvisionerController) Run(stopCh <-chan struct{}) error {
 	defer t.vmWorkqueue.ShutDown()
 
-	glog.V(4).Infof("Starting TFP controller")
+	glog.V(4).Infof("Starting Terraform Provisioner controller")
 	glog.Info("Waiting for informer caches to sync")
 	if ok := cache.WaitForCacheSync(stopCh, t.vmSynced, t.envSynced, t.vmtSynced, t.tfsSynced, t.tfeSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
@@ -135,7 +135,7 @@ func (t *TerraformProvisionerController) processNextVM() bool {
 	}
 	err := func() error {
 		defer t.vmWorkqueue.Done(obj)
-		glog.V(4).Infof("processing vm in env controller: %v", obj)
+		glog.V(8).Infof("processing vm in tfp controller: %v", obj)
 		_, objName, err := cache.SplitMetaNamespaceKey(obj.(string)) // this is actually not necessary because VM's are not namespaced yet...
 		if err != nil {
 			glog.Errorf("error while splitting meta namespace key %v", err)
@@ -173,6 +173,15 @@ func (t *TerraformProvisionerController) processNextVM() bool {
 func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine) error {
 	if vm.Spec.Provision {
 		//glog.V(5).Infof("vm spec was to provision %s", vm.Name)
+		if vm.Status.Tainted && vm.DeletionTimestamp == nil {
+			util.EnsureVMNotReady(t.hfClientSet, t.vmLister, vm.Name)
+			deleteVMErr := t.hfClientSet.HobbyfarmV1().VirtualMachines().Delete(vm.Name, &metav1.DeleteOptions{})
+			if deleteVMErr != nil {
+				return fmt.Errorf("there was an error while deleting the virtual machine %s", vm.Name)
+			}
+			t.vmWorkqueue.Add(vm.Name)
+			return nil
+		}
 		if vm.DeletionTimestamp != nil {
 			glog.V(5).Infof("destroying virtual machine")
 			util.EnsureVMNotReady(t.hfClientSet, t.vmLister, vm.Name)

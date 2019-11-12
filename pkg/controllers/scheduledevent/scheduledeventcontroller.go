@@ -19,8 +19,8 @@ import (
 type ScheduledEventController struct {
 	hfClientSet *hfClientset.Clientset
 
-	seWorkqueue workqueue.RateLimitingInterface
-
+	//seWorkqueue workqueue.RateLimitingInterface
+	seWorkqueue workqueue.DelayingInterface
 	seSynced cache.InformerSynced
 }
 
@@ -29,8 +29,8 @@ func NewScheduledEventController(hfClientSet *hfClientset.Clientset, hfInformerF
 	seController.hfClientSet = hfClientSet
 	seController.seSynced = hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer().HasSynced
 
-	seController.seWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ScheduledEvent")
-
+	//seController.seWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ScheduledEvent")
+	seController.seWorkqueue = workqueue.NewNamedDelayingQueue("sec-se")
 	seInformer := hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer()
 
 	seInformer.AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
@@ -39,7 +39,7 @@ func NewScheduledEventController(hfClientSet *hfClientset.Clientset, hfInformerF
 			seController.enqueueSE(new)
 		},
 		DeleteFunc: seController.enqueueSE,
-	}, time.Second*30)
+	}, time.Minute*30)
 
 	return &seController, nil
 }
@@ -52,7 +52,8 @@ func (s *ScheduledEventController) enqueueSE(obj interface{}) {
 		return
 	}
 	glog.V(8).Infof("Enqueueing se %s", key)
-	s.seWorkqueue.AddRateLimited(key)
+	//s.seWorkqueue.AddRateLimited(key)
+	s.seWorkqueue.Add(key)
 }
 
 func (s *ScheduledEventController) Run(stopCh <-chan struct{}) error {
@@ -98,8 +99,9 @@ func (s *ScheduledEventController) processNextScheduledEvent() bool {
 
 		if err != nil {
 			glog.Error(err)
+			s.seWorkqueue.Add(objName)
 		}
-		s.seWorkqueue.Forget(obj)
+		//s.seWorkqueue.Forget(obj)
 		glog.V(8).Infof("se processed by scheduled event controller %v", objName)
 
 		return nil

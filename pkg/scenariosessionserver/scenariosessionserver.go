@@ -323,7 +323,7 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 		result.Status.ExpirationTime = expiration
 
 		_, updateErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Update(result)
-		glog.V(4).Infof("updated result for environment")
+		glog.V(4).Infof("updated expiration time for scenario session")
 
 		return updateErr
 	})

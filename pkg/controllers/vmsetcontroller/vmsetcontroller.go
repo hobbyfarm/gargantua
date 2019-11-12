@@ -293,6 +293,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		glog.Errorf("error while retrieving vms owned by vmset %s", vmset.Name)
 	}
 
+	/* TFP Controller will be the one responsible for deleting tainted vm's
 	for _, x := range vms {
 		if x.DeletionTimestamp == nil && x.Status.Tainted {
 			err := v.deleteVM(x)
@@ -301,6 +302,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			}
 		}
 	}
+	*/
 
 	vms, err = v.vmLister.List(labels.Set{
 		"vmset": string(vmset.Name),
@@ -313,7 +315,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 	provisionedCount := 0
 	activeCount := 0
 	for _, x := range vms {
-		if x.DeletionTimestamp == nil {
+		if x.DeletionTimestamp == nil && !x.Status.Tainted {
 			activeCount++
 		}
 		provisionedCount++
