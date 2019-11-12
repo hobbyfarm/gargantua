@@ -301,9 +301,9 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 			dbcRand := fmt.Sprintf("%08x", rand.Uint32())
 			dbcName := strings.Join([]string{"se", se.Name, "dbc", dbcRand}, "-")
 			emptyCap := hfv1.CMSStruct{
-				0,
-				0,
-				0,
+				CPU: 0,
+				Memory: 0,
+				Storage: 0,
 			}
 			dbc := &hfv1.DynamicBindConfiguration{
 				ObjectMeta: metav1.ObjectMeta{

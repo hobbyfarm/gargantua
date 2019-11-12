@@ -419,8 +419,6 @@ type DynamicBindConfigurationSpec struct {
 	BurstCapacity			CMSStruct `json:"burst_capacity"`
 }
 
-// How do we determine environment capacity today? We use a utility that checks all of the vmsets for the environment
-
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
