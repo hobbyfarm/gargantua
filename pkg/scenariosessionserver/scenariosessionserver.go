@@ -275,6 +275,11 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 		return
 	}
 
+	if ss.Status.Finished {
+		util.ReturnHTTPMessage(w, r, 404, "notfound", "scenario session was finished")
+		return
+	}
+
 	if ss.Status.Paused {
 		glog.V(4).Infof("Scenario session %s was paused, returning paused", ss.Spec.Id)
 
