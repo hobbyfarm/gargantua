@@ -29,7 +29,7 @@ type VMClaimController struct {
 	vmLister hfListers.VirtualMachineLister
 	vmClaimLister hfListers.VirtualMachineClaimLister
 
-	vmClaimWorkqueue workqueue.RateLimitingInterface
+	vmClaimWorkqueue workqueue.Interface
 
 	vmClaimHasSynced cache.InformerSynced
 	vmHasSynced cache.InformerSynced
@@ -43,7 +43,7 @@ func NewVMClaimController(hfClientSet *hfClientset.Clientset, hfInformerFactory 
 	vmClaimController.vmLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Lister()
 	vmClaimController.vmClaimLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Lister()
 
-	vmClaimController.vmClaimWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "VMClaims")
+	vmClaimController.vmClaimWorkqueue = workqueue.New()
 
 	vmClaimInformer := hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer()
 
@@ -70,7 +70,7 @@ func (v *VMClaimController) enqueueVMClaim(obj interface{}) {
 		return
 	}
 	glog.V(8).Infof("Enqueueing vm claim %v", key)
-	v.vmClaimWorkqueue.AddRateLimited(key)
+	v.vmClaimWorkqueue.Add(key)
 }
 
 func (v *VMClaimController) Run(stopCh <-chan struct{}) error {
@@ -117,18 +117,18 @@ func (v *VMClaimController) processNextVMClaim() bool {
 		vmClaim, err := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(objName, metav1.GetOptions{})
 		if err != nil {
 			glog.Errorf("error while retrieving virtual machine claim %s, likely deleted %v", objName, err)
-			v.vmClaimWorkqueue.Forget(obj)
+			//v.vmClaimWorkqueue.Forget(obj)
 			return nil
 		}
 
 		if vmClaim.Status.Tainted {
-			v.vmClaimWorkqueue.Forget(obj)
+			//v.vmClaimWorkqueue.Forget(obj)
 			glog.V(8).Infof("vm claim %s tainted, forgetting", objName)
 			return nil
 		}
 
 		if vmClaim.Status.Bound && vmClaim.Status.Ready {
-			v.vmClaimWorkqueue.Forget(obj)
+			//v.vmClaimWorkqueue.Forget(obj)
 			glog.V(8).Infof("vm claim %s already bound and ready, forgetting", objName)
 			return nil
 		}
@@ -141,7 +141,8 @@ func (v *VMClaimController) processNextVMClaim() bool {
 
 					if err != nil {
 						glog.Errorf("error while retrieving vm from k8s api: %v", err)
-						v.vmClaimWorkqueue.AddRateLimited(obj)
+						//v.vmClaimWorkqueue.AddRateLimited(obj)
+						v.vmClaimWorkqueue.Add(obj)
 						return nil
 					}
 
@@ -158,12 +159,13 @@ func (v *VMClaimController) processNextVMClaim() bool {
 
 			if vmClaimIsReady {
 				v.updateVMClaimStatus(true, true, vmClaim.Spec.Id)
-				v.vmClaimWorkqueue.Forget(obj)
+				//v.vmClaimWorkqueue.Forget(obj)
 				glog.V(8).Infof("vm claim %s is now bound and ready, forgetting", objName)
 				return nil
 			}
 			glog.V(8).Infof("vm claim %s is not ready yet, requeuing", objName)
-			v.vmClaimWorkqueue.AddRateLimited(obj)
+			//v.vmClaimWorkqueue.AddRateLimited(obj)
+			v.vmClaimWorkqueue.Add(obj)
 			return nil
 		}
 
@@ -175,7 +177,8 @@ func (v *VMClaimController) processNextVMClaim() bool {
 
 			if err != nil {
 				glog.Errorf("Error while attempting to retrieve the dynamic bind request. Perhaps this is a transient error, queuing again.")
-				v.vmClaimWorkqueue.AddRateLimited(obj)
+				//v.vmClaimWorkqueue.AddRateLimited(obj)
+				v.vmClaimWorkqueue.Add(obj)
 				return nil
 			}
 
@@ -189,7 +192,8 @@ func (v *VMClaimController) processNextVMClaim() bool {
 			} else {
 				v.updateVMClaimBindMode("static", "", vmClaim.Spec.Id)
 			}
-			v.vmClaimWorkqueue.AddRateLimited(obj)
+			//v.vmClaimWorkqueue.AddRateLimited(obj)
+			v.vmClaimWorkqueue.Add(obj)
 
 			return nil
 		} else {
@@ -213,7 +217,7 @@ func (v *VMClaimController) processNextVMClaim() bool {
 			if len(needed) == 0 {
 				glog.V(8).Infof("vm claim %s does not need any vms, marking ready and bound", objName)
 				v.updateVMClaimStatus(true, true, objName)
-				v.vmClaimWorkqueue.Forget(obj)
+				//v.vmClaimWorkqueue.Forget(obj)
 				return nil
 			}
 
@@ -302,7 +306,8 @@ func (v *VMClaimController) processNextVMClaim() bool {
 					dbr, err := v.hfClientSet.HobbyfarmV1().DynamicBindRequests().Create(dbr)
 					if err != nil {
 						glog.Errorf("Error creating dynamic bind request for VMClaim %s: %v", vmClaim.Spec.Id, err)
-						v.vmClaimWorkqueue.AddRateLimited(obj)
+						//v.vmClaimWorkqueue.AddRateLimited(obj)
+						v.vmClaimWorkqueue.Add(obj)
 						return nil
 					}
 
@@ -311,7 +316,8 @@ func (v *VMClaimController) processNextVMClaim() bool {
 				} else {
 					v.updateVMClaimStaticBindAttempts(vmClaim.Status.StaticBindAttempts+1, vmClaim.Spec.Id)
 				}
-				v.vmClaimWorkqueue.AddRateLimited(obj)
+				//v.vmClaimWorkqueue.AddRateLimited(obj)
+				v.vmClaimWorkqueue.Add(obj)
 				return nil
 			}
 
@@ -331,7 +337,7 @@ func (v *VMClaimController) processNextVMClaim() bool {
 
 			v.updateVMClaimStatus(true, true, vmClaim.Spec.Id)
 
-			v.vmClaimWorkqueue.Forget(obj)
+			//v.vmClaimWorkqueue.Forget(obj)
 			glog.V(4).Infof("vmclaim processed and assigned by controller %v", objName)
 
 			return nil
