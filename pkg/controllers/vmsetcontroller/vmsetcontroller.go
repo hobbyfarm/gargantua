@@ -224,7 +224,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		glog.V(5).Infof("provisioning %d vms", needed)
 		// this code is so... verbose...
 		for i := 0; i < needed; i++ {
-			vmName := strings.Join([]string{vmset.Spec.BaseName, fmt.Sprintf("%08x", rand.Uint32())}, "-")
+			vmName := strings.Join([]string{"hobbyfarm", vmset.Spec.BaseName, fmt.Sprintf("%08x", rand.Uint32())}, "-")
 			vm := &hfv1.VirtualMachine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: vmName,
