@@ -1,5 +1,16 @@
-FROM ubuntu:16.04
+FROM golang:latest as builder
 
-COPY bin/gargantua /usr/local/bin
+WORKDIR /go/gargantua/
+COPY . .
+ENV GOOS=linux 
+ENV CGO_ENABLED=0 
+RUN go build -o bin/gargantua .
+RUN touch /tmp
 
-ENTRYPOINT /usr/local/bin/gargantua -v=9 -alsologtostderr
+FROM scratch  
+WORKDIR /app/
+COPY --from=builder /go/gargantua/bin/gargantua .
+COPY --from=builder /tmp/ /tmp/
+
+ENTRYPOINT ["/app/gargantua"] 
+CMD ["-v=9", "-logtostderr"]
