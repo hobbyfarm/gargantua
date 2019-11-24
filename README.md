@@ -14,5 +14,3 @@ Their relationship is better illustrated with the following ERD:
 
 ![](./artifacts/diagrams/Workflow.png)
 
-**To do:**
-- helm chart
