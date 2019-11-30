@@ -46,6 +46,7 @@ func NewVMClaimController(hfClientSet *hfClientset.Clientset, hfInformerFactory 
 	vmClaimController.vmClaimLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Lister()
 
 	vmClaimController.vmClaimWorkqueue = workqueue.New()
+	vmClaimController.vmWorkqueue = workqueue.New()
 
 	vmClaimInformer := hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer()
 
