@@ -31,6 +31,8 @@ type VMClaimController struct {
 
 	vmClaimWorkqueue workqueue.Interface
 
+	vmWorkqueue workqueue.Interface
+
 	vmClaimHasSynced cache.InformerSynced
 	vmHasSynced cache.InformerSynced
 
@@ -55,6 +57,16 @@ func NewVMClaimController(hfClientSet *hfClientset.Clientset, hfInformerFactory 
 		DeleteFunc: vmClaimController.enqueueVMClaim,
 	}, time.Minute * 30)
 
+	vmInformer := hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer()
+
+	vmInformer.AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
+		AddFunc: vmClaimController.enqueueVM,
+		UpdateFunc: func(old, new interface{}) {
+
+		},
+		DeleteFunc: vmClaimController.enqueueVM,
+	}, time.Minute * 30)
+
 	vmClaimController.vmClaimHasSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced
 	vmClaimController.vmHasSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
 
@@ -73,6 +85,16 @@ func (v *VMClaimController) enqueueVMClaim(obj interface{}) {
 	v.vmClaimWorkqueue.Add(key)
 }
 
+func (v *VMClaimController) enqueueVM(obj interface{}) {
+	var key string
+	var err error
+	if key,err = cache.MetaNamespaceKeyFunc(obj); err != nil {
+		return
+	}
+	glog.V(8).Infof("enqueueing vm %v in vm claim controller to inform vmclaim if exists")
+	v.vmWorkqueue.Add(key)
+}
+
 func (v *VMClaimController) Run(stopCh <-chan struct{}) error {
 	defer v.vmClaimWorkqueue.ShutDown()
 
@@ -84,7 +106,7 @@ func (v *VMClaimController) Run(stopCh <-chan struct{}) error {
 	glog.Info("Starting vm claim worker")
 
 	go wait.Until(v.runVMClaimWorker, time.Second, stopCh)
-
+	go wait.Until(v.runVMWorker, time.Second, stopCh)
 	//if ok := cache.WaitForCacheSync(stopCh, )
 	<-stopCh
 	return nil
@@ -94,6 +116,44 @@ func (v *VMClaimController) runVMClaimWorker() {
 	for v.processNextVMClaim() {
 
 	}
+}
+
+func (v *VMClaimController) runVMWorker() {
+	for v.processNextVM() {
+
+	}
+}
+
+func (v *VMClaimController) processNextVM() bool {
+	obj, shutdown := v.vmWorkqueue.Get()
+	glog.V(8).Infof("processing VM in vm claim controller for update")
+
+	if shutdown {
+		return false
+	}
+
+	err := func() error {
+		defer v.vmWorkqueue.Done(obj)
+		_, objName, err := cache.SplitMetaNamespaceKey(obj.(string))
+		vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Get(objName, metav1.GetOptions{})
+
+		if err != nil {
+			// ideally should put logic here to determine if we need to retry and push this vm back onto the workqueue
+			glog.Errorf("error while retrieving vm %s: %v", objName, err)
+			return nil
+		}
+
+		if vm.Spec.VirtualMachineClaimId != "" {
+			v.vmClaimWorkqueue.Add(vm.Spec.VirtualMachineClaimId)
+		}
+		return nil
+	}()
+
+	if err != nil {
+		glog.Errorf("vm claim controller process next vm returned an error %v", err)
+		return true
+	}
+	return true
 }
 
 func (v *VMClaimController) processNextVMClaim() bool {
