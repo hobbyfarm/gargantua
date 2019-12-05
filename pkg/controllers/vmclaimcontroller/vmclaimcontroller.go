@@ -92,7 +92,7 @@ func (v *VMClaimController) enqueueVM(obj interface{}) {
 	if key,err = cache.MetaNamespaceKeyFunc(obj); err != nil {
 		return
 	}
-	glog.V(8).Infof("enqueueing vm %v in vm claim controller to inform vmclaim if exists")
+	glog.V(8).Infof("enqueueing vm %v in vm claim controller to inform vmclaim if exists", key)
 	v.vmWorkqueue.Add(key)
 }
 

@@ -135,7 +135,7 @@ func (t *TerraformProvisionerController) processNextVM() bool {
 	}
 	err := func() error {
 		defer t.vmWorkqueue.Done(obj)
-		glog.V(8).Infof("processing vm in tfp controller: %v", obj)
+		//glog.V(8).Infof("processing vm in tfp controller: %v", obj)
 		_, objName, err := cache.SplitMetaNamespaceKey(obj.(string)) // this is actually not necessary because VM's are not namespaced yet...
 		if err != nil {
 			glog.Errorf("error while splitting meta namespace key %v", err)
@@ -149,16 +149,17 @@ func (t *TerraformProvisionerController) processNextVM() bool {
 			return nil
 		}
 
-		err = t.handleProvision(vm)
+		err, requeue := t.handleProvision(vm)
 
 		if err != nil {
-			//t.vmWorkqueue.AddRateLimited(obj)
-			t.vmWorkqueue.Add(obj)
 			glog.Error(err)
 		}
-		//t.vmWorkqueue.Forget(obj)
-		glog.V(4).Infof("vm processed by endpoint controller %v", objName)
 
+		if requeue {
+			t.vmWorkqueue.Add(obj)
+		}
+
+		//glog.V(4).Infof("vm processed by tfp controller %v", objName)
 		return nil
 
 	}()
@@ -169,21 +170,21 @@ func (t *TerraformProvisionerController) processNextVM() bool {
 
 	return true
 }
-
-func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine) error {
+// returns an error and a boolean of requeue
+func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine) (error, bool) {
 	if vm.Spec.Provision {
 		//glog.V(5).Infof("vm spec was to provision %s", vm.Name)
 		if vm.Status.Tainted && vm.DeletionTimestamp == nil {
 			util.EnsureVMNotReady(t.hfClientSet, t.vmLister, vm.Name)
 			deleteVMErr := t.hfClientSet.HobbyfarmV1().VirtualMachines().Delete(vm.Name, &metav1.DeleteOptions{})
 			if deleteVMErr != nil {
-				return fmt.Errorf("there was an error while deleting the virtual machine %s", vm.Name)
+				return fmt.Errorf("there was an error while deleting the virtual machine %s", vm.Name), true
 			}
 			t.vmWorkqueue.Add(vm.Name)
-			return nil
+			return nil, false
 		}
 		if vm.DeletionTimestamp != nil {
-			glog.V(5).Infof("destroying virtual machine")
+			//glog.V(5).Infof("destroying virtual machine")
 			util.EnsureVMNotReady(t.hfClientSet, t.vmLister, vm.Name)
 			if vm.Status.TFState == "" {
 				// vm already deleted let's delete our finalizer
@@ -192,31 +193,33 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			stateDel := t.tfClientset.TerraformcontrollerV1().States(provisionNS).Delete(vm.Status.TFState, &metav1.DeleteOptions{})
 			if stateDel != nil {
 				t.removeFinalizer(vm)
+			} else {
+				return nil, true // no error, but need to requeue
 			}
-			return nil
+			return nil, false
 		}
 		if vm.Status.Status == hfv1.VmStatusRFP {
 			vmt, err := t.vmtLister.Get(vm.Spec.VirtualMachineTemplateId)
 			if err != nil {
 				glog.Errorf("error getting vmt %v", err)
-				return err
+				return err, true
 			}
 			env, err := t.envLister.Get(vm.Status.EnvironmentId)
 			if err != nil {
 				glog.Errorf("error getting env %v", err)
-				return err
+				return err, true
 			}
 			// let's provision the vm
 			pubKey, privKey, err := util.GenKeyPair()
 			if err != nil {
 				glog.Errorf("error generating keypair %v", err)
-				return err
+				return err, true
 			}
 			envSpecificConfigFromEnv := env.Spec.EnvironmentSpecifics
 			envTemplateInfo, exists := env.Spec.TemplateMapping[vmt.Name]
 			if !exists {
 				glog.Errorf("error pulling environment template info %v", err)
-				return fmt.Errorf("environment template info does not exist for this template %s", vmt.Name)
+				return fmt.Errorf("environment template info does not exist for this template %s", vmt.Name), true
 			}
 			config := make(map[string]string)
 			for k, v := range envSpecificConfigFromEnv {
@@ -235,7 +238,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			image, exists := envTemplateInfo["image"]
 			if !exists{
 				glog.Errorf("image does not exist in env template")
-				return fmt.Errorf("image did not exist")
+				return fmt.Errorf("image did not exist"), true
 			}
 			config["image"] = image
 
@@ -294,7 +297,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			}
 
 			if moduleName == "" {
-				return fmt.Errorf("module name does not exist")
+				return fmt.Errorf("module name does not exist"), true
 			}
 
 			executorImage, exists := envTemplateInfo["executor_image"]
@@ -305,7 +308,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				}
 			}
 			if executorImage == "" {
-				return fmt.Errorf("executorimage does not exist")
+				return fmt.Errorf("executorimage does not exist"), true
 			}
 
 			tfs := &tfv1.State{
@@ -363,10 +366,10 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			})
 
 			if retryErr != nil {
-				return retryErr
+				return retryErr, true
 			}
-			glog.V(5).Infof("provisioned vm %s", vm.Name)
-			return nil
+			glog.V(6).Infof("provisioned vm %s", vm.Name)
+			return nil, false
 
 		} else if vm.Status.Status == hfv1.VmStatusProvisioned {
 			// let's check the status of our tf provision
@@ -380,7 +383,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			// TEMPORARY WORKAROUND UNTIL WE FIGURE OUT A BETTER WAY TO DO THIS
 
 			if vm.Status.TFState == "" {
-				return fmt.Errorf("tf state was blank in object")
+				return fmt.Errorf("tf state was blank in object"), true
 			}
 
 			tfExecs, err := t.tfeLister.List(labels.Set{
@@ -388,13 +391,13 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			}.AsSelector())
 
 			if err != nil {
-				return fmt.Errorf("no executions found for terraform state")
+				return err, true
 			}
 
 			var newestTimestamp *metav1.Time
 			var tfExec *tfv1.Execution
 			if len(tfExecs) == 0 {
-				return fmt.Errorf("no executions found for terraform state")
+				return fmt.Errorf("no executions found for terraform state"), true
 			}
 
 			newestTimestamp = &tfExecs[0].CreationTimestamp
@@ -419,7 +422,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			}
 			*/
 			if tfExec.Status.Outputs == "" {
-				return fmt.Errorf("execution output was empty")
+				return nil, true
 			}
 
 			var tfOutput map[string]map[string]string
@@ -431,7 +434,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			env, err := t.envLister.Get(vm.Status.EnvironmentId)
 			if err != nil {
 				glog.Error(err)
-				return fmt.Errorf("error getting environment")
+				return fmt.Errorf("error getting environment"), true
 			}
 			glog.V(8).Infof("private ip is: %s", tfOutput["private_ip"]["value"])
 
@@ -467,14 +470,14 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			})
 
 			if retryErr != nil {
-				return retryErr
+				return retryErr, true
 			}
 
 		}
 	} else {
 		glog.V(8).Infof("vm %s was not a provisioned vm", vm.Name)
 	}
-	return nil
+	return nil, false
 }
 
 func translatePrivToPub(translationMap map[string]string, priv string) string {
