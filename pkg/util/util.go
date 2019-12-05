@@ -276,11 +276,14 @@ func VerifyScenarioSession(ssLister hfListers.ScenarioSessionLister, ss *hfv1.Sc
 }
 
 func  EnsureVMNotReady(hfClientset *hfClientset.Clientset, vmLister hfListers.VirtualMachineLister, vmName string) error {
-	glog.V(5).Infof("ensuring VM %s is not ready", vmName)
+	//glog.V(5).Infof("ensuring VM %s is not ready", vmName)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := hfClientset.HobbyfarmV1().VirtualMachines().Get(vmName, metav1.GetOptions{})
 		if getErr != nil {
 			return getErr
+		}
+		if result.Labels["ready"] == "false" {
+			return nil
 		}
 		result.Labels["ready"] = "false"
 
@@ -288,7 +291,7 @@ func  EnsureVMNotReady(hfClientset *hfClientset.Clientset, vmLister hfListers.Vi
 		if updateErr != nil {
 			return updateErr
 		}
-		glog.V(4).Infof("updated result for vm")
+		glog.V(4).Infof("set vm %s to not ready")
 
 		verifyErr := VerifyVM(vmLister, result)
 
