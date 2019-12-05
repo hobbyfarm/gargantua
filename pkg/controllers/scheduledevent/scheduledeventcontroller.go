@@ -19,8 +19,8 @@ import (
 type ScheduledEventController struct {
 	hfClientSet *hfClientset.Clientset
 
-	seWorkqueue workqueue.RateLimitingInterface
-
+	//seWorkqueue workqueue.RateLimitingInterface
+	seWorkqueue workqueue.DelayingInterface
 	seSynced cache.InformerSynced
 }
 
@@ -29,8 +29,8 @@ func NewScheduledEventController(hfClientSet *hfClientset.Clientset, hfInformerF
 	seController.hfClientSet = hfClientSet
 	seController.seSynced = hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer().HasSynced
 
-	seController.seWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ScheduledEvent")
-
+	//seController.seWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ScheduledEvent")
+	seController.seWorkqueue = workqueue.NewNamedDelayingQueue("sec-se")
 	seInformer := hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer()
 
 	seInformer.AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
@@ -39,7 +39,7 @@ func NewScheduledEventController(hfClientSet *hfClientset.Clientset, hfInformerF
 			seController.enqueueSE(new)
 		},
 		DeleteFunc: seController.enqueueSE,
-	}, time.Second*30)
+	}, time.Minute*30)
 
 	return &seController, nil
 }
@@ -52,7 +52,8 @@ func (s *ScheduledEventController) enqueueSE(obj interface{}) {
 		return
 	}
 	glog.V(8).Infof("Enqueueing se %s", key)
-	s.seWorkqueue.AddRateLimited(key)
+	//s.seWorkqueue.AddRateLimited(key)
+	s.seWorkqueue.Add(key)
 }
 
 func (s *ScheduledEventController) Run(stopCh <-chan struct{}) error {
@@ -98,8 +99,9 @@ func (s *ScheduledEventController) processNextScheduledEvent() bool {
 
 		if err != nil {
 			glog.Error(err)
+			s.seWorkqueue.Add(objName)
 		}
-		s.seWorkqueue.Forget(obj)
+		//s.seWorkqueue.Forget(obj)
 		glog.V(8).Infof("se processed by scheduled event controller %v", objName)
 
 		return nil
@@ -295,6 +297,53 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 				if err != nil {
 					glog.Error(err)
 				}
+			}
+
+			// create the dynamic bind configurations
+			dbcRand := fmt.Sprintf("%08x", rand.Uint32())
+			dbcName := strings.Join([]string{"se", se.Name, "dbc", dbcRand}, "-")
+			emptyCap := hfv1.CMSStruct{
+				CPU: 0,
+				Memory: 0,
+				Storage: 0,
+			}
+			dbc := &hfv1.DynamicBindConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: dbcName,
+					OwnerReferences: []metav1.OwnerReference{
+						{
+							APIVersion: "hobbyfarm.io/v1",
+							Kind:       "ScheduledEvent",
+							Name:       se.Name,
+							UID:        se.UID,
+						},
+					},
+					Labels: map[string]string{
+						"environment":    env.Name,
+						"scheduledevent": se.Name,
+					},
+				},
+				Spec: hfv1.DynamicBindConfigurationSpec{
+					Id: dbcName,
+					Environment: envName,
+					BaseName: dbcRand,
+					BurstCountCapacity: vmtMap,
+					BurstCapacity: emptyCap,
+				},
+			}
+
+			if se.Spec.RestrictedBind {
+				dbc.Spec.RestrictedBind = true
+				dbc.Spec.RestrictedBindValue = se.Spec.RestrictedBindValue
+				dbc.ObjectMeta.Labels["restrictedbind"] = "true"
+				dbc.ObjectMeta.Labels["restrictedbindvalue"] = se.Spec.RestrictedBindValue
+			} else {
+				dbc.ObjectMeta.Labels["restrictedbind"] = "false"
+			}
+
+			_, err = s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().Create(dbc)
+			if err != nil {
+				glog.Errorf("error creating dynamic bind configuration %v", err)
 			}
 		}
 

@@ -155,9 +155,9 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 			virtualMachineClaim.Spec.VirtualMachines[vmName] = hfv1.VirtualMachineClaimVM{vmTemplateName, ""}
 		}
 		virtualMachineClaim.Spec.UserId = user.Spec.Id
-		virtualMachineClaim.Spec.VirtualMachineClassId = "default"
 		virtualMachineClaim.Status.Bound = false
 		virtualMachineClaim.Status.Ready = false
+		virtualMachineClaim.Spec.DynamicCapable = true
 
 		if restrictedBind {
 			virtualMachineClaim.Spec.RestrictedBind = restrictedBind
@@ -275,6 +275,11 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 		return
 	}
 
+	if ss.Status.Finished {
+		util.ReturnHTTPMessage(w, r, 404, "notfound", "scenario session was finished")
+		return
+	}
+
 	if ss.Status.Paused {
 		glog.V(4).Infof("Scenario session %s was paused, returning paused", ss.Spec.Id)
 
@@ -323,7 +328,7 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 		result.Status.ExpirationTime = expiration
 
 		_, updateErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Update(result)
-		glog.V(4).Infof("updated result for environment")
+		glog.V(4).Infof("updated expiration time for scenario session")
 
 		return updateErr
 	})

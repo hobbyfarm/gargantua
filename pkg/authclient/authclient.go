@@ -78,7 +78,7 @@ func (a AuthClient) AuthWS(w http.ResponseWriter, r *http.Request) (hfv1.User, e
 // if admin is true then check if user is an admin
 
 func (a AuthClient) performAuth(token string, admin bool) (hfv1.User, error) {
-	glog.V(2).Infof("token passed in was: %s", token)
+	//glog.V(2).Infof("token passed in was: %s", token)
 
 	user, err := a.ValidateJWT(token)
 

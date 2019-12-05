@@ -28,6 +28,8 @@ import (
 type HobbyfarmV1Interface interface {
 	RESTClient() rest.Interface
 	AccessCodesGetter
+	DynamicBindConfigurationsGetter
+	DynamicBindRequestsGetter
 	EnvironmentsGetter
 	ScenariosGetter
 	ScenarioSessionsGetter
@@ -46,6 +48,14 @@ type HobbyfarmV1Client struct {
 
 func (c *HobbyfarmV1Client) AccessCodes() AccessCodeInterface {
 	return newAccessCodes(c)
+}
+
+func (c *HobbyfarmV1Client) DynamicBindConfigurations() DynamicBindConfigurationInterface {
+	return newDynamicBindConfigurations(c)
+}
+
+func (c *HobbyfarmV1Client) DynamicBindRequests() DynamicBindRequestInterface {
+	return newDynamicBindRequests(c)
 }
 
 func (c *HobbyfarmV1Client) Environments() EnvironmentInterface {

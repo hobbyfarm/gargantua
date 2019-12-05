@@ -47,6 +47,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&UserList{},
 		&ScheduledEvent{},
 		&ScheduledEventList{},
+		&DynamicBindConfiguration{},
+		&DynamicBindConfigurationList{},
+		&DynamicBindRequest{},
+		&DynamicBindRequestList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

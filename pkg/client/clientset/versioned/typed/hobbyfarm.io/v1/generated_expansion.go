@@ -20,6 +20,10 @@ package v1
 
 type AccessCodeExpansion interface{}
 
+type DynamicBindConfigurationExpansion interface{}
+
+type DynamicBindRequestExpansion interface{}
+
 type EnvironmentExpansion interface{}
 
 type ScenarioExpansion interface{}

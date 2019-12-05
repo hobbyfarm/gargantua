@@ -23,9 +23,9 @@ import (
 
 type VirtualMachineSetController struct {
 	hfClientSet    *hfClientset.Clientset
-	vmSetWorkqueue workqueue.RateLimitingInterface
-	vmWorkqueue    workqueue.RateLimitingInterface
-
+	//vmSetWorkqueue workqueue.RateLimitingInterface
+	//vmWorkqueue    workqueue.RateLimitingInterface
+	vmSetWorkqueue   workqueue.Interface
 	vmSetLister      hfListers.VirtualMachineSetLister
 	vmLister         hfListers.VirtualMachineLister
 	envLister        hfListers.EnvironmentLister
@@ -50,8 +50,9 @@ func NewVirtualMachineSetController(hfClientSet *hfClientset.Clientset, hfInform
 	vmSetController.envSynced = hfInformerFactory.Hobbyfarm().V1().Environments().Informer().HasSynced
 	vmSetController.vmTemplateSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced
 
-	vmSetController.vmSetWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "VMSet")
-	vmSetController.vmWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "VM")
+	//vmSetController.vmSetWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "VMSet")
+	//vmSetController.vmWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "VM")
+	vmSetController.vmSetWorkqueue = workqueue.NewNamed("vmsc-vms")
 	//vmClaimController.hfInformerFactory = hfInformerFactory
 
 	vmSetController.vmSetLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineSets().Lister()
@@ -67,7 +68,7 @@ func NewVirtualMachineSetController(hfClientSet *hfClientset.Clientset, hfInform
 			vmSetController.enqueueVMSet(new)
 		},
 		DeleteFunc: vmSetController.enqueueVMSet,
-	}, time.Second*30)
+	}, time.Minute*30)
 
 	vmInformer := hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer()
 
@@ -77,7 +78,7 @@ func NewVirtualMachineSetController(hfClientSet *hfClientset.Clientset, hfInform
 			vmSetController.handleVM(new)
 		},
 		DeleteFunc: vmSetController.handleVM,
-	}, time.Second*30)
+	}, time.Minute*30)
 	return &vmSetController, nil
 }
 
@@ -124,7 +125,8 @@ func (v *VirtualMachineSetController) enqueueVMSet(obj interface{}) {
 		return
 	}
 	glog.V(8).Infof("Enqueueing vm set %s", key)
-	v.vmSetWorkqueue.AddRateLimited(key)
+	//v.vmSetWorkqueue.AddRateLimited(key)
+	v.vmSetWorkqueue.Add(key)
 }
 
 func (v *VirtualMachineSetController) Run(stopCh <-chan struct{}) error {
@@ -170,7 +172,7 @@ func (v *VirtualMachineSetController) processNextVMSet() bool {
 		vmSet, err := v.vmSetLister.Get(objName)
 		if err != nil {
 			glog.Errorf("error while retrieving virtual machine set %s, likely deleted %v", objName, err)
-			v.vmSetWorkqueue.Forget(obj)
+			//v.vmSetWorkqueue.Forget(obj)
 			return nil
 		}
 
@@ -178,9 +180,8 @@ func (v *VirtualMachineSetController) processNextVMSet() bool {
 		if err != nil {
 			glog.Error(err)
 		}
-		v.vmSetWorkqueue.Forget(obj)
+		//v.vmSetWorkqueue.Forget(obj)
 		glog.V(4).Infof("vm set processed by vmset controller %v", objName)
-
 		return nil
 
 	}()
@@ -237,6 +238,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 						},
 					},
 					Labels: map[string]string{
+						"dynamic":     "false",
 						"vmset":       vmset.Name,
 						"template":    vmt.Spec.Id,
 						"environment": env.Name,
@@ -292,6 +294,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		glog.Errorf("error while retrieving vms owned by vmset %s", vmset.Name)
 	}
 
+	/* TFP Controller will be the one responsible for deleting tainted vm's
 	for _, x := range vms {
 		if x.DeletionTimestamp == nil && x.Status.Tainted {
 			err := v.deleteVM(x)
@@ -300,6 +303,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			}
 		}
 	}
+	*/
 
 	vms, err = v.vmLister.List(labels.Set{
 		"vmset": string(vmset.Name),
@@ -312,7 +316,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 	provisionedCount := 0
 	activeCount := 0
 	for _, x := range vms {
-		if x.DeletionTimestamp == nil {
+		if x.DeletionTimestamp == nil && !x.Status.Tainted {
 			activeCount++
 		}
 		provisionedCount++

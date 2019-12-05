@@ -18,7 +18,8 @@ import (
 type ScenarioSessionController struct {
 	hfClientSet *hfClientset.Clientset
 
-	ssWorkqueue workqueue.RateLimitingInterface
+	//ssWorkqueue workqueue.RateLimitingInterface
+	ssWorkqueue workqueue.DelayingInterface
 
 	vmLister  hfListers.VirtualMachineLister
 	vmcLister hfListers.VirtualMachineClaimLister
@@ -36,8 +37,8 @@ func NewScenarioSessionController(hfClientSet *hfClientset.Clientset, hfInformer
 	ssController.vmcSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced
 	ssController.ssSynced = hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer().HasSynced
 
-	ssController.ssWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ScenarioSession")
-
+	//ssController.ssWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ScenarioSession")
+	ssController.ssWorkqueue = workqueue.NewNamedDelayingQueue("ssc-ss")
 	ssController.vmLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Lister()
 	ssController.vmcLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Lister()
 	ssController.ssLister = hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Lister()
@@ -50,7 +51,7 @@ func NewScenarioSessionController(hfClientSet *hfClientset.Clientset, hfInformer
 			ssController.enqueueSS(new)
 		},
 		DeleteFunc: ssController.enqueueSS,
-	}, time.Second*30)
+	}, time.Minute*30)
 
 	return &ssController, nil
 }
@@ -63,7 +64,8 @@ func (s *ScenarioSessionController) enqueueSS(obj interface{}) {
 		return
 	}
 	glog.V(8).Infof("Enqueueing ss %s", key)
-	s.ssWorkqueue.AddRateLimited(key)
+	//s.ssWorkqueue.AddRateLimited(key)
+	s.ssWorkqueue.Add(key)
 }
 
 func (s *ScenarioSessionController) Run(stopCh <-chan struct{}) error {
@@ -110,7 +112,7 @@ func (s *ScenarioSessionController) processNextScenarioSession() bool {
 		if err != nil {
 			glog.Error(err)
 		}
-		s.ssWorkqueue.Forget(obj)
+		//s.ssWorkqueue.Forget(obj)
 		glog.V(8).Infof("ss processed by scenario session controller %v", objName)
 
 		return nil
@@ -140,6 +142,8 @@ func (s *ScenarioSessionController) reconcileScenarioSession(ssName string) erro
 	if err != nil {
 		return err
 	}
+
+	timeUntilExpires := expires.Sub(now)
 
 	if expires.Before(now) && !ss.Status.Finished {
 		// we need to set the scenario session to finished and delete the vm's
@@ -201,6 +205,12 @@ func (s *ScenarioSessionController) reconcileScenarioSession(ssName string) erro
 		if retryErr != nil {
 			return retryErr
 		}
+	} else if expires.Before(now) && ss.Status.Finished {
+		glog.V(8).Infof("scenario session %s is finished and expired before now", ssName)
+	} else {
+		glog.V(8).Infof("adding scenario session %s to workqueue after %s", ssName, timeUntilExpires.String())
+		s.ssWorkqueue.AddAfter(ssName, timeUntilExpires)
+		glog.V(8).Infof("added scenario session %s to workqueue", ssName)
 	}
 
 	return nil

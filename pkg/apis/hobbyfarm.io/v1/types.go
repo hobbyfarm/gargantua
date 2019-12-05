@@ -82,10 +82,13 @@ type VirtualMachineClaimSpec struct {
 	RestrictedBind bool `json:"restricted_bind"`
 	RestrictedBindValue string `json:"restricted_bind_value"`
 	VirtualMachines map[string]VirtualMachineClaimVM `json:"vm"`
-	VirtualMachineClassId string `json:"vm_class_id"`
+	DynamicCapable bool `json:"dynamic_bind_capable"`
 }
 
 type VirtualMachineClaimStatus struct {
+	BindMode string `json:"bind_mode"`
+	StaticBindAttempts int `json:"static_bind_attempts"`
+	DynamicBindRequestId string `json:"dynamic_bind_request_id"`
 	Bound	bool	`json:"bound"`
 	Ready   bool 	`json:"ready"`
 	Tainted	bool	`json:"tainted"` // If tainted, we should delete the VM's underneath then delete ourself...
@@ -156,8 +159,11 @@ type EnvironmentSpec struct {
 	IPTranslationMap		map[string]string `json:"ip_translation_map"`
 	WsEndpoint				string		`json:"ws_endpoint"`
 	CapacityMode			CapacityMode `json:"capacity_mode"`
+	BurstCapable			bool		`json:"burst_capable"`
 	CountCapacity			map[string]int `json:"count_capacity"`
 	Capacity				CMSStruct `json:"capacity"`
+	BurstCountCapacity		map[string]int `json:"burst_count_capacity"`
+	BurstCapacity			CMSStruct `json:"burst_capacity"`
 }
 
 type EnvironmentStatus struct {
@@ -379,3 +385,69 @@ type ScheduledEventStatus struct {
 	Finished	bool	`json:"finished"`
 }
 
+// +genclient
+// +genclient:noStatus
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type DynamicBindConfiguration struct {
+	metav1.TypeMeta	`json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec 	DynamicBindConfigurationSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type DynamicBindConfigurationList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []DynamicBindConfiguration `json:"items"`
+}
+
+// DynamicBindConfiguration is very similar to a VirtualMachineSet. They should be created side-by-side
+// but there is no guarantee the environments will have adequate capacity when creating them.
+// The DynamicBindController will watch for VM Objects that get created and will always check to make sure
+// that there is adequate vm capacity, it will always choose the environment with the highest capacity before creating a dynamic VM.
+
+type DynamicBindConfigurationSpec struct {
+	Id string `json:"id"`
+	Environment string	`json:"environment"`
+	BaseName	string	`json:"base_name"`
+	RestrictedBind	bool	`json:"restricted_bind"`
+	RestrictedBindValue	string	`json:"restricted_bind_value"`
+	BurstCountCapacity		map[string]int `json:"burst_count_capacity"`
+	BurstCapacity			CMSStruct `json:"burst_capacity"`
+}
+
+// +genclient
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type DynamicBindRequest struct {
+	metav1.TypeMeta	`json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec DynamicBindRequestSpec `json:"spec"`
+	Status DynamicBindRequestStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type DynamicBindRequestList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []DynamicBindRequest `json:"items"`
+}
+
+type DynamicBindRequestSpec struct {
+	Id string `json:"id"`
+	VirtualMachineClaim string `json:"vm_claim"`
+	Attempts int `json:"attempts"`
+}
+
+type DynamicBindRequestStatus struct {
+	CurrentAttempts		 int `json:"current_attempts"`
+	Expired			bool	`json:"expired"`
+	Fulfilled		 bool `json:"fulfilled"`
+	DynamicBindConfigurationId string `json:"dynamic_bind_configuration_id"`
+	VirtualMachineIds map[string]string `json:"virtual_machines_id"`
+}

@@ -304,6 +304,66 @@ func  EnsureVMNotReady(hfClientset *hfClientset.Clientset, vmLister hfListers.Vi
 	return nil
 }
 
+func AvailableRawCapacity(hfClientset *hfClientset.Clientset, capacity hfv1.CMSStruct, virtualMachines []hfv1.VirtualMachine) *hfv1.CMSStruct {
+	vmTemplates, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("unable to list virtual machine templates, got error %v", err)
+		return nil
+	}
+
+	currentUsage := hfv1.CMSStruct{}
+	for _, vm := range virtualMachines {
+		for _, vmTemplate := range vmTemplates.Items {
+			if vmTemplate.Spec.Id == vm.Spec.VirtualMachineTemplateId {
+				currentUsage.CPU = currentUsage.CPU + vmTemplate.Spec.Resources.CPU
+				currentUsage.Memory = currentUsage.Memory + vmTemplate.Spec.Resources.Memory
+				currentUsage.Storage = currentUsage.Storage + vmTemplate.Spec.Resources.Storage
+			}
+		}
+	}
+
+	availableCapacity := hfv1.CMSStruct{}
+
+	availableCapacity.CPU = capacity.CPU - currentUsage.CPU
+	availableCapacity.Memory = capacity.Memory - currentUsage.Memory
+	availableCapacity.Storage = capacity.Storage - currentUsage.Storage
+
+	return &availableCapacity
+}
+
+func MaxVMCountsRaw(hfClientset *hfClientset.Clientset, vmTemplates map[string]int, available hfv1.CMSStruct) int {
+	vmTemplatesFromK8s, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("unable to list virtual machine templates, got error %v", err)
+		return 0
+	}
+
+	maxCount := 0
+
+	var neededResources hfv1.CMSStruct
+
+	for _, vmTemplate := range vmTemplatesFromK8s.Items {
+		if vmtCount, ok := vmTemplates[vmTemplate.Name]; ok {
+			neededResources.CPU = neededResources.CPU + vmTemplate.Spec.Resources.CPU * vmtCount
+			neededResources.Memory = neededResources.Memory + vmTemplate.Spec.Resources.Memory * vmtCount
+			neededResources.Storage = neededResources.Storage + vmTemplate.Spec.Resources.Storage * vmtCount
+		}
+	}
+
+	maxCount = available.CPU / neededResources.CPU
+
+	if available.Memory/neededResources.Memory > maxCount {
+		maxCount = available.Memory / neededResources.Memory
+	}
+
+	if available.Storage/neededResources.Storage > maxCount {
+		maxCount = available.Storage / neededResources.Storage
+	}
+
+	return maxCount
+
+}
+
 // pending rename...
 type Maximus struct {
 	CapacityMode			hfv1.CapacityMode `json:"capacity_mode"`
