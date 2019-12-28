@@ -6,6 +6,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
@@ -96,10 +97,11 @@ func (s *ScheduledEventController) processNextScheduledEvent() bool {
 		}
 
 		err = s.reconcileScheduledEvent(objName)
-
 		if err != nil {
-			glog.Error(err)
-			s.seWorkqueue.Add(objName)
+			if !apierrors.IsNotFound(err) {
+				glog.Error(err)
+				s.seWorkqueue.Add(objName)
+			}
 		}
 		//s.seWorkqueue.Forget(obj)
 		glog.V(8).Infof("se processed by scheduled event controller %v", objName)
@@ -261,41 +263,43 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 			// create the virtualmachinesets now
 
 			for templateName, count := range vmtMap {
-				vmsRand := fmt.Sprintf("%08x", rand.Uint32())
-				vmsName := strings.Join([]string{"se", se.Name, "vms", vmsRand}, "-")
-				vmSets = append(vmSets, vmsName)
-				vms := &hfv1.VirtualMachineSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: vmsName,
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion: "hobbyfarm.io/v1",
-								Kind:       "ScheduledEvent",
-								Name:       se.Name,
-								UID:        se.UID,
+				if count > 0 {
+					vmsRand := fmt.Sprintf("%08x", rand.Uint32())
+					vmsName := strings.Join([]string{"se", se.Name, "vms", vmsRand}, "-")
+					vmSets = append(vmSets, vmsName)
+					vms := &hfv1.VirtualMachineSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: vmsName,
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									APIVersion: "hobbyfarm.io/v1",
+									Kind:       "ScheduledEvent",
+									Name:       se.Name,
+									UID:        se.UID,
+								},
+							},
+							Labels: map[string]string{
+								"environment":    env.Name,
+								"scheduledevent": se.Name,
 							},
 						},
-						Labels: map[string]string{
-							"environment":    env.Name,
-							"scheduledevent": se.Name,
+						Spec: hfv1.VirtualMachineSetSpec{
+							Count:       count,
+							Environment: envName,
+							VMTemplate:  templateName,
+							BaseName:    vmsRand,
 						},
-					},
-					Spec: hfv1.VirtualMachineSetSpec{
-						Count:       count,
-						Environment: envName,
-						VMTemplate:  templateName,
-						BaseName:    vmsRand,
-					},
-				}
-				if se.Spec.RestrictedBind {
-					vms.Spec.RestrictedBind = true
-					vms.Spec.RestrictedBindValue = se.Spec.RestrictedBindValue
-				} else {
-					vms.Spec.RestrictedBind = false
-				}
-				vms, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().Create(vms)
-				if err != nil {
-					glog.Error(err)
+					}
+					if se.Spec.RestrictedBind {
+						vms.Spec.RestrictedBind = true
+						vms.Spec.RestrictedBindValue = se.Spec.RestrictedBindValue
+					} else {
+						vms.Spec.RestrictedBind = false
+					}
+					vms, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().Create(vms)
+					if err != nil {
+						glog.Error(err)
+					}
 				}
 			}
 
@@ -306,6 +310,16 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 				CPU: 0,
 				Memory: 0,
 				Storage: 0,
+			}
+
+			bcc := map[string]int{}
+
+			for t, c := range vmtMap {
+				if c == 0 || c == -1 {
+					bcc[t] = 10
+				} else {
+					bcc[t] = c
+				}
 			}
 			dbc := &hfv1.DynamicBindConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
@@ -327,7 +341,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 					Id: dbcName,
 					Environment: envName,
 					BaseName: dbcRand,
-					BurstCountCapacity: vmtMap,
+					BurstCountCapacity: bcc,
 					BurstCapacity: emptyCap,
 				},
 			}
