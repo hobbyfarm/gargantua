@@ -1,5 +1,18 @@
-FROM ubuntu:16.04
+FROM golang:1.13 as builder 
 
-COPY bin/gargantua /usr/local/bin
+WORKDIR /go/src/github.com/hobbyfarm/gargantua
+COPY . .
 
-ENTRYPOINT /usr/local/bin/gargantua -v=9 -alsologtostderr
+ENV GOOS=linux 
+ENV CGO_ENABLED=0
+
+RUN go get -d -v ./...
+RUN go install -v ./...
+
+
+FROM alpine:3.11
+	
+COPY --from=builder /go/bin/gargantua /usr/local/bin/
+
+ENTRYPOINT ["gargantua"] 
+CMD ["-v=9", "-logtostderr"] 
