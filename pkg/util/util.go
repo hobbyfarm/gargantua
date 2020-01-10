@@ -275,6 +275,29 @@ func VerifyScenarioSession(ssLister hfListers.ScenarioSessionLister, ss *hfv1.Sc
 
 }
 
+func VerifyCourse(cLister hfListers.CourseLister, c *hfv1.Course) error {
+	var err error
+	glog.V(5).Infof("Verifying course %s", c.Name)
+	for i := 0; i < 150000; i++ {
+		var fromCache *hfv1.Course
+		fromCache, err = cLister.Get(c.Name)
+		if err != nil {
+			glog.Error(err)
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return err
+		}
+		if ResourceVersionAtLeast(fromCache.ResourceVersion, c.ResourceVersion) {
+			glog.V(5).Infof("resource version matched for %s", c.Name)
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	glog.Errorf("resource version didn't match for in time %s", c.Name)
+	return nil
+}
+
 func  EnsureVMNotReady(hfClientset *hfClientset.Clientset, vmLister hfListers.VirtualMachineLister, vmName string) error {
 	//glog.V(5).Infof("ensuring VM %s is not ready", vmName)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
