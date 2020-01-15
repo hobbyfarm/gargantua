@@ -102,6 +102,11 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	courseServer, err := courseserver.NewCourseServer(authClient, acClient, hfClient, hfInformerFactrory)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
 	scenarioServer, err := scenarioserver.NewScenarioServer(authClient, acClient, hfClient, hfInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
@@ -168,6 +173,7 @@ func main() {
 	} else {
 		ssServer.SetupRoutes(r)
 		authServer.SetupRoutes(r)
+		courseServer.SetupRoutes(r)
 		scenarioServer.SetupRoutes(r)
 		vmServer.SetupRoutes(r)
 		//shellProxy.SetupRoutes(r)
@@ -247,6 +253,11 @@ func main() {
 		go func() {
 			defer wg.Done()
 			scenarioSessionController.Run(stopCh)
+		}()
+
+		go func() {
+			defer wg.Done()
+			courseController.Run(stopCh)
 		}()
 
 		go func() {

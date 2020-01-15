@@ -222,6 +222,35 @@ type VirtualMachineSetList struct {
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+type Course struct {
+	metav1.TypeMeta 			`json:",inline"`
+	metav1.ObjectMeta 		`json:"metadata,omitempty"`
+	Spec									CourseSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type CourseList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items						[]Course `json:"spec"`
+}
+
+type CourseSpec struct {
+	Id 								string	 							`json:"id"`
+	Name 							string 								`json:"name"`
+	Description 			string 								`json:"description"`
+	Scenarios         []map[string]string   `json:"scenarios"`
+	KeepAliveDuration string 								`json:"keepalive_duration"`
+	PauseDuration     string 								`json:"pause_duration"`
+	Pauseable 				bool    							`json:"pauseable"`
+}
+
+// +genclient
+// +genclient:noStatus
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 type Scenario struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
