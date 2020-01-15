@@ -1,4 +1,4 @@
-package scenariosessionserver
+package coursesessionserver
 
 import (
 	"encoding/json"
@@ -20,13 +20,13 @@ import (
 )
 
 const (
-	ssIndex            = "sss.hobbyfarm.io/scenariosession-id-index"
+	ssIndex            = "sss.hobbyfarm.io/coursesession-id-index"
 	newSSTimeout       = "5m"
 	keepaliveSSTimeout = "5m"
 	pauseSSTimeout     = "2h"
 )
 
-type ScenarioSessionServer struct {
+type CourseSessionServer struct {
 	hfClientSet      *hfClientset.Clientset
 	scenarioClient   *scenarioclient.ScenarioClient
 	accessCodeClient *accesscode.AccessCodeClient
@@ -34,30 +34,30 @@ type ScenarioSessionServer struct {
 	ssIndexer        cache.Indexer
 }
 
-func NewScenarioSessionServer(authClient *authclient.AuthClient, accessCodeClient *accesscode.AccessCodeClient, scenarioClient *scenarioclient.ScenarioClient, hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioSessionServer, error) {
-	a := ScenarioSessionServer{}
+func NewCourseSessionServer(authClient *authclient.AuthClient, accessCodeClient *accesscode.AccessCodeClient, scenarioClient *scenarioclient.ScenarioClient, hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*CourseSessionServer, error) {
+	a := CourseSessionServer{}
 	a.hfClientSet = hfClientSet
 	a.scenarioClient = scenarioClient
 	a.auth = authClient
 	a.accessCodeClient = accessCodeClient
-	inf := hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer()
+	inf := hfInformerFactory.Hobbyfarm().V1().CourseSessions().Informer()
 	indexers := map[string]cache.IndexFunc{ssIndex: ssIdIndexer}
 	inf.AddIndexers(indexers)
 	a.ssIndexer = inf.GetIndexer()
 	return &a, nil
 }
 
-func (sss ScenarioSessionServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/session/new", sss.NewScenarioSessionFunc).Methods("POST")
-	r.HandleFunc("/session/{scenario_session_id}", sss.GetScenarioSessionFunc).Methods("GET")
-	r.HandleFunc("/session/{scenario_session_id}/finished", sss.FinishedScenarioSessionFunc).Methods("PUT")
-	r.HandleFunc("/session/{scenario_session_id}/keepalive", sss.KeepAliveScenarioSessionFunc).Methods("PUT")
-	r.HandleFunc("/session/{scenario_session_id}/pause", sss.PauseScenarioSessionFunc).Methods("PUT")
-	r.HandleFunc("/session/{scenario_session_id}/resume", sss.ResumeScenarioSessionFunc).Methods("PUT")
+func (sss CourseSessionServer) SetupRoutes(r *mux.Router) {
+	r.HandleFunc("/session/new", sss.NewCourseSessionFunc).Methods("POST")
+	r.HandleFunc("/session/{scenario_session_id}", sss.GetCourseSessionFunc).Methods("GET")
+	r.HandleFunc("/session/{scenario_session_id}/finished", sss.FinishedCourseSessionFunc).Methods("PUT")
+	r.HandleFunc("/session/{scenario_session_id}/keepalive", sss.KeepAliveCourseSessionFunc).Methods("PUT")
+	r.HandleFunc("/session/{scenario_session_id}/pause", sss.PauseCourseSessionFunc).Methods("PUT")
+	r.HandleFunc("/session/{scenario_session_id}/resume", sss.ResumeCourseSessionFunc).Methods("PUT")
 	glog.V(2).Infof("set up routes for scenario session server")
 }
 
-func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r *http.Request) {
+func (sss CourseSessionServer) NewCourseSessionFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := sss.auth.AuthN(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create scenario sessions")
@@ -108,7 +108,7 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 
 	// now we should check for existing scenario sessions
 
-	scenarioSessions, err := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().List(metav1.ListOptions{})
+	courseSessions, err := sss.hfClientSet.HobbyfarmV1().CourseSessions().List(metav1.ListOptions{})
 
 	if err != nil {
 		glog.Error(err)
@@ -116,7 +116,7 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 	now := time.Now()
 
 	// should we check the scenario sessions list for the restricted bind value and match if one is passed in? probably...
-	for _, v := range scenarioSessions.Items {
+	for _, v := range courseSessions.Items {
 		expires, err := time.Parse(time.UnixDate, v.Status.ExpirationTime)
 		if err != nil {
 			continue
@@ -136,15 +136,15 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 
 	}
 
-	scenarioSessionName := util.GenerateResourceName("ss", random, 10)
-	scenarioSession := hfv1.ScenarioSession{}
+	courseSessionName := util.GenerateResourceName("ss", random, 10)
+	courseSession := hfv1.CourseSession{}
 
-	scenarioSession.Name = scenarioSessionName
-	scenarioSession.Spec.Id = scenarioSessionName
-	scenarioSession.Spec.ScenarioId = scenario.Spec.Id
-	scenarioSession.Spec.UserId = user.Spec.Id
+	courseSession.Name = courseSessionName
+	courseSession.Spec.Id = courseSessionName
+	courseSession.Spec.ScenarioId = scenario.Spec.Id
+	courseSession.Spec.UserId = user.Spec.Id
 
-	scenarioSession.Spec.VmClaimSet = make([]string, len(scenario.Spec.VirtualMachines))
+	courseSession.Spec.VmClaimSet = make([]string, len(scenario.Spec.VirtualMachines))
 	for index, vmset := range scenario.Spec.VirtualMachines {
 		virtualMachineClaim := hfv1.VirtualMachineClaim{}
 		vmcId := util.GenerateResourceName("vmc", util.RandStringRunes(10), 10)
@@ -172,7 +172,7 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 			util.ReturnHTTPMessage(w, r, 500, "error", "something happened")
 			return
 		}
-		scenarioSession.Spec.VmClaimSet[index] = createdVmClaim.Spec.Id
+		courseSession.Spec.VmClaimSet[index] = createdVmClaim.Spec.Id
 	}
 
 	var ssTimeout string
@@ -183,14 +183,14 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 		ssTimeout = newSSTimeout
 	}
 
-	scenarioSession.Status.StartTime = now.Format(time.UnixDate)
+	courseSession.Status.StartTime = now.Format(time.UnixDate)
 	duration, _ := time.ParseDuration(ssTimeout)
 
-	scenarioSession.Status.ExpirationTime = now.Add(duration).Format(time.UnixDate)
-	scenarioSession.Status.Active = true
-	scenarioSession.Status.Finished = false
+	courseSession.Status.ExpirationTime = now.Add(duration).Format(time.UnixDate)
+	courseSession.Status.Active = true
+	courseSession.Status.Finished = false
 
-	createdScenarioSession, err := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Create(&scenarioSession)
+	createdCourseSession, err := sss.hfClientSet.HobbyfarmV1().CourseSessions().Create(&courseSession)
 
 	if err != nil {
 		glog.Errorf("error creating scenario session %v", err)
@@ -198,8 +198,8 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 		return
 	}
 
-	glog.V(2).Infof("created scenario session ID %s", createdScenarioSession.Spec.Id)
-	encodedSS, err := json.Marshal(createdScenarioSession.Spec)
+	glog.V(2).Infof("created scenario session ID %s", createdCourseSession.Spec.Id)
+	encodedSS, err := json.Marshal(createdCourseSession.Spec)
 	if err != nil {
 		glog.Error(err)
 	}
@@ -207,7 +207,7 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 	return
 }
 
-func (sss ScenarioSessionServer) FinishedScenarioSessionFunc(w http.ResponseWriter, r *http.Request) {
+func (sss CourseSessionServer) FinishedCourseSessionFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := sss.auth.AuthN(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create scenario sessions")
@@ -215,13 +215,13 @@ func (sss ScenarioSessionServer) FinishedScenarioSessionFunc(w http.ResponseWrit
 	}
 	vars := mux.Vars(r)
 
-	scenarioSessionId := vars["scenario_session_id"]
-	if len(scenarioSessionId) == 0 {
+	courseSessionId := vars["scenario_session_id"]
+	if len(courseSessionId) == 0 {
 		util.ReturnHTTPMessage(w, r, 500, "error", "no scenario session id passed in")
 		return
 	}
 
-	ss, err := sss.GetScenarioSessionById(scenarioSessionId)
+	ss, err := sss.GetCourseSessionById(courseSessionId)
 	if ss.Spec.UserId != user.Spec.Id {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no scenario session found that matches this user")
 		return
@@ -230,16 +230,16 @@ func (sss ScenarioSessionServer) FinishedScenarioSessionFunc(w http.ResponseWrit
 	now := time.Now().Format(time.UnixDate)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Get(scenarioSessionId, metav1.GetOptions{})
+		result, getErr := sss.hfClientSet.HobbyfarmV1().CourseSessions().Get(courseSessionId, metav1.GetOptions{})
 		if getErr != nil {
-			return fmt.Errorf("error retrieving latest version of Scenario Session %s: %v", scenarioSessionId, getErr)
+			return fmt.Errorf("error retrieving latest version of Scenario Session %s: %v", courseSessionId, getErr)
 		}
 
 		result.Status.ExpirationTime = now
 		result.Status.Active = false
 		result.Status.Finished = false
 
-		_, updateErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Update(result)
+		_, updateErr := sss.hfClientSet.HobbyfarmV1().CourseSessions().Update(result)
 		glog.V(4).Infof("updated result for environment")
 
 		return updateErr
@@ -255,7 +255,7 @@ func (sss ScenarioSessionServer) FinishedScenarioSessionFunc(w http.ResponseWrit
 	return
 }
 
-func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWriter, r *http.Request) {
+func (sss CourseSessionServer) KeepAliveCourseSessionFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := sss.auth.AuthN(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create scenario sessions")
@@ -263,13 +263,13 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 	}
 	vars := mux.Vars(r)
 
-	scenarioSessionId := vars["scenario_session_id"]
-	if len(scenarioSessionId) == 0 {
+	courseSessionId := vars["scenario_session_id"]
+	if len(courseSessionId) == 0 {
 		util.ReturnHTTPMessage(w, r, 500, "error", "no scenario session id passed in")
 		return
 	}
 
-	ss, err := sss.GetScenarioSessionById(scenarioSessionId)
+	ss, err := sss.GetCourseSessionById(courseSessionId)
 	if ss.Spec.UserId != user.Spec.Id {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no scenario session found that matches this user")
 		return
@@ -320,14 +320,14 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 	expiration := now.Add(duration).Format(time.UnixDate)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Get(scenarioSessionId, metav1.GetOptions{})
+		result, getErr := sss.hfClientSet.HobbyfarmV1().CourseSessions().Get(courseSessionId, metav1.GetOptions{})
 		if getErr != nil {
-			return fmt.Errorf("error retrieving latest version of Scenario Session %s: %v", scenarioSessionId, getErr)
+			return fmt.Errorf("error retrieving latest version of Scenario Session %s: %v", courseSessionId, getErr)
 		}
 
 		result.Status.ExpirationTime = expiration
 
-		_, updateErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Update(result)
+		_, updateErr := sss.hfClientSet.HobbyfarmV1().CourseSessions().Update(result)
 		glog.V(4).Infof("updated expiration time for scenario session")
 
 		return updateErr
@@ -343,7 +343,7 @@ func (sss ScenarioSessionServer) KeepAliveScenarioSessionFunc(w http.ResponseWri
 	return
 }
 
-func (sss ScenarioSessionServer) PauseScenarioSessionFunc(w http.ResponseWriter, r *http.Request) {
+func (sss CourseSessionServer) PauseCourseSessionFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := sss.auth.AuthN(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to pause scenario sessions")
@@ -351,13 +351,13 @@ func (sss ScenarioSessionServer) PauseScenarioSessionFunc(w http.ResponseWriter,
 	}
 	vars := mux.Vars(r)
 
-	scenarioSessionId := vars["scenario_session_id"]
-	if len(scenarioSessionId) == 0 {
+	courseSessionId := vars["scenario_session_id"]
+	if len(courseSessionId) == 0 {
 		util.ReturnHTTPMessage(w, r, 500, "error", "no scenario session id passed in")
 		return
 	}
 
-	ss, err := sss.GetScenarioSessionById(scenarioSessionId)
+	ss, err := sss.GetCourseSessionById(courseSessionId)
 	if ss.Spec.UserId != user.Spec.Id {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no scenario session found that matches this user")
 		return
@@ -391,15 +391,15 @@ func (sss ScenarioSessionServer) PauseScenarioSessionFunc(w http.ResponseWriter,
 	pauseExpiration := now.Add(duration).Format(time.UnixDate)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Get(scenarioSessionId, metav1.GetOptions{})
+		result, getErr := sss.hfClientSet.HobbyfarmV1().CourseSessions().Get(courseSessionId, metav1.GetOptions{})
 		if getErr != nil {
-			return fmt.Errorf("error retrieving latest version of Scenario Session %s: %v", scenarioSessionId, getErr)
+			return fmt.Errorf("error retrieving latest version of Scenario Session %s: %v", courseSessionId, getErr)
 		}
 
 		result.Status.PausedTime = pauseExpiration
 		result.Status.Paused = true
 
-		_, updateErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Update(result)
+		_, updateErr := sss.hfClientSet.HobbyfarmV1().CourseSessions().Update(result)
 		glog.V(4).Infof("updated result for scenario session")
 
 		return updateErr
@@ -415,7 +415,7 @@ func (sss ScenarioSessionServer) PauseScenarioSessionFunc(w http.ResponseWriter,
 	return
 }
 
-func (sss ScenarioSessionServer) ResumeScenarioSessionFunc(w http.ResponseWriter, r *http.Request) {
+func (sss CourseSessionServer) ResumeCourseSessionFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := sss.auth.AuthN(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to pause scenario sessions")
@@ -423,13 +423,13 @@ func (sss ScenarioSessionServer) ResumeScenarioSessionFunc(w http.ResponseWriter
 	}
 	vars := mux.Vars(r)
 
-	scenarioSessionId := vars["scenario_session_id"]
-	if len(scenarioSessionId) == 0 {
+	courseSessionId := vars["scenario_session_id"]
+	if len(courseSessionId) == 0 {
 		util.ReturnHTTPMessage(w, r, 500, "error", "no scenario session id passed in")
 		return
 	}
 
-	ss, err := sss.GetScenarioSessionById(scenarioSessionId)
+	ss, err := sss.GetCourseSessionById(courseSessionId)
 	if ss.Spec.UserId != user.Spec.Id {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no scenario session found that matches this user")
 		return
@@ -457,16 +457,16 @@ func (sss ScenarioSessionServer) ResumeScenarioSessionFunc(w http.ResponseWriter
 	newExpiration := now.Add(duration).Format(time.UnixDate)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Get(scenarioSessionId, metav1.GetOptions{})
+		result, getErr := sss.hfClientSet.HobbyfarmV1().CourseSessions().Get(courseSessionId, metav1.GetOptions{})
 		if getErr != nil {
-			return fmt.Errorf("error retrieving latest version of Scenario Session %s: %v", scenarioSessionId, getErr)
+			return fmt.Errorf("error retrieving latest version of Scenario Session %s: %v", courseSessionId, getErr)
 		}
 
 		result.Status.PausedTime = ""
 		result.Status.ExpirationTime = newExpiration
 		result.Status.Paused = false
 
-		_, updateErr := sss.hfClientSet.HobbyfarmV1().ScenarioSessions().Update(result)
+		_, updateErr := sss.hfClientSet.HobbyfarmV1().CourseSessions().Update(result)
 		glog.V(4).Infof("updated result for scenario session")
 
 		return updateErr
@@ -482,7 +482,7 @@ func (sss ScenarioSessionServer) ResumeScenarioSessionFunc(w http.ResponseWriter
 	return
 }
 
-func (sss ScenarioSessionServer) GetScenarioSessionFunc(w http.ResponseWriter, r *http.Request) {
+func (sss CourseSessionServer) GetCourseSessionFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := sss.auth.AuthN(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get scenario sessions")
@@ -491,13 +491,13 @@ func (sss ScenarioSessionServer) GetScenarioSessionFunc(w http.ResponseWriter, r
 
 	vars := mux.Vars(r)
 
-	scenarioSessionId := vars["scenario_session_id"]
-	if len(scenarioSessionId) == 0 {
+	courseSessionId := vars["scenario_session_id"]
+	if len(courseSessionId) == 0 {
 		util.ReturnHTTPMessage(w, r, 500, "error", "no scenario session id passed in")
 		return
 	}
 
-	ss, err := sss.GetScenarioSessionById(scenarioSessionId)
+	ss, err := sss.GetCourseSessionById(courseSessionId)
 	if ss.Spec.UserId != user.Spec.Id {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no scenario session found that matches this user")
 		return
@@ -513,33 +513,33 @@ func (sss ScenarioSessionServer) GetScenarioSessionFunc(w http.ResponseWriter, r
 }
 
 func ssIdIndexer(obj interface{}) ([]string, error) {
-	ss, ok := obj.(*hfv1.ScenarioSession)
+	ss, ok := obj.(*hfv1.CourseSession)
 	if !ok {
 		return []string{}, nil
 	}
 	return []string{ss.Spec.Id}, nil
 }
 
-func (sss ScenarioSessionServer) GetScenarioSessionById(id string) (hfv1.ScenarioSession, error) {
+func (sss CourseSessionServer) GetCourseSessionById(id string) (hfv1.CourseSession, error) {
 	if len(id) == 0 {
-		return hfv1.ScenarioSession{}, fmt.Errorf("id passed in was empty")
+		return hfv1.CourseSession{}, fmt.Errorf("id passed in was empty")
 	}
 
 	obj, err := sss.ssIndexer.ByIndex(ssIndex, id)
 	if err != nil {
-		return hfv1.ScenarioSession{}, fmt.Errorf("error while retrieving scenario session by id: %s with error: %v", id, err)
+		return hfv1.CourseSession{}, fmt.Errorf("error while retrieving scenario session by id: %s with error: %v", id, err)
 	}
 
 	if len(obj) < 1 {
-		return hfv1.ScenarioSession{}, fmt.Errorf("sss not found by id: %s", id)
+		return hfv1.CourseSession{}, fmt.Errorf("sss not found by id: %s", id)
 	}
 
-	scenarioSession, ok := obj[0].(*hfv1.ScenarioSession)
+	courseSession, ok := obj[0].(*hfv1.CourseSession)
 
 	if !ok {
-		return hfv1.ScenarioSession{}, fmt.Errorf("error while converting secnario session found by id to object: %s", id)
+		return hfv1.CourseSession{}, fmt.Errorf("error while converting secnario session found by id to object: %s", id)
 	}
 
-	return *scenarioSession, nil
+	return *courseSession, nil
 
 }

@@ -12,6 +12,8 @@ type Interface interface {
 	AccessCodes() AccessCodeInformer
 	// Courses returns a CourseInformer.
 	Courses() CourseInformer
+	// CourseSessions returns a CourseSessionInformer.
+	CourseSessions() CourseSessionInformer
 	// DynamicBindConfigurations returns a DynamicBindConfigurationInformer.
 	DynamicBindConfigurations() DynamicBindConfigurationInformer
 	// DynamicBindRequests returns a DynamicBindRequestInformer.
@@ -20,8 +22,6 @@ type Interface interface {
 	Environments() EnvironmentInformer
 	// Scenarios returns a ScenarioInformer.
 	Scenarios() ScenarioInformer
-	// ScenarioSessions returns a ScenarioSessionInformer.
-	ScenarioSessions() ScenarioSessionInformer
 	// ScheduledEvents returns a ScheduledEventInformer.
 	ScheduledEvents() ScheduledEventInformer
 	// Users returns a UserInformer.
@@ -57,6 +57,11 @@ func (v *version) Courses() CourseInformer {
 	return &courseInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
+// CourseSessions returns a CourseSessionInformer.
+func (v *version) CourseSessions() CourseSessionInformer {
+	return &courseSessionInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
 // DynamicBindConfigurations returns a DynamicBindConfigurationInformer.
 func (v *version) DynamicBindConfigurations() DynamicBindConfigurationInformer {
 	return &dynamicBindConfigurationInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
@@ -75,11 +80,6 @@ func (v *version) Environments() EnvironmentInformer {
 // Scenarios returns a ScenarioInformer.
 func (v *version) Scenarios() ScenarioInformer {
 	return &scenarioInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
-}
-
-// ScenarioSessions returns a ScenarioSessionInformer.
-func (v *version) ScenarioSessions() ScenarioSessionInformer {
-	return &scenarioSessionInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // ScheduledEvents returns a ScheduledEventInformer.

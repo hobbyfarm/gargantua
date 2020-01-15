@@ -20,6 +20,10 @@ func (c *FakeHobbyfarmV1) Courses() v1.CourseInterface {
 	return &FakeCourses{c}
 }
 
+func (c *FakeHobbyfarmV1) CourseSessions() v1.CourseSessionInterface {
+	return &FakeCourseSessions{c}
+}
+
 func (c *FakeHobbyfarmV1) DynamicBindConfigurations() v1.DynamicBindConfigurationInterface {
 	return &FakeDynamicBindConfigurations{c}
 }
@@ -34,10 +38,6 @@ func (c *FakeHobbyfarmV1) Environments() v1.EnvironmentInterface {
 
 func (c *FakeHobbyfarmV1) Scenarios() v1.ScenarioInterface {
 	return &FakeScenarios{c}
-}
-
-func (c *FakeHobbyfarmV1) ScenarioSessions() v1.ScenarioSessionInterface {
-	return &FakeScenarioSessions{c}
 }
 
 func (c *FakeHobbyfarmV1) ScheduledEvents() v1.ScheduledEventInterface {

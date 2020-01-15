@@ -21,13 +21,13 @@ import (
 	//"k8s.io/client-go/tools/cache"
 
 	//"github.com/hobbyfarm/gargantua/pkg/controllers/environment"
-	"github.com/hobbyfarm/gargantua/pkg/controllers/scenariosession"
+	"github.com/hobbyfarm/gargantua/pkg/controllers/coursesession"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/tfpcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmclaimcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmsetcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
-	"github.com/hobbyfarm/gargantua/pkg/scenariosessionserver"
+	"github.com/hobbyfarm/gargantua/pkg/coursesessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/shell"
 	"github.com/hobbyfarm/gargantua/pkg/signals"
 	"github.com/hobbyfarm/gargantua/pkg/vmclaimserver"
@@ -117,7 +117,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	ssServer, err := scenariosessionserver.NewScenarioSessionServer(authClient, acClient, scenarioClient, hfClient, hfInformerFactory)
+	ssServer, err := coursesessionserver.NewCourseSessionServer(authClient, acClient, scenarioClient, hfClient, hfInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -193,7 +193,7 @@ func main() {
 		if ok := cache.WaitForCacheSync(stopCh,
 			hfInformerFactory.Hobbyfarm().V1().Users().Informer().HasSynced,
 			hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced,
-			hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer().HasSynced,
+			hfInformerFactory.Hobbyfarm().V1().CourseSessions().Informer().HasSynced,
 			hfInformerFactory.Hobbyfarm().V1().Scenarios().Informer().HasSynced,
 			hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced,
 			hfInformerFactory.Hobbyfarm().V1().AccessCodes().Informer().HasSynced,
@@ -217,7 +217,7 @@ func main() {
 			}
 		*/
 		glog.V(2).Infof("Starting controllers")
-		scenarioSessionController, err := scenariosession.NewScenarioSessionController(hfClient, hfInformerFactory)
+		courseSessionController, err := coursesession.NewCourseSessionController(hfClient, hfInformerFactory)
 		if err != nil {
 			glog.Fatal(err)
 		}
@@ -252,7 +252,7 @@ func main() {
 		*/
 		go func() {
 			defer wg.Done()
-			scenarioSessionController.Run(stopCh)
+			courseSessionController.Run(stopCh)
 		}()
 
 		go func() {

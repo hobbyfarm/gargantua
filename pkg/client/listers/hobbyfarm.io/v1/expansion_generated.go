@@ -10,6 +10,10 @@ type AccessCodeListerExpansion interface{}
 // CourseLister.
 type CourseListerExpansion interface{}
 
+// CourseSessionListerExpansion allows custom methods to be added to
+// CourseSessionLister.
+type CourseSessionListerExpansion interface{}
+
 // DynamicBindConfigurationListerExpansion allows custom methods to be added to
 // DynamicBindConfigurationLister.
 type DynamicBindConfigurationListerExpansion interface{}
@@ -25,10 +29,6 @@ type EnvironmentListerExpansion interface{}
 // ScenarioListerExpansion allows custom methods to be added to
 // ScenarioLister.
 type ScenarioListerExpansion interface{}
-
-// ScenarioSessionListerExpansion allows custom methods to be added to
-// ScenarioSessionLister.
-type ScenarioSessionListerExpansion interface{}
 
 // ScheduledEventListerExpansion allows custom methods to be added to
 // ScheduledEventLister.

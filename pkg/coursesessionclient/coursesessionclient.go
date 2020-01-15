@@ -1,19 +1,19 @@
-package scenariosessionclient
+package coursesessionclient
 
 import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/scenariosessionserver"
+	"github.com/hobbyfarm/gargantua/pkg/coursesessionserver"
 )
 
 const (
-	ssIndex = "ssc.hobbyfarm.io/scenariosession-id-index"
+	ssIndex = "ssc.hobbyfarm.io/coursesession-id-index"
 )
 
 type ScenarioSessionClient struct {
-	ssServer *scenariosessionserver.ScenarioSessionServer
+	ssServer *coursesessionserver.ScenarioSessionServer
 }
 
-func NewScenarioSessionClient(ssServer *scenariosessionserver.ScenarioSessionServer) (*ScenarioSessionClient, error) {
+func NewScenarioSessionClient(ssServer *coursesessionserver.ScenarioSessionServer) (*ScenarioSessionClient, error) {
 	a := ScenarioSessionClient{}
 
 	a.ssServer = ssServer

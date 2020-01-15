@@ -12,11 +12,11 @@ type HobbyfarmV1Interface interface {
 	RESTClient() rest.Interface
 	AccessCodesGetter
 	CoursesGetter
+	CourseSessionsGetter
 	DynamicBindConfigurationsGetter
 	DynamicBindRequestsGetter
 	EnvironmentsGetter
 	ScenariosGetter
-	ScenarioSessionsGetter
 	ScheduledEventsGetter
 	UsersGetter
 	VirtualMachinesGetter
@@ -38,6 +38,10 @@ func (c *HobbyfarmV1Client) Courses() CourseInterface {
 	return newCourses(c)
 }
 
+func (c *HobbyfarmV1Client) CourseSessions() CourseSessionInterface {
+	return newCourseSessions(c)
+}
+
 func (c *HobbyfarmV1Client) DynamicBindConfigurations() DynamicBindConfigurationInterface {
 	return newDynamicBindConfigurations(c)
 }
@@ -52,10 +56,6 @@ func (c *HobbyfarmV1Client) Environments() EnvironmentInterface {
 
 func (c *HobbyfarmV1Client) Scenarios() ScenarioInterface {
 	return newScenarios(c)
-}
-
-func (c *HobbyfarmV1Client) ScenarioSessions() ScenarioSessionInterface {
-	return newScenarioSessions(c)
 }
 
 func (c *HobbyfarmV1Client) ScheduledEvents() ScheduledEventInterface {

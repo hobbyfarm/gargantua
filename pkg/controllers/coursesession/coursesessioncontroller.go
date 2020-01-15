@@ -1,4 +1,4 @@
-package scenariosession
+package coursesession
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-type ScenarioSessionController struct {
+type CourseSessionController struct {
 	hfClientSet *hfClientset.Clientset
 
 	//ssWorkqueue workqueue.RateLimitingInterface
@@ -23,27 +23,27 @@ type ScenarioSessionController struct {
 
 	vmLister  hfListers.VirtualMachineLister
 	vmcLister hfListers.VirtualMachineClaimLister
-	ssLister  hfListers.ScenarioSessionLister
+	ssLister  hfListers.CourseSessionLister
 
 	vmSynced  cache.InformerSynced
 	vmcSynced cache.InformerSynced
 	ssSynced  cache.InformerSynced
 }
 
-func NewScenarioSessionController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioSessionController, error) {
-	ssController := ScenarioSessionController{}
+func NewCourseSessionController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*CourseSessionController, error) {
+	ssController := CourseSessionController{}
 	ssController.hfClientSet = hfClientSet
 	ssController.vmSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
 	ssController.vmcSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced
-	ssController.ssSynced = hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer().HasSynced
+	ssController.ssSynced = hfInformerFactory.Hobbyfarm().V1().CourseSessions().Informer().HasSynced
 
-	//ssController.ssWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ScenarioSession")
+	//ssController.ssWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "CourseSession")
 	ssController.ssWorkqueue = workqueue.NewNamedDelayingQueue("ssc-ss")
 	ssController.vmLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Lister()
 	ssController.vmcLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Lister()
-	ssController.ssLister = hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Lister()
+	ssController.ssLister = hfInformerFactory.Hobbyfarm().V1().CourseSessions().Lister()
 
-	ssInformer := hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer()
+	ssInformer := hfInformerFactory.Hobbyfarm().V1().CourseSessions().Informer()
 
 	ssInformer.AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
 		AddFunc: ssController.enqueueSS,
@@ -56,7 +56,7 @@ func NewScenarioSessionController(hfClientSet *hfClientset.Clientset, hfInformer
 	return &ssController, nil
 }
 
-func (s *ScenarioSessionController) enqueueSS(obj interface{}) {
+func (s *CourseSessionController) enqueueSS(obj interface{}) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
@@ -68,7 +68,7 @@ func (s *ScenarioSessionController) enqueueSS(obj interface{}) {
 	s.ssWorkqueue.Add(key)
 }
 
-func (s *ScenarioSessionController) Run(stopCh <-chan struct{}) error {
+func (s *CourseSessionController) Run(stopCh <-chan struct{}) error {
 	defer s.ssWorkqueue.ShutDown()
 
 	glog.V(4).Infof("Starting Scenario Session controller")
@@ -84,14 +84,14 @@ func (s *ScenarioSessionController) Run(stopCh <-chan struct{}) error {
 	return nil
 }
 
-func (s *ScenarioSessionController) runSSWorker() {
+func (s *CourseSessionController) runSSWorker() {
 	glog.V(6).Infof("Starting scenario session worker")
-	for s.processNextScenarioSession() {
+	for s.processNextCourseSession() {
 
 	}
 }
 
-func (s *ScenarioSessionController) processNextScenarioSession() bool {
+func (s *CourseSessionController) processNextCourseSession() bool {
 	obj, shutdown := s.ssWorkqueue.Get()
 
 	if shutdown {
@@ -107,7 +107,7 @@ func (s *ScenarioSessionController) processNextScenarioSession() bool {
 			return nil
 		}
 
-		err = s.reconcileScenarioSession(objName)
+		err = s.reconcileCourseSession(objName)
 
 		if err != nil {
 			glog.Error(err)
@@ -126,7 +126,7 @@ func (s *ScenarioSessionController) processNextScenarioSession() bool {
 	return true
 }
 
-func (s *ScenarioSessionController) reconcileScenarioSession(ssName string) error {
+func (s *CourseSessionController) reconcileCourseSession(ssName string) error {
 	glog.V(4).Infof("reconciling scenario session %s", ssName)
 
 	ss, err := s.ssLister.Get(ssName)
@@ -181,7 +181,7 @@ func (s *ScenarioSessionController) reconcileScenarioSession(ssName string) erro
 		}
 
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			result, getErr := s.hfClientSet.HobbyfarmV1().ScenarioSessions().Get(ssName, metav1.GetOptions{})
+			result, getErr := s.hfClientSet.HobbyfarmV1().CourseSessions().Get(ssName, metav1.GetOptions{})
 			if getErr != nil {
 				return getErr
 			}
@@ -189,13 +189,13 @@ func (s *ScenarioSessionController) reconcileScenarioSession(ssName string) erro
 			result.Status.Finished = true
 			result.Status.Active = false
 
-			result, updateErr := s.hfClientSet.HobbyfarmV1().ScenarioSessions().Update(result)
+			result, updateErr := s.hfClientSet.HobbyfarmV1().CourseSessions().Update(result)
 			if updateErr != nil {
 				return updateErr
 			}
 			glog.V(4).Infof("updated result for ss")
 
-			verifyErr := util.VerifyScenarioSession(s.ssLister, result)
+			verifyErr := util.VerifyCourseSession(s.ssLister, result)
 
 			if verifyErr != nil {
 				return verifyErr
@@ -216,7 +216,7 @@ func (s *ScenarioSessionController) reconcileScenarioSession(ssName string) erro
 	return nil
 }
 
-func (s *ScenarioSessionController) taintVM(vmName string) error {
+func (s *CourseSessionController) taintVM(vmName string) error {
 	glog.V(5).Infof("tainting VM %s", vmName)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := s.hfClientSet.HobbyfarmV1().VirtualMachines().Get(vmName, metav1.GetOptions{})
@@ -246,7 +246,7 @@ func (s *ScenarioSessionController) taintVM(vmName string) error {
 	return nil
 }
 
-func (s *ScenarioSessionController) taintVMC(vmcName string) error {
+func (s *CourseSessionController) taintVMC(vmcName string) error {
 	glog.V(5).Infof("tainting VMC %s", vmcName)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(vmcName, metav1.GetOptions{})

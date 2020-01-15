@@ -250,11 +250,11 @@ func VerifyVMClaim(vmClaimLister hfListers.VirtualMachineClaimLister, vmc *hfv1.
 
 }
 
-func VerifyScenarioSession(ssLister hfListers.ScenarioSessionLister, ss *hfv1.ScenarioSession) error {
+func VerifyCourseSession(ssLister hfListers.CourseSessionLister, ss *hfv1.CourseSession) error {
 	var err error
 	glog.V(5).Infof("Verifying ss %s", ss.Name)
 	for i := 0; i < 150000; i++ {
-		var fromCache *hfv1.ScenarioSession
+		var fromCache *hfv1.CourseSession
 		fromCache, err = ssLister.Get(ss.Name)
 		if err != nil {
 			glog.Error(err)

@@ -42,6 +42,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().AccessCodes().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("courses"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Courses().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("coursesessions"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().CourseSessions().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("dynamicbindconfigurations"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().DynamicBindConfigurations().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("dynamicbindrequests"):
@@ -50,8 +52,6 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Environments().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("scenarios"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Scenarios().Informer()}, nil
-	case v1.SchemeGroupVersion.WithResource("scenariosessions"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().ScenarioSessions().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("scheduledevents"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().ScheduledEvents().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("users"):
