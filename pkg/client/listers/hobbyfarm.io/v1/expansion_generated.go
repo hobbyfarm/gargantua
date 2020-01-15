@@ -6,6 +6,10 @@ package v1
 // AccessCodeLister.
 type AccessCodeListerExpansion interface{}
 
+// CourseListerExpansion allows custom methods to be added to
+// CourseLister.
+type CourseListerExpansion interface{}
+
 // DynamicBindConfigurationListerExpansion allows custom methods to be added to
 // DynamicBindConfigurationLister.
 type DynamicBindConfigurationListerExpansion interface{}

@@ -4,6 +4,8 @@ package v1
 
 type AccessCodeExpansion interface{}
 
+type CourseExpansion interface{}
+
 type DynamicBindConfigurationExpansion interface{}
 
 type DynamicBindRequestExpansion interface{}

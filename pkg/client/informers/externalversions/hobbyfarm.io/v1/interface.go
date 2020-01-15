@@ -10,6 +10,8 @@ import (
 type Interface interface {
 	// AccessCodes returns a AccessCodeInformer.
 	AccessCodes() AccessCodeInformer
+	// Courses returns a CourseInformer.
+	Courses() CourseInformer
 	// DynamicBindConfigurations returns a DynamicBindConfigurationInformer.
 	DynamicBindConfigurations() DynamicBindConfigurationInformer
 	// DynamicBindRequests returns a DynamicBindRequestInformer.
@@ -48,6 +50,11 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // AccessCodes returns a AccessCodeInformer.
 func (v *version) AccessCodes() AccessCodeInformer {
 	return &accessCodeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// Courses returns a CourseInformer.
+func (v *version) Courses() CourseInformer {
+	return &courseInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // DynamicBindConfigurations returns a DynamicBindConfigurationInformer.

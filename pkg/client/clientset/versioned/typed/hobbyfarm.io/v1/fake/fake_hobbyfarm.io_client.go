@@ -16,6 +16,10 @@ func (c *FakeHobbyfarmV1) AccessCodes() v1.AccessCodeInterface {
 	return &FakeAccessCodes{c}
 }
 
+func (c *FakeHobbyfarmV1) Courses() v1.CourseInterface {
+	return &FakeCourses{c}
+}
+
 func (c *FakeHobbyfarmV1) DynamicBindConfigurations() v1.DynamicBindConfigurationInterface {
 	return &FakeDynamicBindConfigurations{c}
 }

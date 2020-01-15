@@ -11,6 +11,7 @@ import (
 type HobbyfarmV1Interface interface {
 	RESTClient() rest.Interface
 	AccessCodesGetter
+	CoursesGetter
 	DynamicBindConfigurationsGetter
 	DynamicBindRequestsGetter
 	EnvironmentsGetter
@@ -31,6 +32,10 @@ type HobbyfarmV1Client struct {
 
 func (c *HobbyfarmV1Client) AccessCodes() AccessCodeInterface {
 	return newAccessCodes(c)
+}
+
+func (c *HobbyfarmV1Client) Courses() CourseInterface {
+	return newCourses(c)
 }
 
 func (c *HobbyfarmV1Client) DynamicBindConfigurations() DynamicBindConfigurationInterface {
