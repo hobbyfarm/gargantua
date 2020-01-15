@@ -30,6 +30,7 @@ type PreparedCourse struct {
   Name              string                `json:"name"`
   Desciprtion       string                `json:"description"`
   Scenarios         []map[string]string   `json:"scenarios"`
+  Pauseable         bool                  `json:"pauseable"`
 }
 
 func NewCourseServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*CourseServer, error) {

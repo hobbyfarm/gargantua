@@ -37,6 +37,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&VirtualMachineSetList{},
 		&Environment{},
 		&EnvironmentList{},
+		&Course{},
+		&CourseList{},
 		&Scenario{},
 		&ScenarioList{},
 		&ScenarioSession{},
