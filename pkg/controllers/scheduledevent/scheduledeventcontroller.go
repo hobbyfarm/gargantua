@@ -22,7 +22,7 @@ type ScheduledEventController struct {
 
 	//seWorkqueue workqueue.RateLimitingInterface
 	seWorkqueue workqueue.DelayingInterface
-	seSynced cache.InformerSynced
+	seSynced    cache.InformerSynced
 }
 
 func NewScheduledEventController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScheduledEventController, error) {
@@ -307,8 +307,8 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 			dbcRand := fmt.Sprintf("%08x", rand.Uint32())
 			dbcName := strings.Join([]string{"se", se.Name, "dbc", dbcRand}, "-")
 			emptyCap := hfv1.CMSStruct{
-				CPU: 0,
-				Memory: 0,
+				CPU:     0,
+				Memory:  0,
 				Storage: 0,
 			}
 
@@ -338,11 +338,11 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 					},
 				},
 				Spec: hfv1.DynamicBindConfigurationSpec{
-					Id: dbcName,
-					Environment: envName,
-					BaseName: dbcRand,
+					Id:                 dbcName,
+					Environment:        envName,
+					BaseName:           dbcRand,
 					BurstCountCapacity: bcc,
-					BurstCapacity: emptyCap,
+					BurstCapacity:      emptyCap,
 				},
 			}
 

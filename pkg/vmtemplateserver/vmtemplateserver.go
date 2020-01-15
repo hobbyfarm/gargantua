@@ -1,26 +1,24 @@
 package vmtemplateserver
 
 import (
-"fmt"
-hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-"github.com/hobbyfarm/gargantua/pkg/authclient"
-hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-"k8s.io/client-go/tools/cache"
+	"fmt"
+	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"k8s.io/client-go/tools/cache"
 )
 
 const (
-	idIndex = "vmts.hobbyfarm.io/id-index"
+	idIndex   = "vmts.hobbyfarm.io/id-index"
 	nameIndex = "vmts.hobbyfarm.io/name-index"
 )
 
 type VMTemplateServer struct {
-
-	auth *authclient.AuthClient
+	auth        *authclient.AuthClient
 	hfClientSet *hfClientset.Clientset
 
 	vmTemplateIndexer cache.Indexer
-
 }
 
 func NewVMTemplateServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*VMTemplateServer, error) {
@@ -106,4 +104,3 @@ func vmtNameIndexer(obj interface{}) ([]string, error) {
 	}
 	return []string{vmt.Spec.Name}, nil
 }
-

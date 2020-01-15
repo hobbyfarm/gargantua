@@ -18,7 +18,7 @@ func NewVirtualMachineClaimClient(vmClaimServer *vmclaimserver.VMClaimServer) (*
 
 func (vmc VirtualMachineClaimClient) GetVirtualMachineById(id string) (hfv1.VirtualMachineClaim, error) {
 
-	vmcResult, err  := vmc.vmClaimServer.GetVirtualMachineClaimById(id)
+	vmcResult, err := vmc.vmClaimServer.GetVirtualMachineClaimById(id)
 
 	if err != nil {
 		glog.Errorf("error while retrieving vmc by id %s %v", id, err)

@@ -18,7 +18,7 @@ func NewVirtualMachineClient(vmServer *vmserver.VMServer) (*VirtualMachineClient
 
 func (vm VirtualMachineClient) GetVirtualMachineById(id string) (hfv1.VirtualMachine, error) {
 
-	vmResult, err  := vm.vmServer.GetVirtualMachineById(id)
+	vmResult, err := vm.vmServer.GetVirtualMachineById(id)
 
 	if err != nil {
 		glog.Errorf("error while retrieving vm by id %s %v", id, err)

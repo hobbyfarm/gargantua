@@ -3,6 +3,7 @@ package scenarioserver
 import (
 	"crypto/sha256"
 	"encoding/base32"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
@@ -12,7 +13,6 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"encoding/base64"
 	"k8s.io/client-go/util/retry"
 	"net/http"
 	"strings"
@@ -174,7 +174,7 @@ func (a AdminScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 
 	preparedScenarios := []PreparedScenario{}
 	for _, s := range scenarios.Items {
-		pScenario := PreparedScenario{s.Name,s.Spec}
+		pScenario := PreparedScenario{s.Name, s.Spec}
 		pScenario.Steps = nil
 		preparedScenarios = append(preparedScenarios, pScenario)
 	}
@@ -187,7 +187,6 @@ func (a AdminScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 
 	glog.V(2).Infof("listed scenarios")
 }
-
 
 func (a AdminScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	_, err := a.auth.AuthNAdmin(w, r)
@@ -232,7 +231,6 @@ func (a AdminScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
-
 
 	pauseable := r.PostFormValue("pauseable")
 	pause_duration := r.PostFormValue("pause_duration")
@@ -338,13 +336,13 @@ func (a AdminScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) 
 		}
 
 		if rawVirtualMachines != "" {
-				virtualmachines := []map[string]string{}
-				err = json.Unmarshal([]byte(rawVirtualMachines), &virtualmachines)
-				if err != nil {
-					glog.Errorf("error while unmarshaling VMs %v", err)
-					return fmt.Errorf("bad")
-				}
-				scenario.Spec.VirtualMachines = virtualmachines
+			virtualmachines := []map[string]string{}
+			err = json.Unmarshal([]byte(rawVirtualMachines), &virtualmachines)
+			if err != nil {
+				glog.Errorf("error while unmarshaling VMs %v", err)
+				return fmt.Errorf("bad")
+			}
+			scenario.Spec.VirtualMachines = virtualmachines
 		}
 
 		_, updateErr := a.hfClientSet.HobbyfarmV1().Scenarios().Update(scenario)

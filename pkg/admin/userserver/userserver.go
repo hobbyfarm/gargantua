@@ -111,7 +111,7 @@ func (a AdminUserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 
 	preparedUsers := []PreparedUser{}
 	for _, s := range users.Items {
-		preparedUsers = append(preparedUsers, PreparedUser{s.Name,s.Spec})
+		preparedUsers = append(preparedUsers, PreparedUser{s.Name, s.Spec})
 	}
 
 	encodedUsers, err := json.Marshal(preparedUsers)

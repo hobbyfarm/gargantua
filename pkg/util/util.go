@@ -2,22 +2,22 @@ package util
 
 import (
 	"bytes"
-	"crypto/rsa"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base32"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/golang/glog"
+	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
+	"golang.org/x/crypto/ssh"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 	mrand "math/rand"
-	"github.com/golang/glog"
-	"golang.org/x/crypto/ssh"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"net/http"
@@ -250,7 +250,6 @@ func VerifyVMClaim(vmClaimLister hfListers.VirtualMachineClaimLister, vmc *hfv1.
 
 }
 
-
 func VerifyScenarioSession(ssLister hfListers.ScenarioSessionLister, ss *hfv1.ScenarioSession) error {
 	var err error
 	glog.V(5).Infof("Verifying ss %s", ss.Name)
@@ -275,7 +274,7 @@ func VerifyScenarioSession(ssLister hfListers.ScenarioSessionLister, ss *hfv1.Sc
 
 }
 
-func  EnsureVMNotReady(hfClientset *hfClientset.Clientset, vmLister hfListers.VirtualMachineLister, vmName string) error {
+func EnsureVMNotReady(hfClientset *hfClientset.Clientset, vmLister hfListers.VirtualMachineLister, vmName string) error {
 	//glog.V(5).Infof("ensuring VM %s is not ready", vmName)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := hfClientset.HobbyfarmV1().VirtualMachines().Get(vmName, metav1.GetOptions{})
@@ -347,9 +346,9 @@ func MaxVMCountsRaw(hfClientset *hfClientset.Clientset, vmTemplates map[string]i
 
 	for _, vmTemplate := range vmTemplatesFromK8s.Items {
 		if vmtCount, ok := vmTemplates[vmTemplate.Name]; ok {
-			neededResources.CPU = neededResources.CPU + vmTemplate.Spec.Resources.CPU * vmtCount
-			neededResources.Memory = neededResources.Memory + vmTemplate.Spec.Resources.Memory * vmtCount
-			neededResources.Storage = neededResources.Storage + vmTemplate.Spec.Resources.Storage * vmtCount
+			neededResources.CPU = neededResources.CPU + vmTemplate.Spec.Resources.CPU*vmtCount
+			neededResources.Memory = neededResources.Memory + vmTemplate.Spec.Resources.Memory*vmtCount
+			neededResources.Storage = neededResources.Storage + vmTemplate.Spec.Resources.Storage*vmtCount
 		}
 	}
 
@@ -369,9 +368,9 @@ func MaxVMCountsRaw(hfClientset *hfClientset.Clientset, vmTemplates map[string]i
 
 // pending rename...
 type Maximus struct {
-	CapacityMode			hfv1.CapacityMode `json:"capacity_mode"`
-	AvailableCount			map[string]int `json:"available_count"`
-	AvailableCapacity		hfv1.CMSStruct `json:"available_capacity"`
+	CapacityMode      hfv1.CapacityMode `json:"capacity_mode"`
+	AvailableCount    map[string]int    `json:"available_count"`
+	AvailableCapacity hfv1.CMSStruct    `json:"available_capacity"`
 }
 
 func MaxAvailableDuringPeriod(hfClientset *hfClientset.Clientset, environment string, startString string, endString string) (Maximus, error) {
@@ -448,9 +447,9 @@ func MaxAvailableDuringPeriod(hfClientset *hfClientset.Clientset, environment st
 					if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeRaw {
 						for vmTemplateName, vmTemplateCount := range vmMapping {
 							if vmTemplateR, ok := vmTemplateResources[vmTemplateName]; ok {
-									maxRaw.CPU = vmTemplateR.CPU*vmTemplateCount
-									maxRaw.Memory = vmTemplateR.Memory*vmTemplateCount
-									maxRaw.Storage = vmTemplateR.Storage*vmTemplateCount
+								maxRaw.CPU = vmTemplateR.CPU * vmTemplateCount
+								maxRaw.Memory = vmTemplateR.Memory * vmTemplateCount
+								maxRaw.Storage = vmTemplateR.Storage * vmTemplateCount
 							} else {
 								return Maximus{}, fmt.Errorf("error retrieving vm template %s resources %v", vmTemplateName, err)
 							}

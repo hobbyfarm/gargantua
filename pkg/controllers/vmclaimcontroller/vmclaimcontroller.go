@@ -20,13 +20,14 @@ import (
 )
 
 const (
-	StaticBindAttemptThreshold int = 3
+	StaticBindAttemptThreshold  int = 3
 	DynamicBindAttemptThreshold int = 2
 )
+
 type VMClaimController struct {
 	hfClientSet *hfClientset.Clientset
 
-	vmLister hfListers.VirtualMachineLister
+	vmLister      hfListers.VirtualMachineLister
 	vmClaimLister hfListers.VirtualMachineClaimLister
 
 	vmClaimWorkqueue workqueue.Interface
@@ -34,8 +35,7 @@ type VMClaimController struct {
 	vmWorkqueue workqueue.Interface
 
 	vmClaimHasSynced cache.InformerSynced
-	vmHasSynced cache.InformerSynced
-
+	vmHasSynced      cache.InformerSynced
 }
 
 func NewVMClaimController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*VMClaimController, error) {
@@ -56,7 +56,7 @@ func NewVMClaimController(hfClientSet *hfClientset.Clientset, hfInformerFactory 
 			vmClaimController.enqueueVMClaim(new)
 		},
 		DeleteFunc: vmClaimController.enqueueVMClaim,
-	}, time.Minute * 30)
+	}, time.Minute*30)
 
 	vmInformer := hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer()
 
@@ -66,14 +66,13 @@ func NewVMClaimController(hfClientSet *hfClientset.Clientset, hfInformerFactory 
 
 		},
 		DeleteFunc: vmClaimController.enqueueVM,
-	}, time.Minute * 30)
+	}, time.Minute*30)
 
 	vmClaimController.vmClaimHasSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced
 	vmClaimController.vmHasSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
 
 	return &vmClaimController, nil
 }
-
 
 func (v *VMClaimController) enqueueVMClaim(obj interface{}) {
 	var key string
@@ -89,7 +88,7 @@ func (v *VMClaimController) enqueueVMClaim(obj interface{}) {
 func (v *VMClaimController) enqueueVM(obj interface{}) {
 	var key string
 	var err error
-	if key,err = cache.MetaNamespaceKeyFunc(obj); err != nil {
+	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
 		return
 	}
 	glog.V(8).Infof("enqueueing vm %v in vm claim controller to inform vmclaim if exists", key)
@@ -345,21 +344,21 @@ func (v *VMClaimController) processNextVMClaim() bool {
 							OwnerReferences: []metav1.OwnerReference{
 								{
 									APIVersion: "v1",
-									Kind: "VirtualMachineClaim",
-									Name: vmClaim.Name,
-									UID: vmClaim.UID,
+									Kind:       "VirtualMachineClaim",
+									Name:       vmClaim.Name,
+									UID:        vmClaim.UID,
 								},
 							},
 						},
 						Spec: hfv1.DynamicBindRequestSpec{
-							Id: dbrName,
+							Id:                  dbrName,
 							VirtualMachineClaim: vmClaim.Spec.Id,
-							Attempts: DynamicBindAttemptThreshold,
+							Attempts:            DynamicBindAttemptThreshold,
 						},
 						Status: hfv1.DynamicBindRequestStatus{
-							CurrentAttempts: 0,
-							Expired: false,
-							Fulfilled: false,
+							CurrentAttempts:            0,
+							Expired:                    false,
+							Fulfilled:                  false,
 							DynamicBindConfigurationId: "",
 						},
 					}
@@ -416,10 +415,10 @@ func (v *VMClaimController) processNextVMClaim() bool {
 func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, template string, environmentId string, restrictedBind bool, restrictedBindValue string) (string, error) {
 
 	vmLabels := labels.Set{
-		"bound": "false",
+		"bound":       "false",
 		"environment": environmentId,
-		"ready": "true",
-		"template": template,
+		"ready":       "true",
+		"template":    template,
 	}
 
 	if restrictedBind {
@@ -432,7 +431,7 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, temp
 	vms, err := v.vmLister.List(vmLabels.AsSelector())
 
 	if err != nil {
-		return  "", fmt.Errorf("error while listing all vms %v", err)
+		return "", fmt.Errorf("error while listing all vms %v", err)
 	}
 
 	assigned := false
@@ -471,7 +470,8 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, temp
 			if retryErr != nil {
 				return "", fmt.Errorf("Error updating Virtual Machine: %s, %v", vmId, retryErr)
 			}
-			break}
+			break
+		}
 	}
 
 	if assigned {
@@ -482,7 +482,7 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, temp
 
 }
 
-func (v *VMClaimController) updateVMClaimWithVM(vmName string, vmId string, vmClaimId string) (error) {
+func (v *VMClaimController) updateVMClaimWithVM(vmName string, vmId string, vmClaimId string) error {
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(vmClaimId, metav1.GetOptions{})
@@ -515,7 +515,7 @@ func (v *VMClaimController) updateVMClaimWithVM(vmName string, vmId string, vmCl
 	return nil
 }
 
-func (v *VMClaimController) updateVMClaimStatus(bound bool, ready bool, vmClaimId string) (error) {
+func (v *VMClaimController) updateVMClaimStatus(bound bool, ready bool, vmClaimId string) error {
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(vmClaimId, metav1.GetOptions{})
@@ -545,7 +545,7 @@ func (v *VMClaimController) updateVMClaimStatus(bound bool, ready bool, vmClaimI
 	return nil
 }
 
-func (v *VMClaimController) updateVMClaimBindMode(bindMode string, dynamicBindRequestId string, vmClaimId string) (error) {
+func (v *VMClaimController) updateVMClaimBindMode(bindMode string, dynamicBindRequestId string, vmClaimId string) error {
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(vmClaimId, metav1.GetOptions{})
@@ -578,7 +578,7 @@ func (v *VMClaimController) updateVMClaimBindMode(bindMode string, dynamicBindRe
 	return nil
 }
 
-func (v *VMClaimController) updateVMClaimStaticBindAttempts(staticBindAttempts int, vmClaimId string) (error) {
+func (v *VMClaimController) updateVMClaimStaticBindAttempts(staticBindAttempts int, vmClaimId string) error {
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(vmClaimId, metav1.GetOptions{})

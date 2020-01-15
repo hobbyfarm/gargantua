@@ -19,8 +19,8 @@ import (
 )
 
 type DynamicBindController struct {
-	hfClientSet    *hfClientset.Clientset
-	dynamicBindRequestWorkqueue    workqueue.RateLimitingInterface
+	hfClientSet                 *hfClientset.Clientset
+	dynamicBindRequestWorkqueue workqueue.RateLimitingInterface
 
 	dynamicBindRequestLister hfListers.DynamicBindRequestLister
 
@@ -164,87 +164,87 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 	dbcChosen = false
 
 	for _, dynamicBindConfiguration := range dynamicBindConfigurations.Items {
-			environment, err := d.hfClientSet.HobbyfarmV1().Environments().Get(dynamicBindConfiguration.Spec.Environment, metav1.GetOptions{})
+		environment, err := d.hfClientSet.HobbyfarmV1().Environments().Get(dynamicBindConfiguration.Spec.Environment, metav1.GetOptions{})
 
-			if err != nil {
-				glog.Errorf("Error while retrieving environment %v", err)
-				return nil
-			}
+		if err != nil {
+			glog.Errorf("Error while retrieving environment %v", err)
+			return nil
+		}
 
-			if !environment.Spec.BurstCapable {
-				glog.V(8).Infof("Environment %s is not burst capable. Ignoring.", environment.Name)
-				continue
-			}
+		if !environment.Spec.BurstCapable {
+			glog.V(8).Infof("Environment %s is not burst capable. Ignoring.", environment.Name)
+			continue
+		}
 
-			suitable := true
+		suitable := true
 
-			needed := make(map[string]int)
+		needed := make(map[string]int)
 
-			for _, template := range vmClaim.Spec.VirtualMachines {
-				if template.VirtualMachineId == "" {
-					if val, ok := needed[template.Template]; ok {
-						needed[template.Template] = val + 1
-					} else {
-						needed[template.Template] = 1
-					}
+		for _, template := range vmClaim.Spec.VirtualMachines {
+			if template.VirtualMachineId == "" {
+				if val, ok := needed[template.Template]; ok {
+					needed[template.Template] = val + 1
+				} else {
+					needed[template.Template] = 1
 				}
 			}
+		}
 
-			if environment.Spec.CapacityMode == hfv1.CapacityModeRaw {
+		if environment.Spec.CapacityMode == hfv1.CapacityModeRaw {
+			currentVMs, err := d.hfClientSet.HobbyfarmV1().VirtualMachines().List(metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("dynamic=true,environment=%s", environment.Name),
+			})
+			if err != nil {
+				glog.V(4).Infof("error retrieving current vm list, assuming environment empty")
+			}
+
+			availableCapacity := util.AvailableRawCapacity(d.hfClientSet, environment.Spec.BurstCapacity, currentVMs.Items)
+			availableVMCount := util.MaxVMCountsRaw(d.hfClientSet, needed, *availableCapacity)
+
+			if availableVMCount <= 0 {
+				suitable = false
+			}
+
+		} else {
+			for vmTemplate, vmsNeeded := range needed {
+				// first, let's see if the environment itself has capacity
+
 				currentVMs, err := d.hfClientSet.HobbyfarmV1().VirtualMachines().List(metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("dynamic=true,environment=%s", environment.Name),
+					LabelSelector: fmt.Sprintf("dynamic=true,environment=%s,template=%s", environment.Name, vmTemplate),
 				})
 				if err != nil {
 					glog.V(4).Infof("error retrieving current vm list, assuming environment empty")
 				}
+				availableVMCount := environment.Spec.BurstCountCapacity[vmTemplate] - len(currentVMs.Items)
 
-				availableCapacity := util.AvailableRawCapacity(d.hfClientSet, environment.Spec.BurstCapacity, currentVMs.Items)
-				availableVMCount := util.MaxVMCountsRaw(d.hfClientSet, needed, *availableCapacity)
-
-				if availableVMCount <= 0 {
+				if availableVMCount < vmsNeeded {
+					// this environment does not suit us. move on.
 					suitable = false
+					break
 				}
 
-			} else {
-				for vmTemplate, vmsNeeded := range needed {
-					// first, let's see if the environment itself has capacity
+				currentVMs, err = d.hfClientSet.HobbyfarmV1().VirtualMachines().List(metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("dynamic=true,dynamicbindconfig=%s,environment=%s,template=%s", dynamicBindConfiguration.Spec.Id, environment.Name, vmTemplate),
+				})
+				if err != nil {
+					glog.V(4).Infof("error retrieving current vm list, assuming environment empty")
+				}
+				availableVMCount = dynamicBindConfiguration.Spec.BurstCountCapacity[vmTemplate] - len(currentVMs.Items)
 
-					currentVMs, err := d.hfClientSet.HobbyfarmV1().VirtualMachines().List(metav1.ListOptions{
-						LabelSelector: fmt.Sprintf("dynamic=true,environment=%s,template=%s", environment.Name, vmTemplate),
-					})
-					if err != nil {
-						glog.V(4).Infof("error retrieving current vm list, assuming environment empty")
-					}
-					availableVMCount := environment.Spec.BurstCountCapacity[vmTemplate] - len(currentVMs.Items)
-
-					if availableVMCount < vmsNeeded {
-						// this environment does not suit us. move on.
-						suitable = false
-						break
-					}
-
-					currentVMs, err = d.hfClientSet.HobbyfarmV1().VirtualMachines().List(metav1.ListOptions{
-						LabelSelector: fmt.Sprintf("dynamic=true,dynamicbindconfig=%s,environment=%s,template=%s", dynamicBindConfiguration.Spec.Id, environment.Name, vmTemplate),
-					})
-					if err != nil {
-						glog.V(4).Infof("error retrieving current vm list, assuming environment empty")
-					}
-					availableVMCount = dynamicBindConfiguration.Spec.BurstCountCapacity[vmTemplate] - len(currentVMs.Items)
-
-					if availableVMCount < vmsNeeded {
-						// this DBC has no more provisioning capacity
-						suitable = false
-						break
-					}
+				if availableVMCount < vmsNeeded {
+					// this DBC has no more provisioning capacity
+					suitable = false
+					break
 				}
 			}
+		}
 
-			if suitable {
-				chosenDynamicBindConfiguration = &dynamicBindConfiguration
-				chosenEnvironment = environment
-				dbcChosen = true
-				break
-			}
+		if suitable {
+			chosenDynamicBindConfiguration = &dynamicBindConfiguration
+			chosenEnvironment = environment
+			dbcChosen = true
+			break
+		}
 	}
 
 	if dbcChosen {
@@ -320,7 +320,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 	return nil
 }
 
-func (d *DynamicBindController) updateDynamicBindRequestStatus(dynamicBindAttempts int, expired bool, fulfilled bool, dynamicBindConfigurationId string, virtualMachineIds map[string]string, dynamicBindRequestId string) (error) {
+func (d *DynamicBindController) updateDynamicBindRequestStatus(dynamicBindAttempts int, expired bool, fulfilled bool, dynamicBindConfigurationId string, virtualMachineIds map[string]string, dynamicBindRequestId string) error {
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := d.hfClientSet.HobbyfarmV1().DynamicBindRequests().Get(dynamicBindRequestId, metav1.GetOptions{})
