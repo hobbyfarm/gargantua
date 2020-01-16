@@ -6,11 +6,11 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/util"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	// "github.com/hobbyfarm/gargantua/pkg/util"
+	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/retry"
+	// "k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	"time"
 )
@@ -121,70 +121,10 @@ func (c *CourseController) processNextCourse() bool {
 func (c *CourseController) reconcileCourse(cName string) error {
 	glog.V(4).Infof("reconciling course %s", cName)
 
-	course, err := c.cLister.Get(cName)
-
-	if err != nil {
-		return err
-	}
-
-	now := time.Now()
-
-	expires, err := time.Parse(time.UnixDate, course.Status.ExpirationTime)
-
-	if err != nil {
-		return err
-	}
-
-	timeUntilExpires := expires.Sub(now)
-
-	if expires.Before(now) && !course.Status.Finished {
-		// we need to set the course session to finished and delete the vm's
-		if course.Status.Paused && course.Status.PausedTime != "" {
-			pausedExpiration, err := time.Parse(time.UnixDate, course.Status.PausedTime)
-			if err != nil {
-				glog.Error(err)
-			}
-
-			if pausedExpiration.After(now) {
-				glog.V(4).Infof("Course %s was paused, and the pause expiration is after now, skipping clean up.", course.Spec.Id)
-				return nil
-			}
-
-			glog.V(4).Infof("Course %s was paused, but the pause expiration was before now, so cleaning up.", course.Spec.Id)
-		}
-
-		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			result, getErr := c.hfClientSet.HobbyfarmV1().Courses().Get(cName, metav1.GetOptions{})
-			if getErr != nil {
-				return getErr
-			}
-
-			result.Status.Finished = true
-			result.Status.Active = false
-
-			result, updateErr := c.hfClientSet.HobbyfarmV1().Courses().Update(result)
-			if updateErr != nil {
-				return updateErr
-			}
-			glog.V(4).Infof("updated result for course")
-
-			verifyErr := util.VerifyCourse(c.cLister, result)
-
-			if verifyErr != nil {
-				return verifyErr
-			}
-			return nil
-		})
-		if retryErr != nil {
-			return retryErr
-		}
-	} else if expires.Before(now) && c.Status.Finished {
-		glog.V(8).Infof("course %s is finished and expired before now", cName)
-	} else {
-		glog.V(8).Infof("adding course %s to workqueue after %s", cName, timeUntilExpires.String())
-		c.cWorkqueue.AddAfter(cName, timeUntilExpires)
-		glog.V(8).Infof("added course %s to workqueue", cName)
-	}
+	// course, err := c.cLister.Get(cName)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
