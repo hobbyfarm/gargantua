@@ -25,10 +25,10 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/controllers/tfpcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmclaimcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmsetcontroller"
+	"github.com/hobbyfarm/gargantua/pkg/controllers/coursecontroller"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
 	"github.com/hobbyfarm/gargantua/pkg/courseserver"
-	"github.com/hobbyfarm/gargantua/pkg/coursecontroller"
 	"github.com/hobbyfarm/gargantua/pkg/coursesessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/shell"
 	"github.com/hobbyfarm/gargantua/pkg/signals"
@@ -223,7 +223,7 @@ func main() {
 		if err != nil {
 			glog.Fatal(err)
 		}
-		courseController, err := coursecontroller.NewCourseController(hfClient, hfInformerFactory)
+		courseController, err := course.NewCourseController(hfClient, hfInformerFactory)
 		if err != nil {
 			glog.Fatal(err)
 		}
