@@ -21,7 +21,6 @@ import (
 	//"k8s.io/client-go/tools/cache"
 
 	//"github.com/hobbyfarm/gargantua/pkg/controllers/environment"
-	"github.com/hobbyfarm/gargantua/pkg/controllers/course"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/coursesession"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/tfpcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmclaimcontroller"
@@ -223,10 +222,6 @@ func main() {
 		if err != nil {
 			glog.Fatal(err)
 		}
-		courseController, err := course.NewCourseController(hfClient, hfInformerFactory)
-		if err != nil {
-			glog.Fatal(err)
-		}
 		scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory)
 		if err != nil {
 			glog.Fatal(err)
@@ -259,11 +254,6 @@ func main() {
 		go func() {
 			defer wg.Done()
 			courseSessionController.Run(stopCh)
-		}()
-
-		go func() {
-			defer wg.Done()
-			courseController.Run(stopCh)
 		}()
 
 		go func() {
