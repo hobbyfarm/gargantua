@@ -9,23 +9,23 @@ const (
 	ssIndex = "ssc.hobbyfarm.io/coursesession-id-index"
 )
 
-type ScenarioSessionClient struct {
-	ssServer *coursesessionserver.ScenarioSessionServer
+type CourseSessionClient struct {
+	ssServer *coursesessionserver.CourseSessionServer
 }
 
-func NewScenarioSessionClient(ssServer *coursesessionserver.ScenarioSessionServer) (*ScenarioSessionClient, error) {
-	a := ScenarioSessionClient{}
+func NewCourseSessionClient(ssServer *coursesessionserver.CourseSessionServer) (*CourseSessionClient, error) {
+	a := CourseSessionClient{}
 
 	a.ssServer = ssServer
 	return &a, nil
 }
 
-func (ssc ScenarioSessionClient) GetScenarioSessionById(id string) (hfv1.ScenarioSession, error) {
+func (ssc CourseSessionClient) GetCourseSessionById(id string) (hfv1.CourseSession, error) {
 
-	ssResult, err := ssc.ssServer.GetScenarioSessionById(id)
+	ssResult, err := ssc.ssServer.GetCourseSessionById(id)
 
 	if err != nil {
-		return hfv1.ScenarioSession{}, err
+		return hfv1.CourseSession{}, err
 	}
 	return ssResult, nil
 }
