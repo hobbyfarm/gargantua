@@ -18,73 +18,73 @@ import (
 type CourseSessionController struct {
 	hfClientSet *hfClientset.Clientset
 
-	//ssWorkqueue workqueue.RateLimitingInterface
-	ssWorkqueue workqueue.DelayingInterface
+	//csWorkqueue workqueue.RateLimitingInterface
+	csWorkqueue workqueue.DelayingInterface
 
 	vmLister  hfListers.VirtualMachineLister
 	vmcLister hfListers.VirtualMachineClaimLister
-	ssLister  hfListers.CourseSessionLister
+	csLister  hfListers.CourseSessionLister
 
 	vmSynced  cache.InformerSynced
 	vmcSynced cache.InformerSynced
-	ssSynced  cache.InformerSynced
+	csSynced  cache.InformerSynced
 }
 
 func NewCourseSessionController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*CourseSessionController, error) {
-	ssController := CourseSessionController{}
-	ssController.hfClientSet = hfClientSet
-	ssController.vmSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
-	ssController.vmcSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced
-	ssController.ssSynced = hfInformerFactory.Hobbyfarm().V1().CourseSessions().Informer().HasSynced
+	csController := CourseSessionController{}
+	csController.hfClientSet = hfClientSet
+	csController.vmSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
+	csController.vmcSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced
+	csController.csSynced = hfInformerFactory.Hobbyfarm().V1().CourseSessions().Informer().HasSynced
 
 	//ssController.ssWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "CourseSession")
-	ssController.ssWorkqueue = workqueue.NewNamedDelayingQueue("ssc-ss")
-	ssController.vmLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Lister()
-	ssController.vmcLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Lister()
-	ssController.ssLister = hfInformerFactory.Hobbyfarm().V1().CourseSessions().Lister()
+	csController.csWorkqueue = workqueue.NewNamedDelayingQueue("ssc-ss")
+	csController.vmLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Lister()
+	csController.vmcLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Lister()
+	csController.csLister = hfInformerFactory.Hobbyfarm().V1().CourseSessions().Lister()
 
 	ssInformer := hfInformerFactory.Hobbyfarm().V1().CourseSessions().Informer()
 
 	ssInformer.AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
-		AddFunc: ssController.enqueueSS,
+		AddFunc: csController.enqueueCS,
 		UpdateFunc: func(old, new interface{}) {
-			ssController.enqueueSS(new)
+			csController.enqueueCS(new)
 		},
-		DeleteFunc: ssController.enqueueSS,
+		DeleteFunc: csController.enqueueCS,
 	}, time.Minute*30)
 
-	return &ssController, nil
+	return &csController, nil
 }
 
-func (s *CourseSessionController) enqueueSS(obj interface{}) {
+func (s *CourseSessionController) enqueueCS(obj interface{}) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
 		//utilruntime.HandleError(err)
 		return
 	}
-	glog.V(8).Infof("Enqueueing ss %s", key)
+	glog.V(8).Infof("Enqueueing cs %s", key)
 	//s.ssWorkqueue.AddRateLimited(key)
-	s.ssWorkqueue.Add(key)
+	s.csWorkqueue.Add(key)
 }
 
 func (s *CourseSessionController) Run(stopCh <-chan struct{}) error {
-	defer s.ssWorkqueue.ShutDown()
+	defer s.csWorkqueue.ShutDown()
 
-	glog.V(4).Infof("Starting Scenario Session controller")
+	glog.V(4).Infof("Starting Course Session controller")
 	glog.Info("Waiting for informer caches to sync")
-	if ok := cache.WaitForCacheSync(stopCh, s.vmSynced, s.vmcSynced, s.ssSynced); !ok {
-		return fmt.Errorf("failed to wait for vm, vmc, and ss caches to sync")
+	if ok := cache.WaitForCacheSync(stopCh, s.vmSynced, s.vmcSynced, s.csSynced); !ok {
+		return fmt.Errorf("failed to wait for vm, vmc, and cs caches to sync")
 	}
-	glog.Info("Starting ss controller workers")
-	go wait.Until(s.runSSWorker, time.Second, stopCh)
-	glog.Info("Started ss controller workers")
+	glog.Info("Starting cs controller workers")
+	go wait.Until(s.runCSWorker, time.Second, stopCh)
+	glog.Info("Started cs controller workers")
 	//if ok := cache.WaitForCacheSync(stopCh, )
 	<-stopCh
 	return nil
 }
 
-func (s *CourseSessionController) runSSWorker() {
+func (s *CourseSessionController) runCSWorker() {
 	glog.V(6).Infof("Starting scenario session worker")
 	for s.processNextCourseSession() {
 
@@ -92,15 +92,15 @@ func (s *CourseSessionController) runSSWorker() {
 }
 
 func (s *CourseSessionController) processNextCourseSession() bool {
-	obj, shutdown := s.ssWorkqueue.Get()
+	obj, shutdown := s.csWorkqueue.Get()
 
 	if shutdown {
 		return false
 	}
 
 	err := func() error {
-		defer s.ssWorkqueue.Done(obj)
-		glog.V(8).Infof("processing ss in ss controller: %v", obj)
+		defer s.csWorkqueue.Done(obj)
+		glog.V(8).Infof("processing cs in cs controller: %v", obj)
 		_, objName, err := cache.SplitMetaNamespaceKey(obj.(string))
 		if err != nil {
 			glog.Errorf("error while splitting meta namespace key %v", err)
@@ -112,8 +112,8 @@ func (s *CourseSessionController) processNextCourseSession() bool {
 		if err != nil {
 			glog.Error(err)
 		}
-		//s.ssWorkqueue.Forget(obj)
-		glog.V(8).Infof("ss processed by scenario session controller %v", objName)
+		//c.csWorkqueue.Forget(obj)
+		glog.V(8).Infof("cs processed by course session controller %v", objName)
 
 		return nil
 
@@ -126,10 +126,10 @@ func (s *CourseSessionController) processNextCourseSession() bool {
 	return true
 }
 
-func (s *CourseSessionController) reconcileCourseSession(ssName string) error {
-	glog.V(4).Infof("reconciling scenario session %s", ssName)
+func (s *CourseSessionController) reconcileCourseSession(csName string) error {
+	glog.V(4).Infof("reconciling course session %s", csName)
 
-	ss, err := s.ssLister.Get(ssName)
+	cs, err := s.csLister.Get(csName)
 
 	if err != nil {
 		return err
@@ -137,7 +137,7 @@ func (s *CourseSessionController) reconcileCourseSession(ssName string) error {
 
 	now := time.Now()
 
-	expires, err := time.Parse(time.UnixDate, ss.Status.ExpirationTime)
+	expires, err := time.Parse(time.UnixDate, cs.Status.ExpirationTime)
 
 	if err != nil {
 		return err
@@ -145,22 +145,22 @@ func (s *CourseSessionController) reconcileCourseSession(ssName string) error {
 
 	timeUntilExpires := expires.Sub(now)
 
-	if expires.Before(now) && !ss.Status.Finished {
-		// we need to set the scenario session to finished and delete the vm's
-		if ss.Status.Paused && ss.Status.PausedTime != "" {
-			pausedExpiration, err := time.Parse(time.UnixDate, ss.Status.PausedTime)
+	if expires.Before(now) && !cs.Status.Finished {
+		// we need to set the course session to finished and delete the vm's
+		if cs.Status.Paused && cs.Status.PausedTime != "" {
+			pausedExpiration, err := time.Parse(time.UnixDate, cs.Status.PausedTime)
 			if err != nil {
 				glog.Error(err)
 			}
 
 			if pausedExpiration.After(now) {
-				glog.V(4).Infof("Scenario session %s was paused, and the pause expiration is after now, skipping clean up.", ss.Spec.Id)
+				glog.V(4).Infof("Course session %s was paused, and the pause expiration is after now, skipping clean up.", cs.Spec.Id)
 				return nil
 			}
 
-			glog.V(4).Infof("Scenario session %s was paused, but the pause expiration was before now, so cleaning up.", ss.Spec.Id)
+			glog.V(4).Infof("Course session %s was paused, but the pause expiration was before now, so cleaning up.", cs.Spec.Id)
 		}
-		for _, vmc := range ss.Spec.VmClaimSet {
+		for _, vmc := range cs.Spec.VmClaimSet {
 			vmcObj, err := s.vmcLister.Get(vmc)
 
 			if err != nil {
@@ -181,7 +181,7 @@ func (s *CourseSessionController) reconcileCourseSession(ssName string) error {
 		}
 
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			result, getErr := s.hfClientSet.HobbyfarmV1().CourseSessions().Get(ssName, metav1.GetOptions{})
+			result, getErr := s.hfClientSet.HobbyfarmV1().CourseSessions().Get(csName, metav1.GetOptions{})
 			if getErr != nil {
 				return getErr
 			}
@@ -193,9 +193,9 @@ func (s *CourseSessionController) reconcileCourseSession(ssName string) error {
 			if updateErr != nil {
 				return updateErr
 			}
-			glog.V(4).Infof("updated result for ss")
+			glog.V(4).Infof("updated result for cs")
 
-			verifyErr := util.VerifyCourseSession(s.ssLister, result)
+			verifyErr := util.VerifyCourseSession(s.csLister, result)
 
 			if verifyErr != nil {
 				return verifyErr
@@ -205,12 +205,12 @@ func (s *CourseSessionController) reconcileCourseSession(ssName string) error {
 		if retryErr != nil {
 			return retryErr
 		}
-	} else if expires.Before(now) && ss.Status.Finished {
-		glog.V(8).Infof("scenario session %s is finished and expired before now", ssName)
+	} else if expires.Before(now) && cs.Status.Finished {
+		glog.V(8).Infof("course session %s is finished and expired before now", csName)
 	} else {
-		glog.V(8).Infof("adding scenario session %s to workqueue after %s", ssName, timeUntilExpires.String())
-		s.ssWorkqueue.AddAfter(ssName, timeUntilExpires)
-		glog.V(8).Infof("added scenario session %s to workqueue", ssName)
+		glog.V(8).Infof("adding course session %s to workqueue after %s", csName, timeUntilExpires.String())
+		s.csWorkqueue.AddAfter(csName, timeUntilExpires)
+		glog.V(8).Infof("added course session %s to workqueue", csName)
 	}
 
 	return nil
