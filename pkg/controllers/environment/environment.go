@@ -18,20 +18,20 @@ import (
 )
 
 type EnvironmentController struct {
-	hfClientSet *hfClientset.Clientset
+	hfClientSet  *hfClientset.Clientset
 	envWorkqueue workqueue.RateLimitingInterface
-	vmWorkqueue workqueue.RateLimitingInterface
+	vmWorkqueue  workqueue.RateLimitingInterface
 	//hfInformerFactory *hfInformers.SharedInformerFactory
 
 	vmTemplateIndexer cache.Indexer
 
-	vmLister hfListers.VirtualMachineLister
+	vmLister  hfListers.VirtualMachineLister
 	envLister hfListers.EnvironmentLister
 
-	vmSynced cache.InformerSynced
+	vmSynced  cache.InformerSynced
 	envSynced cache.InformerSynced
-
 }
+
 const (
 	vmEnvironmentIndex = "vm.vmclaim.controllers.hobbyfarm.io/environment-index"
 )
@@ -55,7 +55,7 @@ func NewEnvironmentController(hfClientSet *hfClientset.Clientset, hfInformerFact
 			envController.handleVM(new)
 		},
 		DeleteFunc: envController.handleVM,
-	}, time.Second * 30)
+	}, time.Second*30)
 
 	envInformer.AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
 		AddFunc: envController.enqueueEnv,
@@ -63,7 +63,7 @@ func NewEnvironmentController(hfClientSet *hfClientset.Clientset, hfInformerFact
 			envController.enqueueEnv(new)
 		},
 		DeleteFunc: envController.enqueueEnv,
-	}, time.Second * 30)
+	}, time.Second*30)
 
 	return &envController, nil
 }
@@ -228,7 +228,6 @@ func (e *EnvironmentController) reconcileEnvironment(environmentId string) error
 
 		_, updateErr := e.hfClientSet.HobbyfarmV1().Environments().Update(result)
 		glog.V(4).Infof("updated result for environment")
-
 
 		return updateErr
 	})

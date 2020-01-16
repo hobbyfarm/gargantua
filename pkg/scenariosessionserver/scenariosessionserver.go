@@ -20,18 +20,18 @@ import (
 )
 
 const (
-	ssIndex = "sss.hobbyfarm.io/scenariosession-id-index"
-	newSSTimeout = "5m"
+	ssIndex            = "sss.hobbyfarm.io/scenariosession-id-index"
+	newSSTimeout       = "5m"
 	keepaliveSSTimeout = "5m"
-	pauseSSTimeout = "2h"
+	pauseSSTimeout     = "2h"
 )
 
 type ScenarioSessionServer struct {
-	hfClientSet    *hfClientset.Clientset
-	scenarioClient *scenarioclient.ScenarioClient
+	hfClientSet      *hfClientset.Clientset
+	scenarioClient   *scenarioclient.ScenarioClient
 	accessCodeClient *accesscode.AccessCodeClient
-	auth           *authclient.AuthClient
-	ssIndexer      cache.Indexer
+	auth             *authclient.AuthClient
+	ssIndexer        cache.Indexer
 }
 
 func NewScenarioSessionServer(authClient *authclient.AuthClient, accessCodeClient *accesscode.AccessCodeClient, scenarioClient *scenarioclient.ScenarioClient, hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioSessionServer, error) {
@@ -83,7 +83,7 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 
 	// we should validate the user can use this access code
 	// let's figure out the restricted bind value
-	accessCodeObj, err  := sss.hfClientSet.HobbyfarmV1().AccessCodes().Get(accessCode, metav1.GetOptions{})
+	accessCodeObj, err := sss.hfClientSet.HobbyfarmV1().AccessCodes().Get(accessCode, metav1.GetOptions{})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "could not retrieve access code")
 		return
@@ -125,7 +125,7 @@ func (sss ScenarioSessionServer) NewScenarioSessionFunc(w http.ResponseWriter, r
 			v.Spec.ScenarioId == scenario.Spec.Id &&
 			!v.Status.Finished &&
 			v.Status.Active && expires.After(now) {
-				// we should just return this scenario session...
+			// we should just return this scenario session...
 			encodedSS, err := json.Marshal(v.Spec)
 			if err != nil {
 				glog.Error(err)

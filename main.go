@@ -183,21 +183,21 @@ func main() {
 	corsOrigins := handlers.AllowedOrigins([]string{"*"})
 	corsMethods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"})
 	/*
-	glog.V(6).Infof("Waiting for informers to synchronize")
-	if ok := cache.WaitForCacheSync(stopCh,
-		hfInformerFactory.Hobbyfarm().V1().Users().Informer().HasSynced,
-		hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced,
-		hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer().HasSynced,
-		hfInformerFactory.Hobbyfarm().V1().Scenarios().Informer().HasSynced,
-		hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced,
-		hfInformerFactory.Hobbyfarm().V1().AccessCodes().Informer().HasSynced,
-		hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced,
-		//hfInformerFactory.Hobbyfarm().V1().Environments().Informer().HasSynced,
-		hfInformerFactory.Hobbyfarm().V1().VirtualMachineSets().Informer().HasSynced,
-	); !ok {
-		glog.Fatalf("failed to wait for caches to sync")
-	}
-	glog.V(6).Infof("Informers have synchronized")
+		glog.V(6).Infof("Waiting for informers to synchronize")
+		if ok := cache.WaitForCacheSync(stopCh,
+			hfInformerFactory.Hobbyfarm().V1().Users().Informer().HasSynced,
+			hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced,
+			hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer().HasSynced,
+			hfInformerFactory.Hobbyfarm().V1().Scenarios().Informer().HasSynced,
+			hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced,
+			hfInformerFactory.Hobbyfarm().V1().AccessCodes().Informer().HasSynced,
+			hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced,
+			//hfInformerFactory.Hobbyfarm().V1().Environments().Informer().HasSynced,
+			hfInformerFactory.Hobbyfarm().V1().VirtualMachineSets().Informer().HasSynced,
+		); !ok {
+			glog.Fatalf("failed to wait for caches to sync")
+		}
+		glog.V(6).Infof("Informers have synchronized")
 	*/
 
 	http.Handle("/", r)
@@ -205,10 +205,10 @@ func main() {
 	var wg sync.WaitGroup
 	if !disableControllers {
 		/*
-		environmentController, err := environment.NewEnvironmentController(hfClient, hfInformerFactory)
-		if err != nil {
-			glog.Fatal(err)
-		}
+			environmentController, err := environment.NewEnvironmentController(hfClient, hfInformerFactory)
+			if err != nil {
+				glog.Fatal(err)
+			}
 		*/
 		glog.V(2).Infof("Starting controllers")
 		scenarioSessionController, err := scenariosession.NewScenarioSessionController(hfClient, hfInformerFactory)
@@ -239,10 +239,10 @@ func main() {
 
 		wg.Add(6)
 		/*
-		go func() {
-			defer wg.Done()
-			environmentController.Run(stopCh)
-		}()
+			go func() {
+				defer wg.Done()
+				environmentController.Run(stopCh)
+			}()
 		*/
 		go func() {
 			defer wg.Done()
