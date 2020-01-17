@@ -23,8 +23,8 @@ import (
 
 	//"github.com/hobbyfarm/gargantua/pkg/controllers/environment"
 
-	"github.com/hobbyfarm/gargantua/pkg/controllers/tfpcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/session"
+	"github.com/hobbyfarm/gargantua/pkg/controllers/tfpcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmclaimcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmsetcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/courseclient"
@@ -128,7 +128,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	sServer, err := sessionserver.NewSessionServer(authClient, acClient, scenarioClient, courseClient, hfClient, hfInformerFactory)
+	sessionServer, err := sessionserver.NewSessionServer(authClient, acClient, scenarioClient, courseClient, hfClient, hfInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func main() {
 		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
 	} else {
-		sServer.SetupRoutes(r)
+		sessionServer.SetupRoutes(r)
 		authServer.SetupRoutes(r)
 		courseServer.SetupRoutes(r)
 		scenarioServer.SetupRoutes(r)
