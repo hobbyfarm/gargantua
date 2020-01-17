@@ -38,7 +38,7 @@ type PreparedScenario struct {
 	Description     string              `json:"description"`
 	StepCount       int                 `json:"stepcount"`
 	VirtualMachines []map[string]string `json:"virtualmachines"`
-	Pauseable		bool				`json:"pauseable"`
+	Pauseable       bool                `json:"pauseable"`
 }
 
 func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioServer, error) {

@@ -25,7 +25,7 @@ const (
 )
 
 type AuthServer struct {
-	auth *authclient.AuthClient
+	auth        *authclient.AuthClient
 	hfClientSet *hfClientset.Clientset
 }
 

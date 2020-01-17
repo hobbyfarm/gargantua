@@ -6,8 +6,8 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"time"
 	"sort"
+	"time"
 )
 
 type AccessCodeClient struct {
@@ -20,7 +20,7 @@ func NewAccessCodeClient(hfClientset *hfClientset.Clientset) (*AccessCodeClient,
 	return &acc, nil
 }
 
-func (acc AccessCodeClient) GetSomething(code string) (error) {
+func (acc AccessCodeClient) GetSomething(code string) error {
 	return nil
 }
 

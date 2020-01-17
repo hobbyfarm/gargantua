@@ -45,10 +45,10 @@ type TerraformProvisionerController struct {
 	tfeLister tfListers.ExecutionLister
 
 	vmSynced  cache.InformerSynced
-	vmtSynced  cache.InformerSynced
-	tfsSynced  cache.InformerSynced
-	tfeSynced  cache.InformerSynced
-	envSynced  cache.InformerSynced
+	vmtSynced cache.InformerSynced
+	tfsSynced cache.InformerSynced
+	tfeSynced cache.InformerSynced
+	envSynced cache.InformerSynced
 }
 
 const (
@@ -170,6 +170,7 @@ func (t *TerraformProvisionerController) processNextVM() bool {
 
 	return true
 }
+
 // returns an error and a boolean of requeue
 func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine) (error, bool) {
 	if vm.Spec.Provision {
@@ -236,7 +237,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			config["memory"] = strconv.Itoa(vmt.Spec.Resources.Memory)
 			config["disk"] = strconv.Itoa(vmt.Spec.Resources.Storage)
 			image, exists := envTemplateInfo["image"]
-			if !exists{
+			if !exists {
 				glog.Errorf("image does not exist in env template")
 				return fmt.Errorf("image did not exist"), true
 			}
@@ -249,9 +250,9 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 					OwnerReferences: []metav1.OwnerReference{
 						{
 							APIVersion: "v1",
-							Kind: "VirtualMachine",
-							Name: vm.Name,
-							UID: vm.UID,
+							Kind:       "VirtualMachine",
+							Name:       vm.Name,
+							UID:        vm.UID,
 						},
 					},
 				},
@@ -270,9 +271,9 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 					OwnerReferences: []metav1.OwnerReference{
 						{
 							APIVersion: "v1",
-							Kind: "VirtualMachine",
-							Name: vm.Name,
-							UID: vm.UID,
+							Kind:       "VirtualMachine",
+							Name:       vm.Name,
+							UID:        vm.UID,
 						},
 					},
 				},
@@ -319,15 +320,15 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 					Variables: tfv1.Variables{
 						ConfigNames: []string{cm.Name},
 					},
-					Image: executorImage,
+					Image:           executorImage,
 					AutoConfirm:     true,
 					DestroyOnDelete: true,
-					ModuleName: moduleName,
+					ModuleName:      moduleName,
 				},
 			}
 
 			credentialsSecret, exists := envTemplateInfo["cred_secret"]
-			if !exists{
+			if !exists {
 				credentialsSecret, exists = config["cred_secret"]
 				if !exists {
 					glog.Errorf("cred secret does not exist in env template")
@@ -387,7 +388,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			}
 
 			tfExecs, err := t.tfeLister.List(labels.Set{
-				"state":  string(vm.Status.TFState),
+				"state": string(vm.Status.TFState),
 			}.AsSelector())
 
 			if err != nil {
@@ -412,14 +413,14 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 
 			//executionName := tfState.Status.ExecutionName
 			/*
-			tfExec, err := t.tfeLister.Executions(provisionNS).Get(executionName)
-			if err != nil {
-				//glog.Error(err)
-				if apierrors.IsNotFound(err) {
-					return fmt.Errorf("execution not found")
+				tfExec, err := t.tfeLister.Executions(provisionNS).Get(executionName)
+				if err != nil {
+					//glog.Error(err)
+					if apierrors.IsNotFound(err) {
+						return fmt.Errorf("execution not found")
+					}
+					return nil
 				}
-				return nil
-			}
 			*/
 			if tfExec.Status.Outputs == "" {
 				return nil, true
@@ -453,7 +454,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				if _, exists := tfOutput["public_ip"]; exists {
 					toUpdate.Status.PublicIP = tfOutput["public_ip"]["value"]
 				} else {
-					toUpdate.Status.PublicIP = translatePrivToPub(env.Spec.IPTranslationMap,tfOutput["private_ip"]["value"])
+					toUpdate.Status.PublicIP = translatePrivToPub(env.Spec.IPTranslationMap, tfOutput["private_ip"]["value"])
 				}
 				toUpdate.Status.Hostname = tfOutput["hostname"]["value"]
 				toUpdate.Status.Status = hfv1.VmStatusRunning
@@ -483,7 +484,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 func translatePrivToPub(translationMap map[string]string, priv string) string {
 	splitIp := strings.Split(priv, ".")
 
-	origPrefix := splitIp[0]+"."+splitIp[1]+"."+splitIp[2]
+	origPrefix := splitIp[0] + "." + splitIp[1] + "." + splitIp[2]
 
 	translation, ok := translationMap[origPrefix]
 

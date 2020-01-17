@@ -8,12 +8,12 @@ type VmStatus string
 type CapacityMode string
 
 const (
-	VmStatusRFP VmStatus = "readyforprovisioning"
-	VmStatusProvisioned VmStatus = "provisioned"
-	VmStatusRunning VmStatus = "running"
-	VmStatusTerminating VmStatus = "terminating"
-	CapacityModeRaw CapacityMode = "raw"
-	CapacityModeCount CapacityMode = "count"
+	VmStatusRFP         VmStatus     = "readyforprovisioning"
+	VmStatusProvisioned VmStatus     = "provisioned"
+	VmStatusRunning     VmStatus     = "running"
+	VmStatusTerminating VmStatus     = "terminating"
+	CapacityModeRaw     CapacityMode = "raw"
+	CapacityModeCount   CapacityMode = "count"
 )
 
 // +genclient
@@ -23,8 +23,8 @@ const (
 type VirtualMachine struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              VirtualMachineSpec `json:"spec"`
-	Status			VirtualMachineStatus `json:"status,omitempty"`
+	Spec              VirtualMachineSpec   `json:"spec"`
+	Status            VirtualMachineStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -36,25 +36,25 @@ type VirtualMachineList struct {
 }
 
 type VirtualMachineSpec struct {
-	Id						string		`json:"id"`
-	VirtualMachineTemplateId string		`json:"vm_template_id"`
-	KeyPair			       string 		`json:"keypair_name"` // this refers to the secret name for the keypair
-	VirtualMachineClaimId	string		`json:"vm_claim_id"`
-	UserId					string		`json:"user"`
-	Provision				bool		`json:"provision"`
-	VirtualMachineSetId		string		`json:"vm_set_id"`
+	Id                       string `json:"id"`
+	VirtualMachineTemplateId string `json:"vm_template_id"`
+	KeyPair                  string `json:"keypair_name"` // this refers to the secret name for the keypair
+	VirtualMachineClaimId    string `json:"vm_claim_id"`
+	UserId                   string `json:"user"`
+	Provision                bool   `json:"provision"`
+	VirtualMachineSetId      string `json:"vm_set_id"`
 }
 
 type VirtualMachineStatus struct {
-	Status				VmStatus		`json:"status"` // default is nothing, but could be one of the following: readyforprovisioning, provisioning, running, terminating
-	Allocated			bool		`json:"allocated"`
-	Tainted				bool		`json:"tainted"`
-	PublicIP			string		`json:"public_ip"`
-	PrivateIP			string		`json:"private_ip"`
-	EnvironmentId		string		`json:"environment_id"`
-	Hostname			string		`json:"hostname"` // ideally <hostname>.<enviroment dnssuffix> should be the FQDN to this machine
-	TFState				string		`json:"tfstate,omitempty"` // Terraform state name
-	WsEndpoint			string		`json:"ws_endpoint"`
+	Status        VmStatus `json:"status"` // default is nothing, but could be one of the following: readyforprovisioning, provisioning, running, terminating
+	Allocated     bool     `json:"allocated"`
+	Tainted       bool     `json:"tainted"`
+	PublicIP      string   `json:"public_ip"`
+	PrivateIP     string   `json:"private_ip"`
+	EnvironmentId string   `json:"environment_id"`
+	Hostname      string   `json:"hostname"`          // ideally <hostname>.<enviroment dnssuffix> should be the FQDN to this machine
+	TFState       string   `json:"tfstate,omitempty"` // Terraform state name
+	WsEndpoint    string   `json:"ws_endpoint"`
 }
 
 // +genclient
@@ -64,8 +64,8 @@ type VirtualMachineStatus struct {
 type VirtualMachineClaim struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              VirtualMachineClaimSpec `json:"spec"`
-	Status			VirtualMachineClaimStatus `json:"status,omitempty"`
+	Spec              VirtualMachineClaimSpec   `json:"spec"`
+	Status            VirtualMachineClaimStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -77,26 +77,26 @@ type VirtualMachineClaimList struct {
 }
 
 type VirtualMachineClaimSpec struct {
-	Id		string	`json:"id"`
-	UserId  string  `json:"user"`
-	RestrictedBind bool `json:"restricted_bind"`
-	RestrictedBindValue string `json:"restricted_bind_value"`
-	VirtualMachines map[string]VirtualMachineClaimVM `json:"vm"`
-	DynamicCapable bool `json:"dynamic_bind_capable"`
+	Id                  string                           `json:"id"`
+	UserId              string                           `json:"user"`
+	RestrictedBind      bool                             `json:"restricted_bind"`
+	RestrictedBindValue string                           `json:"restricted_bind_value"`
+	VirtualMachines     map[string]VirtualMachineClaimVM `json:"vm"`
+	DynamicCapable      bool                             `json:"dynamic_bind_capable"`
 }
 
 type VirtualMachineClaimStatus struct {
-	BindMode string `json:"bind_mode"`
-	StaticBindAttempts int `json:"static_bind_attempts"`
+	BindMode             string `json:"bind_mode"`
+	StaticBindAttempts   int    `json:"static_bind_attempts"`
 	DynamicBindRequestId string `json:"dynamic_bind_request_id"`
-	Bound	bool	`json:"bound"`
-	Ready   bool 	`json:"ready"`
-	Tainted	bool	`json:"tainted"` // If tainted, we should delete the VM's underneath then delete ourself...
+	Bound                bool   `json:"bound"`
+	Ready                bool   `json:"ready"`
+	Tainted              bool   `json:"tainted"` // If tainted, we should delete the VM's underneath then delete ourself...
 }
 
 type VirtualMachineClaimVM struct {
-	Template    string  `json:"template"`
-	VirtualMachineId	string	`json:"vm_id"`
+	Template         string `json:"template"`
+	VirtualMachineId string `json:"vm_id"`
 }
 
 // +genclient
@@ -121,11 +121,11 @@ type VirtualMachineTemplateList struct {
 // VM type is a genercized collection of information about a VM. this includes things like
 // cpu, ram, disk, etc.
 type VirtualMachineTemplateSpec struct {
-	Id		string 	`json:"id"`
-	Name	string	`json:"name"` // 2x4, etc.
-	Image 	string	`json:"image"` // ubuntu-18.04
-	Resources CMSStruct `json:"resources"`
-	CountMap	map[string]string `json:"count_map"`
+	Id        string            `json:"id"`
+	Name      string            `json:"name"`  // 2x4, etc.
+	Image     string            `json:"image"` // ubuntu-18.04
+	Resources CMSStruct         `json:"resources"`
+	CountMap  map[string]string `json:"count_map"`
 }
 
 // +genclient
@@ -135,8 +135,8 @@ type VirtualMachineTemplateSpec struct {
 type Environment struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              EnvironmentSpec `json:"spec"`
-	Status 			  EnvironmentStatus `json:"status"`
+	Spec              EnvironmentSpec   `json:"spec"`
+	Status            EnvironmentStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -151,29 +151,29 @@ type EnvironmentList struct {
 // AWS-us-west-2
 // hermes
 type EnvironmentSpec struct {
-	DisplayName				string	`json:"display_name"`
-	DNSSuffix   			string	`json:"dnssuffix"`
-	Provider				string	`json:"provider"` // aws,vsphere,azure,custom ;)
-	TemplateMapping			map[string]map[string]string `json:"template_mapping"` //  lol
-	EnvironmentSpecifics	map[string]string `json:"environment_specifics"`
-	IPTranslationMap		map[string]string `json:"ip_translation_map"`
-	WsEndpoint				string		`json:"ws_endpoint"`
-	CapacityMode			CapacityMode `json:"capacity_mode"`
-	BurstCapable			bool		`json:"burst_capable"`
-	CountCapacity			map[string]int `json:"count_capacity"`
-	Capacity				CMSStruct `json:"capacity"`
-	BurstCountCapacity		map[string]int `json:"burst_count_capacity"`
-	BurstCapacity			CMSStruct `json:"burst_capacity"`
+	DisplayName          string                       `json:"display_name"`
+	DNSSuffix            string                       `json:"dnssuffix"`
+	Provider             string                       `json:"provider"`         // aws,vsphere,azure,custom ;)
+	TemplateMapping      map[string]map[string]string `json:"template_mapping"` //  lol
+	EnvironmentSpecifics map[string]string            `json:"environment_specifics"`
+	IPTranslationMap     map[string]string            `json:"ip_translation_map"`
+	WsEndpoint           string                       `json:"ws_endpoint"`
+	CapacityMode         CapacityMode                 `json:"capacity_mode"`
+	BurstCapable         bool                         `json:"burst_capable"`
+	CountCapacity        map[string]int               `json:"count_capacity"`
+	Capacity             CMSStruct                    `json:"capacity"`
+	BurstCountCapacity   map[string]int               `json:"burst_count_capacity"`
+	BurstCapacity        CMSStruct                    `json:"burst_capacity"`
 }
 
 type EnvironmentStatus struct {
-	Used						CMSStruct `json:"used"`
-	AvailableCount				map[string]int `json:"available_count"`
+	Used           CMSStruct      `json:"used"`
+	AvailableCount map[string]int `json:"available_count"`
 }
 
 type CMSStruct struct {
-	CPU		int `json:"cpu"` // cores
-	Memory  int `json:"memory"` // in MB
+	CPU     int `json:"cpu"`     // cores
+	Memory  int `json:"memory"`  // in MB
 	Storage int `json:"storage"` // in GB
 }
 
@@ -182,31 +182,31 @@ type CMSStruct struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type VirtualMachineSet struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec	VirtualMachineSetSpec `json:"spec"`
-	Status	VirtualMachineSetStatus	`json:"status"`
+	Spec              VirtualMachineSetSpec   `json:"spec"`
+	Status            VirtualMachineSetStatus `json:"status"`
 }
 
 type VirtualMachineSetSpec struct {
-	Count int `json:"count"`
-	Environment string `json:"environment"`
-	VMTemplate string `json:"vm_template"`
-	BaseName	string	`json:"base_name"`
-	RestrictedBind	bool `json:"restricted_bind"`
+	Count               int    `json:"count"`
+	Environment         string `json:"environment"`
+	VMTemplate          string `json:"vm_template"`
+	BaseName            string `json:"base_name"`
+	RestrictedBind      bool   `json:"restricted_bind"`
 	RestrictedBindValue string `json:"restricted_bind_value"`
 }
 
 type VirtualMachineSetStatus struct {
-	Machines []VirtualMachineProvision	`json:"machines"`
-	AvailableCount int	`json:"available"`
-	ProvisionedCount	int	`json:"provisioned"`
+	Machines         []VirtualMachineProvision `json:"machines"`
+	AvailableCount   int                       `json:"available"`
+	ProvisionedCount int                       `json:"provisioned"`
 }
 
 type VirtualMachineProvision struct {
 	VirtualMachineName string `json:"vm_name"`
-	TFControllerState string `json:"tfc_state"`
-	TFControllerCM	string	`json:"tfc_cm"`
+	TFControllerState  string `json:"tfc_state"`
+	TFControllerCM     string `json:"tfc_cm"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -214,7 +214,7 @@ type VirtualMachineProvision struct {
 type VirtualMachineSetList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items	[]VirtualMachineSet	`json:"items"`
+	Items           []VirtualMachineSet `json:"items"`
 }
 
 // +genclient
@@ -237,18 +237,18 @@ type ScenarioList struct {
 }
 
 type ScenarioSpec struct {
-	Id string	`json:"id"`
-	Name string `json:"name"`
-	Description string `json:"description"`
-	Steps []ScenarioStep `json:"steps"`
-	VirtualMachines []map[string]string `json:"virtualmachines"`
-	KeepAliveDuration string `json:"keepalive_duration"`
-	PauseDuration     string `json:"pause_duration"`
-	Pauseable bool    `json:"pauseable"`
+	Id                string              `json:"id"`
+	Name              string              `json:"name"`
+	Description       string              `json:"description"`
+	Steps             []ScenarioStep      `json:"steps"`
+	VirtualMachines   []map[string]string `json:"virtualmachines"`
+	KeepAliveDuration string              `json:"keepalive_duration"`
+	PauseDuration     string              `json:"pause_duration"`
+	Pauseable         bool                `json:"pauseable"`
 }
 
 type ScenarioStep struct {
-	Title string `json:"title"`
+	Title   string `json:"title"`
 	Content string `json:"content"`
 }
 
@@ -259,8 +259,8 @@ type ScenarioStep struct {
 type ScenarioSession struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              ScenarioSessionSpec `json:"spec"`
-	Status			  ScenarioSessionStatus `json:"status"`
+	Spec              ScenarioSessionSpec   `json:"spec"`
+	Status            ScenarioSessionStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -272,20 +272,20 @@ type ScenarioSessionList struct {
 }
 
 type ScenarioSessionSpec struct {
-	Id 			string			`json:"id"`
-	ScenarioId	string			`json:"scenario"`
-	UserId		string			`json:"user"`
-	VmClaimSet		[]string	`json:"vm_claim"`
-	AccessCode  string			`json:"access_code"`
+	Id         string   `json:"id"`
+	ScenarioId string   `json:"scenario"`
+	UserId     string   `json:"user"`
+	VmClaimSet []string `json:"vm_claim"`
+	AccessCode string   `json:"access_code"`
 }
 
 type ScenarioSessionStatus struct {
-	Paused      bool        `json:"paused"`
-	PausedTime  string      `json:"paused_time"`
-	Active 		bool		`json:"active"`
-	Finished	bool		`json:"finished"`
-	StartTime	string		`json:"start_time"`
-	ExpirationTime	string	`json:"end_time"`
+	Paused         bool   `json:"paused"`
+	PausedTime     string `json:"paused_time"`
+	Active         bool   `json:"active"`
+	Finished       bool   `json:"finished"`
+	StartTime      string `json:"start_time"`
+	ExpirationTime string `json:"end_time"`
 }
 
 // +genclient
@@ -308,13 +308,13 @@ type AccessCodeList struct {
 }
 
 type AccessCodeSpec struct {
-	Code	string	`json:"code"`
-	Description string `json:"description"`
-	Scenarios		[]string	`json:"scenarios"`
-	Expiration	string	`json:"expiration"`
-	VirtualMachineSets []string `json:"vmsets"`
-	RestrictedBind bool `json:"restricted_bind"`
-	RestrictedBindValue string `json:"restricted_bind_value"`
+	Code                string   `json:"code"`
+	Description         string   `json:"description"`
+	Scenarios           []string `json:"scenarios"`
+	Expiration          string   `json:"expiration"`
+	VirtualMachineSets  []string `json:"vmsets"`
+	RestrictedBind      bool     `json:"restricted_bind"`
+	RestrictedBindValue string   `json:"restricted_bind_value"`
 }
 
 // +genclient
@@ -337,11 +337,11 @@ type UserList struct {
 }
 
 type UserSpec struct {
-	Id string `json:"id"`
-	Email string `json:"email"`
-	Password string `json:"password"`
+	Id          string   `json:"id"`
+	Email       string   `json:"email"`
+	Password    string   `json:"password"`
 	AccessCodes []string `json:"access_codes"`
-	Admin bool `json:"admin"`
+	Admin       bool     `json:"admin"`
 }
 
 // +genclient
@@ -351,8 +351,8 @@ type UserSpec struct {
 type ScheduledEvent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              ScheduledEventSpec `json:"spec"`
-	Status			  ScheduledEventStatus `json:"status"`
+	Spec              ScheduledEventSpec   `json:"spec"`
+	Status            ScheduledEventStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -364,25 +364,25 @@ type ScheduledEventList struct {
 }
 
 type ScheduledEventSpec struct {
-	Creator string `json:"creator"`
-	Name string `json:"event_name"`
-	Description string `json:"description"`
-	StartTime string `json:"start_time"`
-	EndTime string `json:"end_time"`
-	RequiredVirtualMachines map[string]map[string]int `json:"required_vms"`// map of environment to a map of strings it should be environment: vm template: count
-	AccessCode string `json:"access_code"`
-	RestrictedBind bool	`json:"restricted_bind"` // if restricted_bind is true, we need to make the scenario sessions when they get created only bind to vmsets that are created by this scheduledevent
-	RestrictedBindValue string `json:"restricted_bind_value"`
-	Scenarios []string `json:"scenarios"`
+	Creator                 string                    `json:"creator"`
+	Name                    string                    `json:"event_name"`
+	Description             string                    `json:"description"`
+	StartTime               string                    `json:"start_time"`
+	EndTime                 string                    `json:"end_time"`
+	RequiredVirtualMachines map[string]map[string]int `json:"required_vms"` // map of environment to a map of strings it should be environment: vm template: count
+	AccessCode              string                    `json:"access_code"`
+	RestrictedBind          bool                      `json:"restricted_bind"` // if restricted_bind is true, we need to make the scenario sessions when they get created only bind to vmsets that are created by this scheduledevent
+	RestrictedBindValue     string                    `json:"restricted_bind_value"`
+	Scenarios               []string                  `json:"scenarios"`
 }
 
 type ScheduledEventStatus struct {
-	AccessCodeId	string 	`json:"access_code_id"`
-	VirtualMachineSets []string 	`json:"vmsets"`
-	Active	bool	`json:"active"`
-	Provisioned bool	`json:"provisioned"`
-	Ready	bool	`json:"ready"`
-	Finished	bool	`json:"finished"`
+	AccessCodeId       string   `json:"access_code_id"`
+	VirtualMachineSets []string `json:"vmsets"`
+	Active             bool     `json:"active"`
+	Provisioned        bool     `json:"provisioned"`
+	Ready              bool     `json:"ready"`
+	Finished           bool     `json:"finished"`
 }
 
 // +genclient
@@ -391,9 +391,9 @@ type ScheduledEventStatus struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type DynamicBindConfiguration struct {
-	metav1.TypeMeta	`json:",inline"`
+	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec 	DynamicBindConfigurationSpec `json:"spec"`
+	Spec              DynamicBindConfigurationSpec `json:"spec"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -410,13 +410,13 @@ type DynamicBindConfigurationList struct {
 // that there is adequate vm capacity, it will always choose the environment with the highest capacity before creating a dynamic VM.
 
 type DynamicBindConfigurationSpec struct {
-	Id string `json:"id"`
-	Environment string	`json:"environment"`
-	BaseName	string	`json:"base_name"`
-	RestrictedBind	bool	`json:"restricted_bind"`
-	RestrictedBindValue	string	`json:"restricted_bind_value"`
-	BurstCountCapacity		map[string]int `json:"burst_count_capacity"`
-	BurstCapacity			CMSStruct `json:"burst_capacity"`
+	Id                  string         `json:"id"`
+	Environment         string         `json:"environment"`
+	BaseName            string         `json:"base_name"`
+	RestrictedBind      bool           `json:"restricted_bind"`
+	RestrictedBindValue string         `json:"restricted_bind_value"`
+	BurstCountCapacity  map[string]int `json:"burst_count_capacity"`
+	BurstCapacity       CMSStruct      `json:"burst_capacity"`
 }
 
 // +genclient
@@ -424,10 +424,10 @@ type DynamicBindConfigurationSpec struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type DynamicBindRequest struct {
-	metav1.TypeMeta	`json:",inline"`
+	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec DynamicBindRequestSpec `json:"spec"`
-	Status DynamicBindRequestStatus `json:"status"`
+	Spec              DynamicBindRequestSpec   `json:"spec"`
+	Status            DynamicBindRequestStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -439,15 +439,15 @@ type DynamicBindRequestList struct {
 }
 
 type DynamicBindRequestSpec struct {
-	Id string `json:"id"`
+	Id                  string `json:"id"`
 	VirtualMachineClaim string `json:"vm_claim"`
-	Attempts int `json:"attempts"`
+	Attempts            int    `json:"attempts"`
 }
 
 type DynamicBindRequestStatus struct {
-	CurrentAttempts		 int `json:"current_attempts"`
-	Expired			bool	`json:"expired"`
-	Fulfilled		 bool `json:"fulfilled"`
-	DynamicBindConfigurationId string `json:"dynamic_bind_configuration_id"`
-	VirtualMachineIds map[string]string `json:"virtual_machines_id"`
+	CurrentAttempts            int               `json:"current_attempts"`
+	Expired                    bool              `json:"expired"`
+	Fulfilled                  bool              `json:"fulfilled"`
+	DynamicBindConfigurationId string            `json:"dynamic_bind_configuration_id"`
+	VirtualMachineIds          map[string]string `json:"virtual_machines_id"`
 }

@@ -22,7 +22,7 @@ import (
 )
 
 type VirtualMachineSetController struct {
-	hfClientSet    *hfClientset.Clientset
+	hfClientSet *hfClientset.Clientset
 	//vmSetWorkqueue workqueue.RateLimitingInterface
 	//vmWorkqueue    workqueue.RateLimitingInterface
 	vmSetWorkqueue   workqueue.Interface
