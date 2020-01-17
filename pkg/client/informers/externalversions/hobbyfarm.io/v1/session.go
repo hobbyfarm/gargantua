@@ -15,58 +15,58 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// CourseSessionInformer provides access to a shared informer and lister for
-// CourseSessions.
-type CourseSessionInformer interface {
+// SessionInformer provides access to a shared informer and lister for
+// Sessions.
+type SessionInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.CourseSessionLister
+	Lister() v1.SessionLister
 }
 
-type courseSessionInformer struct {
+type sessionInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 }
 
-// NewCourseSessionInformer constructs a new informer for CourseSession type.
+// NewSessionInformer constructs a new informer for Session type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewCourseSessionInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredCourseSessionInformer(client, resyncPeriod, indexers, nil)
+func NewSessionInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredSessionInformer(client, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredCourseSessionInformer constructs a new informer for CourseSession type.
+// NewFilteredSessionInformer constructs a new informer for Session type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredCourseSessionInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredSessionInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().CourseSessions().List(options)
+				return client.HobbyfarmV1().Sessions().List(options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().CourseSessions().Watch(options)
+				return client.HobbyfarmV1().Sessions().Watch(options)
 			},
 		},
-		&hobbyfarmiov1.CourseSession{},
+		&hobbyfarmiov1.Session{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *courseSessionInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredCourseSessionInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *sessionInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredSessionInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *courseSessionInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&hobbyfarmiov1.CourseSession{}, f.defaultInformer)
+func (f *sessionInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&hobbyfarmiov1.Session{}, f.defaultInformer)
 }
 
-func (f *courseSessionInformer) Lister() v1.CourseSessionLister {
-	return v1.NewCourseSessionLister(f.Informer().GetIndexer())
+func (f *sessionInformer) Lister() v1.SessionLister {
+	return v1.NewSessionLister(f.Informer().GetIndexer())
 }

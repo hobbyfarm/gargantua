@@ -6,8 +6,6 @@ type AccessCodeExpansion interface{}
 
 type CourseExpansion interface{}
 
-type CourseSessionExpansion interface{}
-
 type DynamicBindConfigurationExpansion interface{}
 
 type DynamicBindRequestExpansion interface{}
@@ -17,6 +15,8 @@ type EnvironmentExpansion interface{}
 type ScenarioExpansion interface{}
 
 type ScheduledEventExpansion interface{}
+
+type SessionExpansion interface{}
 
 type UserExpansion interface{}
 

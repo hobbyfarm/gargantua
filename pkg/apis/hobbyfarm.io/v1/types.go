@@ -286,30 +286,31 @@ type ScenarioStep struct {
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type CourseSession struct {
+type Session struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              CourseSessionSpec   `json:"spec"`
-	Status            CourseSessionStatus `json:"status"`
+	Spec              SessionSpec   `json:"spec"`
+	Status            SessionStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type CourseSessionList struct {
+type SessionList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
-	Items           []CourseSession `json:"items"`
+	Items           []Session `json:"items"`
 }
 
-type CourseSessionSpec struct {
+type SessionSpec struct {
 	Id         string   `json:"id"`
 	ScenarioId string   `json:"scenario"`
+	CourseId   string   `json:"course"`
 	UserId     string   `json:"user"`
 	VmClaimSet []string `json:"vm_claim"`
 	AccessCode string   `json:"access_code"`
 }
 
-type CourseSessionStatus struct {
+type SessionStatus struct {
 	Paused         bool   `json:"paused"`
 	PausedTime     string `json:"paused_time"`
 	Active         bool   `json:"active"`

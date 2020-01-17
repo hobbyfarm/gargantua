@@ -250,12 +250,12 @@ func VerifyVMClaim(vmClaimLister hfListers.VirtualMachineClaimLister, vmc *hfv1.
 
 }
 
-func VerifyCourseSession(ssLister hfListers.CourseSessionLister, ss *hfv1.CourseSession) error {
+func VerifySession(sLister hfListers.SessionLister, s *hfv1.Session) error {
 	var err error
-	glog.V(5).Infof("Verifying ss %s", ss.Name)
+	glog.V(5).Infof("Verifying cs %s", s.Name)
 	for i := 0; i < 150000; i++ {
-		var fromCache *hfv1.CourseSession
-		fromCache, err = ssLister.Get(ss.Name)
+		var fromCache *hfv1.Session
+		fromCache, err = sLister.Get(s.Name)
 		if err != nil {
 			glog.Error(err)
 			if apierrors.IsNotFound(err) {
@@ -263,13 +263,13 @@ func VerifyCourseSession(ssLister hfListers.CourseSessionLister, ss *hfv1.Course
 			}
 			return err
 		}
-		if ResourceVersionAtLeast(fromCache.ResourceVersion, ss.ResourceVersion) {
-			glog.V(5).Infof("resource version matched for %s", ss.Name)
+		if ResourceVersionAtLeast(fromCache.ResourceVersion, s.ResourceVersion) {
+			glog.V(5).Infof("resource version matched for %s", s.Name)
 			return nil
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	glog.Errorf("resource version didn't match for in time %s", ss.Name)
+	glog.Errorf("resource version didn't match for in time %s", s.Name)
 	return nil
 
 }
