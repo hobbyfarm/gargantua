@@ -122,7 +122,7 @@ func (acc AccessCodeClient) GetCourseIds(code string) ([]string, error) {
 		return ids, fmt.Errorf("error finding access code %s: %v", code, err)
 	}
 
-	return accessCode.Spec.Scenarios, nil
+	return accessCode.Spec.Courses, nil
 }
 
 func (acc AccessCodeClient) GetClosestAccessCodeForScenario(userID string, scenario string) (string, error) {

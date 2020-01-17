@@ -27,11 +27,12 @@ type CourseServer struct {
 }
 
 type PreparedCourse struct {
-	Id          string              `json:"id"`
-	Name        string              `json:"name"`
-	Description string              `json:"description"`
-	Scenarios   []map[string]string `json:"scenarios"`
-	Pauseable   bool                `json:"pauseable"`
+	Id              string              `json:"id"`
+	Name            string              `json:"name"`
+	Description     string              `json:"description"`
+	VirtualMachines []map[string]string `json:"virtualmachines"`
+	Scenarios       []string            `json:"scenarios"`
+	Pauseable       bool                `json:"pauseable"`
 }
 
 func NewCourseServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*CourseServer, error) {
@@ -60,6 +61,7 @@ func (c CourseServer) prepareCourse(course hfv1.Course) (PreparedCourse, error) 
 	pc.Id = course.Spec.Id
 	pc.Name = course.Spec.Name
 	pc.Description = course.Spec.Description
+	pc.VirtualMachines = course.Spec.VirtualMachines
 	pc.Scenarios = course.Spec.Scenarios
 
 	return pc, nil
@@ -151,7 +153,7 @@ func (c CourseServer) GetCourseById(id string) (hfv1.Course, error) {
 	obj, err := c.courseIndexer.ByIndex(idIndex, id)
 
 	if err != nil {
-		return hfv1.Course{}, fmt.Errorf("error while retrieving scenario by ID %s %v", id, err)
+		return hfv1.Course{}, fmt.Errorf("error while retrieving course by ID %s %v", id, err)
 	}
 
 	if len(obj) < 1 {

@@ -240,7 +240,8 @@ type CourseSpec struct {
 	Id                string              `json:"id"`
 	Name              string              `json:"name"`
 	Description       string              `json:"description"`
-	Scenarios         []map[string]string `json:"scenarios"`
+	Scenarios         []string            `json:"scenarios"`
+	VirtualMachines   []map[string]string `json:"virtualmachines"`
 	KeepAliveDuration string              `json:"keepalive_duration"`
 	PauseDuration     string              `json:"pause_duration"`
 	Pauseable         bool                `json:"pauseable"`
@@ -340,6 +341,7 @@ type AccessCodeSpec struct {
 	Code                string   `json:"code"`
 	Description         string   `json:"description"`
 	Scenarios           []string `json:"scenarios"`
+	Courses             []string `json:"courses"`
 	Expiration          string   `json:"expiration"`
 	VirtualMachineSets  []string `json:"vmsets"`
 	RestrictedBind      bool     `json:"restricted_bind"`

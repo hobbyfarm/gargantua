@@ -7,3 +7,5 @@ spec:
   description: "test description"
   scenarios:
   - s-x93jfm20slmn2
+  courses:
+  - c-x93jfm20slmn2

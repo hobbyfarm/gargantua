@@ -13,5 +13,7 @@ spec:
   access_code: testing-se-ac
   scenarios:
     - s-x93jfm20slmn2
+  courses:
+    - c-x93jfm20slmn2
 status:
   active: true

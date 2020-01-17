@@ -76,6 +76,11 @@ func (in *AccessCodeSpec) DeepCopyInto(out *AccessCodeSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Courses != nil {
+		in, out := &in.Courses, &out.Courses
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.VirtualMachineSets != nil {
 		in, out := &in.VirtualMachineSets, &out.VirtualMachineSets
 		*out = make([]string, len(*in))
@@ -273,6 +278,11 @@ func (in *CourseSpec) DeepCopyInto(out *CourseSpec) {
 	*out = *in
 	if in.Scenarios != nil {
 		in, out := &in.Scenarios, &out.Scenarios
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.VirtualMachines != nil {
+		in, out := &in.VirtualMachines, &out.VirtualMachines
 		*out = make([]map[string]string, len(*in))
 		for i := range *in {
 			if (*in)[i] != nil {
