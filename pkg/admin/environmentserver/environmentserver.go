@@ -1,6 +1,8 @@
 package environmentserver
 
 import (
+	"crypto/sha256"
+	"encoding/base32"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
@@ -11,6 +13,9 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type AdminEnvironmentServer struct {
@@ -47,6 +52,7 @@ func (a AdminEnvironmentServer) getEnvironment(id string) (hfv1.Environment, err
 func (a AdminEnvironmentServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/environment/list", a.ListFunc).Methods("GET")
 	r.HandleFunc("/a/environment/{id}", a.GetFunc).Methods("GET")
+	r.HandleFunc("/a/environment/create", a.CreateFunc).Methods("POST")
 	r.HandleFunc("/a/environment/{environment_id}/available", a.PostEnvironmentAvailableFunc).Methods("POST")
 	glog.V(2).Infof("set up routes for environment server")
 }
@@ -119,6 +125,131 @@ func (a AdminEnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request)
 	util.ReturnHTTPContent(w, r, 200, "success", encodedEnvironments)
 
 	glog.V(2).Infof("retrieved list of all environments")
+}
+
+func (a AdminEnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := a.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create environments")
+		return
+	}
+
+	display_name := r.PostFormValue("display_name")
+	if display_name == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no display_name passed in")
+		return
+	}
+
+	dnssuffix := r.PostFormValue("dnssuffix")
+	// dnssuffix optional so no validation performed
+
+	provider := r.PostFormValue("provider")
+	if provider == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no provider passed in")
+		return
+	}
+
+	template_mapping := r.PostFormValue("template_mapping")
+	if template_mapping == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no template_mapping passed in")
+		return
+	}
+
+	environment_specifics := r.PostFormValue("environment_specifics")
+	if environment_specifics == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no environment_specifics passed in")
+		return
+	}
+
+	ip_translation_map := r.PostFormValue("ip_translation_map")
+	if ip_translation_map == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ip_translation_map passed in")
+		return
+	}
+
+	ws_endpoint := r.PostFormValue("ws_endpoint")
+	if ws_endpoint == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ws_endpoint passed in")
+		return
+	}
+
+	capacity_mode := r.PostFormValue("capacity_mode")
+	if capacity_mode == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no capacity_mode passed in")
+		return
+	} else if capacity_mode != "raw" && capacity_mode != "count" {
+		// invalid capacity mode passed in
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid capacity_mode passed in")
+		return
+	}
+
+	burst_capable := r.PostFormValue("burst_capable")
+	if burst_capable == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no burst_capable passed in")
+		return
+	}
+	burstCapableBool, err := strconv.ParseBool(burst_capable)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid burst_capacity passed in")
+		return
+	}
+
+	templateMappingUnmarshaled := map[string]map[string]string{} // lol
+	err = json.Unmarshal([]byte(template_mapping), &templateMappingUnmarshaled)
+	if err != nil {
+		glog.Errorf("error while unmarshaling template_mapping (create environment) %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+		return
+	}
+
+	environmentSpecificsUnmarshaled := map[string]string{}
+	err = json.Unmarshal([]byte(environment_specifics), &environmentSpecificsUnmarshaled)
+	if err != nil {
+		glog.Errorf("error while unmarshaling environment_specifics (create environment) %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+		return
+	}
+
+	ipTranslationUnmarshaled := map[string]string{}
+	err = json.Unmarshal([]byte(ip_translation_map), &ipTranslationUnmarshaled)
+	if err != nil {
+		glog.Errorf("error while unmarshaling ip_translation_map (create environment) %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+		return
+	}
+
+	environment := &hfv1.Environment{}
+	hasher := sha256.New()
+	hasher.Write([]byte(time.Now().String())) // generate random name
+	sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:10]
+	environment.Name = "env-" + strings.ToLower(sha)
+
+	environment.Spec.DisplayName = display_name
+	environment.Spec.DNSSuffix = dnssuffix
+	environment.Spec.Provider = provider
+	environment.Spec.TemplateMapping = templateMappingUnmarshaled
+	environment.Spec.EnvironmentSpecifics = environmentSpecificsUnmarshaled
+	environment.Spec.IPTranslationMap = ipTranslationUnmarshaled
+	environment.Spec.WsEndpoint = ws_endpoint
+
+	if capacity_mode == "raw" {
+		environment.Spec.CapacityMode = hfv1.CapacityModeRaw
+	} else {
+		// not validating "count" here as we already validated input var above
+		environment.Spec.CapacityMode = hfv1.CapacityModeCount
+	}
+
+	environment.Spec.BurstCapable = burstCapableBool
+
+	environment, err = a.hfClientSet.HobbyfarmV1().Environments().Create(environment)
+	if err != nil {
+		glog.Errorf("error creating environment %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating environment")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 201, "created", environment.Name)
+	return
 }
 
 func (a AdminEnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, r *http.Request) {
