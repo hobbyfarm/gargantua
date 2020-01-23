@@ -144,7 +144,13 @@ func (acc AccessCodeClient) GetClosestAccessCodeForScenario(userID string, scena
 		return iExp.Before(jExp)
 	})
 
-	glog.V(6).Infof("Access code list was %v", accessCodes)
+	if glog.V(6) {
+		var accessCodesList []string
+		for _, ac := range accessCodes {
+			accessCodesList = append(accessCodesList, ac.Spec.Code)
+		}
+		glog.Infof("Access code list was %v", accessCodesList)
+	}
 
 	return accessCodes[0].Name, nil
 }
