@@ -1,13 +1,14 @@
 FROM golang:1.13 as builder 
 
 WORKDIR /go/src/github.com/hobbyfarm/gargantua
-COPY . .
+COPY go.mod go.sum ./
+RUN go mod download
 
 ENV GOOS=linux 
 ENV CGO_ENABLED=0
 
-RUN go get -d -v ./...
-RUN go install -v ./...
+COPY . .
+RUN go install -v
 
 
 FROM alpine:3.11
