@@ -3,6 +3,9 @@ package sessionserver
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
@@ -16,8 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
-	"net/http"
-	"time"
 )
 
 const (
@@ -113,24 +114,24 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 
 	// get the course and/or scenario objects
 	if courseid != "" {
-	    course, err = sss.courseClient.GetCourseById(courseid)
-	    if err != nil {
-		    glog.Errorf("course not found %v", err)
-		    util.ReturnHTTPMessage(w, r, 500, "error", "no course found")
-		    return
+		course, err = sss.courseClient.GetCourseById(courseid)
+		if err != nil {
+			glog.Errorf("course not found %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "error", "no course found")
+			return
 		}
 	}
-    if scenarioid != "" {
-	    scenario, err = sss.scenarioClient.GetScenarioById(scenarioid)
-	    if err != nil {
-		    glog.Errorf("scenario not found %v", err)
-		    util.ReturnHTTPMessage(w, r, 500, "error", "no scenario found")
-		    return
+	if scenarioid != "" {
+		scenario, err = sss.scenarioClient.GetScenarioById(scenarioid)
+		if err != nil {
+			glog.Errorf("scenario not found %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "error", "no scenario found")
+			return
 		}
 	}
 
 	// now we should check for existing sessions
-	
+
 	sessions, err := sss.hfClientSet.HobbyfarmV1().Sessions().List(metav1.ListOptions{})
 
 	if err != nil {
@@ -154,6 +155,27 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 			// i.e., reuse the course id and give them the scenario they asked for
 			if v.Spec.CourseId != "" {
 				v.Spec.ScenarioId = scenarioid
+
+				retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+					result, getErr := sss.hfClientSet.HobbyfarmV1().Sessions().Get(v.Name, metav1.GetOptions{})
+					if getErr != nil {
+						return fmt.Errorf("error retrieving latest version of session %s: %v", v.Name, getErr)
+					}
+
+					result.Spec.ScenarioId = scenarioid
+
+					_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions().Update(result)
+					glog.V(4).Infof("updated session for new scenario")
+
+					return updateErr
+				})
+
+				if retryErr != nil {
+					glog.Errorf("error updating session %v", err)
+					util.ReturnHTTPMessage(w, r, 500, "error", "something happened")
+					return
+				}
+
 			}
 
 			encodedSS, err := json.Marshal(v.Spec)
@@ -177,9 +199,9 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 
 	var vms []map[string]string
 	if course.Spec.VirtualMachines != nil {
-        vms = course.Spec.VirtualMachines
+		vms = course.Spec.VirtualMachines
 	} else {
-        vms = scenario.Spec.VirtualMachines
+		vms = scenario.Spec.VirtualMachines
 	}
 
 	session.Spec.VmClaimSet = make([]string, len(vms))
@@ -342,20 +364,20 @@ func (sss SessionServer) KeepAliveSessionFunc(w http.ResponseWriter, r *http.Req
 	var course hfv1.Course
 
 	if ss.Spec.ScenarioId != "" {
-	    scenario, err = sss.scenarioClient.GetScenarioById(ss.Spec.ScenarioId)
-	    if err != nil {
-		    glog.Errorf("error retrieving scenario %v", err)
-		    util.ReturnHTTPMessage(w, r, 500, "error", "error getting scenario")
-		    return
-	    }
-    }
+		scenario, err = sss.scenarioClient.GetScenarioById(ss.Spec.ScenarioId)
+		if err != nil {
+			glog.Errorf("error retrieving scenario %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "error", "error getting scenario")
+			return
+		}
+	}
 	if ss.Spec.CourseId != "" {
-	    course, err = sss.courseClient.GetCourseById(ss.Spec.CourseId)
-	    if err != nil {
-		    glog.Errorf("error retrieving course %v", err)
-		    util.ReturnHTTPMessage(w, r, 500, "error", "error getting course")
-		    return
-	    }
+		course, err = sss.courseClient.GetCourseById(ss.Spec.CourseId)
+		if err != nil {
+			glog.Errorf("error retrieving course %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "error", "error getting course")
+			return
+		}
 	}
 
 	var ssTimeout string
@@ -421,27 +443,27 @@ func (sss SessionServer) PauseSessionFunc(w http.ResponseWriter, r *http.Request
 	var scenario hfv1.Scenario
 
 	if ss.Spec.CourseId != "" {
-        course, err = sss.courseClient.GetCourseById(ss.Spec.CourseId)
-	    if err != nil {
-		    glog.Errorf("error retrieving course %v", err)
-		    util.ReturnHTTPMessage(w, r, 500, "error", "error getting course")
-		    return
-	    }
-	} 
+		course, err = sss.courseClient.GetCourseById(ss.Spec.CourseId)
+		if err != nil {
+			glog.Errorf("error retrieving course %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "error", "error getting course")
+			return
+		}
+	}
 	if ss.Spec.ScenarioId != "" {
 		scenario, err = sss.scenarioClient.GetScenarioById(ss.Spec.ScenarioId)
-	    if err != nil {
-		    glog.Errorf("error retrieving scenario %v", err)
-		    util.ReturnHTTPMessage(w, r, 500, "error", "error getting scenario")
-		    return
-	    }
+		if err != nil {
+			glog.Errorf("error retrieving scenario %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "error", "error getting scenario")
+			return
+		}
 	}
 
-    if !course.Spec.Pauseable && !scenario.Spec.Pauseable {
-	    glog.Errorf("session is not pauseable %s", course.Spec.Id)
-	    util.ReturnHTTPMessage(w, r, 500, "error", "not pauseable")
-	    return
-    }
+	if !course.Spec.Pauseable && !scenario.Spec.Pauseable {
+		glog.Errorf("session is not pauseable %s", course.Spec.Id)
+		util.ReturnHTTPMessage(w, r, 500, "error", "not pauseable")
+		return
+	}
 
 	var ssTimeout string
 
@@ -507,20 +529,20 @@ func (sss SessionServer) ResumeSessionFunc(w http.ResponseWriter, r *http.Reques
 	var scenario hfv1.Scenario
 
 	if ss.Spec.CourseId != "" {
-	    course, err = sss.courseClient.GetCourseById(ss.Spec.CourseId)
-	    if err != nil {
-		    glog.Errorf("error retrieving course %v", err)
-		    util.ReturnHTTPMessage(w, r, 500, "error", "error getting course")
-		    return
-	    }
+		course, err = sss.courseClient.GetCourseById(ss.Spec.CourseId)
+		if err != nil {
+			glog.Errorf("error retrieving course %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "error", "error getting course")
+			return
+		}
 	}
 	if ss.Spec.ScenarioId != "" {
-	    scenario, err = sss.scenarioClient.GetScenarioById(ss.Spec.ScenarioId)
-	    if err != nil {
-		    glog.Errorf("error retrieving scenario %v", err)
-		    util.ReturnHTTPMessage(w, r, 500, "error", "error getting scenario")
-		    return
-	    }
+		scenario, err = sss.scenarioClient.GetScenarioById(ss.Spec.ScenarioId)
+		if err != nil {
+			glog.Errorf("error retrieving scenario %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "error", "error getting scenario")
+			return
+		}
 	}
 
 	var ssTimeout string
