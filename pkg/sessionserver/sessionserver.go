@@ -149,6 +149,13 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 			!v.Status.Finished &&
 			v.Status.Active && expires.After(now) {
 			// we should just return this session...
+
+			// if this is a course, return the same scenario id that was given to us
+			// i.e., reuse the course id and give them the scenario they asked for
+			if v.Spec.CourseId != "" {
+				v.Spec.ScenarioId = scenarioid
+			}
+
 			encodedSS, err := json.Marshal(v.Spec)
 			if err != nil {
 				glog.Error(err)
