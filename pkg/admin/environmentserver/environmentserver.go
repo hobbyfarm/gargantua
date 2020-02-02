@@ -12,6 +12,7 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/retry"
 	"net/http"
 	"strconv"
 	"strings"
@@ -53,11 +54,13 @@ func (a AdminEnvironmentServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/environment/list", a.ListFunc).Methods("GET")
 	r.HandleFunc("/a/environment/{id}", a.GetFunc).Methods("GET")
 	r.HandleFunc("/a/environment/create", a.CreateFunc).Methods("POST")
+	r.HandleFunc("/a/environment/{id}/update", a.UpdateFunc).Methods("PUT")
 	r.HandleFunc("/a/environment/{environment_id}/available", a.PostEnvironmentAvailableFunc).Methods("POST")
 	glog.V(2).Infof("set up routes for environment server")
 }
 
 type PreparedEnvironment struct {
+	Name string `json:"name"`
 	hfv1.EnvironmentSpec
 	hfv1.EnvironmentStatus
 }
@@ -86,7 +89,7 @@ func (a AdminEnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	preparedEnvironment := PreparedEnvironment{environment.Spec, environment.Status}
+	preparedEnvironment := PreparedEnvironment{environment.Name,environment.Spec, environment.Status}
 
 	encodedEnvironment, err := json.Marshal(preparedEnvironment)
 	if err != nil {
@@ -115,7 +118,7 @@ func (a AdminEnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request)
 	preparedEnvironments := []PreparedEnvironment{}
 
 	for _, e := range environments.Items {
-		preparedEnvironments = append(preparedEnvironments, PreparedEnvironment{e.Spec, e.Status})
+		preparedEnvironments = append(preparedEnvironments, PreparedEnvironment{e.Name,e.Spec, e.Status})
 	}
 
 	encodedEnvironments, err := json.Marshal(preparedEnvironments)
@@ -249,6 +252,121 @@ func (a AdminEnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Reques
 	}
 
 	util.ReturnHTTPMessage(w, r, 201, "created", environment.Name)
+	return
+}
+
+func (a AdminEnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := a.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update environment")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	environmentId := vars["id"]
+	if len(environmentId) == 0 {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no environment id passed in")
+		return
+	}
+
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		environment, err := a.getEnvironment(environmentId)
+		if err != nil {
+			glog.Errorf("error while retrieving environment %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "error", "no environment found")
+			return fmt.Errorf("bad")
+		}
+
+		display_name := r.PostFormValue("display_name")
+		dnssuffix := r.PostFormValue("dnssuffix")
+		provider := r.PostFormValue("provider")
+		template_mapping := r.PostFormValue("template_mapping")
+		environment_specifics := r.PostFormValue("environment_specifics")
+		ip_translation_map := r.PostFormValue("ip_translation_map")
+		ws_endpoint := r.PostFormValue("ws_endpoint")
+		capacity_mode := r.PostFormValue("capacity_mode")
+		burst_capable := r.PostFormValue("burst_capable")
+
+		if len(display_name) > 0 {
+			environment.Spec.DisplayName = display_name
+		}
+
+		// empty string is a valid dnssuffix value (because it is optional), so not
+		// performing string length check here
+		environment.Spec.DNSSuffix = dnssuffix
+
+		if len(provider) > 0 {
+			environment.Spec.Provider = provider
+		}
+
+		if len(template_mapping) > 0 {
+			templateMappingUnmarshaled := map[string]map[string]string{} // lol
+			err = json.Unmarshal([]byte(template_mapping), &templateMappingUnmarshaled)
+			if err != nil {
+				glog.Errorf("error while unmarshaling template_mapping (update environment) %v", err)
+				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+				return fmt.Errorf("bad")
+			}
+			environment.Spec.TemplateMapping = templateMappingUnmarshaled
+		}
+
+		if len(environment_specifics) > 0 {
+			environmentSpecificsUnmarshaled := map[string]string{}
+			err = json.Unmarshal([]byte(environment_specifics), &environmentSpecificsUnmarshaled)
+			if err != nil {
+				glog.Errorf("error while unmarshaling environment_specifics (update environment) %v", err)
+				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+				return fmt.Errorf("bad")
+			}
+			environment.Spec.EnvironmentSpecifics = environmentSpecificsUnmarshaled
+		}
+
+		if len(ip_translation_map) > 0 {
+			ipTranslationUnmarshaled := map[string]string{}
+			err = json.Unmarshal([]byte(ip_translation_map), &ipTranslationUnmarshaled)
+			if err != nil {
+				glog.Errorf("error while unmarshaling ip_translation_map (create environment) %v", err)
+				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+				return fmt.Errorf("bad")
+			}
+			environment.Spec.IPTranslationMap = ipTranslationUnmarshaled
+		}
+
+		if len(ws_endpoint) > 0 {
+			environment.Spec.WsEndpoint = ws_endpoint
+		}
+
+		if len(capacity_mode) > 0 {
+			if capacity_mode == "raw" {
+				environment.Spec.CapacityMode = hfv1.CapacityModeRaw
+			} else if capacity_mode == "count" {
+				environment.Spec.CapacityMode = hfv1.CapacityModeCount
+			} else {
+				util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid capacity_mode passed in")
+				return fmt.Errorf("bad")
+			}
+		}
+
+		if len(burst_capable) > 0 {
+			burstCapableBool, err := strconv.ParseBool(burst_capable)
+			if err != nil {
+				util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid burst_capable passed in")
+				return fmt.Errorf("bad")
+			}
+			environment.Spec.BurstCapable = burstCapableBool
+		}
+
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Environments().Update(&environment)
+		return updateErr
+	})
+
+	if retryErr != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error attempting to update")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "updated", "")
 	return
 }
 
