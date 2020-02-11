@@ -233,7 +233,7 @@ type Course struct {
 type CourseList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
-	Items           []Course `json:"spec"`
+	Items           []Course `json:"items"`
 }
 
 type CourseSpec struct {
