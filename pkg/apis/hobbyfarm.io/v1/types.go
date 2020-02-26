@@ -406,6 +406,7 @@ type ScheduledEventSpec struct {
 	RestrictedBind          bool                      `json:"restricted_bind"` // if restricted_bind is true, we need to make the scenario sessions when they get created only bind to vmsets that are created by this scheduledevent
 	RestrictedBindValue     string                    `json:"restricted_bind_value"`
 	Scenarios               []string                  `json:"scenarios"`
+	Courses                 []string                  `json:"courses"`
 }
 
 type ScheduledEventStatus struct {
