@@ -1,6 +1,10 @@
 package shell
 
 import (
+	"io"
+	"net/http"
+	"strconv"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -9,10 +13,8 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
 	"golang.org/x/crypto/ssh"
-	"io"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"net/http"
 )
 
 type ShellProxy struct {
@@ -36,6 +38,8 @@ func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.Virtual
 
 func (sp ShellProxy) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/shell/{vm_id}/connect", sp.ConnectFunc)
+	// registering twice because the width query param is optional
+	r.HandleFunc("/shell/{vm_id}/connect", sp.ConnectFunc).Queries("width", "{width}")
 	glog.V(2).Infof("set up routes")
 }
 
@@ -48,8 +52,16 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 
-	vmId := vars["vm_id"]
+	width := 80
+	if r.FormValue("width") != "" {
+		width, err = strconv.Atoi(r.FormValue("width"))
+		if err != nil {
+			util.ReturnHTTPMessage(w, r, 500, "error", "given width was not an integer")
+			return
+		}
+	}
 
+	vmId := vars["vm_id"]
 	if len(vmId) == 0 {
 		util.ReturnHTTPMessage(w, r, 500, "error", "no vm id passed in")
 		return
@@ -148,7 +160,7 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 		io.Copy(pip, stdin)
 	}()
 
-	err = sess.RequestPty("xterm", 40, 80, ssh.TerminalModes{ssh.ECHO: 1, ssh.TTY_OP_ISPEED: 14400, ssh.TTY_OP_OSPEED: 14400})
+	err = sess.RequestPty("xterm", 40, width, ssh.TerminalModes{ssh.ECHO: 1, ssh.TTY_OP_ISPEED: 14400, ssh.TTY_OP_OSPEED: 14400})
 	if err != nil {
 		glog.Error(err)
 	}
