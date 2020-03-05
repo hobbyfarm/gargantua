@@ -11,6 +11,7 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"net/http"
 	"strconv"
@@ -165,12 +166,23 @@ func (s ScenarioServer) ListScenarioFunc(w http.ResponseWriter, r *http.Request)
 	}
 
 	var scenarioIds []string
-	for _, ac := range user.Spec.AccessCodes {
-		tempScenarioIds, err := s.acClient.GetScenarioIds(ac)
+	if user.Spec.Admin {
+		tempScenarios, err := s.hfClientSet.HobbyfarmV1().Scenarios().List(metav1.ListOptions{})
 		if err != nil {
-			glog.Errorf("error retrieving scenario ids for access code: %s %v", ac, err)
+			glog.Errorf("error listing scenarios: %v", err)
 		} else {
-			scenarioIds = append(scenarioIds, tempScenarioIds...)
+			for _, scenario := range tempScenarios.Items {
+				scenarioIds = append(scenarioIds, scenario.Spec.Id)
+			}
+		}
+	} else {
+		for _, ac := range user.Spec.AccessCodes {
+			tempScenarioIds, err := s.acClient.GetScenarioIds(ac)
+			if err != nil {
+				glog.Errorf("error retrieving scenario ids for access code: %s %v", ac, err)
+			} else {
+				scenarioIds = append(scenarioIds, tempScenarioIds...)
+			}
 		}
 	}
 

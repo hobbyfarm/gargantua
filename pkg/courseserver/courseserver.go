@@ -11,6 +11,7 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"net/http"
 )
@@ -113,12 +114,23 @@ func (c CourseServer) ListCourseFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var courseIds []string
-	for _, ac := range user.Spec.AccessCodes {
-		tempCourseIds, err := c.acClient.GetCourseIds(ac)
+	if user.Spec.Admin {
+		tempCourses, err := c.hfClientSet.HobbyfarmV1().Courses().List(metav1.ListOptions{})
 		if err != nil {
-			glog.Errorf("error retrieving course ids for access code: %s %v", ac, err)
+			glog.Errorf("error listing courses: %v", err)
 		} else {
-			courseIds = append(courseIds, tempCourseIds...)
+			for _, course := range tempCourses.Items {
+				courseIds = append(courseIds, course.Spec.Id)
+			}
+		}
+	} else {
+		for _, ac := range user.Spec.AccessCodes {
+			tempCourseIds, err := c.acClient.GetCourseIds(ac)
+			if err != nil {
+				glog.Errorf("error retrieving course ids for access code: %s %v", ac, err)
+			} else {
+				courseIds = append(courseIds, tempCourseIds...)
+			}
 		}
 	}
 
