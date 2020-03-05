@@ -98,6 +98,15 @@ func UniqueStringSlice(stringSlice []string) []string {
 	return list
 }
 
+func StringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
 func GenerateResourceName(prefix string, input string, hashlength int) string {
 	hasher := sha256.New()
 	hasher.Write([]byte(input))
