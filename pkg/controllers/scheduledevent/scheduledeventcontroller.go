@@ -265,7 +265,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 			for templateName, count := range vmtMap {
 				if count > 0 {
 					vmsRand := fmt.Sprintf("%08x", rand.Uint32())
-					vmsName := strings.Join([]string{"se", se.Name, "vms", vmsRand}, "-")
+					vmsName := strings.Join([]string{se.Name, "vms", vmsRand}, "-")
 					vmSets = append(vmSets, vmsName)
 					vms := &hfv1.VirtualMachineSet{
 						ObjectMeta: metav1.ObjectMeta{
@@ -287,7 +287,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 							Count:       count,
 							Environment: envName,
 							VMTemplate:  templateName,
-							BaseName:    vmsRand,
+							BaseName:    vmsName,
 						},
 					}
 					if se.Spec.RestrictedBind {
@@ -305,7 +305,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 
 			// create the dynamic bind configurations
 			dbcRand := fmt.Sprintf("%08x", rand.Uint32())
-			dbcName := strings.Join([]string{"se", se.Name, "dbc", dbcRand}, "-")
+			dbcName := strings.Join([]string{se.Name, "dbc", dbcRand}, "-")
 			emptyCap := hfv1.CMSStruct{
 				CPU:     0,
 				Memory:  0,
@@ -340,7 +340,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 				Spec: hfv1.DynamicBindConfigurationSpec{
 					Id:                 dbcName,
 					Environment:        envName,
-					BaseName:           dbcRand,
+					BaseName:           dbcName,
 					BurstCountCapacity: bcc,
 					BurstCapacity:      emptyCap,
 				},
