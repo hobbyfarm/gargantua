@@ -13,3 +13,5 @@
 gargantua
 .idea
 artifacts/testing
+
+vendor/

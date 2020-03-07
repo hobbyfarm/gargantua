@@ -5,7 +5,7 @@ ENV GOOS=linux
 ENV CGO_ENABLED=0
 
 COPY . .
-RUN go install -v -mod=vendor
+RUN go install -v
 
 
 FROM alpine:3.11
