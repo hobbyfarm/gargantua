@@ -3,6 +3,7 @@ package shell
 import (
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/golang/glog"
@@ -23,6 +24,21 @@ type ShellProxy struct {
 
 	hfClient   *hfClientset.Clientset
 	kubeClient *kubernetes.Clientset
+}
+
+var hfNamespace = "hobbyfarm"
+var sshDev = ""
+var sshDevHost = ""
+var sshDevPort = ""
+
+func init() {
+	ns := os.Getenv("HF_NAMESPACE")
+	if ns != "" {
+		hfNamespace = ns
+	}
+	sshDev = os.Getenv("SSH_DEV")
+	sshDevHost = os.Getenv("SSH_DEV_HOST")
+	sshDevPort = os.Getenv("SSH_DEV_PORT")
 }
 
 func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.VirtualMachineClient, hfClientSet *hfClientset.Clientset, kubeClient *kubernetes.Clientset) (*ShellProxy, error) {
@@ -83,7 +99,7 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 	glog.Infof("Going to upgrade connection now... %s", vm.Spec.Id)
 
 	// ok first get the secret for the vm
-	secret, err := sp.kubeClient.CoreV1().Secrets("hobbyfarm").Get(vm.Spec.KeyPair, v1.GetOptions{}) // idk?
+	secret, err := sp.kubeClient.CoreV1().Secrets(hfNamespace).Get(vm.Spec.KeyPair, v1.GetOptions{}) // idk?
 	if err != nil {
 		glog.Errorf("did not find secret for virtual machine")
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
@@ -107,8 +123,20 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
+	// get the host and port
+	host := vm.Status.PublicIP
+	port := "22"
+	if sshDev == "true" {
+		if sshDevHost != "" {
+			host = sshDevHost
+		}
+		if sshDevPort != "" {
+			port = sshDevPort
+		}
+	}
+
 	// dial the instance
-	sshConn, err := ssh.Dial("tcp", vm.Status.PublicIP+":22", config)
+	sshConn, err := ssh.Dial("tcp", host+":"+port, config)
 	if err != nil {
 		glog.Errorf("did not connect ssh successfully: %s", err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "could not establish ssh session to vm")

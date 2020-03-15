@@ -1,0 +1,8 @@
+version: "3.4"
+
+services:
+  garg:
+    build:
+      context: ../../
+      dockerfile: cicd/docker/Dockerfile
+    image: hobbyfarm/gargantua:${GIT_COMMIT_SHORT_HASH:-dev}

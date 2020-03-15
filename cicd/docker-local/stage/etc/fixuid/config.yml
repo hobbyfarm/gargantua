@@ -1,0 +1,6 @@
+user: alpine
+group: alpine
+paths:
+- /home/alpine
+- /go
+- /var/run/secrets/kubernetes.io/serviceaccount

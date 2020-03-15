@@ -1,17 +1,8 @@
 stages:
-- name: Build
-  steps:
-  - runScriptConfig:
-      image: golang:1.12
-      shellScript: |-
-        mkdir -p /go/src/github.com/hobbyfarm
-        ln -s `pwd` /go/src/github.com/hobbyfarm/gargantua
-        cd /go/src/github.com/hobbyfarm/gargantua
-        go build -o bin/gargantua
 - name: Publish
   steps:
   - publishImageConfig:
-      dockerfilePath: ./Dockerfile
+      dockerfilePath: ./cicd/docker/Dockerfile
       buildContext: .
       tag: gargantua:${CICD_EXECUTION_SEQUENCE}
 - name: Deploy

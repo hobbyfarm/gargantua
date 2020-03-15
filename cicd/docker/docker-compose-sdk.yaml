@@ -1,0 +1,9 @@
+version: "3.4"
+
+services:
+  garg:
+    build:
+      context: ../../
+      dockerfile: cicd/docker/Dockerfile
+      target: sdk
+    image: hobbyfarm/gargantua-sdk:${GIT_COMMIT_SHORT_HASH:-dev}
