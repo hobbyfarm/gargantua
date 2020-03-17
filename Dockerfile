@@ -11,6 +11,7 @@ RUN go install -v -mod=vendor
 FROM alpine:3.11
 	
 COPY --from=builder /go/bin/gargantua /usr/local/bin/
+ENV LOG_LEVEL "0"
 
 ENTRYPOINT ["gargantua"] 
-CMD ["-v=9", "-logtostderr"] 
+CMD -logtostderr -v=$LOG_LEVEL
