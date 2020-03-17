@@ -20,6 +20,8 @@ package v1
 
 type AccessCodeExpansion interface{}
 
+type CourseExpansion interface{}
+
 type DynamicBindConfigurationExpansion interface{}
 
 type DynamicBindRequestExpansion interface{}
@@ -28,9 +30,9 @@ type EnvironmentExpansion interface{}
 
 type ScenarioExpansion interface{}
 
-type ScenarioSessionExpansion interface{}
-
 type ScheduledEventExpansion interface{}
+
+type SessionExpansion interface{}
 
 type UserExpansion interface{}
 

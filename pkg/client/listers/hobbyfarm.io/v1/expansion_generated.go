@@ -22,6 +22,10 @@ package v1
 // AccessCodeLister.
 type AccessCodeListerExpansion interface{}
 
+// CourseListerExpansion allows custom methods to be added to
+// CourseLister.
+type CourseListerExpansion interface{}
+
 // DynamicBindConfigurationListerExpansion allows custom methods to be added to
 // DynamicBindConfigurationLister.
 type DynamicBindConfigurationListerExpansion interface{}
@@ -38,13 +42,13 @@ type EnvironmentListerExpansion interface{}
 // ScenarioLister.
 type ScenarioListerExpansion interface{}
 
-// ScenarioSessionListerExpansion allows custom methods to be added to
-// ScenarioSessionLister.
-type ScenarioSessionListerExpansion interface{}
-
 // ScheduledEventListerExpansion allows custom methods to be added to
 // ScheduledEventLister.
 type ScheduledEventListerExpansion interface{}
+
+// SessionListerExpansion allows custom methods to be added to
+// SessionLister.
+type SessionListerExpansion interface{}
 
 // UserListerExpansion allows custom methods to be added to
 // UserLister.

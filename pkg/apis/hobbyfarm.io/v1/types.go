@@ -222,6 +222,36 @@ type VirtualMachineSetList struct {
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+type Course struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              CourseSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type CourseList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Course `json:"items"`
+}
+
+type CourseSpec struct {
+	Id                string              `json:"id"`
+	Name              string              `json:"name"`
+	Description       string              `json:"description"`
+	Scenarios         []string            `json:"scenarios"`
+	VirtualMachines   []map[string]string `json:"virtualmachines"`
+	KeepAliveDuration string              `json:"keepalive_duration"`
+	PauseDuration     string              `json:"pause_duration"`
+	Pauseable         bool                `json:"pauseable"`
+}
+
+// +genclient
+// +genclient:noStatus
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 type Scenario struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -256,30 +286,31 @@ type ScenarioStep struct {
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type ScenarioSession struct {
+type Session struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              ScenarioSessionSpec   `json:"spec"`
-	Status            ScenarioSessionStatus `json:"status"`
+	Spec              SessionSpec   `json:"spec"`
+	Status            SessionStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type ScenarioSessionList struct {
+type SessionList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
-	Items           []ScenarioSession `json:"items"`
+	Items           []Session `json:"items"`
 }
 
-type ScenarioSessionSpec struct {
+type SessionSpec struct {
 	Id         string   `json:"id"`
 	ScenarioId string   `json:"scenario"`
+	CourseId   string   `json:"course"`
 	UserId     string   `json:"user"`
 	VmClaimSet []string `json:"vm_claim"`
 	AccessCode string   `json:"access_code"`
 }
 
-type ScenarioSessionStatus struct {
+type SessionStatus struct {
 	Paused         bool   `json:"paused"`
 	PausedTime     string `json:"paused_time"`
 	Active         bool   `json:"active"`
@@ -311,6 +342,7 @@ type AccessCodeSpec struct {
 	Code                string   `json:"code"`
 	Description         string   `json:"description"`
 	Scenarios           []string `json:"scenarios"`
+	Courses             []string `json:"courses"`
 	Expiration          string   `json:"expiration"`
 	VirtualMachineSets  []string `json:"vmsets"`
 	RestrictedBind      bool     `json:"restricted_bind"`
@@ -374,6 +406,7 @@ type ScheduledEventSpec struct {
 	RestrictedBind          bool                      `json:"restricted_bind"` // if restricted_bind is true, we need to make the scenario sessions when they get created only bind to vmsets that are created by this scheduledevent
 	RestrictedBindValue     string                    `json:"restricted_bind_value"`
 	Scenarios               []string                  `json:"scenarios"`
+	Courses                 []string                  `json:"courses"`
 }
 
 type ScheduledEventStatus struct {

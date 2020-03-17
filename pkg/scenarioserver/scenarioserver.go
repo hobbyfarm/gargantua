@@ -11,6 +11,7 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"net/http"
 	"strconv"
@@ -164,13 +165,41 @@ func (s ScenarioServer) ListScenarioFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// store a list of scenarios linked to courses for filtering
+	var courseScenarios []string
 	var scenarioIds []string
-	for _, ac := range user.Spec.AccessCodes {
-		tempScenarioIds, err := s.acClient.GetScenarioIds(ac)
+
+	if user.Spec.Admin {
+		tempCourses, err := s.hfClientSet.HobbyfarmV1().Courses().List(metav1.ListOptions{})
 		if err != nil {
-			glog.Errorf("error retrieving scenario ids for access code: %s %v", ac, err)
+			glog.Errorf("error listing courses: %v", err)
 		} else {
-			scenarioIds = append(scenarioIds, tempScenarioIds...)
+			for _, course := range tempCourses.Items {
+				for _, scenario := range course.Spec.Scenarios {
+					courseScenarios = append(courseScenarios, scenario)
+				}
+			}
+			courseScenarios = util.UniqueStringSlice(courseScenarios)
+		}
+
+		tempScenarios, err := s.hfClientSet.HobbyfarmV1().Scenarios().List(metav1.ListOptions{})
+		if err != nil {
+			glog.Errorf("error listing scenarios: %v", err)
+		} else {
+			for _, scenario := range tempScenarios.Items {
+				if !util.StringInSlice(scenario.Spec.Id, courseScenarios) {
+					scenarioIds = append(scenarioIds, scenario.Spec.Id)
+				}
+			}
+		}
+	} else {
+		for _, ac := range user.Spec.AccessCodes {
+			tempScenarioIds, err := s.acClient.GetScenarioIds(ac)
+			if err != nil {
+				glog.Errorf("error retrieving scenario ids for access code: %s %v", ac, err)
+			} else {
+				scenarioIds = append(scenarioIds, tempScenarioIds...)
+			}
 		}
 	}
 

@@ -26,6 +26,8 @@ import (
 type Interface interface {
 	// AccessCodes returns a AccessCodeInformer.
 	AccessCodes() AccessCodeInformer
+	// Courses returns a CourseInformer.
+	Courses() CourseInformer
 	// DynamicBindConfigurations returns a DynamicBindConfigurationInformer.
 	DynamicBindConfigurations() DynamicBindConfigurationInformer
 	// DynamicBindRequests returns a DynamicBindRequestInformer.
@@ -34,10 +36,10 @@ type Interface interface {
 	Environments() EnvironmentInformer
 	// Scenarios returns a ScenarioInformer.
 	Scenarios() ScenarioInformer
-	// ScenarioSessions returns a ScenarioSessionInformer.
-	ScenarioSessions() ScenarioSessionInformer
 	// ScheduledEvents returns a ScheduledEventInformer.
 	ScheduledEvents() ScheduledEventInformer
+	// Sessions returns a SessionInformer.
+	Sessions() SessionInformer
 	// Users returns a UserInformer.
 	Users() UserInformer
 	// VirtualMachines returns a VirtualMachineInformer.
@@ -66,6 +68,11 @@ func (v *version) AccessCodes() AccessCodeInformer {
 	return &accessCodeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
+// Courses returns a CourseInformer.
+func (v *version) Courses() CourseInformer {
+	return &courseInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
 // DynamicBindConfigurations returns a DynamicBindConfigurationInformer.
 func (v *version) DynamicBindConfigurations() DynamicBindConfigurationInformer {
 	return &dynamicBindConfigurationInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
@@ -86,14 +93,14 @@ func (v *version) Scenarios() ScenarioInformer {
 	return &scenarioInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// ScenarioSessions returns a ScenarioSessionInformer.
-func (v *version) ScenarioSessions() ScenarioSessionInformer {
-	return &scenarioSessionInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
-}
-
 // ScheduledEvents returns a ScheduledEventInformer.
 func (v *version) ScheduledEvents() ScheduledEventInformer {
 	return &scheduledEventInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// Sessions returns a SessionInformer.
+func (v *version) Sessions() SessionInformer {
+	return &sessionInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Users returns a UserInformer.

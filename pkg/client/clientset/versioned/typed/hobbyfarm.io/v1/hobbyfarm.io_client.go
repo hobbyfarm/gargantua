@@ -21,19 +21,19 @@ package v1
 import (
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/scheme"
-	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
 )
 
 type HobbyfarmV1Interface interface {
 	RESTClient() rest.Interface
 	AccessCodesGetter
+	CoursesGetter
 	DynamicBindConfigurationsGetter
 	DynamicBindRequestsGetter
 	EnvironmentsGetter
 	ScenariosGetter
-	ScenarioSessionsGetter
 	ScheduledEventsGetter
+	SessionsGetter
 	UsersGetter
 	VirtualMachinesGetter
 	VirtualMachineClaimsGetter
@@ -48,6 +48,10 @@ type HobbyfarmV1Client struct {
 
 func (c *HobbyfarmV1Client) AccessCodes() AccessCodeInterface {
 	return newAccessCodes(c)
+}
+
+func (c *HobbyfarmV1Client) Courses() CourseInterface {
+	return newCourses(c)
 }
 
 func (c *HobbyfarmV1Client) DynamicBindConfigurations() DynamicBindConfigurationInterface {
@@ -66,12 +70,12 @@ func (c *HobbyfarmV1Client) Scenarios() ScenarioInterface {
 	return newScenarios(c)
 }
 
-func (c *HobbyfarmV1Client) ScenarioSessions() ScenarioSessionInterface {
-	return newScenarioSessions(c)
-}
-
 func (c *HobbyfarmV1Client) ScheduledEvents() ScheduledEventInterface {
 	return newScheduledEvents(c)
+}
+
+func (c *HobbyfarmV1Client) Sessions() SessionInterface {
+	return newSessions(c)
 }
 
 func (c *HobbyfarmV1Client) Users() UserInterface {
@@ -126,7 +130,7 @@ func setConfigDefaults(config *rest.Config) error {
 	gv := v1.SchemeGroupVersion
 	config.GroupVersion = &gv
 	config.APIPath = "/apis"
-	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
+	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 
 	if config.UserAgent == "" {
 		config.UserAgent = rest.DefaultKubernetesUserAgent()

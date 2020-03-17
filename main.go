@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -21,13 +22,16 @@ import (
 	//"k8s.io/client-go/tools/cache"
 
 	//"github.com/hobbyfarm/gargantua/pkg/controllers/environment"
-	"github.com/hobbyfarm/gargantua/pkg/controllers/scenariosession"
+
+	"github.com/hobbyfarm/gargantua/pkg/controllers/session"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/tfpcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmclaimcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmsetcontroller"
+	"github.com/hobbyfarm/gargantua/pkg/courseclient"
+	"github.com/hobbyfarm/gargantua/pkg/courseserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
-	"github.com/hobbyfarm/gargantua/pkg/scenariosessionserver"
+	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/shell"
 	"github.com/hobbyfarm/gargantua/pkg/signals"
 	"github.com/hobbyfarm/gargantua/pkg/vmclaimserver"
@@ -35,11 +39,13 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/vmserver"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+
 	//"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/clientcmd"
 	"net/http"
 	"sync"
 	"time"
+
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var (
@@ -102,6 +108,16 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	courseServer, err := courseserver.NewCourseServer(authClient, acClient, hfClient, hfInformerFactory)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	courseClient, err := courseclient.NewCourseClient(courseServer)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
 	scenarioServer, err := scenarioserver.NewScenarioServer(authClient, acClient, hfClient, hfInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
@@ -112,7 +128,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	ssServer, err := scenariosessionserver.NewScenarioSessionServer(authClient, acClient, scenarioClient, hfClient, hfInformerFactory)
+	sessionServer, err := sessionserver.NewSessionServer(authClient, acClient, scenarioClient, courseClient, hfClient, hfInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -166,8 +182,9 @@ func main() {
 		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
 	} else {
-		ssServer.SetupRoutes(r)
+		sessionServer.SetupRoutes(r)
 		authServer.SetupRoutes(r)
+		courseServer.SetupRoutes(r)
 		scenarioServer.SetupRoutes(r)
 		vmServer.SetupRoutes(r)
 		//shellProxy.SetupRoutes(r)
@@ -187,7 +204,7 @@ func main() {
 		if ok := cache.WaitForCacheSync(stopCh,
 			hfInformerFactory.Hobbyfarm().V1().Users().Informer().HasSynced,
 			hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced,
-			hfInformerFactory.Hobbyfarm().V1().ScenarioSessions().Informer().HasSynced,
+			hfInformerFactory.Hobbyfarm().V1().Sessions().Informer().HasSynced,
 			hfInformerFactory.Hobbyfarm().V1().Scenarios().Informer().HasSynced,
 			hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced,
 			hfInformerFactory.Hobbyfarm().V1().AccessCodes().Informer().HasSynced,
@@ -211,7 +228,7 @@ func main() {
 			}
 		*/
 		glog.V(2).Infof("Starting controllers")
-		scenarioSessionController, err := scenariosession.NewScenarioSessionController(hfClient, hfInformerFactory)
+		sessionController, err := session.NewSessionController(hfClient, hfInformerFactory)
 		if err != nil {
 			glog.Fatal(err)
 		}
@@ -246,7 +263,7 @@ func main() {
 		*/
 		go func() {
 			defer wg.Done()
-			scenarioSessionController.Run(stopCh)
+			sessionController.Run(stopCh)
 		}()
 
 		go func() {

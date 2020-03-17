@@ -1,0 +1,13 @@
+apiVersion: hobbyfarm.io/v1
+kind: Course
+metadata:
+  name: c-x93jfm20slmn2
+spec:
+  id: c-x93jfm20slmn2
+  name: "SW50cm8gdG8gS3ViZXJuZXRlcwo="
+  description: "Z2V0dGluZyBzdGFydGVkIHdpdGggcG9kcywgcmVwbGljYXNldHMsIGFuZCBkZXBsb3ltZW50cwo="
+  scenarios:
+  - s-x93jfm20slmn2
+  virtualmachines:
+  - rancher: ubuntu1604-docker1
+    node01: ubuntu1604-docker1

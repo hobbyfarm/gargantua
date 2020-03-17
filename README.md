@@ -8,7 +8,7 @@ Gargantua is based on K8S controllers, and provisions the following controllers 
 - VMClaim Controller
 - VMSet Controller
 - Environment Controller
-- ScenarioSession Controller
+- Session Controller
 
 Their relationship is better illustrated with the following ERD:
 
