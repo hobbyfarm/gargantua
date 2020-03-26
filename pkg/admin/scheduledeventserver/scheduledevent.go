@@ -165,8 +165,9 @@ func (a AdminScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Req
 		return
 	}
 	scenariosRaw := r.PostFormValue("scenarios")
-	if scenariosRaw == "" {
-		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no scenarios passed in")
+	coursesRaw := r.PostFormValue("courses")
+	if scenariosRaw == "" && coursesRaw == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no scenarios or courses passed in")
 		return
 	}
 
@@ -186,17 +187,29 @@ func (a AdminScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Req
 
 	err = json.Unmarshal([]byte(requiredVM), &requiredVMUnmarshaled)
 	if err != nil {
-		glog.Errorf("error while unmarshaling required VM's %v", err)
+		glog.Errorf("error while unmarshalling required VM's %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
 		return
 	}
 
 	scenarios := []string{}
-	err = json.Unmarshal([]byte(scenariosRaw), &scenarios)
-	if err != nil {
-		glog.Errorf("error while unmarshaling required VM's %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
-		return
+	if scenariosRaw != "" {
+		err = json.Unmarshal([]byte(scenariosRaw), &scenarios)
+		if err != nil {
+			glog.Errorf("error while unmarshalling scenarios %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	courses := []string{}
+	if coursesRaw != "" {
+		err = json.Unmarshal([]byte(coursesRaw), &courses)
+		if err != nil {
+			glog.Errorf("error while unmarshalling courses %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
 	}
 
 	scheduledEvent := &hfv1.ScheduledEvent{}
@@ -213,7 +226,15 @@ func (a AdminScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Req
 	scheduledEvent.Spec.EndTime = endTime
 	scheduledEvent.Spec.RequiredVirtualMachines = requiredVMUnmarshaled
 	scheduledEvent.Spec.AccessCode = accessCode
-	scheduledEvent.Spec.Scenarios = scenarios
+
+	if scenariosRaw != "" {
+		scheduledEvent.Spec.Scenarios = scenarios
+	}
+
+	if coursesRaw != "" {
+		scheduledEvent.Spec.Courses = courses
+	}
+
 	scheduledEvent.Status.Active = true
 	scheduledEvent.Status.Finished = false
 	scheduledEvent.Status.Ready = false
@@ -284,6 +305,7 @@ func (a AdminScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Req
 		requiredVM := r.PostFormValue("required_vms")
 		accessCode := r.PostFormValue("access_code")
 		scenariosRaw := r.PostFormValue("scenarios")
+		coursesRaw := r.PostFormValue("courses")
 
 		if name != "" {
 			scheduledEvent.Spec.Name = name
@@ -317,12 +339,24 @@ func (a AdminScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Req
 			//}
 		}
 
+		if coursesRaw != "" {
+			if !scheduledEvent.Status.Provisioned {
+				courses := []string{}
+				err = json.Unmarshal([]byte(coursesRaw), &courses)
+				if err != nil {
+					glog.Errorf("error while unmarshaling courses %v", err)
+					return fmt.Errorf("bad")
+				}
+				scheduledEvent.Spec.Courses = courses
+			}
+		}
+
 		if scenariosRaw != "" {
 			if !scheduledEvent.Status.Provisioned { // we can't change the scenarios after the scheduled event was provisioned
 				scenarios := []string{}
 				err = json.Unmarshal([]byte(scenariosRaw), &scenarios)
 				if err != nil {
-					glog.Errorf("error while unmarshaling required VM's %v", err)
+					glog.Errorf("error while unmarshaling scenarios %v", err)
 					return fmt.Errorf("bad")
 				}
 				scheduledEvent.Spec.Scenarios = scenarios
