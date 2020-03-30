@@ -166,9 +166,9 @@ func (s ScenarioServer) ListScenarioFunc(w http.ResponseWriter, r *http.Request)
 	}
 
 	// store a list of scenarios linked to courses for filtering
-	var courseScenarios []string
+	//var courseScenarios []string
 	var scenarioIds []string
-
+	/*
 	if user.Spec.Admin {
 		tempCourses, err := s.hfClientSet.HobbyfarmV1().Courses().List(metav1.ListOptions{})
 		if err != nil {
@@ -193,13 +193,14 @@ func (s ScenarioServer) ListScenarioFunc(w http.ResponseWriter, r *http.Request)
 			}
 		}
 	} else {
-		for _, ac := range user.Spec.AccessCodes {
-			tempScenarioIds, err := s.acClient.GetScenarioIds(ac)
-			if err != nil {
-				glog.Errorf("error retrieving scenario ids for access code: %s %v", ac, err)
-			} else {
-				scenarioIds = append(scenarioIds, tempScenarioIds...)
-			}
+	}
+	*/
+	for _, ac := range user.Spec.AccessCodes {
+		tempScenarioIds, err := s.acClient.GetScenarioIds(ac)
+		if err != nil {
+			glog.Errorf("error retrieving scenario ids for access code: %s %v", ac, err)
+		} else {
+			scenarioIds = append(scenarioIds, tempScenarioIds...)
 		}
 	}
 
