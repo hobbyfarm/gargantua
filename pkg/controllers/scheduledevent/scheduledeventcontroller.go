@@ -3,6 +3,7 @@ package scheduledevent
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 	"time"
 
@@ -24,6 +25,25 @@ type ScheduledEventController struct {
 	//seWorkqueue workqueue.RateLimitingInterface
 	seWorkqueue workqueue.DelayingInterface
 	seSynced    cache.InformerSynced
+}
+
+var baseNameScheduledPrefix string
+var baseNameDynamicPrefix string
+
+func init() {
+	bnsp := os.Getenv("HF_BASENAME_SCHEDULED_PREFIX")
+	if bnsp == "" {
+		baseNameScheduledPrefix = "scheduled"
+	} else {
+		baseNameScheduledPrefix = bnsp
+	}
+
+	bndp := os.Getenv("HF_BASENAME_DYNAMIC_PREFIX")
+	if bndp == "" {
+		baseNameDynamicPrefix = "dynamic"
+	} else {
+		baseNameDynamicPrefix = bndp
+	}
 }
 
 func NewScheduledEventController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScheduledEventController, error) {
@@ -265,7 +285,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 
 			for templateName, count := range vmtMap {
 				if count > 0 {
-					vmsRand := fmt.Sprintf("scheduled-%08x", rand.Uint32())
+					vmsRand := fmt.Sprintf("%s-%08x", baseNameScheduledPrefix, rand.Uint32())
 					vmsName := strings.Join([]string{"se", se.Name, "vms", vmsRand}, "-")
 					vmSets = append(vmSets, vmsName)
 					vms := &hfv1.VirtualMachineSet{
@@ -305,7 +325,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 			}
 
 			// create the dynamic bind configurations
-			dbcRand := fmt.Sprintf("%08x", rand.Uint32())
+			dbcRand := fmt.Sprintf("%s-%08x", baseNameDynamicPrefix, rand.Uint32())
 			dbcName := strings.Join([]string{"se", se.Name, "dbc", dbcRand}, "-")
 			emptyCap := hfv1.CMSStruct{
 				CPU:     0,
