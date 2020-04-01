@@ -1,0 +1,38 @@
+version: "3.5"
+
+services:
+
+  garg:
+    build: 
+      context: ./cicd/docker-local
+    container_name: hf-garg
+    environment:
+      CGO_ENABLED: "0"
+      CHOKIDAR_USEPOLLING: "${CHOKIDAR_USEPOLLING:-true}"
+      HF_NAMESPACE: default
+      KUBERNETES_SERVICE_HOST: "${KUBERNETES_SERVICE_HOST:-k3d}"
+      KUBERNETES_SERVICE_PORT: "${KUBERNETES_SERVICE_PORT:-6443}"
+      SSH_DEV: "${SSH_DEV:-true}"
+      SSH_DEV_HOST: "${SSH_DEV_HOST:-k3d}"
+      SSH_DEV_PORT: "${SSH_DEV_PORT:-30022}"
+    networks:
+    - dev
+    ports:
+    - "${GARG_PORT:-16210}:8080"
+    - "${SHELL_PORT:-16211}:8081"
+    user: ${FIXUID:-1000}:${FIXGID:-1000}
+    volumes:
+    - .:/app
+    - go-cache:/go
+    - kube-sa:/var/run/secrets/kubernetes.io/serviceaccount
+
+networks:
+  dev:
+    external: true
+    name: hobbyfarm-dev
+
+volumes:
+  go-cache: {}
+  kube-sa:
+    external: true
+    name: hobbyfarm-kube-sa

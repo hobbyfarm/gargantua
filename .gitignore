@@ -13,3 +13,6 @@
 gargantua
 .idea
 artifacts/testing
+
+# docker-compose enviornment variables
+/.env

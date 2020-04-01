@@ -1,14 +1,92 @@
-name: Publish Docker
-on: push
+name: Main
+on: [push, pull_request]
 jobs:
   build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
-    - name: Publish to Registry
-      uses: elgohr/Publish-Docker-Github-Action@master
-      with:
-          name: ${{ github.repository }}
-          username: ${{ secrets.DOCKER_HUB_USER }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-          tag_names: true
+      
+    - name: Checkout
+      uses: actions/checkout@master
+
+    - name: Build
+      run: docker-compose -f ./cicd/docker/docker-compose-sdk.yaml build
+
+    - name: Build Release
+      if: |
+        github.event_name == 'push' && (
+          startsWith(github.event.ref, 'refs/tags/')
+          || endsWith(github.event.ref, '/master')
+        )
+      run: docker-compose -f ./cicd/docker/docker-compose-release.yaml build
+
+    - name: Compute Docker Tag
+      if: |
+        github.event_name == 'push' && (
+          startsWith(github.event.ref, 'refs/tags/')
+          || endsWith(github.event.ref, '/master')
+        )
+      id: compute_docker_tag
+      run: |
+        tag=${GITHUB_REF#refs/tags/}
+        branch=${GITHUB_REF#refs/heads/}
+        if [ "$tag" != "$GITHUB_REF" ]; then
+          tag=$(echo "$tag" | sed -e 's/[^a-zA-Z0-9\-\.]/-/g')
+          echo ::set-output name=DOCKER_TAG::${tag}
+        elif [ "$branch" != "$GITHUB_REF" ]; then
+          branch=$(echo "$branch" | sed -e 's/[^a-zA-Z0-9\-\.]/-/g')
+          echo ::set-output name=DOCKER_TAG::${branch}
+        else
+          echo "unable to determine docker tag" >&2
+          exit 1
+        fi
+
+    - name: Docker Login
+      if: |
+        github.event_name == 'push' && (
+          startsWith(github.event.ref, 'refs/tags/')
+          || endsWith(github.event.ref, '/master')
+        )
+      run: |
+        echo "${{ secrets.DOCKER_HUB_PASSWORD }}" \
+          | docker login -u "${{ secrets.DOCKER_HUB_USER }}" --password-stdin
+
+    - name: Docker Tag
+      if: |
+        github.event_name == 'push' && (
+          startsWith(github.event.ref, 'refs/tags/')
+          || endsWith(github.event.ref, '/master')
+        )
+      run: |
+        docker tag \
+          hobbyfarm/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} \
+          hobbyfarm/gargantua:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }}
+
+    - name: Docker Push
+      if: |
+        github.event_name == 'push' && (
+          startsWith(github.event.ref, 'refs/tags/')
+          || endsWith(github.event.ref, '/master')
+        )
+      run: |
+        docker push \
+          hobbyfarm/gargantua:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }}
+
+    - name: Docker Tag Latest
+      if: |
+        github.event_name == 'push' && (
+          startsWith(github.event.ref, 'refs/tags/')
+        )
+      run: |
+        docker tag \
+          hobbyfarm/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} \
+          hobbyfarm/gargantua:latest
+
+    - name: Docker Push Latest
+      if: |
+        github.event_name == 'push' && (
+          startsWith(github.event.ref, 'refs/tags/')
+        )
+      run: |
+        docker push \
+          hobbyfarm/gargantua:latest

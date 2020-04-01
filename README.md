@@ -14,3 +14,6 @@ Their relationship is better illustrated with the following ERD:
 
 ![](./artifacts/diagrams/Workflow.png)
 
+## Contributing
+
+If you're interested in contributing, see [CONTRIBUTING.md](CONTRIBUTING.md)

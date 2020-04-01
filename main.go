@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
@@ -293,13 +294,18 @@ func main() {
 	}
 
 	hfInformerFactory.Start(stopCh)
-	glog.Info("listening on 80")
 
 	wg.Add(1)
 
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "80"
+	}
+	glog.Info("listening on " + port)
+
 	go func() {
 		defer wg.Done()
-		glog.Fatal(http.ListenAndServe(":80", handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
+		glog.Fatal(http.ListenAndServe(":"+port, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
 	}()
 
 	wg.Wait()

@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	"math/rand"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -51,9 +52,14 @@ type TerraformProvisionerController struct {
 	envSynced cache.InformerSynced
 }
 
-const (
-	provisionNS = "hobbyfarm"
-)
+var provisionNS = "hobbyfarm"
+
+func init() {
+	ns := os.Getenv("HF_NAMESPACE")
+	if ns != "" {
+		provisionNS = ns
+	}
+}
 
 func NewTerraformProvisionerController(k8sClientSet *k8s.Clientset, hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*TerraformProvisionerController, error) {
 	tfpController := TerraformProvisionerController{}
