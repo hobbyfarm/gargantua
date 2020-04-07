@@ -134,10 +134,24 @@ func (acc AccessCodeClient) GetClosestAccessCode(userID string, scenario string)
 		return "", fmt.Errorf("error retrieving user: %v", err)
 	}
 
-	accessCodes, err := acc.GetAccessCodes(user.Spec.AccessCodes, false)
+	rawAccessCodes, err := acc.GetAccessCodes(user.Spec.AccessCodes, false)
 
 	if err != nil {
 		return "", fmt.Errorf("access codes were not found %v", err)
+	}
+
+	var accessCodes []hfv1.AccessCode
+	for _, code := range rawAccessCodes {
+		for _, s := range code.Spec.Scenarios {
+			if s == scenario {
+				accessCodes = append(accessCodes, code)
+				break
+			}
+		}
+	}
+
+	if len(accessCodes) == 0 {
+		return "", fmt.Errorf("access codes were not found for user %s with scenario %s", userID, scenario)
 	}
 
 	sort.Slice(accessCodes, func(i, j int) bool {
