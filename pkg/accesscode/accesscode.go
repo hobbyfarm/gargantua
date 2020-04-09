@@ -2,12 +2,14 @@ package accesscode
 
 import (
 	"fmt"
+	"sort"
+	"time"
+
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sort"
-	"time"
 )
 
 type AccessCodeClient struct {
@@ -183,4 +185,21 @@ func (acc AccessCodeClient) GetClosestAccessCode(userID string, scenario string)
 	}
 
 	return accessCodes[0].Name, nil
+}
+
+// GetUserIds takes an access code and returns a list of the user ids
+func (acc AccessCodeClient) GetUserIds(code string) ([]string, error) {
+	selectedUsers := []string{}
+	users, err := acc.hfClientSet.HobbyfarmV1().Users().List(metav1.ListOptions{}) // @TODO: FIX THIS TO NOT DIRECTLY CALL USER
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving list of users by access code %s: %v", code, err)
+	}
+
+	for _, user := range users.Items {
+		if util.Contains(user.Spec.AccessCodes, code) {
+			selectedUsers = append(selectedUsers, user.Spec.Id)
+		}
+	}
+
+	return selectedUsers, nil
 }

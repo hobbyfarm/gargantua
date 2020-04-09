@@ -527,3 +527,13 @@ func MaxAvailableDuringPeriod(hfClientset *hfClientset.Clientset, environment st
 	}
 	return max, nil
 }
+
+// Contains returns true if string e is in list s, and false otherwise
+func Contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}

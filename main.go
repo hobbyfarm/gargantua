@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
+	adminAccessCodeServer "github.com/hobbyfarm/gargantua/pkg/admin/accesscodeserver"
 	adminEnvironmentServer "github.com/hobbyfarm/gargantua/pkg/admin/environmentserver"
 	adminScenarioServer "github.com/hobbyfarm/gargantua/pkg/admin/scenarioserver"
 	adminScheduledEventServer "github.com/hobbyfarm/gargantua/pkg/admin/scheduledeventserver"
@@ -99,12 +100,12 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	authServer, err := authserver.NewAuthServer(authClient, hfClient)
+	acClient, err := accesscode.NewAccessCodeClient(hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	acClient, err := accesscode.NewAccessCodeClient(hfClient)
+	authServer, err := authserver.NewAuthServer(authClient, acClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -154,6 +155,11 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	adminAcServer, err := adminAccessCodeServer.NewAdminAccessCodeServer(authClient, hfClient)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
 	adminEnvServer, err := adminEnvironmentServer.NewAdminEnvironmentServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
@@ -190,6 +196,7 @@ func main() {
 		vmServer.SetupRoutes(r)
 		//shellProxy.SetupRoutes(r)
 		vmClaimServer.SetupRoutes(r)
+		adminAcServer.SetupRoutes(r)
 		adminEnvServer.SetupRoutes(r)
 		adminScenServer.SetupRoutes(r)
 		adminSEServer.SetupRoutes(r)
