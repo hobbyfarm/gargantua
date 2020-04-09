@@ -5,6 +5,10 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -13,9 +17,6 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
-	"net/http"
-	"strings"
-	"time"
 )
 
 type AdminScheduledEventServer struct {
@@ -360,6 +361,17 @@ func (a AdminScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Req
 					return fmt.Errorf("bad")
 				}
 				scheduledEvent.Spec.Scenarios = scenarios
+			}
+		}
+		if coursesRaw != "" {
+			if !scheduledEvent.Status.Provisioned { // we can't change the scenarios after the scheduled event was provisioned
+				courses := []string{}
+				err = json.Unmarshal([]byte(coursesRaw), &courses)
+				if err != nil {
+					glog.Errorf("error while unmarshaling required VM's %v", err)
+					return fmt.Errorf("bad")
+				}
+				scheduledEvent.Spec.Courses = courses
 			}
 		}
 

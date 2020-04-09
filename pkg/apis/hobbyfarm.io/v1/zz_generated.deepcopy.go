@@ -753,6 +753,11 @@ func (in *ScheduledEventSpec) DeepCopyInto(out *ScheduledEventSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Courses != nil {
+		in, out := &in.Courses, &out.Courses
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
