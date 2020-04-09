@@ -5,9 +5,15 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"regexp"
+	"strings"
+	"time"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
@@ -15,9 +21,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
-	"net/http"
-	"strings"
-	"time"
 )
 
 const (
@@ -27,12 +30,14 @@ const (
 type AuthServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet *hfClientset.Clientset
+	acClient    *accesscode.AccessCodeClient
 }
 
-func NewAuthServer(authClient *authclient.AuthClient, hfClientSet *hfClientset.Clientset) (AuthServer, error) {
+func NewAuthServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientSet *hfClientset.Clientset) (AuthServer, error) {
 	a := AuthServer{}
 	a.auth = authClient
 	a.hfClientSet = hfClientSet
+	a.acClient = acClient
 	return a, nil
 }
 
@@ -198,13 +203,16 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
 
-	accessCode := strings.ToLower(r.PostFormValue("access_code"))
+	accessCode := r.PostFormValue("access_code")
 
-	err = a.AddAccessCode(user.Spec.Id, accessCode)
+	message, err := a.AddAccessCode(user.Spec.Id, accessCode)
 
 	if err != nil {
 		glog.Error(err)
-		util.ReturnHTTPMessage(w, r, 500, "error", "error adding access code")
+		if message == "" {
+			message = "error adding access code"
+		}
+		util.ReturnHTTPMessage(w, r, 500, "error", message)
 		return
 	}
 
@@ -222,7 +230,7 @@ func (a AuthServer) RemoveAccessCodeFunc(w http.ResponseWriter, r *http.Request)
 
 	vars := mux.Vars(r)
 
-	accessCode := strings.ToLower(vars["access_code"])
+	accessCode := vars["access_code"]
 
 	err = a.RemoveAccessCode(user.Spec.Id, accessCode)
 
@@ -237,12 +245,39 @@ func (a AuthServer) RemoveAccessCodeFunc(w http.ResponseWriter, r *http.Request)
 	glog.V(2).Infof("removed accesscode %s to user %s", accessCode, user.Spec.Email)
 }
 
-func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
-	if len(userId) == 0 || len(accessCode) == 0 {
-		return fmt.Errorf("bad parameters passed, %s:%s", userId, accessCode)
+func (a AuthServer) ValidateAccessCode(email string, accessCode string) (string, error) {
+
+	ac, err := a.hfClientSet.HobbyfarmV1().AccessCodes().Get(accessCode, metav1.GetOptions{})
+	if err != nil {
+		return "access code not found", fmt.Errorf("error retrieving access code: %v", err)
 	}
 
-	accessCode = strings.ToLower(accessCode)
+	if ac.Spec.MaxUsers != 0 {
+		users, err := a.acClient.GetUserIds(ac.Spec.Code)
+		if err != nil {
+			return "", fmt.Errorf("error retrieving users by access code %s: %v", accessCode, err)
+		}
+		if len(users) >= ac.Spec.MaxUsers {
+			glog.Errorf("max: %s, users: %s", ac.Spec.MaxUsers, users)
+			return "access code user limit reached", fmt.Errorf("access code user limit reached")
+		}
+	}
+
+	if len(ac.Spec.AllowedDomains) != 0 {
+		domain := strings.Split(email, "@")[1] // technically, we should be splitting on the _last_ @ symbol
+		if !util.Contains(ac.Spec.AllowedDomains, domain) {
+			return "invalid email for access code", fmt.Errorf("invalid email for access code")
+		}
+	}
+
+	return "", nil
+
+}
+
+func (a AuthServer) AddAccessCode(userId string, accessCode string) (string, error) {
+	if len(userId) == 0 || len(accessCode) == 0 {
+		return "", fmt.Errorf("bad parameters passed, %s:%s", userId, accessCode)
+	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(userId, metav1.GetOptions{})
@@ -268,18 +303,16 @@ func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 	})
 
 	if retryErr != nil {
-		return retryErr
+		return "", retryErr
 	}
 
-	return nil
+	return "", nil
 }
 
 func (a AuthServer) RemoveAccessCode(userId string, accessCode string) error {
 	if len(userId) == 0 || len(accessCode) == 0 {
 		return fmt.Errorf("bad parameters passed, %s:%s", userId, accessCode)
 	}
-
-	accessCode = strings.ToLower(accessCode)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(userId, metav1.GetOptions{})
@@ -370,12 +403,35 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	r.ParseForm()
 
 	email := r.PostFormValue("email")
-	accessCode := strings.ToLower(r.PostFormValue("access_code"))
+	accessCode := r.PostFormValue("access_code")
 	password := r.PostFormValue("password")
 	// should we reconcile based on the access code posted in? nah
 
 	if len(email) == 0 || len(accessCode) == 0 || len(password) == 0 {
 		util.ReturnHTTPMessage(w, r, 400, "error", "invalid input. required fields: email, access_code, password")
+		return
+	}
+
+	if !regexp.MustCompile(`^\S+@\S+\.\S+$`).MatchString(email) {
+		glog.Errorf("invalid email address: %s", email)
+		util.ReturnHTTPMessage(w, r, 400, "error", "invalid email address")
+		return
+	}
+
+	ac, err := a.acClient.GetAccessCode(accessCode, false)
+	if err != nil {
+		glog.Errorf("error retrieving access code: %v", err)
+		util.ReturnHTTPMessage(w, r, 400, "error", "access code not found")
+		return
+	}
+
+	message, err := a.ValidateAccessCode(email, ac.Name)
+	if err != nil {
+		glog.Errorf("error validating access code %s %v", accessCode, err)
+		if message == "" {
+			message = "invalid access code"
+		}
+		util.ReturnHTTPMessage(w, r, 400, "error", message)
 		return
 	}
 
@@ -387,11 +443,14 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	err = a.AddAccessCode(userId, accessCode)
+	message, err = a.AddAccessCode(userId, accessCode)
 
 	if err != nil {
 		glog.Errorf("error creating user %s %v", email, err)
-		util.ReturnHTTPMessage(w, r, 400, "error", "error creating user")
+		if message == "" {
+			message = "error creating user"
+		}
+		util.ReturnHTTPMessage(w, r, 400, "error", message)
 		return
 	}
 

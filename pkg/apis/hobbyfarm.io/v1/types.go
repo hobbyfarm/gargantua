@@ -347,6 +347,8 @@ type AccessCodeSpec struct {
 	VirtualMachineSets  []string `json:"vmsets"`
 	RestrictedBind      bool     `json:"restricted_bind"`
 	RestrictedBindValue string   `json:"restricted_bind_value"`
+	MaxUsers            int      `json:"max_users"`
+	AllowedDomains      []string `json:"allowed_domains"`
 }
 
 // +genclient
@@ -397,7 +399,7 @@ type ScheduledEventList struct {
 
 type ScheduledEventSpec struct {
 	Creator                 string                    `json:"creator"`
-	Name                    string                    `json:"event_name"`
+	Name                    string                    `json:"name"`
 	Description             string                    `json:"description"`
 	StartTime               string                    `json:"start_time"`
 	EndTime                 string                    `json:"end_time"`

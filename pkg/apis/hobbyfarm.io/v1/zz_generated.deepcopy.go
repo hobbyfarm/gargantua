@@ -102,6 +102,11 @@ func (in *AccessCodeSpec) DeepCopyInto(out *AccessCodeSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.AllowedDomains != nil {
+		in, out := &in.AllowedDomains, &out.AllowedDomains
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
