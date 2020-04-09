@@ -16,3 +16,7 @@ artifacts/testing
 
 # docker-compose enviornment variables
 /.env
+
+# local dev logs
+garg
+garg-shell
