@@ -4,7 +4,7 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strconv"
+	"regexp"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -31,6 +31,10 @@ var sshDev = ""
 var sshDevHost = ""
 var sshDevPort = ""
 
+// SIGWINCH is the regex to match window change (resize) codes
+var SIGWINCH *regexp.Regexp
+var sess *ssh.Session
+
 func init() {
 	ns := os.Getenv("HF_NAMESPACE")
 	if ns != "" {
@@ -39,6 +43,7 @@ func init() {
 	sshDev = os.Getenv("SSH_DEV")
 	sshDevHost = os.Getenv("SSH_DEV_HOST")
 	sshDevPort = os.Getenv("SSH_DEV_PORT")
+	SIGWINCH = regexp.MustCompile(`.*\[8;(.*);(.*)t`)
 }
 
 func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.VirtualMachineClient, hfClientSet *hfClientset.Clientset, kubeClient *kubernetes.Clientset) (*ShellProxy, error) {
@@ -54,8 +59,6 @@ func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.Virtual
 
 func (sp ShellProxy) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/shell/{vm_id}/connect", sp.ConnectFunc)
-	// registering twice because the width query param is optional
-	r.HandleFunc("/shell/{vm_id}/connect", sp.ConnectFunc).Queries("width", "{width}")
 	glog.V(2).Infof("set up routes")
 }
 
@@ -67,15 +70,6 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vars := mux.Vars(r)
-
-	width := 80
-	if r.FormValue("width") != "" {
-		width, err = strconv.Atoi(r.FormValue("width"))
-		if err != nil {
-			util.ReturnHTTPMessage(w, r, 500, "error", "given width was not an integer")
-			return
-		}
-	}
 
 	vmId := vars["vm_id"]
 	if len(vmId) == 0 {
@@ -166,7 +160,7 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 
 	stdin := &InputWrapper{ws: conn}
 
-	sess, err := sshConn.NewSession()
+	sess, err = sshConn.NewSession()
 	if err != nil {
 		glog.Errorf("did not setup ssh session properly")
 		util.ReturnHTTPMessage(w, r, 500, "error", "could not setup ssh session")
@@ -188,7 +182,7 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 		io.Copy(pip, stdin)
 	}()
 
-	err = sess.RequestPty("xterm", 40, width, ssh.TerminalModes{ssh.ECHO: 1, ssh.TTY_OP_ISPEED: 14400, ssh.TTY_OP_OSPEED: 14400})
+	err = sess.RequestPty("xterm", 40, 80, ssh.TerminalModes{ssh.ECHO: 1, ssh.TTY_OP_ISPEED: 14400, ssh.TTY_OP_OSPEED: 14400})
 	if err != nil {
 		glog.Error(err)
 	}
@@ -200,4 +194,10 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 	//sess.Wait()
 	//
 	//defer sess.Close()
+}
+
+func ResizePty(h int, w int) {
+	if err := sess.WindowChange(h, w); err != nil {
+		glog.Warningf("error resizing pty: %s", err)
+	}
 }
