@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	courseserver2 "github.com/hobbyfarm/gargantua/pkg/admin/courseserver"
 	"os"
 
 	"github.com/golang/glog"
@@ -179,6 +180,11 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	adminCourseServer, err := courseserver2.NewAdminCourseServer(authClient, hfClient)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
 	if shellServer {
 		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
@@ -195,6 +201,7 @@ func main() {
 		adminSEServer.SetupRoutes(r)
 		adminUServer.SetupRoutes(r)
 		adminVMTServer.SetupRoutes(r)
+		adminCourseServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})

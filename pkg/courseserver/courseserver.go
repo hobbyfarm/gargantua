@@ -11,7 +11,6 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/util"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"net/http"
 )
@@ -29,11 +28,7 @@ type CourseServer struct {
 
 type PreparedCourse struct {
 	Id              string              `json:"id"`
-	Name            string              `json:"name"`
-	Description     string              `json:"description"`
-	VirtualMachines []map[string]string `json:"virtualmachines"`
-	Scenarios       []string            `json:"scenarios"`
-	Pauseable       bool                `json:"pauseable"`
+	hfv1.CourseSpec
 }
 
 func NewCourseServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*CourseServer, error) {
@@ -52,20 +47,8 @@ func NewCourseServer(authClient *authclient.AuthClient, acClient *accesscode.Acc
 }
 
 func (c CourseServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/course/list", c.ListCourseFunc).Methods("GET")
-	r.HandleFunc("/course/{course_id}", c.getCourseFunc).Methods("GET")
-}
-
-func (c CourseServer) prepareCourse(course hfv1.Course) (PreparedCourse, error) {
-	pc := PreparedCourse{}
-
-	pc.Id = course.Spec.Id
-	pc.Name = course.Spec.Name
-	pc.Description = course.Spec.Description
-	pc.VirtualMachines = course.Spec.VirtualMachines
-	pc.Scenarios = course.Spec.Scenarios
-
-	return pc, nil
+	r.HandleFunc("/course/list", c.ListCourse).Methods("GET")
+	r.HandleFunc("/course/{course_id}", c.GetCourse).Methods("GET")
 }
 
 func (c CourseServer) getPreparedCourseById(id string) (PreparedCourse, error) {
@@ -75,16 +58,12 @@ func (c CourseServer) getPreparedCourseById(id string) (PreparedCourse, error) {
 		return PreparedCourse{}, fmt.Errorf("error while retrieving course %v", err)
 	}
 
-	preparedCourse, err := c.prepareCourse(course)
-
-	if err != nil {
-		return PreparedCourse{}, fmt.Errorf("error while preparing course %v", err)
-	}
+	preparedCourse := PreparedCourse{course.Name, course.Spec}
 
 	return preparedCourse, nil
 }
 
-func (c CourseServer) getCourseFunc(w http.ResponseWriter, r *http.Request) {
+func (c CourseServer) GetCourse(w http.ResponseWriter, r *http.Request) {
 	_, err := c.auth.AuthN(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to courses")
@@ -95,18 +74,21 @@ func (c CourseServer) getCourseFunc(w http.ResponseWriter, r *http.Request) {
 
 	course, err := c.getPreparedCourseById(vars["course_id"])
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf("course %s not found", vars["course_id"]))
+		util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf("error retrieving course: %v", err))
+		return
 	}
 
 	encodedCourse, err := json.Marshal(course)
 	if err != nil {
 		glog.Error(err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error preparing course")
+		return
 	}
 
 	util.ReturnHTTPContent(w, r, 200, "success", encodedCourse)
 }
 
-func (c CourseServer) ListCourseFunc(w http.ResponseWriter, r *http.Request) {
+func (c CourseServer) ListCourse(w http.ResponseWriter, r *http.Request) {
 	user, err := c.auth.AuthN(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list courses")
@@ -114,23 +96,12 @@ func (c CourseServer) ListCourseFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var courseIds []string
-	if user.Spec.Admin {
-		tempCourses, err := c.hfClientSet.HobbyfarmV1().Courses().List(metav1.ListOptions{})
+	for _, ac := range user.Spec.AccessCodes {
+		tempCourseIds, err := c.acClient.GetCourseIds(ac)
 		if err != nil {
-			glog.Errorf("error listing courses: %v", err)
+			glog.Errorf("error retrieving course ids for access code: %s %v", ac, err)
 		} else {
-			for _, course := range tempCourses.Items {
-				courseIds = append(courseIds, course.Spec.Id)
-			}
-		}
-	} else {
-		for _, ac := range user.Spec.AccessCodes {
-			tempCourseIds, err := c.acClient.GetCourseIds(ac)
-			if err != nil {
-				glog.Errorf("error retrieving course ids for access code: %s %v", ac, err)
-			} else {
-				courseIds = append(courseIds, tempCourseIds...)
-			}
+			courseIds = append(courseIds, tempCourseIds...)
 		}
 	}
 
@@ -142,12 +113,8 @@ func (c CourseServer) ListCourseFunc(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			glog.Errorf("error retrieving course %v", err)
 		} else {
-			pCourse, err := c.prepareCourse(course)
-			if err != nil {
-				glog.Errorf("error preparing course %v", err)
-			} else {
-				courses = append(courses, pCourse)
-			}
+			pCourse := PreparedCourse{course.Name, course.Spec}
+			courses = append(courses, pCourse)
 		}
 	}
 
