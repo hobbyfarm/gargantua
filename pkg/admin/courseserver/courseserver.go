@@ -60,7 +60,7 @@ func (a AdminCourseServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 
 	obj, err := a.hfClientSet.HobbyfarmV1().Courses().Get(id, metav1.GetOptions{})
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 400,"badrequest", "invalid id")
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid id")
 		return
 	}
 
@@ -75,7 +75,7 @@ func (a AdminCourseServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 
 	util.ReturnHTTPContent(w, r, 200, "success", encodedCourse)
 
-	glog.V(2).Infof("retrieve course %s", obj.Name)
+	glog.V(4).Infof("retrieve course %s", obj.Name)
 }
 
 func (a AdminCourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +106,7 @@ func (a AdminCourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 
 	util.ReturnHTTPContent(w, r, 200, "success", encodedCourses)
 
-	glog.V(2).Infof("listed courses")
+	glog.V(4).Infof("listed courses")
 
 }
 
@@ -190,6 +190,7 @@ func (a AdminCourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.ReturnHTTPMessage(w, r, 201, "created", course.Name)
+	glog.V(4).Infof("Created course %s", course.Name)
 	return
 }
 
@@ -286,6 +287,7 @@ func (a AdminCourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.ReturnHTTPMessage(w, r, 200, "updated", "")
+	glog.V(4).Infof("Updated course %s", id)
 	return
 }
 
@@ -359,7 +361,7 @@ func (a AdminCourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.ReturnHTTPMessage(w, r, 204, "deleted", "deleted successfully")
-	glog.V(2).Infof("deleted course: %v", id)
+	glog.V(4).Infof("deleted course: %v", id)
 }
 
 func filterSessions(course string, list *hfv1.SessionList) *[]hfv1.Session {
