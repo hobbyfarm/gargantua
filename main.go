@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
+	adminCourseServer "github.com/hobbyfarm/gargantua/pkg/admin/courseserver"
 	adminEnvironmentServer "github.com/hobbyfarm/gargantua/pkg/admin/environmentserver"
 	adminScenarioServer "github.com/hobbyfarm/gargantua/pkg/admin/scenarioserver"
 	adminScheduledEventServer "github.com/hobbyfarm/gargantua/pkg/admin/scheduledeventserver"
@@ -179,6 +180,11 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	adminCServer, err := adminCourseServer.NewAdminCourseServer(authClient, hfClient)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
 	if shellServer {
 		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
@@ -195,6 +201,7 @@ func main() {
 		adminSEServer.SetupRoutes(r)
 		adminUServer.SetupRoutes(r)
 		adminVMTServer.SetupRoutes(r)
+		adminCServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
