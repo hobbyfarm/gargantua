@@ -1,6 +1,6 @@
 module github.com/hobbyfarm/gargantua
 
-go 1.13
+go 1.13.4
 
 replace k8s.io/client-go => k8s.io/client-go v0.15.8
 
