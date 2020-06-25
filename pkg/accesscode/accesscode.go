@@ -125,7 +125,7 @@ func (acc AccessCodeClient) GetCourseIds(code string) ([]string, error) {
 	return accessCode.Spec.Courses, nil
 }
 
-func (acc AccessCodeClient) GetClosestAccessCode(userID string, scenario string) (string, error) {
+func (acc AccessCodeClient) GetClosestAccessCode(userID string, scenarioOrCourseId string) (string, error) {
 	// basically let's get all of the access codes, sort them by expiration, and start going down the list looking for access codes.
 
 	user, err := acc.hfClientSet.HobbyfarmV1().Users().Get(userID, metav1.GetOptions{}) // @TODO: FIX THIS TO NOT DIRECTLY CALL USER
@@ -143,7 +143,14 @@ func (acc AccessCodeClient) GetClosestAccessCode(userID string, scenario string)
 	var accessCodes []hfv1.AccessCode
 	for _, code := range rawAccessCodes {
 		for _, s := range code.Spec.Scenarios {
-			if s == scenario {
+			if s == scenarioOrCourseId {
+				accessCodes = append(accessCodes, code)
+				break
+			}
+		}
+
+		for _, c := range code.Spec.Courses {
+			if c == scenarioOrCourseId {
 				accessCodes = append(accessCodes, code)
 				break
 			}
@@ -151,7 +158,7 @@ func (acc AccessCodeClient) GetClosestAccessCode(userID string, scenario string)
 	}
 
 	if len(accessCodes) == 0 {
-		return "", fmt.Errorf("access codes were not found for user %s with scenario %s", userID, scenario)
+		return "", fmt.Errorf("access codes were not found for user %s with scenario or course id %s", userID, scenarioOrCourseId)
 	}
 
 	sort.Slice(accessCodes, func(i, j int) bool {
