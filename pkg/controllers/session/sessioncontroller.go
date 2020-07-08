@@ -15,6 +15,10 @@ import (
 	"time"
 )
 
+const (
+	SessionExpireTime = time.Hour * 3
+)
+
 type SessionController struct {
 	hfClientSet *hfClientset.Clientset
 
@@ -144,6 +148,30 @@ func (s *SessionController) reconcileSession(ssName string) error {
 	}
 
 	timeUntilExpires := expires.Sub(now)
+
+	// clean up old (3 hours later) sessions, and only if they are finished
+	if expires.Add(SessionExpireTime).Before(now) && ss.Status.Finished {
+		// first we need to delete the vmclaims
+		err := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("hobbyfarm.io/session=%s", ss.Name),
+		})
+
+		if err != nil {
+			return fmt.Errorf("error deleting vmclaims with session label %s: %s", ss.Name, err)
+		}
+
+		glog.V(6).Infof("deleted vmclaims for old session %s", ss.Name)
+
+		// now that the vmclaims are deleted, go ahead and delete the session
+		err = s.hfClientSet.HobbyfarmV1().Sessions().Delete(ss.Name, &metav1.DeleteOptions{})
+
+		if err != nil {
+			return fmt.Errorf("error deleting session %s: %s", ss.Name, err)
+		}
+
+		glog.V(6).Infof("deleted old session %s", ss.Name)
+		return nil
+	}
 
 	if expires.Before(now) && !ss.Status.Finished {
 		// we need to set the session to finished and delete the vm's

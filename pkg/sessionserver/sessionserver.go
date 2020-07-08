@@ -26,6 +26,7 @@ const (
 	newSSTimeout       = "5m"
 	keepaliveSSTimeout = "5m"
 	pauseSSTimeout     = "2h"
+	vmcSessionLabel    = "hobbyfarm.io/session"
 )
 
 type SessionServer struct {
@@ -208,6 +209,9 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	for index, vmset := range vms {
 		virtualMachineClaim := hfv1.VirtualMachineClaim{}
 		vmcId := util.GenerateResourceName("vmc", util.RandStringRunes(10), 10)
+		vmcLabels := make(map[string]string)
+		vmcLabels[vmcSessionLabel] = session.Name // map vmc to session
+		virtualMachineClaim.Labels = vmcLabels
 		virtualMachineClaim.Spec.Id = vmcId
 		virtualMachineClaim.Name = vmcId
 		virtualMachineClaim.Spec.VirtualMachines = make(map[string]hfv1.VirtualMachineClaimVM)
