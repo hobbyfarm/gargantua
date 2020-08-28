@@ -3,6 +3,12 @@ package tfpcontroller
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
+	"reflect"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	tfv1 "github.com/hobbyfarm/gargantua/pkg/apis/terraformcontroller.cattle.io/v1"
@@ -20,11 +26,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
-	"math/rand"
-	"reflect"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type TerraformProvisionerController struct {
@@ -336,6 +337,13 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			}
 			if credentialsSecret != "" {
 				tfs.Spec.Variables.SecretNames = []string{credentialsSecret}
+			}
+
+			// make sure secret exists before creating the state. Requeue until secret is added //
+			_, err = t.k8sClientset.CoreV1().Secrets(provisionNS).Get(credentialsSecret, metav1.GetOptions{})
+			if err != nil {
+				glog.Errorf("Error while getting secret %s\n", credentialsSecret)
+				return err, true
 			}
 
 			tfs, err = t.tfClientset.TerraformcontrollerV1().States(provisionNS).Create(tfs)
