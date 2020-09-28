@@ -50,6 +50,11 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+const (
+	ClientGoQPS = 100
+	ClientGoBurst = 100
+)
+
 var (
 	localMasterUrl     string
 	localKubeconfig    string
@@ -82,6 +87,9 @@ func main() {
 			glog.Fatalf("Error building kubeconfig: %s", err.Error())
 		}
 	}
+
+	cfg.QPS = ClientGoQPS
+	cfg.Burst = ClientGoBurst
 
 	hfClient, err := hfClientset.NewForConfig(cfg)
 	if err != nil {
