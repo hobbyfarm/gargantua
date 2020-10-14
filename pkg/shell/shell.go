@@ -116,7 +116,7 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 
 	// now use the secret and ssh off to something
 	config := &ssh.ClientConfig{
-		User: "ubuntu",
+		User: vm.Spec.SshUsername,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},

@@ -39,6 +39,7 @@ type VirtualMachineSetController struct {
 
 const (
 	vmEnvironmentIndex = "vm.vmclaim.controllers.hobbyfarm.io/environment-index"
+	defaultUsername = "ubuntu"
 )
 
 func NewVirtualMachineSetController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*VirtualMachineSetController, error) {
@@ -225,6 +226,10 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		glog.V(5).Infof("provisioning %d vms", needed)
 		// this code is so... verbose...
 		for i := 0; i < needed; i++ {
+			sshUser, exists := env.Spec.TemplateMapping[vmt.Name]["ssh_username"]
+			if !exists {
+				sshUser = defaultUsername
+			}
 			vmName := strings.Join([]string{vmset.Spec.BaseName, fmt.Sprintf("%08x", rand.Uint32())}, "-")
 			vm := &hfv1.VirtualMachine{
 				ObjectMeta: metav1.ObjectMeta{
@@ -249,6 +254,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 				Spec: hfv1.VirtualMachineSpec{
 					Id:                       vmName,
 					VirtualMachineTemplateId: vmt.Spec.Id,
+					SshUsername: 			  sshUser,
 					KeyPair:                  "",
 					VirtualMachineClaimId:    "",
 					UserId:                   "",
