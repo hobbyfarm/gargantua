@@ -30,6 +30,7 @@ var hfNamespace = "hobbyfarm"
 var sshDev = ""
 var sshDevHost = ""
 var sshDevPort = ""
+var defaultSshUsername = "ubuntu"
 
 func init() {
 	ns := os.Getenv("HF_NAMESPACE")
@@ -114,9 +115,14 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sshUsername := vm.Spec.SshUsername
+	if len(sshUsername) < 1 {
+		sshUsername = defaultSshUsername
+	}
+
 	// now use the secret and ssh off to something
 	config := &ssh.ClientConfig{
-		User: "ubuntu",
+		User: sshUsername,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},

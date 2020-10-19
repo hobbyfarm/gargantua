@@ -266,6 +266,11 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 					Hostname:      "",
 				},
 			}
+
+			sshUser, exists := env.Spec.TemplateMapping[vmt.Name]["ssh_username"]
+			if exists {
+				vm.Spec.SshUsername = sshUser
+			}
 			if vmset.Spec.RestrictedBind {
 				vm.ObjectMeta.Labels["restrictedbind"] = "true"
 				vm.ObjectMeta.Labels["restrictedbindvalue"] = vmset.Spec.RestrictedBindValue

@@ -293,6 +293,12 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 					Hostname:      "",
 				},
 			}
+
+			sshUser, exists := chosenEnvironment.Spec.TemplateMapping[vmX.Template]["ssh_username"]
+			if exists {
+				vm.Spec.SshUsername = sshUser
+			}
+
 			if chosenDynamicBindConfiguration.Spec.RestrictedBind {
 				vm.ObjectMeta.Labels["restrictedbind"] = "true"
 				vm.ObjectMeta.Labels["restrictedbindvalue"] = chosenDynamicBindConfiguration.Spec.RestrictedBindValue
