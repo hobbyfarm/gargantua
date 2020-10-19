@@ -18,10 +18,6 @@ import (
 	"time"
 )
 
-const (
-	defaultSshUsername = "ubuntu"
-)
-
 type DynamicBindController struct {
 	hfClientSet                 *hfClientset.Clientset
 	dynamicBindRequestWorkqueue workqueue.RateLimitingInterface
@@ -256,10 +252,6 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 
 		for vmClaimVMName, vmX := range vmClaim.Spec.VirtualMachines {
 			vmName := strings.Join([]string{chosenDynamicBindConfiguration.Spec.BaseName, fmt.Sprintf("%08x", rand.Uint32())}, "-")
-			sshUser, exists := chosenEnvironment.Spec.TemplateMapping[vmX.Template]["ssh_username"]
-			if !exists {
-				sshUser = defaultSshUsername
-			}
 			vm := &hfv1.VirtualMachine{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: vmName,
@@ -284,7 +276,6 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 				Spec: hfv1.VirtualMachineSpec{
 					Id:                       vmName,
 					VirtualMachineTemplateId: vmX.Template,
-					SshUsername:              sshUser,
 					KeyPair:                  "",
 					VirtualMachineClaimId:    dynamicBindRequest.Spec.VirtualMachineClaim,
 					UserId:                   vmClaim.Spec.UserId,
@@ -302,6 +293,12 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 					Hostname:      "",
 				},
 			}
+
+			sshUser, exists := chosenEnvironment.Spec.TemplateMapping[vmX.Template]["ssh_username"]
+			if exists {
+				vm.Spec.SshUsername = sshUser
+			}
+
 			if chosenDynamicBindConfiguration.Spec.RestrictedBind {
 				vm.ObjectMeta.Labels["restrictedbind"] = "true"
 				vm.ObjectMeta.Labels["restrictedbindvalue"] = chosenDynamicBindConfiguration.Spec.RestrictedBindValue

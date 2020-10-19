@@ -39,7 +39,6 @@ type VirtualMachineSetController struct {
 
 const (
 	vmEnvironmentIndex = "vm.vmclaim.controllers.hobbyfarm.io/environment-index"
-	defaultSshUsername = "ubuntu"
 )
 
 func NewVirtualMachineSetController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*VirtualMachineSetController, error) {
@@ -226,10 +225,6 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		glog.V(5).Infof("provisioning %d vms", needed)
 		// this code is so... verbose...
 		for i := 0; i < needed; i++ {
-			sshUser, exists := env.Spec.TemplateMapping[vmt.Name]["ssh_username"]
-			if !exists {
-				sshUser = defaultSshUsername
-			}
 			vmName := strings.Join([]string{vmset.Spec.BaseName, fmt.Sprintf("%08x", rand.Uint32())}, "-")
 			vm := &hfv1.VirtualMachine{
 				ObjectMeta: metav1.ObjectMeta{
@@ -254,7 +249,6 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 				Spec: hfv1.VirtualMachineSpec{
 					Id:                       vmName,
 					VirtualMachineTemplateId: vmt.Spec.Id,
-					SshUsername: 			  sshUser,
 					KeyPair:                  "",
 					VirtualMachineClaimId:    "",
 					UserId:                   "",
@@ -271,6 +265,11 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 					EnvironmentId: env.Name,
 					Hostname:      "",
 				},
+			}
+
+			sshUser, exists := env.Spec.TemplateMapping[vmt.Name]["ssh_username"]
+			if exists {
+				vm.Spec.SshUsername = sshUser
 			}
 			if vmset.Spec.RestrictedBind {
 				vm.ObjectMeta.Labels["restrictedbind"] = "true"
