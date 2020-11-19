@@ -36,46 +36,9 @@ func NewAdminCourseServer(authClient *authclient.AuthClient, hfClientset *hfClie
 
 func (a AdminCourseServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/course/list", a.ListFunc).Methods("GET")
-	r.HandleFunc("/a/course/{id}", a.GetFunc).Methods("GET")
 	r.HandleFunc("/a/course/new", a.CreateFunc).Methods("POST")
 	r.HandleFunc("/a/course/{id}", a.UpdateFunc).Methods("PUT")
 	r.HandleFunc("/a/course/{id}", a.DeleteFunc).Methods("DELETE")
-}
-
-func (a AdminCourseServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := a.auth.AuthNAdmin(w, r)
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get course")
-		return
-	}
-
-	vars := mux.Vars(r)
-
-	id := vars["id"]
-
-	if id == "" {
-		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no id passed in")
-		return
-	}
-
-	obj, err := a.hfClientSet.HobbyfarmV1().Courses().Get(id, metav1.GetOptions{})
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid id")
-		return
-	}
-
-	preparedCourse := PreparedCourse{obj.Name, obj.Spec}
-
-	encodedCourse, err := json.Marshal(preparedCourse)
-	if err != nil {
-		glog.Errorf("error encoding course: %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error retrieving course")
-		return
-	}
-
-	util.ReturnHTTPContent(w, r, 200, "success", encodedCourse)
-
-	glog.V(4).Infof("retrieve course %s", obj.Name)
 }
 
 func (a AdminCourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {

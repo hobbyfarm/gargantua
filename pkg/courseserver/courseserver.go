@@ -52,6 +52,7 @@ func NewCourseServer(authClient *authclient.AuthClient, acClient *accesscode.Acc
 func (c CourseServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/course/list", c.ListCoursesForAccesscode).Methods("GET")
 	r.HandleFunc("/course/{course_id}", c.GetCourse).Methods("GET")
+	r.HandleFunc("/a/course/{id}", c.GetCourse).Methods("GET")
 }
 
 func (c CourseServer) getPreparedCourseById(id string) (PreparedCourse, error) {
