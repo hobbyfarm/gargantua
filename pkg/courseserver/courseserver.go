@@ -40,7 +40,10 @@ func NewCourseServer(authClient *authclient.AuthClient, acClient *accesscode.Acc
 	inf := hfInformerFactory.Hobbyfarm().V1().Courses().Informer()
 	indexers := map[string]cache.IndexFunc{idIndex: idIndexer}
 
-	inf.AddIndexers(indexers)
+	err := inf.AddIndexers(indexers)
+	if err != nil {
+		glog.Errorf("error adding indexer %s for courses", idIndex)
+	}
 	course.courseIndexer = inf.GetIndexer()
 
 	return &course, nil
