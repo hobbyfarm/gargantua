@@ -115,7 +115,7 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preparedEnvironments := []PreparedEnvironment{}
+	var preparedEnvironments []PreparedEnvironment
 
 	for _, e := range environments.Items {
 		preparedEnvironments = append(preparedEnvironments, PreparedEnvironment{e.Name,e.Spec, e.Status})
@@ -137,8 +137,8 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	display_name := r.PostFormValue("display_name")
-	if display_name == "" {
+	displayName := r.PostFormValue("display_name")
+	if displayName == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no display_name passed in")
 		return
 	}
@@ -152,53 +152,53 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	template_mapping := r.PostFormValue("template_mapping")
-	if template_mapping == "" {
+	templateMapping := r.PostFormValue("template_mapping")
+	if templateMapping == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no template_mapping passed in")
 		return
 	}
 
-	environment_specifics := r.PostFormValue("environment_specifics")
-	if environment_specifics == "" {
+	environmentSpecifics := r.PostFormValue("environment_specifics")
+	if environmentSpecifics == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no environment_specifics passed in")
 		return
 	}
 
-	ip_translation_map := r.PostFormValue("ip_translation_map")
-	if ip_translation_map == "" {
+	ipTranslationMap := r.PostFormValue("ip_translation_map")
+	if ipTranslationMap == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ip_translation_map passed in")
 		return
 	}
 
-	ws_endpoint := r.PostFormValue("ws_endpoint")
-	if ws_endpoint == "" {
+	wsEndpoint := r.PostFormValue("ws_endpoint")
+	if wsEndpoint == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ws_endpoint passed in")
 		return
 	}
 
-	capacity_mode := r.PostFormValue("capacity_mode")
-	if capacity_mode == "" {
+	capacityMode := r.PostFormValue("capacity_mode")
+	if capacityMode == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no capacity_mode passed in")
 		return
-	} else if capacity_mode != "raw" && capacity_mode != "count" {
+	} else if capacityMode != "raw" && capacityMode != "count" {
 		// invalid capacity mode passed in
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid capacity_mode passed in")
 		return
 	}
 
-	burst_capable := r.PostFormValue("burst_capable")
-	if burst_capable == "" {
+	burstCapable := r.PostFormValue("burst_capable")
+	if burstCapable == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no burst_capable passed in")
 		return
 	}
-	burstCapableBool, err := strconv.ParseBool(burst_capable)
+	burstCapableBool, err := strconv.ParseBool(burstCapable)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid burst_capacity passed in")
 		return
 	}
 
 	templateMappingUnmarshaled := map[string]map[string]string{} // lol
-	err = json.Unmarshal([]byte(template_mapping), &templateMappingUnmarshaled)
+	err = json.Unmarshal([]byte(templateMapping), &templateMappingUnmarshaled)
 	if err != nil {
 		glog.Errorf("error while unmarshaling template_mapping (create environment) %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -206,7 +206,7 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	environmentSpecificsUnmarshaled := map[string]string{}
-	err = json.Unmarshal([]byte(environment_specifics), &environmentSpecificsUnmarshaled)
+	err = json.Unmarshal([]byte(environmentSpecifics), &environmentSpecificsUnmarshaled)
 	if err != nil {
 		glog.Errorf("error while unmarshaling environment_specifics (create environment) %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -214,7 +214,7 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ipTranslationUnmarshaled := map[string]string{}
-	err = json.Unmarshal([]byte(ip_translation_map), &ipTranslationUnmarshaled)
+	err = json.Unmarshal([]byte(ipTranslationMap), &ipTranslationUnmarshaled)
 	if err != nil {
 		glog.Errorf("error while unmarshaling ip_translation_map (create environment) %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -227,15 +227,15 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:10]
 	environment.Name = "env-" + strings.ToLower(sha)
 
-	environment.Spec.DisplayName = display_name
+	environment.Spec.DisplayName = displayName
 	environment.Spec.DNSSuffix = dnssuffix
 	environment.Spec.Provider = provider
 	environment.Spec.TemplateMapping = templateMappingUnmarshaled
 	environment.Spec.EnvironmentSpecifics = environmentSpecificsUnmarshaled
 	environment.Spec.IPTranslationMap = ipTranslationUnmarshaled
-	environment.Spec.WsEndpoint = ws_endpoint
+	environment.Spec.WsEndpoint = wsEndpoint
 
-	if capacity_mode == "raw" {
+	if capacityMode == "raw" {
 		environment.Spec.CapacityMode = hfv1.CapacityModeRaw
 	} else {
 		// not validating "count" here as we already validated input var above
@@ -278,18 +278,18 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("bad")
 		}
 
-		display_name := r.PostFormValue("display_name")
+		displayName := r.PostFormValue("display_name")
 		dnssuffix := r.PostFormValue("dnssuffix")
 		provider := r.PostFormValue("provider")
-		template_mapping := r.PostFormValue("template_mapping")
-		environment_specifics := r.PostFormValue("environment_specifics")
-		ip_translation_map := r.PostFormValue("ip_translation_map")
-		ws_endpoint := r.PostFormValue("ws_endpoint")
-		capacity_mode := r.PostFormValue("capacity_mode")
-		burst_capable := r.PostFormValue("burst_capable")
+		templateMapping := r.PostFormValue("template_mapping")
+		environmentSpecifics := r.PostFormValue("environment_specifics")
+		ipTranslationMap := r.PostFormValue("ip_translation_map")
+		wsEndpoint := r.PostFormValue("ws_endpoint")
+		capacityMode := r.PostFormValue("capacity_mode")
+		burstCapable := r.PostFormValue("burst_capable")
 
-		if len(display_name) > 0 {
-			environment.Spec.DisplayName = display_name
+		if len(displayName) > 0 {
+			environment.Spec.DisplayName = displayName
 		}
 
 		// empty string is e valid dnssuffix value (because it is optional), so not
@@ -300,9 +300,9 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			environment.Spec.Provider = provider
 		}
 
-		if len(template_mapping) > 0 {
+		if len(templateMapping) > 0 {
 			templateMappingUnmarshaled := map[string]map[string]string{} // lol
-			err = json.Unmarshal([]byte(template_mapping), &templateMappingUnmarshaled)
+			err = json.Unmarshal([]byte(templateMapping), &templateMappingUnmarshaled)
 			if err != nil {
 				glog.Errorf("error while unmarshaling template_mapping (update environment) %v", err)
 				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -311,9 +311,9 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			environment.Spec.TemplateMapping = templateMappingUnmarshaled
 		}
 
-		if len(environment_specifics) > 0 {
+		if len(environmentSpecifics) > 0 {
 			environmentSpecificsUnmarshaled := map[string]string{}
-			err = json.Unmarshal([]byte(environment_specifics), &environmentSpecificsUnmarshaled)
+			err = json.Unmarshal([]byte(environmentSpecifics), &environmentSpecificsUnmarshaled)
 			if err != nil {
 				glog.Errorf("error while unmarshaling environment_specifics (update environment) %v", err)
 				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -322,9 +322,9 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			environment.Spec.EnvironmentSpecifics = environmentSpecificsUnmarshaled
 		}
 
-		if len(ip_translation_map) > 0 {
+		if len(ipTranslationMap) > 0 {
 			ipTranslationUnmarshaled := map[string]string{}
-			err = json.Unmarshal([]byte(ip_translation_map), &ipTranslationUnmarshaled)
+			err = json.Unmarshal([]byte(ipTranslationMap), &ipTranslationUnmarshaled)
 			if err != nil {
 				glog.Errorf("error while unmarshaling ip_translation_map (create environment) %v", err)
 				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -333,14 +333,14 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			environment.Spec.IPTranslationMap = ipTranslationUnmarshaled
 		}
 
-		if len(ws_endpoint) > 0 {
-			environment.Spec.WsEndpoint = ws_endpoint
+		if len(wsEndpoint) > 0 {
+			environment.Spec.WsEndpoint = wsEndpoint
 		}
 
-		if len(capacity_mode) > 0 {
-			if capacity_mode == "raw" {
+		if len(capacityMode) > 0 {
+			if capacityMode == "raw" {
 				environment.Spec.CapacityMode = hfv1.CapacityModeRaw
-			} else if capacity_mode == "count" {
+			} else if capacityMode == "count" {
 				environment.Spec.CapacityMode = hfv1.CapacityModeCount
 			} else {
 				util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid capacity_mode passed in")
@@ -348,8 +348,8 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if len(burst_capable) > 0 {
-			burstCapableBool, err := strconv.ParseBool(burst_capable)
+		if len(burstCapable) > 0 {
+			burstCapableBool, err := strconv.ParseBool(burstCapable)
 			if err != nil {
 				util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid burst_capable passed in")
 				return fmt.Errorf("bad")
