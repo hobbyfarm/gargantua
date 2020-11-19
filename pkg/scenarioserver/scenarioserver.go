@@ -41,6 +41,11 @@ type PreparedScenario struct {
 	Pauseable       bool                `json:"pauseable"`
 }
 
+type AdminPreparedScenario struct {
+	ID string `json:"id"`
+	hfv1.ScenarioSpec
+}
+
 func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioServer, error) {
 	scenario := ScenarioServer{}
 
@@ -56,6 +61,7 @@ func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.A
 
 func (s ScenarioServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/scenario/list", s.ListScenarioForAccessCodes).Methods("GET")
+	r.HandleFunc("/a/scenario/{id}", s.AdminGetFunc).Methods("GET")
 	r.HandleFunc("/scenario/{scenario_id}", s.GetScenarioFunc).Methods("GET")
 	r.HandleFunc("/scenario/{scenario_id}/step/{step_id:[0-9]+}", s.GetScenarioStepFunc).Methods("GET")
 	glog.V(2).Infof("set up route")
@@ -130,6 +136,42 @@ func (s ScenarioServer) GetScenarioFunc(w http.ResponseWriter, r *http.Request) 
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedScenario)
 }
+
+func (s ScenarioServer) AdminGetFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get Scenario")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	id := vars["id"]
+
+	if len(id) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
+		return
+	}
+
+	scenario, err := s.GetScenarioById(id)
+
+	if err != nil {
+		glog.Errorf("error while retrieving scenario %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "no scenario found")
+		return
+	}
+
+	preparedScenario := AdminPreparedScenario{scenario.Name, scenario.Spec}
+
+	encodedScenario, err := json.Marshal(preparedScenario)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedScenario)
+
+	glog.V(2).Infof("retrieved scenario %s", scenario.Name)
+}
+
 func (s ScenarioServer) GetScenarioStepFunc(w http.ResponseWriter, r *http.Request) {
 	_, err := s.auth.AuthN(w, r)
 	if err != nil {

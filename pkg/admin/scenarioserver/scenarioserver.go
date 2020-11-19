@@ -52,7 +52,6 @@ func (a AdminScenarioServer) getScenario(id string) (hfv1.Scenario, error) {
 func (a AdminScenarioServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/scenario/new", a.CreateFunc).Methods("POST")
 	r.HandleFunc("/a/scenario/list", a.ListFunc).Methods("GET")
-	r.HandleFunc("/a/scenario/{id}", a.GetFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}/printable", a.PrintFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}", a.UpdateFunc).Methods("PUT")
 	glog.V(2).Infof("set up routes for Scenario server")
@@ -63,40 +62,7 @@ type PreparedScenario struct {
 	hfv1.ScenarioSpec
 }
 
-func (a AdminScenarioServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := a.auth.AuthNAdmin(w, r)
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get Scenario")
-		return
-	}
 
-	vars := mux.Vars(r)
-
-	id := vars["id"]
-
-	if len(id) == 0 {
-		util.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
-		return
-	}
-
-	scenario, err := a.getScenario(id)
-
-	if err != nil {
-		glog.Errorf("error while retrieving scenario %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "error", "no scenario found")
-		return
-	}
-
-	preparedScenario := PreparedScenario{scenario.Name, scenario.Spec}
-
-	encodedScenario, err := json.Marshal(preparedScenario)
-	if err != nil {
-		glog.Error(err)
-	}
-	util.ReturnHTTPContent(w, r, 200, "success", encodedScenario)
-
-	glog.V(2).Infof("retrieved scenario %s", scenario.Name)
-}
 
 func (a AdminScenarioServer) PrintFunc(w http.ResponseWriter, r *http.Request) {
 	_, err := a.auth.AuthNAdmin(w, r)
