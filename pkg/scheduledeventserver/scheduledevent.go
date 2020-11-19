@@ -18,13 +18,13 @@ import (
 	"time"
 )
 
-type AdminScheduledEventServer struct {
+type ScheduledEventServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet *hfClientset.Clientset
 }
 
-func NewAdminScheduledEventServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*AdminScheduledEventServer, error) {
-	es := AdminScheduledEventServer{}
+func NewScheduledEventServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*ScheduledEventServer, error) {
+	es := ScheduledEventServer{}
 
 	es.hfClientSet = hfClientset
 	es.auth = authClient
@@ -32,7 +32,7 @@ func NewAdminScheduledEventServer(authClient *authclient.AuthClient, hfClientset
 	return &es, nil
 }
 
-func (a AdminScheduledEventServer) getScheduledEvent(id string) (hfv1.ScheduledEvent, error) {
+func (s ScheduledEventServer) getScheduledEvent(id string) (hfv1.ScheduledEvent, error) {
 
 	empty := hfv1.ScheduledEvent{}
 
@@ -40,7 +40,7 @@ func (a AdminScheduledEventServer) getScheduledEvent(id string) (hfv1.ScheduledE
 		return empty, fmt.Errorf("scheduledevent passed in was empty")
 	}
 
-	obj, err := a.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(id, metav1.GetOptions{})
+	obj, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving ScheduledEvent by id: %s with error: %v", id, err)
 	}
@@ -49,11 +49,11 @@ func (a AdminScheduledEventServer) getScheduledEvent(id string) (hfv1.ScheduledE
 
 }
 
-func (a AdminScheduledEventServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/a/scheduledevent/list", a.ListFunc).Methods("GET")
-	r.HandleFunc("/a/scheduledevent/new", a.CreateFunc).Methods("POST")
-	r.HandleFunc("/a/scheduledevent/{id}", a.GetFunc).Methods("GET")
-	r.HandleFunc("/a/scheduledevent/{id}", a.UpdateFunc).Methods("PUT")
+func (s ScheduledEventServer) SetupRoutes(r *mux.Router) {
+	r.HandleFunc("/s/scheduledevent/list", s.ListFunc).Methods("GET")
+	r.HandleFunc("/s/scheduledevent/new", s.CreateFunc).Methods("POST")
+	r.HandleFunc("/s/scheduledevent/{id}", s.GetFunc).Methods("GET")
+	r.HandleFunc("/s/scheduledevent/{id}", s.UpdateFunc).Methods("PUT")
 	glog.V(2).Infof("set up routes for admin scheduledevent server")
 }
 
@@ -63,8 +63,8 @@ type PreparedScheduledEvent struct {
 	hfv1.ScheduledEventStatus
 }
 
-func (a AdminScheduledEventServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := a.auth.AuthNAdmin(w, r)
+func (s ScheduledEventServer) GetFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get scheduledEvent")
 		return
@@ -79,7 +79,7 @@ func (a AdminScheduledEventServer) GetFunc(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	scheduledEvent, err := a.getScheduledEvent(scheduledEventId)
+	scheduledEvent, err := s.getScheduledEvent(scheduledEventId)
 
 	if err != nil {
 		glog.Errorf("error while retrieving scheduledEvent %v", err)
@@ -98,14 +98,14 @@ func (a AdminScheduledEventServer) GetFunc(w http.ResponseWriter, r *http.Reques
 	glog.V(2).Infof("retrieved scheduledEvent %s", scheduledEvent.Name)
 }
 
-func (a AdminScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := a.auth.AuthNAdmin(w, r)
+func (s ScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get scheduledevents")
 		return
 	}
 
-	scheduledEvents, err := a.hfClientSet.HobbyfarmV1().ScheduledEvents().List(metav1.ListOptions{})
+	scheduledEvents, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().List(metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while retrieving scheduledevents %v", err)
@@ -127,8 +127,8 @@ func (a AdminScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Reque
 	glog.V(2).Infof("listed scheduled events")
 }
 
-func (a AdminScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := a.auth.AuthNAdmin(w, r)
+func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := s.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create scheduledevents")
 		return
@@ -249,7 +249,7 @@ func (a AdminScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Req
 		scheduledEvent.Spec.RestrictedBindValue = "se-" + strings.ToLower(sha)
 	}
 
-	scheduledEvent, err = a.hfClientSet.HobbyfarmV1().ScheduledEvents().Create(scheduledEvent)
+	scheduledEvent, err = s.hfClientSet.HobbyfarmV1().ScheduledEvents().Create(scheduledEvent)
 	if err != nil {
 		glog.Errorf("error creating scheduled event %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scehduled event")
@@ -260,8 +260,8 @@ func (a AdminScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Req
 	return
 }
 
-func (a AdminScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := a.auth.AuthNAdmin(w, r)
+func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := s.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scheduledevents")
 		return
@@ -276,7 +276,7 @@ func (a AdminScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Req
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		scheduledEvent, err := a.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(id, metav1.GetOptions{})
+		scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID found")
@@ -363,7 +363,7 @@ func (a AdminScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Req
 			}
 		}
 
-		_, updateErr := a.hfClientSet.HobbyfarmV1().ScheduledEvents().Update(scheduledEvent)
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Update(scheduledEvent)
 		return updateErr
 	})
 
