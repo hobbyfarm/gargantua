@@ -50,7 +50,6 @@ func (a AdminScenarioServer) getScenario(id string) (hfv1.Scenario, error) {
 }
 
 func (a AdminScenarioServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/a/scenario/new", a.CreateFunc).Methods("POST")
 	r.HandleFunc("/a/scenario/list", a.ListFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}/printable", a.PrintFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}", a.UpdateFunc).Methods("PUT")
@@ -154,88 +153,7 @@ func (a AdminScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infof("listed scenarios")
 }
 
-func (a AdminScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := a.auth.AuthNAdmin(w, r)
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create scenarios")
-		return
-	}
 
-	name := r.PostFormValue("name")
-	if name == "" {
-		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no name passed in")
-		return
-	}
-	description := r.PostFormValue("description")
-	if description == "" {
-		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no description passed in")
-		return
-	}
-
-	keepaliveDuration := r.PostFormValue("keepalive_duration")
-	// we won't error if no keep alive duration is passed in or if it's blank because we'll default elsewhere
-
-	steps := []hfv1.ScenarioStep{}
-	virtualmachines := []map[string]string{}
-
-	rawSteps := r.PostFormValue("steps")
-	if rawSteps != "" {
-		err = json.Unmarshal([]byte(rawSteps), &steps)
-		if err != nil {
-			glog.Errorf("error while unmarshaling steps %v", err)
-			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
-			return
-		}
-	}
-
-	rawVirtualMachines := r.PostFormValue("virtualmachines")
-	if rawVirtualMachines != "" {
-		err = json.Unmarshal([]byte(rawVirtualMachines), &virtualmachines)
-		if err != nil {
-			glog.Errorf("error while unmarshaling VMs %v", err)
-			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
-			return
-		}
-	}
-
-	pauseable := r.PostFormValue("pauseable")
-	pause_duration := r.PostFormValue("pause_duration")
-
-	scenario := &hfv1.Scenario{}
-
-	hasher := sha256.New()
-	hasher.Write([]byte(name))
-	sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:10]
-	scenario.Name = "s-" + strings.ToLower(sha)
-	scenario.Spec.Id = "s-" + strings.ToLower(sha) // LEGACY!!!!
-
-	scenario.Spec.Name = name
-	scenario.Spec.Description = description
-	scenario.Spec.VirtualMachines = virtualmachines
-	scenario.Spec.Steps = steps
-	scenario.Spec.KeepAliveDuration = keepaliveDuration
-
-	scenario.Spec.Pauseable = false
-	if pauseable != "" {
-		if strings.ToLower(pauseable) == "true" {
-			scenario.Spec.Pauseable = true
-		}
-	}
-
-	if pause_duration != "" {
-		scenario.Spec.PauseDuration = pause_duration
-	}
-
-	scenario, err = a.hfClientSet.HobbyfarmV1().Scenarios().Create(scenario)
-	if err != nil {
-		glog.Errorf("error creating scenario %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scenario")
-		return
-	}
-
-	util.ReturnHTTPMessage(w, r, 201, "created", scenario.Name)
-	return
-}
 
 func (a AdminScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	_, err := a.auth.AuthNAdmin(w, r)

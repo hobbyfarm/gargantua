@@ -1,6 +1,8 @@
 package scenarioserver
 
 import (
+	"crypto/sha256"
+	"encoding/base32"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
@@ -14,6 +16,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -63,6 +66,7 @@ func (s ScenarioServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/scenario/list", s.ListScenarioForAccessCodes).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}", s.AdminGetFunc).Methods("GET")
 	r.HandleFunc("/scenario/{scenario_id}", s.GetScenarioFunc).Methods("GET")
+	r.HandleFunc("/a/scenario/new", s.CreateFunc).Methods("POST")
 	r.HandleFunc("/scenario/{scenario_id}/step/{step_id:[0-9]+}", s.GetScenarioStepFunc).Methods("GET")
 	glog.V(2).Infof("set up route")
 }
@@ -242,6 +246,89 @@ func (s ScenarioServer) ListScenarioForAccessCodes(w http.ResponseWriter, r *htt
 	util.ReturnHTTPContent(w, r, 200, "success", encodedScenarios)
 }
 
+func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create scenarios")
+		return
+	}
+
+	name := r.PostFormValue("name")
+	if name == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no name passed in")
+		return
+	}
+	description := r.PostFormValue("description")
+	if description == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no description passed in")
+		return
+	}
+
+	keepaliveDuration := r.PostFormValue("keepalive_duration")
+	// we won't error if no keep alive duration is passed in or if it's blank because we'll default elsewhere
+
+	steps := []hfv1.ScenarioStep{}
+	virtualmachines := []map[string]string{}
+
+	rawSteps := r.PostFormValue("steps")
+	if rawSteps != "" {
+		err = json.Unmarshal([]byte(rawSteps), &steps)
+		if err != nil {
+			glog.Errorf("error while unmarshaling steps %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	rawVirtualMachines := r.PostFormValue("virtualmachines")
+	if rawVirtualMachines != "" {
+		err = json.Unmarshal([]byte(rawVirtualMachines), &virtualmachines)
+		if err != nil {
+			glog.Errorf("error while unmarshaling VMs %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	pauseable := r.PostFormValue("pauseable")
+	pause_duration := r.PostFormValue("pause_duration")
+
+	scenario := &hfv1.Scenario{}
+
+	hasher := sha256.New()
+	hasher.Write([]byte(name))
+	sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:10]
+	scenario.Name = "s-" + strings.ToLower(sha)
+	scenario.Spec.Id = "s-" + strings.ToLower(sha) // LEGACY!!!!
+
+	scenario.Spec.Name = name
+	scenario.Spec.Description = description
+	scenario.Spec.VirtualMachines = virtualmachines
+	scenario.Spec.Steps = steps
+	scenario.Spec.KeepAliveDuration = keepaliveDuration
+
+	scenario.Spec.Pauseable = false
+	if pauseable != "" {
+		if strings.ToLower(pauseable) == "true" {
+			scenario.Spec.Pauseable = true
+		}
+	}
+
+	if pause_duration != "" {
+		scenario.Spec.PauseDuration = pause_duration
+	}
+
+	scenario, err = s.hfClientSet.HobbyfarmV1().Scenarios().Create(scenario)
+	if err != nil {
+		glog.Errorf("error creating scenario %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scenario")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 201, "created", scenario.Name)
+	return
+}
+
 func (s ScenarioServer) GetScenarioById(id string) (hfv1.Scenario, error) {
 	if len(id) == 0 {
 		return hfv1.Scenario{}, fmt.Errorf("scenario id passed in was blank")
@@ -265,6 +352,7 @@ func (s ScenarioServer) GetScenarioById(id string) (hfv1.Scenario, error) {
 	return *scenario, nil
 
 }
+
 func idIndexer(obj interface{}) ([]string, error) {
 	scenario, ok := obj.(*hfv1.Scenario)
 	if !ok {
