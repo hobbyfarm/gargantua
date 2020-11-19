@@ -167,33 +167,6 @@ func (s ScenarioServer) ListScenarioFunc(w http.ResponseWriter, r *http.Request)
 	// store a list of scenarios linked to courses for filtering
 	//var courseScenarios []string
 	var scenarioIds []string
-	/*
-	if user.Spec.Admin {
-		tempCourses, err := s.hfClientSet.HobbyfarmV1().Courses().List(metav1.ListOptions{})
-		if err != nil {
-			glog.Errorf("error listing courses: %v", err)
-		} else {
-			for _, course := range tempCourses.Items {
-				for _, scenario := range course.Spec.Scenarios {
-					courseScenarios = append(courseScenarios, scenario)
-				}
-			}
-			courseScenarios = util.UniqueStringSlice(courseScenarios)
-		}
-
-		tempScenarios, err := s.hfClientSet.HobbyfarmV1().Scenarios().List(metav1.ListOptions{})
-		if err != nil {
-			glog.Errorf("error listing scenarios: %v", err)
-		} else {
-			for _, scenario := range tempScenarios.Items {
-				if !util.StringInSlice(scenario.Spec.Id, courseScenarios) {
-					scenarioIds = append(scenarioIds, scenario.Spec.Id)
-				}
-			}
-		}
-	} else {
-	}
-	*/
 	for _, ac := range user.Spec.AccessCodes {
 		tempScenarioIds, err := s.acClient.GetScenarioIds(ac)
 		if err != nil {
