@@ -13,6 +13,7 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"net/http"
 	"strconv"
@@ -64,6 +65,7 @@ func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.A
 
 func (s ScenarioServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/scenario/list", s.ListScenarioForAccessCodes).Methods("GET")
+	r.HandleFunc("/a/scenario/list", s.ListFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}", s.AdminGetFunc).Methods("GET")
 	r.HandleFunc("/scenario/{scenario_id}", s.GetScenarioFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/new", s.CreateFunc).Methods("POST")
@@ -244,6 +246,37 @@ func (s ScenarioServer) ListScenarioForAccessCodes(w http.ResponseWriter, r *htt
 		glog.Error(err)
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedScenarios)
+}
+
+func (s ScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios")
+		return
+	}
+
+	scenarios, err := s.hfClientSet.HobbyfarmV1().Scenarios().List(metav1.ListOptions{})
+
+	if err != nil {
+		glog.Errorf("error while retrieving scenarios %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "no scenarios found")
+		return
+	}
+
+	preparedScenarios := []AdminPreparedScenario{}
+	for _, s := range scenarios.Items {
+		pScenario := AdminPreparedScenario{s.Name, s.Spec}
+		pScenario.Steps = nil
+		preparedScenarios = append(preparedScenarios, pScenario)
+	}
+
+	encodedScenarios, err := json.Marshal(preparedScenarios)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedScenarios)
+
+	glog.V(2).Infof("listed scenarios")
 }
 
 func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {

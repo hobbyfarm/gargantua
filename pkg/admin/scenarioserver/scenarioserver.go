@@ -1,8 +1,6 @@
 package scenarioserver
 
 import (
-	"crypto/sha256"
-	"encoding/base32"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -50,7 +48,6 @@ func (a AdminScenarioServer) getScenario(id string) (hfv1.Scenario, error) {
 }
 
 func (a AdminScenarioServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/a/scenario/list", a.ListFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}/printable", a.PrintFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}", a.UpdateFunc).Methods("PUT")
 	glog.V(2).Infof("set up routes for Scenario server")
@@ -122,36 +119,7 @@ func (a AdminScenarioServer) PrintFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infof("retrieved scenario and rendered for printability %s", scenario.Name)
 }
 
-func (a AdminScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := a.auth.AuthNAdmin(w, r)
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios")
-		return
-	}
 
-	scenarios, err := a.hfClientSet.HobbyfarmV1().Scenarios().List(metav1.ListOptions{})
-
-	if err != nil {
-		glog.Errorf("error while retrieving scenarios %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "error", "no scenarios found")
-		return
-	}
-
-	preparedScenarios := []PreparedScenario{}
-	for _, s := range scenarios.Items {
-		pScenario := PreparedScenario{s.Name, s.Spec}
-		pScenario.Steps = nil
-		preparedScenarios = append(preparedScenarios, pScenario)
-	}
-
-	encodedScenarios, err := json.Marshal(preparedScenarios)
-	if err != nil {
-		glog.Error(err)
-	}
-	util.ReturnHTTPContent(w, r, 200, "success", encodedScenarios)
-
-	glog.V(2).Infof("listed scenarios")
-}
 
 
 
