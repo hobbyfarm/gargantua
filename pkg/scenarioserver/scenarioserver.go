@@ -60,7 +60,10 @@ func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.A
 	scenario.auth = authClient
 	inf := hfInformerFactory.Hobbyfarm().V1().Scenarios().Informer()
 	indexers := map[string]cache.IndexFunc{idIndex: idIndexer}
-	inf.AddIndexers(indexers)
+	err := inf.AddIndexers(indexers)
+	if err != nil {
+		glog.Errorf("error adding scenario indexer %s", idIndex)
+	}
 	scenario.scenarioIndexer = inf.GetIndexer()
 	return &scenario, nil
 }
@@ -191,12 +194,12 @@ func (s ScenarioServer) GetScenarioStepFunc(w http.ResponseWriter, r *http.Reque
 
 	vars := mux.Vars(r)
 
-	step_id, err := strconv.Atoi(vars["step_id"])
+	stepId, err := strconv.Atoi(vars["step_id"])
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf("scenario %s step %s not found", vars["scenario_id"], vars["step_id"]))
 		return
 	}
-	step, err := s.getPreparedScenarioStepById(vars["scenario_id"], step_id)
+	step, err := s.getPreparedScenarioStepById(vars["scenario_id"], stepId)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf("scenario %s not found", vars["scenario_id"]))
 		return
@@ -387,7 +390,7 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pauseable := r.PostFormValue("pauseable")
-	pause_duration := r.PostFormValue("pause_duration")
+	pauseDuration := r.PostFormValue("pause_duration")
 
 	scenario := &hfv1.Scenario{}
 
@@ -410,8 +413,8 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if pause_duration != "" {
-		scenario.Spec.PauseDuration = pause_duration
+	if pauseDuration != "" {
+		scenario.Spec.PauseDuration = pauseDuration
 	}
 
 	scenario, err = s.hfClientSet.HobbyfarmV1().Scenarios().Create(scenario)
@@ -452,7 +455,7 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		description := r.PostFormValue("description")
 		rawSteps := r.PostFormValue("steps")
 		pauseable := r.PostFormValue("pauseable")
-		pause_duration := r.PostFormValue("pause_duration")
+		pauseDuration := r.PostFormValue("pause_duration")
 		keepaliveDuration := r.PostFormValue("keepalive_duration")
 		rawVirtualMachines := r.PostFormValue("virtualmachines")
 
@@ -474,8 +477,8 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if pause_duration != "" {
-			scenario.Spec.PauseDuration = pause_duration
+		if pauseDuration != "" {
+			scenario.Spec.PauseDuration = pauseDuration
 		}
 
 		if rawSteps != "" {
