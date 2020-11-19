@@ -59,6 +59,7 @@ func (c CourseServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/course/list", c.ListFunc).Methods("GET")
 	r.HandleFunc("/a/course/new", c.CreateFunc).Methods("POST")
 	r.HandleFunc("/a/course/{id}", c.UpdateFunc).Methods("PUT")
+	r.HandleFunc("/a/course/{id}", c.DeleteFunc).Methods("DELETE")
 }
 
 func (c CourseServer) getPreparedCourseById(id string) (PreparedCourse, error) {
@@ -310,6 +311,79 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := c.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete scenarios")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	id := vars["id"]
+	if id == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no id passed in")
+		return
+	}
+
+	// when can we safely delete c course?
+	// 1. when there are no active scheduled events using the course
+	// 2. when there are no sessions using the course
+
+	seList, err := c.hfClientSet.HobbyfarmV1().ScheduledEvents().List(metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("error retrieving scheduledevent list: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting course")
+		return
+	}
+
+	seInUse := filterScheduledEvents(id, seList)
+
+	sessList, err := c.hfClientSet.HobbyfarmV1().Sessions().List(metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("error retrieving session list: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting course")
+		return
+	}
+
+	sessInUse := filterSessions(id, sessList)
+
+	var msg string = ""
+	delete := true
+
+	if len(*seInUse) > 0 {
+		// cannot delete, in use. alert the user
+		msg += "In use by scheduled events:"
+		for _, se := range *seInUse {
+			msg += " " + se.Name
+		}
+		delete = false
+	}
+
+	if len(*sessInUse) > 0 {
+		msg += "In use by sessions:"
+		for _, sess := range *sessInUse {
+			msg += " " + sess.Name
+		}
+		delete = false
+	}
+
+	if !delete {
+		util.ReturnHTTPMessage(w, r, 403, "badrequest", msg)
+		return
+	}
+
+	err = c.hfClientSet.HobbyfarmV1().Courses().Delete(id, &metav1.DeleteOptions{})
+	if err != nil {
+		glog.Errorf("error deleting course: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting course")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 204, "deleted", "deleted successfully")
+	glog.V(4).Infof("deleted course: %v", id)
+}
+
 func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Request) {
 	user, err := c.auth.AuthN(w, r)
 	if err != nil {
@@ -368,6 +442,35 @@ func (c CourseServer) GetCourseById(id string) (hfv1.Course, error) {
 	}
 
 	return *course, nil
+}
+
+// Filter a ScheduledEventList to find SEs that are a) active and b) using the course specified
+func filterScheduledEvents(course string, seList *hfv1.ScheduledEventList) *[]hfv1.ScheduledEvent {
+	outList := make([]hfv1.ScheduledEvent, 0)
+	for _, se := range seList.Items {
+		if se.Status.Finished == true {
+			continue
+		}
+
+		for _, c := range se.Spec.Courses {
+			if c == course {
+				outList = append(outList, se)
+			}
+		}
+	}
+
+	return &outList
+}
+
+func filterSessions(course string, list *hfv1.SessionList) *[]hfv1.Session {
+	outList := make([]hfv1.Session, 0)
+	for _, sess := range list.Items {
+		if sess.Spec.CourseId == course {
+			outList = append(outList, sess)
+		}
+	}
+
+	return &outList
 }
 
 func idIndexer(obj interface{}) ([]string, error) {
