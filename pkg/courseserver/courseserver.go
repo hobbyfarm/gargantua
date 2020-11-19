@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"net/http"
+	"strconv"
 )
 
 const (
@@ -55,6 +56,8 @@ func (c CourseServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/course/{course_id}", c.GetCourse).Methods("GET")
 	r.HandleFunc("/a/course/{id}", c.GetCourse).Methods("GET")
 	r.HandleFunc("/a/course/list", c.ListFunc).Methods("GET")
+	r.HandleFunc("/a/course/new", c.CreateFunc).Methods("POST")
+
 }
 
 func (c CourseServer) getPreparedCourseById(id string) (PreparedCourse, error) {
@@ -123,6 +126,90 @@ func (c CourseServer) GetCourse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.ReturnHTTPContent(w, r, 200, "success", encodedCourse)
+}
+
+func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := c.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create courses")
+		return
+	}
+
+	name := r.PostFormValue("name")
+	if name == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no name passed in")
+		return
+	}
+
+	description := r.PostFormValue("description")
+	if description == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no description passed in")
+		return
+	}
+
+	keepaliveDuration := r.PostFormValue("keepalive_duration")
+	// keepaliveDuration is optional
+
+	scenarios := r.PostFormValue("scenarios")
+	scenarioSlice := make([]string, 0)
+	if scenarios != "" {
+		err = json.Unmarshal([]byte(scenarios), &scenarioSlice)
+		if err != nil {
+			glog.Errorf("error while unmarshalling scenarios %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	rawVirtualMachines := r.PostFormValue("virtualmachines")
+	virtualmachines := []map[string]string{}
+	if rawVirtualMachines != "" {
+		err = json.Unmarshal([]byte(rawVirtualMachines), &virtualmachines)
+		if err != nil {
+			glog.Errorf("error while unmarshaling VMs %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	pauseableRaw := r.PostFormValue("pauseable")
+	pauseable, err := strconv.ParseBool(pauseableRaw)
+	if err != nil {
+		glog.Errorf("error while parsing bool %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+		return
+	}
+	pause_duration := r.PostFormValue("pause_duration")
+
+	course := &hfv1.Course{}
+
+	generatedName := util.GenerateResourceName("c", name, 10)
+
+	course.Name = generatedName
+	course.Spec.Id = generatedName
+
+	course.Spec.Name = name
+	course.Spec.Description = description
+	course.Spec.VirtualMachines = virtualmachines
+	course.Spec.Scenarios = scenarioSlice
+	if keepaliveDuration != "" {
+		course.Spec.KeepAliveDuration = keepaliveDuration
+	}
+	course.Spec.Pauseable = pauseable
+	if pause_duration != "" {
+		course.Spec.PauseDuration = pause_duration
+	}
+
+	course, err = c.hfClientSet.HobbyfarmV1().Courses().Create(course)
+	if err != nil {
+		glog.Errorf("error creating course %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating course")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 201, "created", course.Name)
+	glog.V(4).Infof("Created course %s", course.Name)
+	return
 }
 
 func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Request) {
