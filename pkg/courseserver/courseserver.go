@@ -27,7 +27,7 @@ type CourseServer struct {
 }
 
 type PreparedCourse struct {
-	Id              string              `json:"id"`
+	Id string `json:"id"`
 	hfv1.CourseSpec
 }
 
@@ -47,7 +47,7 @@ func NewCourseServer(authClient *authclient.AuthClient, acClient *accesscode.Acc
 }
 
 func (c CourseServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/course/list", c.ListCourse).Methods("GET")
+	r.HandleFunc("/course/list", c.ListCoursesForAccesscode).Methods("GET")
 	r.HandleFunc("/course/{course_id}", c.GetCourse).Methods("GET")
 }
 
@@ -88,7 +88,7 @@ func (c CourseServer) GetCourse(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPContent(w, r, 200, "success", encodedCourse)
 }
 
-func (c CourseServer) ListCourse(w http.ResponseWriter, r *http.Request) {
+func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Request) {
 	user, err := c.auth.AuthN(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list courses")
