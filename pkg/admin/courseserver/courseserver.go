@@ -35,42 +35,9 @@ func NewAdminCourseServer(authClient *authclient.AuthClient, hfClientset *hfClie
 }
 
 func (a AdminCourseServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/a/course/list", a.ListFunc).Methods("GET")
 	r.HandleFunc("/a/course/new", a.CreateFunc).Methods("POST")
 	r.HandleFunc("/a/course/{id}", a.UpdateFunc).Methods("PUT")
 	r.HandleFunc("/a/course/{id}", a.DeleteFunc).Methods("DELETE")
-}
-
-func (a AdminCourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := a.auth.AuthNAdmin(w, r)
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list courses")
-		return
-	}
-
-	tempCourses, err := a.hfClientSet.HobbyfarmV1().Courses().List(metav1.ListOptions{})
-	if err != nil {
-		glog.Errorf("error listing courses: %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing courses")
-		return
-	}
-
-	var courses []PreparedCourse
-	for _, c := range tempCourses.Items {
-		courses = append(courses, PreparedCourse{ c.Name, c.Spec})
-	}
-
-	encodedCourses, err := json.Marshal(courses)
-	if err != nil {
-		glog.Errorf("error marshalling prepared courses: %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing courses")
-		return
-	}
-
-	util.ReturnHTTPContent(w, r, 200, "success", encodedCourses)
-
-	glog.V(4).Infof("listed courses")
-
 }
 
 func (a AdminCourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {

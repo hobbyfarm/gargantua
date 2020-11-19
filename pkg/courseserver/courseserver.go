@@ -11,6 +11,7 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"net/http"
 )
@@ -53,6 +54,7 @@ func (c CourseServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/course/list", c.ListCoursesForAccesscode).Methods("GET")
 	r.HandleFunc("/course/{course_id}", c.GetCourse).Methods("GET")
 	r.HandleFunc("/a/course/{id}", c.GetCourse).Methods("GET")
+	r.HandleFunc("/a/course/list", c.ListFunc).Methods("GET")
 }
 
 func (c CourseServer) getPreparedCourseById(id string) (PreparedCourse, error) {
@@ -65,6 +67,37 @@ func (c CourseServer) getPreparedCourseById(id string) (PreparedCourse, error) {
 	preparedCourse := PreparedCourse{course.Name, course.Spec}
 
 	return preparedCourse, nil
+}
+
+func (c CourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := c.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list courses")
+		return
+	}
+
+	tempCourses, err := c.hfClientSet.HobbyfarmV1().Courses().List(metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("error listing courses: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing courses")
+		return
+	}
+
+	var courses []PreparedCourse
+	for _, c := range tempCourses.Items {
+		courses = append(courses, PreparedCourse{ c.Name, c.Spec})
+	}
+
+	encodedCourses, err := json.Marshal(courses)
+	if err != nil {
+		glog.Errorf("error marshalling prepared courses: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing courses")
+		return
+	}
+
+	util.ReturnHTTPContent(w, r, 200, "success", encodedCourses)
+
+	glog.V(4).Infof("listed courses")
 }
 
 func (c CourseServer) GetCourse(w http.ResponseWriter, r *http.Request) {
