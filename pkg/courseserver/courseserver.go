@@ -164,7 +164,7 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rawVirtualMachines := r.PostFormValue("virtualmachines")
-	virtualmachines := []map[string]string{}
+	virtualmachines := []map[string]string{} // must be declared this way so as to JSON marshal into [] instead of null
 	if rawVirtualMachines != "" {
 		err = json.Unmarshal([]byte(rawVirtualMachines), &virtualmachines)
 		if err != nil {
@@ -181,7 +181,7 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
 		return
 	}
-	pause_duration := r.PostFormValue("pause_duration")
+	pauseDuration := r.PostFormValue("pause_duration")
 
 	course := &hfv1.Course{}
 
@@ -198,8 +198,8 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		course.Spec.KeepAliveDuration = keepaliveDuration
 	}
 	course.Spec.Pauseable = pauseable
-	if pause_duration != "" {
-		course.Spec.PauseDuration = pause_duration
+	if pauseDuration != "" {
+		course.Spec.PauseDuration = pauseDuration
 	}
 
 	course, err = c.hfClientSet.HobbyfarmV1().Courses().Create(course)
@@ -242,8 +242,8 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		description := r.PostFormValue("description")
 		scenarios := r.PostFormValue("scenarios")
 		virtualMachinesRaw := r.PostFormValue("virtualmachines")
-		keepalive_duration := r.PostFormValue("keepalive_duration")
-		pause_duration := r.PostFormValue("pause_duration")
+		keepaliveDuration := r.PostFormValue("keepalive_duration")
+		pauseDuration := r.PostFormValue("pause_duration")
 		pauseableRaw := r.PostFormValue("pauseable")
 
 		if name != "" {
@@ -267,7 +267,7 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if virtualMachinesRaw != "" {
-			virtualmachines := []map[string]string{}
+			virtualmachines := []map[string]string{} // must be declared this way so as to JSON marshal into [] instead of null
 			err = json.Unmarshal([]byte(virtualMachinesRaw), &virtualmachines)
 			if err != nil {
 				glog.Errorf("error while unmarshaling VMs %v", err)
@@ -278,12 +278,12 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			course.Spec.VirtualMachines = virtualmachines
 		}
 
-		if keepalive_duration != "" {
-			course.Spec.KeepAliveDuration = keepalive_duration
+		if keepaliveDuration != "" {
+			course.Spec.KeepAliveDuration = keepaliveDuration
 		}
 
-		if pause_duration != "" {
-			course.Spec.PauseDuration = pause_duration
+		if pauseDuration != "" {
+			course.Spec.PauseDuration = pauseDuration
 		}
 
 		if pauseableRaw != "" {
@@ -314,7 +314,7 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	_, err := c.auth.AuthNAdmin(w, r)
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete scenarios")
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to toDelete scenarios")
 		return
 	}
 
@@ -326,7 +326,7 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// when can we safely delete c course?
+	// when can we safely toDelete c course?
 	// 1. when there are no active scheduled events using the course
 	// 2. when there are no sessions using the course
 
@@ -348,16 +348,16 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 
 	sessInUse := filterSessions(id, sessList)
 
-	var msg string = ""
-	delete := true
+	var msg = ""
+	toDelete := true
 
 	if len(*seInUse) > 0 {
-		// cannot delete, in use. alert the user
+		// cannot toDelete, in use. alert the user
 		msg += "In use by scheduled events:"
 		for _, se := range *seInUse {
 			msg += " " + se.Name
 		}
-		delete = false
+		toDelete = false
 	}
 
 	if len(*sessInUse) > 0 {
@@ -365,10 +365,10 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 		for _, sess := range *sessInUse {
 			msg += " " + sess.Name
 		}
-		delete = false
+		toDelete = false
 	}
 
-	if !delete {
+	if !toDelete {
 		util.ReturnHTTPMessage(w, r, 403, "badrequest", msg)
 		return
 	}
