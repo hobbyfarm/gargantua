@@ -19,13 +19,13 @@ import (
 	"time"
 )
 
-type AdminEnvironmentServer struct {
+type EnvironmentServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet *hfClientset.Clientset
 }
 
-func NewAdminEnvironmentServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*AdminEnvironmentServer, error) {
-	es := AdminEnvironmentServer{}
+func NewEnvironmentServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*EnvironmentServer, error) {
+	es := EnvironmentServer{}
 
 	es.hfClientSet = hfClientset
 	es.auth = authClient
@@ -33,7 +33,7 @@ func NewAdminEnvironmentServer(authClient *authclient.AuthClient, hfClientset *h
 	return &es, nil
 }
 
-func (a AdminEnvironmentServer) getEnvironment(id string) (hfv1.Environment, error) {
+func (e EnvironmentServer) getEnvironment(id string) (hfv1.Environment, error) {
 
 	empty := hfv1.Environment{}
 
@@ -41,7 +41,7 @@ func (a AdminEnvironmentServer) getEnvironment(id string) (hfv1.Environment, err
 		return empty, fmt.Errorf("vm claim id passed in was empty")
 	}
 
-	obj, err := a.hfClientSet.HobbyfarmV1().Environments().Get(id, metav1.GetOptions{})
+	obj, err := e.hfClientSet.HobbyfarmV1().Environments().Get(id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving Environment by id: %s with error: %v", id, err)
 	}
@@ -50,12 +50,12 @@ func (a AdminEnvironmentServer) getEnvironment(id string) (hfv1.Environment, err
 
 }
 
-func (a AdminEnvironmentServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/a/environment/list", a.ListFunc).Methods("GET")
-	r.HandleFunc("/a/environment/{id}", a.GetFunc).Methods("GET")
-	r.HandleFunc("/a/environment/create", a.CreateFunc).Methods("POST")
-	r.HandleFunc("/a/environment/{id}/update", a.UpdateFunc).Methods("PUT")
-	r.HandleFunc("/a/environment/{environment_id}/available", a.PostEnvironmentAvailableFunc).Methods("POST")
+func (e EnvironmentServer) SetupRoutes(r *mux.Router) {
+	r.HandleFunc("/e/environment/list", e.ListFunc).Methods("GET")
+	r.HandleFunc("/e/environment/{id}", e.GetFunc).Methods("GET")
+	r.HandleFunc("/e/environment/create", e.CreateFunc).Methods("POST")
+	r.HandleFunc("/e/environment/{id}/update", e.UpdateFunc).Methods("PUT")
+	r.HandleFunc("/e/environment/{environment_id}/available", e.PostEnvironmentAvailableFunc).Methods("POST")
 	glog.V(2).Infof("set up routes for environment server")
 }
 
@@ -65,8 +65,8 @@ type PreparedEnvironment struct {
 	hfv1.EnvironmentStatus
 }
 
-func (a AdminEnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := a.auth.AuthNAdmin(w, r)
+func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := e.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get environment")
 		return
@@ -81,7 +81,7 @@ func (a AdminEnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	environment, err := a.getEnvironment(environmentId)
+	environment, err := e.getEnvironment(environmentId)
 
 	if err != nil {
 		glog.Errorf("error while retrieving environment %v", err)
@@ -100,14 +100,14 @@ func (a AdminEnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) 
 	glog.V(2).Infof("retrieved environment %s", environment.Name)
 }
 
-func (a AdminEnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := a.auth.AuthNAdmin(w, r)
+func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := e.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list environments")
 		return
 	}
 
-	environments, err := a.hfClientSet.HobbyfarmV1().Environments().List(metav1.ListOptions{})
+	environments, err := e.hfClientSet.HobbyfarmV1().Environments().List(metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while listing all environments %v", err)
@@ -130,8 +130,8 @@ func (a AdminEnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request)
 	glog.V(2).Infof("retrieved list of all environments")
 }
 
-func (a AdminEnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := a.auth.AuthNAdmin(w, r)
+func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := e.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create environments")
 		return
@@ -244,7 +244,7 @@ func (a AdminEnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Reques
 
 	environment.Spec.BurstCapable = burstCapableBool
 
-	environment, err = a.hfClientSet.HobbyfarmV1().Environments().Create(environment)
+	environment, err = e.hfClientSet.HobbyfarmV1().Environments().Create(environment)
 	if err != nil {
 		glog.Errorf("error creating environment %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating environment")
@@ -255,8 +255,8 @@ func (a AdminEnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Reques
 	return
 }
 
-func (a AdminEnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := a.auth.AuthNAdmin(w, r)
+func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := e.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update environment")
 		return
@@ -271,7 +271,7 @@ func (a AdminEnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Reques
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		environment, err := a.getEnvironment(environmentId)
+		environment, err := e.getEnvironment(environmentId)
 		if err != nil {
 			glog.Errorf("error while retrieving environment %v", err)
 			util.ReturnHTTPMessage(w, r, 500, "error", "no environment found")
@@ -292,7 +292,7 @@ func (a AdminEnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Reques
 			environment.Spec.DisplayName = display_name
 		}
 
-		// empty string is a valid dnssuffix value (because it is optional), so not
+		// empty string is e valid dnssuffix value (because it is optional), so not
 		// performing string length check here
 		environment.Spec.DNSSuffix = dnssuffix
 
@@ -357,7 +357,7 @@ func (a AdminEnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Reques
 			environment.Spec.BurstCapable = burstCapableBool
 		}
 
-		_, updateErr := a.hfClientSet.HobbyfarmV1().Environments().Update(&environment)
+		_, updateErr := e.hfClientSet.HobbyfarmV1().Environments().Update(&environment)
 		return updateErr
 	})
 
@@ -370,8 +370,8 @@ func (a AdminEnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Reques
 	return
 }
 
-func (a AdminEnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := a.auth.AuthNAdmin(w, r)
+func (e EnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := e.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get environment")
 		return
@@ -393,14 +393,14 @@ func (a AdminEnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWrit
 		return
 	}
 
-	environment, err := a.getEnvironment(environmentId)
+	environment, err := e.getEnvironment(environmentId)
 
 	if err != nil {
 		glog.Errorf("error while retrieving environment %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "no environment found")
 		return
 	}
-	max, err := util.MaxAvailableDuringPeriod(a.hfClientSet, environmentId, start, end)
+	max, err := util.MaxAvailableDuringPeriod(e.hfClientSet, environmentId, start, end)
 	if err != nil {
 		glog.Errorf("error while getting max available %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "error getting max available vms for environment")
