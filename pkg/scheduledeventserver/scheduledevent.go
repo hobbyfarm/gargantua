@@ -113,7 +113,7 @@ func (s ScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preparedScheduledEvents := []PreparedScheduledEvent{}
+	preparedScheduledEvents := []PreparedScheduledEvent{} // must be declared this way so as to JSON marshal into [] instead of null
 	for _, s := range scheduledEvents.Items {
 		preparedScheduledEvents = append(preparedScheduledEvents, PreparedScheduledEvent{s.Name, s.Spec, s.Status})
 	}
@@ -192,7 +192,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	scenarios := []string{}
+	scenarios := []string{} // must be declared this way so as to JSON marshal into [] instead of null
 	if scenariosRaw != "" {
 		err = json.Unmarshal([]byte(scenariosRaw), &scenarios)
 		if err != nil {
@@ -202,7 +202,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	courses := []string{}
+	courses := []string{} // must be declared this way so as to JSON marshal into [] instead of null
 	if coursesRaw != "" {
 		err = json.Unmarshal([]byte(coursesRaw), &courses)
 		if err != nil {
@@ -341,7 +341,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 
 		if coursesRaw != "" {
 			if !scheduledEvent.Status.Provisioned {
-				courses := []string{}
+				courses := []string{} // must be declared this way so as to JSON marshal into [] instead of null
 				err = json.Unmarshal([]byte(coursesRaw), &courses)
 				if err != nil {
 					glog.Errorf("error while unmarshaling courses %v", err)
@@ -353,7 +353,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 
 		if scenariosRaw != "" {
 			if !scheduledEvent.Status.Provisioned { // we can't change the scenarios after the scheduled event was provisioned
-				scenarios := []string{}
+				scenarios := []string{} // must be declared this way so as to JSON marshal into [] instead of null
 				err = json.Unmarshal([]byte(scenariosRaw), &scenarios)
 				if err != nil {
 					glog.Errorf("error while unmarshaling scenarios %v", err)
