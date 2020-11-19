@@ -35,7 +35,7 @@ func (u UserServer) getUser(id string) (hfv1.User, error) {
 	empty := hfv1.User{}
 
 	if len(id) == 0 {
-		return empty, fmt.Errorf("User id passed in was empty")
+		return empty, fmt.Errorf("user id passed in was empty")
 	}
 
 	obj, err := u.hfClientSet.HobbyfarmV1().Users().Get(id, metav1.GetOptions{})
@@ -109,7 +109,7 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preparedUsers := []PreparedUser{}
+	preparedUsers := []PreparedUser{} // must be declared this way so as to JSON marshal into [] instead of null
 	for _, s := range users.Items {
 		preparedUsers = append(preparedUsers, PreparedUser{s.Name, s.Spec})
 	}
