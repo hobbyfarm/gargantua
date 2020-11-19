@@ -55,7 +55,7 @@ func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.A
 }
 
 func (s ScenarioServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/scenario/list", s.ListScenarioFunc).Methods("GET")
+	r.HandleFunc("/scenario/list", s.ListScenarioForAccessCodes).Methods("GET")
 	r.HandleFunc("/scenario/{scenario_id}", s.GetScenarioFunc).Methods("GET")
 	r.HandleFunc("/scenario/{scenario_id}/step/{step_id:[0-9]+}", s.GetScenarioStepFunc).Methods("GET")
 	glog.V(2).Infof("set up route")
@@ -157,7 +157,7 @@ func (s ScenarioServer) GetScenarioStepFunc(w http.ResponseWriter, r *http.Reque
 
 }
 
-func (s ScenarioServer) ListScenarioFunc(w http.ResponseWriter, r *http.Request) {
+func (s ScenarioServer) ListScenarioForAccessCodes(w http.ResponseWriter, r *http.Request) {
 	user, err := s.auth.AuthN(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios")
