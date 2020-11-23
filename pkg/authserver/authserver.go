@@ -11,6 +11,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/errors"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"golang.org/x/crypto/bcrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -113,7 +114,7 @@ func (a AuthServer) NewUser(email string, password string) (string, error) {
 
 	if err == nil {
 		// the user was found, we should return info
-		return "", fmt.Errorf("user already exists")
+		return "", errors.NewAlreadyExists("user already exists")
 	}
 
 	newUser := hfv1.User{}
@@ -382,8 +383,17 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	userId, err := a.NewUser(email, password)
 
 	if err != nil {
-		glog.Errorf("error creating user %s %v", email, err)
-		util.ReturnHTTPMessage(w, r, 400, "error", "error creating user")
+		var msg string
+		var code = 400
+		if errors.IsAlreadyExists(err) {
+			code = 409
+			msg = "user already exists"
+		} else {
+			glog.Errorf("error creating user %s %v", email, err)
+			msg = "error creating user"
+		}
+
+		util.ReturnHTTPMessage(w, r, code, "error", msg)
 		return
 	}
 
