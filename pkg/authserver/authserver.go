@@ -387,7 +387,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 		var code = 400
 		if errors.IsAlreadyExists(err) {
 			code = 409
-			msg = "user already exists"
+			msg = err.Error()
 		} else {
 			glog.Errorf("error creating user %s %v", email, err)
 			msg = "error creating user"
