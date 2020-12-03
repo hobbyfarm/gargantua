@@ -212,7 +212,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		env, err := v.envLister.Get(vmset.Spec.Environment)
 		var provision bool
 		provision = true
-		if provisionMethod, ok := env.Annotations["provisioner"]; ok {
+		if provisionMethod, ok := env.Annotations["hobbyfarm.io/provisioner"]; ok {
 			if provisionMethod == "external" {
 				provision = false
 			}

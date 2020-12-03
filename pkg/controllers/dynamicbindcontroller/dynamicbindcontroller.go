@@ -168,7 +168,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 	for _, dynamicBindConfiguration := range dynamicBindConfigurations.Items {
 		environment, err := d.hfClientSet.HobbyfarmV1().Environments().Get(dynamicBindConfiguration.Spec.Environment, metav1.GetOptions{})
 
-		if provisionMethod, ok := environment.Annotations["provisioner"]; ok {
+		if provisionMethod, ok := environment.Annotations["hobbyfarm.io/provisioner"]; ok {
 			if provisionMethod == "external" {
 				provision = false
 			}
