@@ -13,13 +13,13 @@ import (
 	adminScenarioServer "github.com/hobbyfarm/gargantua/pkg/admin/scenarioserver"
 	adminScheduledEventServer "github.com/hobbyfarm/gargantua/pkg/admin/scheduledeventserver"
 	adminUserServer "github.com/hobbyfarm/gargantua/pkg/admin/userserver"
-	adminVirtualMachineTemplateServer "github.com/hobbyfarm/gargantua/pkg/admin/vmtemplateserver"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/dynamicbindcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
+	adminVirtualMachineTemplateServer "github.com/hobbyfarm/gargantua/pkg/vmtemplateserver"
 
 	//"k8s.io/client-go/tools/cache"
 
@@ -183,7 +183,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	adminVMTServer, err := adminVirtualMachineTemplateServer.NewAdminVirtualMachineTemplateServer(authClient, hfClient)
+	adminVMTServer, err := adminVirtualMachineTemplateServer.NewVirtualMachineTemplateServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
