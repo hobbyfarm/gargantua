@@ -55,9 +55,9 @@ func NewCourseServer(authClient *authclient.AuthClient, acClient *accesscode.Acc
 func (c CourseServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/course/list", c.ListCoursesForAccesscode).Methods("GET")
 	r.HandleFunc("/course/{course_id}", c.GetCourse).Methods("GET")
-	r.HandleFunc("/a/course/{id}", c.GetCourse).Methods("GET")
 	r.HandleFunc("/a/course/list", c.ListFunc).Methods("GET")
 	r.HandleFunc("/a/course/new", c.CreateFunc).Methods("POST")
+	r.HandleFunc("/a/course/{id}", c.GetCourse).Methods("GET")
 	r.HandleFunc("/a/course/{id}", c.UpdateFunc).Methods("PUT")
 	r.HandleFunc("/a/course/{id}", c.DeleteFunc).Methods("DELETE")
 }
