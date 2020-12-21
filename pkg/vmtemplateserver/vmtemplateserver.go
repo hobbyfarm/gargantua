@@ -45,8 +45,8 @@ func (v VirtualMachineTemplateServer) getVirtualMachineTemplate(id string) (hfv1
 }
 
 func (v VirtualMachineTemplateServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/v/vmtemplate/list", v.ListFunc).Methods("GET")
-	r.HandleFunc("/v/vmtemplate/{id}", v.GetFunc).Methods("GET")
+	r.HandleFunc("/a/vmtemplate/list", v.ListFunc).Methods("GET")
+	r.HandleFunc("/a/vmtemplate/{id}", v.GetFunc).Methods("GET")
 	glog.V(2).Infof("set up routes for admin vmtemplate server")
 }
 
