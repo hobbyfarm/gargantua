@@ -3,13 +3,13 @@ package main
 import (
 	"flag"
 	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
+	"github.com/hobbyfarm/gargantua/pkg/vmtemplateserver"
 	"os"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
-	adminVirtualMachineTemplateServer "github.com/hobbyfarm/gargantua/pkg/admin/vmtemplateserver"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
@@ -170,7 +170,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	adminVMTServer, err := adminVirtualMachineTemplateServer.NewAdminVirtualMachineTemplateServer(authClient, hfClient)
+	adminVMTServer, err := vmtemplateserver.NewVirtualMachineTemplateServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}

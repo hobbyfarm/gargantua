@@ -13,13 +13,13 @@ import (
 	"net/http"
 )
 
-type AdminVirtualMachineTemplateServer struct {
+type VirtualMachineTemplateServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet *hfClientset.Clientset
 }
 
-func NewAdminVirtualMachineTemplateServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*AdminVirtualMachineTemplateServer, error) {
-	as := AdminVirtualMachineTemplateServer{}
+func NewVirtualMachineTemplateServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*VirtualMachineTemplateServer, error) {
+	as := VirtualMachineTemplateServer{}
 
 	as.hfClientSet = hfClientset
 	as.auth = authClient
@@ -27,7 +27,7 @@ func NewAdminVirtualMachineTemplateServer(authClient *authclient.AuthClient, hfC
 	return &as, nil
 }
 
-func (a AdminVirtualMachineTemplateServer) getVirtualMachineTemplate(id string) (hfv1.VirtualMachineTemplate, error) {
+func (v VirtualMachineTemplateServer) getVirtualMachineTemplate(id string) (hfv1.VirtualMachineTemplate, error) {
 
 	empty := hfv1.VirtualMachineTemplate{}
 
@@ -35,7 +35,7 @@ func (a AdminVirtualMachineTemplateServer) getVirtualMachineTemplate(id string) 
 		return empty, fmt.Errorf("vm template id passed in was empty")
 	}
 
-	obj, err := a.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Get(id, metav1.GetOptions{})
+	obj, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Get(id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving Virtual Machine Template by id: %s with error: %v", id, err)
 	}
@@ -44,9 +44,9 @@ func (a AdminVirtualMachineTemplateServer) getVirtualMachineTemplate(id string) 
 
 }
 
-func (a AdminVirtualMachineTemplateServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/a/vmtemplate/list", a.ListFunc).Methods("GET")
-	r.HandleFunc("/a/vmtemplate/{id}", a.GetFunc).Methods("GET")
+func (v VirtualMachineTemplateServer) SetupRoutes(r *mux.Router) {
+	r.HandleFunc("/v/vmtemplate/list", v.ListFunc).Methods("GET")
+	r.HandleFunc("/v/vmtemplate/{id}", v.GetFunc).Methods("GET")
 	glog.V(2).Infof("set up routes for admin vmtemplate server")
 }
 
@@ -54,8 +54,8 @@ type PreparedVMTemplate struct {
 	hfv1.VirtualMachineTemplateSpec
 }
 
-func (a AdminVirtualMachineTemplateServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := a.auth.AuthNAdmin(w, r)
+func (v VirtualMachineTemplateServer) GetFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := v.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm template")
 		return
@@ -70,7 +70,7 @@ func (a AdminVirtualMachineTemplateServer) GetFunc(w http.ResponseWriter, r *htt
 		return
 	}
 
-	vmt, err := a.getVirtualMachineTemplate(vmtId)
+	vmt, err := v.getVirtualMachineTemplate(vmtId)
 
 	if err != nil {
 		glog.Errorf("error while retrieving virtual machine template %v", err)
@@ -89,14 +89,14 @@ func (a AdminVirtualMachineTemplateServer) GetFunc(w http.ResponseWriter, r *htt
 	glog.V(2).Infof("retrieved vmt %s", vmt.Name)
 }
 
-func (a AdminVirtualMachineTemplateServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := a.auth.AuthNAdmin(w, r)
+func (v VirtualMachineTemplateServer) ListFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := v.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list vmts")
 		return
 	}
 
-	vmts, err := a.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
+	vmts, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while listing all vmts %v", err)
