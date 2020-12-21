@@ -50,10 +50,10 @@ func (s ScheduledEventServer) getScheduledEvent(id string) (hfv1.ScheduledEvent,
 }
 
 func (s ScheduledEventServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/s/scheduledevent/list", s.ListFunc).Methods("GET")
-	r.HandleFunc("/s/scheduledevent/new", s.CreateFunc).Methods("POST")
-	r.HandleFunc("/s/scheduledevent/{id}", s.GetFunc).Methods("GET")
-	r.HandleFunc("/s/scheduledevent/{id}", s.UpdateFunc).Methods("PUT")
+	r.HandleFunc("/a/scheduledevent/list", s.ListFunc).Methods("GET")
+	r.HandleFunc("/a/scheduledevent/new", s.CreateFunc).Methods("POST")
+	r.HandleFunc("/a/scheduledevent/{id}", s.GetFunc).Methods("GET")
+	r.HandleFunc("/a/scheduledevent/{id}", s.UpdateFunc).Methods("PUT")
 	glog.V(2).Infof("set up routes for admin scheduledevent server")
 }
 
