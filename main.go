@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/hobbyfarm/gargantua/pkg/environmentserver"
 	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmtemplateserver"
 	"os"
@@ -140,6 +141,11 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	environmentServer, err := environmentserver.NewEnvironmentServer(authClient, hfClient)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
 	vmServer, err := vmserver.NewVMServer(authClient, hfClient, hfInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
@@ -183,6 +189,7 @@ func main() {
 		authServer.SetupRoutes(r)
 		courseServer.SetupRoutes(r)
 		scenarioServer.SetupRoutes(r)
+		environmentServer.SetupRoutes(r)
 		vmServer.SetupRoutes(r)
 		//shellProxy.SetupRoutes(r)
 		vmClaimServer.SetupRoutes(r)
