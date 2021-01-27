@@ -402,6 +402,7 @@ type ScheduledEventSpec struct {
 	Description             string                    `json:"description"`
 	StartTime               string                    `json:"start_time"`
 	EndTime                 string                    `json:"end_time"`
+	OnDemand			    bool					  `json:"on_demand"` // whether or not to provision VMs on-demand
 	RequiredVirtualMachines map[string]map[string]int `json:"required_vms"` // map of environment to a map of strings it should be environment: vm template: count
 	AccessCode              string                    `json:"access_code"`
 	RestrictedBind          bool                      `json:"restricted_bind"` // if restricted_bind is true, we need to make the scenario sessions when they get created only bind to vmsets that are created by this scheduledevent
