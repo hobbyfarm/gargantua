@@ -207,15 +207,9 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 			glog.Errorf("error while retrieving virtual machine sets %v", err)
 		}
 
-		_, usedCapacity, err := calculateUsedCapacity(env, vmsList, templates)
-		if err != nil {
-			return fmt.Errorf("error while calculating used capacity: %s", err)
-		}
+		_, usedCapacity := calculateUsedCapacity(env, vmsList, templates)
 
-		_, neededCapacity, err := calculateNeededCapacity(env, vmtMap, templates)
-		if err != nil {
-			return fmt.Errorf("error while calculating needed capcity: %s", err)
-		}
+		_, neededCapacity := calculateNeededCapacity(env, vmtMap, templates)
 
 
 		if env.Spec.CapacityMode == hfv1.CapacityModeRaw {
@@ -494,7 +488,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 	return nil
 }
 
-func calculateUsedCapacity(env *hfv1.Environment, vmsList *hfv1.VirtualMachineSetList, templates *hfv1.VirtualMachineTemplateList) (map[string]int, hfv1.CMSStruct, error) {
+func calculateUsedCapacity(env *hfv1.Environment, vmsList *hfv1.VirtualMachineSetList, templates *hfv1.VirtualMachineTemplateList) (map[string]int, hfv1.CMSStruct) {
 	used := hfv1.CMSStruct{}
 	usedCount := map[string]int{}
 	for _, vms := range vmsList.Items {
@@ -508,17 +502,17 @@ func calculateUsedCapacity(env *hfv1.Environment, vmsList *hfv1.VirtualMachineSe
 					if countKey, ok := t.Spec.CountMap[env.Spec.Provider]; ok {
 						usedCount[countKey] = usedCount[countKey] + vms.Spec.Count
 					} else {
-						return nil, hfv1.CMSStruct{}, fmt.Errorf("count key was not found for virtual machine template %s for provider %s", t.Name, env.Spec.Provider)
+						glog.Errorf("count key was not found for virtual machine template %s for provider %s", t.Name, env.Spec.Provider)
 					}
 				}
 			}
 		}
 	}
 
-	return usedCount, used, nil
+	return usedCount, used
 }
 
-func calculateNeededCapacity(env *hfv1.Environment, vmtMap map[string]int, templates *hfv1.VirtualMachineTemplateList) (map[string]int, hfv1.CMSStruct, error) {
+func calculateNeededCapacity(env *hfv1.Environment, vmtMap map[string]int, templates *hfv1.VirtualMachineTemplateList) (map[string]int, hfv1.CMSStruct) {
 	needed := hfv1.CMSStruct{}
 
 	neededCount := map[string]int{}
@@ -533,12 +527,12 @@ func calculateNeededCapacity(env *hfv1.Environment, vmtMap map[string]int, templ
 					if countKey, ok := t.Spec.CountMap[env.Spec.Provider]; ok {
 						neededCount[countKey] = neededCount[countKey] + count
 					} else {
-						return nil, hfv1.CMSStruct{}, fmt.Errorf("count key was not found for virtual machine template %s for provider %s", t.Name, env.Spec.Provider)
+						glog.Errorf("count key was not found for virtual machine template %s for provider %s", t.Name, env.Spec.Provider)
 					}
 				}
 			}
 		}
 	}
 
-	return neededCount, needed, nil
+	return neededCount, needed
 }
