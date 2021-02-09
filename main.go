@@ -4,6 +4,8 @@ import (
 	"flag"
 	"os"
 
+	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -19,7 +21,7 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/dynamicbindcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
-	adminVirtualMachineTemplateServer "github.com/hobbyfarm/gargantua/pkg/vmtemplateserver"
+	"github.com/hobbyfarm/gargantua/pkg/userserver"
 
 	//"k8s.io/client-go/tools/cache"
 
@@ -31,6 +33,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmsetcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/pkg/courseserver"
+	"github.com/hobbyfarm/gargantua/pkg/environmentserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
 	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
@@ -51,7 +54,7 @@ import (
 )
 
 const (
-	ClientGoQPS = 100
+	ClientGoQPS   = 100
 	ClientGoBurst = 100
 )
 
@@ -163,22 +166,17 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	adminEnvServer, err := adminEnvironmentServer.NewAdminEnvironmentServer(authClient, hfClient)
+	envServer, err := environmentserver.NewEnvironmentServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	adminScenServer, err := adminScenarioServer.NewAdminScenarioServer(authClient, hfClient)
+	adminSEServer, err := scheduledeventserver.NewScheduledEventServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	adminSEServer, err := adminScheduledEventServer.NewAdminScheduledEventServer(authClient, hfClient)
-	if err != nil {
-		glog.Fatal(err)
-	}
-
-	adminUServer, err := adminUserServer.NewAdminUserServer(authClient, hfClient)
+	adminUServer, err := userserver.NewUserServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -204,8 +202,7 @@ func main() {
 		vmServer.SetupRoutes(r)
 		//shellProxy.SetupRoutes(r)
 		vmClaimServer.SetupRoutes(r)
-		adminEnvServer.SetupRoutes(r)
-		adminScenServer.SetupRoutes(r)
+		envServer.SetupRoutes(r)
 		adminSEServer.SetupRoutes(r)
 		adminUServer.SetupRoutes(r)
 		adminVMTServer.SetupRoutes(r)

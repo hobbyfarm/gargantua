@@ -2,6 +2,10 @@ package dynamicbindcontroller
 
 import (
 	"fmt"
+	"math/rand"
+	"strings"
+	"time"
+
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
@@ -13,9 +17,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
-	"math/rand"
-	"strings"
-	"time"
 )
 
 type DynamicBindController struct {
@@ -161,11 +162,17 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 	var chosenDynamicBindConfiguration *hfv1.DynamicBindConfiguration
 	var chosenEnvironment *hfv1.Environment
 	var dbcChosen bool
+	var provision bool
 	dbcChosen = false
-
+	provision = true
 	for _, dynamicBindConfiguration := range dynamicBindConfigurations.Items {
 		environment, err := d.hfClientSet.HobbyfarmV1().Environments().Get(dynamicBindConfiguration.Spec.Environment, metav1.GetOptions{})
 
+		if provisionMethod, ok := environment.Annotations["hobbyfarm.io/provisioner"]; ok {
+			if provisionMethod == "external" {
+				provision = false
+			}
+		}
 		if err != nil {
 			glog.Errorf("Error while retrieving environment %v", err)
 			return nil
@@ -279,7 +286,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 					KeyPair:                  "",
 					VirtualMachineClaimId:    dynamicBindRequest.Spec.VirtualMachineClaim,
 					UserId:                   vmClaim.Spec.UserId,
-					Provision:                true,
+					Provision:                provision,
 					VirtualMachineSetId:      "",
 				},
 				Status: hfv1.VirtualMachineStatus{
@@ -293,6 +300,12 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 					Hostname:      "",
 				},
 			}
+
+			sshUser, exists := chosenEnvironment.Spec.TemplateMapping[vmX.Template]["ssh_username"]
+			if exists {
+				vm.Spec.SshUsername = sshUser
+			}
+
 			if chosenDynamicBindConfiguration.Spec.RestrictedBind {
 				vm.ObjectMeta.Labels["restrictedbind"] = "true"
 				vm.ObjectMeta.Labels["restrictedbindvalue"] = chosenDynamicBindConfiguration.Spec.RestrictedBindValue
