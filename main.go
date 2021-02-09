@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
+	"github.com/hobbyfarm/gargantua/pkg/vmtemplateserver"
 
 	"net/http"
 	"sync"
@@ -36,7 +37,6 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/vmclaimserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
 	"github.com/hobbyfarm/gargantua/pkg/vmserver"
-	adminVirtualMachineTemplateServer "github.com/hobbyfarm/gargantua/pkg/vmtemplateserver"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -156,22 +156,22 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	adminEnvServer, err := environmentserver.NewEnvironmentServer(authClient, hfClient)
+	environmentServer, err := environmentserver.NewEnvironmentServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	adminSEServer, err := scheduledeventserver.NewScheduledEventServer(authClient, hfClient)
+	scheduledEventServer, err := scheduledeventserver.NewScheduledEventServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	adminUServer, err := userserver.NewUserServer(authClient, hfClient)
+	userServer, err := userserver.NewUserServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	adminVMTServer, err := adminVirtualMachineTemplateServer.NewVirtualMachineTemplateServer(authClient, hfClient)
+	vmTemplateServer, err := vmtemplateserver.NewVirtualMachineTemplateServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -187,10 +187,10 @@ func main() {
 		vmServer.SetupRoutes(r)
 		//shellProxy.SetupRoutes(r)
 		vmClaimServer.SetupRoutes(r)
-		adminEnvServer.SetupRoutes(r)
-		adminSEServer.SetupRoutes(r)
-		adminUServer.SetupRoutes(r)
-		adminVMTServer.SetupRoutes(r)
+		environmentServer.SetupRoutes(r)
+		scheduledEventServer.SetupRoutes(r)
+		userServer.SetupRoutes(r)
+		vmTemplateServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
