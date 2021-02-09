@@ -10,7 +10,6 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
-	adminUserServer "github.com/hobbyfarm/gargantua/pkg/admin/userserver"
 	adminVirtualMachineTemplateServer "github.com/hobbyfarm/gargantua/pkg/admin/vmtemplateserver"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
@@ -18,7 +17,7 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/dynamicbindcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
-	adminEnvironmentServer "github.com/hobbyfarm/gargantua/pkg/environmentserver"
+	"github.com/hobbyfarm/gargantua/pkg/userserver"
 
 	//"k8s.io/client-go/tools/cache"
 
@@ -30,6 +29,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmsetcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/pkg/courseserver"
+	"github.com/hobbyfarm/gargantua/pkg/environmentserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
 	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
@@ -162,7 +162,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	adminEnvServer, err := adminEnvironmentServer.NewEnvironmentServer(authClient, hfClient)
+	adminEnvServer, err := environmentserver.NewEnvironmentServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	adminUServer, err := adminUserServer.NewAdminUserServer(authClient, hfClient)
+	adminUServer, err := userserver.NewUserServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
