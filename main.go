@@ -10,8 +10,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	adminCourseServer "github.com/hobbyfarm/gargantua/pkg/admin/courseserver"
-	adminEnvironmentServer "github.com/hobbyfarm/gargantua/pkg/admin/environmentserver"
-	adminScenarioServer "github.com/hobbyfarm/gargantua/pkg/admin/scenarioserver"
 	adminUserServer "github.com/hobbyfarm/gargantua/pkg/admin/userserver"
 	adminVirtualMachineTemplateServer "github.com/hobbyfarm/gargantua/pkg/admin/vmtemplateserver"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
@@ -20,6 +18,7 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/dynamicbindcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
+	adminEnvironmentServer "github.com/hobbyfarm/gargantua/pkg/environmentserver"
 
 	//"k8s.io/client-go/tools/cache"
 
@@ -163,12 +162,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	adminEnvServer, err := adminEnvironmentServer.NewAdminEnvironmentServer(authClient, hfClient)
-	if err != nil {
-		glog.Fatal(err)
-	}
-
-	adminScenServer, err := adminScenarioServer.NewAdminScenarioServer(authClient, hfClient)
+	adminEnvServer, err := adminEnvironmentServer.NewEnvironmentServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -205,7 +199,6 @@ func main() {
 		//shellProxy.SetupRoutes(r)
 		vmClaimServer.SetupRoutes(r)
 		adminEnvServer.SetupRoutes(r)
-		adminScenServer.SetupRoutes(r)
 		adminSEServer.SetupRoutes(r)
 		adminUServer.SetupRoutes(r)
 		adminVMTServer.SetupRoutes(r)
