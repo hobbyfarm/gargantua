@@ -16,13 +16,13 @@ import (
 	"strings"
 )
 
-type UserServer struct {
+type AdminUserServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet *hfClientset.Clientset
 }
 
-func NewUserServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*UserServer, error) {
-	s := UserServer{}
+func NewAdminUserServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*AdminUserServer, error) {
+	s := AdminUserServer{}
 
 	s.hfClientSet = hfClientset
 	s.auth = authClient
@@ -30,15 +30,15 @@ func NewUserServer(authClient *authclient.AuthClient, hfClientset *hfClientset.C
 	return &s, nil
 }
 
-func (u UserServer) getUser(id string) (hfv1.User, error) {
+func (a AdminUserServer) getUser(id string) (hfv1.User, error) {
 
 	empty := hfv1.User{}
 
 	if len(id) == 0 {
-		return empty, fmt.Errorf("user id passed in was empty")
+		return empty, fmt.Errorf("User id passed in was empty")
 	}
 
-	obj, err := u.hfClientSet.HobbyfarmV1().Users().Get(id, metav1.GetOptions{})
+	obj, err := a.hfClientSet.HobbyfarmV1().Users().Get(id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving User by id: %s with error: %v", id, err)
 	}
@@ -47,10 +47,10 @@ func (u UserServer) getUser(id string) (hfv1.User, error) {
 
 }
 
-func (u UserServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/a/user/list", u.ListFunc).Methods("GET")
-	r.HandleFunc("/a/user/{id}", u.GetFunc).Methods("GET")
-	r.HandleFunc("/a/user", u.UpdateFunc).Methods("PUT")
+func (a AdminUserServer) SetupRoutes(r *mux.Router) {
+	r.HandleFunc("/a/user/list", a.ListFunc).Methods("GET")
+	r.HandleFunc("/a/user/{id}", a.GetFunc).Methods("GET")
+	r.HandleFunc("/a/user", a.UpdateFunc).Methods("PUT")
 	glog.V(2).Infof("set up routes for User server")
 }
 
@@ -59,8 +59,8 @@ type PreparedUser struct {
 	hfv1.UserSpec
 }
 
-func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := u.auth.AuthNAdmin(w, r)
+func (a AdminUserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := a.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get User")
 		return
@@ -75,7 +75,7 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := u.getUser(id)
+	user, err := a.getUser(id)
 
 	if err != nil {
 		glog.Errorf("error while retrieving user %v", err)
@@ -94,14 +94,14 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infof("retrieved user %s", user.Name)
 }
 
-func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := u.auth.AuthNAdmin(w, r)
+func (a AdminUserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := a.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list users")
 		return
 	}
 
-	users, err := u.hfClientSet.HobbyfarmV1().Users().List(metav1.ListOptions{})
+	users, err := a.hfClientSet.HobbyfarmV1().Users().List(metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while retrieving users %v", err)
@@ -109,7 +109,7 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preparedUsers := []PreparedUser{} // must be declared this way so as to JSON marshal into [] instead of null
+	preparedUsers := []PreparedUser{}
 	for _, s := range users.Items {
 		preparedUsers = append(preparedUsers, PreparedUser{s.Name, s.Spec})
 	}
@@ -123,8 +123,8 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infof("listed users")
 }
 
-func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := u.auth.AuthNAdmin(w, r)
+func (a AdminUserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := a.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update users")
 		return
@@ -137,7 +137,7 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := u.hfClientSet.HobbyfarmV1().Users().Get(id, metav1.GetOptions{})
+		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			return fmt.Errorf("bad")
@@ -178,7 +178,7 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		_, updateErr := u.hfClientSet.HobbyfarmV1().Users().Update(user)
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(user)
 		return updateErr
 	})
 
