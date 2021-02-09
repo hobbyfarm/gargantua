@@ -7,6 +7,8 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/vmtemplateserver"
 	"os"
 
+	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -29,6 +31,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmsetcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/pkg/courseserver"
+	"github.com/hobbyfarm/gargantua/pkg/environmentserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
 	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
@@ -49,7 +52,7 @@ import (
 )
 
 const (
-	ClientGoQPS = 100
+	ClientGoQPS   = 100
 	ClientGoBurst = 100
 )
 
