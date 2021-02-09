@@ -6,23 +6,20 @@ import (
 
 	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
 
+	"net/http"
+	"sync"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
-	adminVirtualMachineTemplateServer "github.com/hobbyfarm/gargantua/pkg/admin/vmtemplateserver"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/dynamicbindcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
-	"github.com/hobbyfarm/gargantua/pkg/userserver"
-
-	//"k8s.io/client-go/tools/cache"
-
-	//"github.com/hobbyfarm/gargantua/pkg/controllers/environment"
-
 	"github.com/hobbyfarm/gargantua/pkg/controllers/session"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/tfpcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmclaimcontroller"
@@ -35,16 +32,13 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/shell"
 	"github.com/hobbyfarm/gargantua/pkg/signals"
+	"github.com/hobbyfarm/gargantua/pkg/userserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmclaimserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
 	"github.com/hobbyfarm/gargantua/pkg/vmserver"
+	adminVirtualMachineTemplateServer "github.com/hobbyfarm/gargantua/pkg/vmtemplateserver"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-
-	//"k8s.io/client-go/tools/cache"
-	"net/http"
-	"sync"
-	"time"
 
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -177,7 +171,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	adminVMTServer, err := adminVirtualMachineTemplateServer.NewAdminVirtualMachineTemplateServer(authClient, hfClient)
+	adminVMTServer, err := adminVirtualMachineTemplateServer.NewVirtualMachineTemplateServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
