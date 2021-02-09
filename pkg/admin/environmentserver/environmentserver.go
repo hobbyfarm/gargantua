@@ -19,13 +19,13 @@ import (
 	"time"
 )
 
-type EnvironmentServer struct {
+type AdminEnvironmentServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet *hfClientset.Clientset
 }
 
-func NewEnvironmentServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*EnvironmentServer, error) {
-	es := EnvironmentServer{}
+func NewAdminEnvironmentServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*AdminEnvironmentServer, error) {
+	es := AdminEnvironmentServer{}
 
 	es.hfClientSet = hfClientset
 	es.auth = authClient
@@ -33,7 +33,7 @@ func NewEnvironmentServer(authClient *authclient.AuthClient, hfClientset *hfClie
 	return &es, nil
 }
 
-func (e EnvironmentServer) getEnvironment(id string) (hfv1.Environment, error) {
+func (a AdminEnvironmentServer) getEnvironment(id string) (hfv1.Environment, error) {
 
 	empty := hfv1.Environment{}
 
@@ -41,7 +41,7 @@ func (e EnvironmentServer) getEnvironment(id string) (hfv1.Environment, error) {
 		return empty, fmt.Errorf("vm claim id passed in was empty")
 	}
 
-	obj, err := e.hfClientSet.HobbyfarmV1().Environments().Get(id, metav1.GetOptions{})
+	obj, err := a.hfClientSet.HobbyfarmV1().Environments().Get(id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving Environment by id: %s with error: %v", id, err)
 	}
@@ -50,12 +50,12 @@ func (e EnvironmentServer) getEnvironment(id string) (hfv1.Environment, error) {
 
 }
 
-func (e EnvironmentServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/a/environment/list", e.ListFunc).Methods("GET")
-	r.HandleFunc("/a/environment/{id}", e.GetFunc).Methods("GET")
-	r.HandleFunc("/a/environment/create", e.CreateFunc).Methods("POST")
-	r.HandleFunc("/a/environment/{id}/update", e.UpdateFunc).Methods("PUT")
-	r.HandleFunc("/a/environment/{environment_id}/available", e.PostEnvironmentAvailableFunc).Methods("POST")
+func (a AdminEnvironmentServer) SetupRoutes(r *mux.Router) {
+	r.HandleFunc("/a/environment/list", a.ListFunc).Methods("GET")
+	r.HandleFunc("/a/environment/{id}", a.GetFunc).Methods("GET")
+	r.HandleFunc("/a/environment/create", a.CreateFunc).Methods("POST")
+	r.HandleFunc("/a/environment/{id}/update", a.UpdateFunc).Methods("PUT")
+	r.HandleFunc("/a/environment/{environment_id}/available", a.PostEnvironmentAvailableFunc).Methods("POST")
 	glog.V(2).Infof("set up routes for environment server")
 }
 
@@ -65,8 +65,8 @@ type PreparedEnvironment struct {
 	hfv1.EnvironmentStatus
 }
 
-func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthNAdmin(w, r)
+func (a AdminEnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := a.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get environment")
 		return
@@ -81,7 +81,7 @@ func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	environment, err := e.getEnvironment(environmentId)
+	environment, err := a.getEnvironment(environmentId)
 
 	if err != nil {
 		glog.Errorf("error while retrieving environment %v", err)
@@ -100,14 +100,14 @@ func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infof("retrieved environment %s", environment.Name)
 }
 
-func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthNAdmin(w, r)
+func (a AdminEnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := a.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list environments")
 		return
 	}
 
-	environments, err := e.hfClientSet.HobbyfarmV1().Environments().List(metav1.ListOptions{})
+	environments, err := a.hfClientSet.HobbyfarmV1().Environments().List(metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while listing all environments %v", err)
@@ -115,7 +115,7 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preparedEnvironments := []PreparedEnvironment{} // must be declared this way so as to JSON marshal into [] instead of null
+	preparedEnvironments := []PreparedEnvironment{}
 
 	for _, e := range environments.Items {
 		preparedEnvironments = append(preparedEnvironments, PreparedEnvironment{e.Name,e.Spec, e.Status})
@@ -130,15 +130,15 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infof("retrieved list of all environments")
 }
 
-func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthNAdmin(w, r)
+func (a AdminEnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := a.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create environments")
 		return
 	}
 
-	displayName := r.PostFormValue("display_name")
-	if displayName == "" {
+	display_name := r.PostFormValue("display_name")
+	if display_name == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no display_name passed in")
 		return
 	}
@@ -152,53 +152,53 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	templateMapping := r.PostFormValue("template_mapping")
-	if templateMapping == "" {
+	template_mapping := r.PostFormValue("template_mapping")
+	if template_mapping == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no template_mapping passed in")
 		return
 	}
 
-	environmentSpecifics := r.PostFormValue("environment_specifics")
-	if environmentSpecifics == "" {
+	environment_specifics := r.PostFormValue("environment_specifics")
+	if environment_specifics == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no environment_specifics passed in")
 		return
 	}
 
-	ipTranslationMap := r.PostFormValue("ip_translation_map")
-	if ipTranslationMap == "" {
+	ip_translation_map := r.PostFormValue("ip_translation_map")
+	if ip_translation_map == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ip_translation_map passed in")
 		return
 	}
 
-	wsEndpoint := r.PostFormValue("ws_endpoint")
-	if wsEndpoint == "" {
+	ws_endpoint := r.PostFormValue("ws_endpoint")
+	if ws_endpoint == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ws_endpoint passed in")
 		return
 	}
 
-	capacityMode := r.PostFormValue("capacity_mode")
-	if capacityMode == "" {
+	capacity_mode := r.PostFormValue("capacity_mode")
+	if capacity_mode == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no capacity_mode passed in")
 		return
-	} else if capacityMode != "raw" && capacityMode != "count" {
+	} else if capacity_mode != "raw" && capacity_mode != "count" {
 		// invalid capacity mode passed in
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid capacity_mode passed in")
 		return
 	}
 
-	burstCapable := r.PostFormValue("burst_capable")
-	if burstCapable == "" {
+	burst_capable := r.PostFormValue("burst_capable")
+	if burst_capable == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no burst_capable passed in")
 		return
 	}
-	burstCapableBool, err := strconv.ParseBool(burstCapable)
+	burstCapableBool, err := strconv.ParseBool(burst_capable)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid burst_capacity passed in")
 		return
 	}
 
 	templateMappingUnmarshaled := map[string]map[string]string{} // lol
-	err = json.Unmarshal([]byte(templateMapping), &templateMappingUnmarshaled)
+	err = json.Unmarshal([]byte(template_mapping), &templateMappingUnmarshaled)
 	if err != nil {
 		glog.Errorf("error while unmarshaling template_mapping (create environment) %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -206,7 +206,7 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	environmentSpecificsUnmarshaled := map[string]string{}
-	err = json.Unmarshal([]byte(environmentSpecifics), &environmentSpecificsUnmarshaled)
+	err = json.Unmarshal([]byte(environment_specifics), &environmentSpecificsUnmarshaled)
 	if err != nil {
 		glog.Errorf("error while unmarshaling environment_specifics (create environment) %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -214,7 +214,7 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ipTranslationUnmarshaled := map[string]string{}
-	err = json.Unmarshal([]byte(ipTranslationMap), &ipTranslationUnmarshaled)
+	err = json.Unmarshal([]byte(ip_translation_map), &ipTranslationUnmarshaled)
 	if err != nil {
 		glog.Errorf("error while unmarshaling ip_translation_map (create environment) %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -227,15 +227,15 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:10]
 	environment.Name = "env-" + strings.ToLower(sha)
 
-	environment.Spec.DisplayName = displayName
+	environment.Spec.DisplayName = display_name
 	environment.Spec.DNSSuffix = dnssuffix
 	environment.Spec.Provider = provider
 	environment.Spec.TemplateMapping = templateMappingUnmarshaled
 	environment.Spec.EnvironmentSpecifics = environmentSpecificsUnmarshaled
 	environment.Spec.IPTranslationMap = ipTranslationUnmarshaled
-	environment.Spec.WsEndpoint = wsEndpoint
+	environment.Spec.WsEndpoint = ws_endpoint
 
-	if capacityMode == "raw" {
+	if capacity_mode == "raw" {
 		environment.Spec.CapacityMode = hfv1.CapacityModeRaw
 	} else {
 		// not validating "count" here as we already validated input var above
@@ -244,7 +244,7 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 
 	environment.Spec.BurstCapable = burstCapableBool
 
-	environment, err = e.hfClientSet.HobbyfarmV1().Environments().Create(environment)
+	environment, err = a.hfClientSet.HobbyfarmV1().Environments().Create(environment)
 	if err != nil {
 		glog.Errorf("error creating environment %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating environment")
@@ -255,8 +255,8 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthNAdmin(w, r)
+func (a AdminEnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := a.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update environment")
 		return
@@ -271,28 +271,28 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		environment, err := e.getEnvironment(environmentId)
+		environment, err := a.getEnvironment(environmentId)
 		if err != nil {
 			glog.Errorf("error while retrieving environment %v", err)
 			util.ReturnHTTPMessage(w, r, 500, "error", "no environment found")
 			return fmt.Errorf("bad")
 		}
 
-		displayName := r.PostFormValue("display_name")
+		display_name := r.PostFormValue("display_name")
 		dnssuffix := r.PostFormValue("dnssuffix")
 		provider := r.PostFormValue("provider")
-		templateMapping := r.PostFormValue("template_mapping")
-		environmentSpecifics := r.PostFormValue("environment_specifics")
-		ipTranslationMap := r.PostFormValue("ip_translation_map")
-		wsEndpoint := r.PostFormValue("ws_endpoint")
-		capacityMode := r.PostFormValue("capacity_mode")
-		burstCapable := r.PostFormValue("burst_capable")
+		template_mapping := r.PostFormValue("template_mapping")
+		environment_specifics := r.PostFormValue("environment_specifics")
+		ip_translation_map := r.PostFormValue("ip_translation_map")
+		ws_endpoint := r.PostFormValue("ws_endpoint")
+		capacity_mode := r.PostFormValue("capacity_mode")
+		burst_capable := r.PostFormValue("burst_capable")
 
-		if len(displayName) > 0 {
-			environment.Spec.DisplayName = displayName
+		if len(display_name) > 0 {
+			environment.Spec.DisplayName = display_name
 		}
 
-		// empty string is e valid dnssuffix value (because it is optional), so not
+		// empty string is a valid dnssuffix value (because it is optional), so not
 		// performing string length check here
 		environment.Spec.DNSSuffix = dnssuffix
 
@@ -300,9 +300,9 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			environment.Spec.Provider = provider
 		}
 
-		if len(templateMapping) > 0 {
+		if len(template_mapping) > 0 {
 			templateMappingUnmarshaled := map[string]map[string]string{} // lol
-			err = json.Unmarshal([]byte(templateMapping), &templateMappingUnmarshaled)
+			err = json.Unmarshal([]byte(template_mapping), &templateMappingUnmarshaled)
 			if err != nil {
 				glog.Errorf("error while unmarshaling template_mapping (update environment) %v", err)
 				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -311,9 +311,9 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			environment.Spec.TemplateMapping = templateMappingUnmarshaled
 		}
 
-		if len(environmentSpecifics) > 0 {
+		if len(environment_specifics) > 0 {
 			environmentSpecificsUnmarshaled := map[string]string{}
-			err = json.Unmarshal([]byte(environmentSpecifics), &environmentSpecificsUnmarshaled)
+			err = json.Unmarshal([]byte(environment_specifics), &environmentSpecificsUnmarshaled)
 			if err != nil {
 				glog.Errorf("error while unmarshaling environment_specifics (update environment) %v", err)
 				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -322,9 +322,9 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			environment.Spec.EnvironmentSpecifics = environmentSpecificsUnmarshaled
 		}
 
-		if len(ipTranslationMap) > 0 {
+		if len(ip_translation_map) > 0 {
 			ipTranslationUnmarshaled := map[string]string{}
-			err = json.Unmarshal([]byte(ipTranslationMap), &ipTranslationUnmarshaled)
+			err = json.Unmarshal([]byte(ip_translation_map), &ipTranslationUnmarshaled)
 			if err != nil {
 				glog.Errorf("error while unmarshaling ip_translation_map (create environment) %v", err)
 				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -333,14 +333,14 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			environment.Spec.IPTranslationMap = ipTranslationUnmarshaled
 		}
 
-		if len(wsEndpoint) > 0 {
-			environment.Spec.WsEndpoint = wsEndpoint
+		if len(ws_endpoint) > 0 {
+			environment.Spec.WsEndpoint = ws_endpoint
 		}
 
-		if len(capacityMode) > 0 {
-			if capacityMode == "raw" {
+		if len(capacity_mode) > 0 {
+			if capacity_mode == "raw" {
 				environment.Spec.CapacityMode = hfv1.CapacityModeRaw
-			} else if capacityMode == "count" {
+			} else if capacity_mode == "count" {
 				environment.Spec.CapacityMode = hfv1.CapacityModeCount
 			} else {
 				util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid capacity_mode passed in")
@@ -348,8 +348,8 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if len(burstCapable) > 0 {
-			burstCapableBool, err := strconv.ParseBool(burstCapable)
+		if len(burst_capable) > 0 {
+			burstCapableBool, err := strconv.ParseBool(burst_capable)
 			if err != nil {
 				util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid burst_capable passed in")
 				return fmt.Errorf("bad")
@@ -357,7 +357,7 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			environment.Spec.BurstCapable = burstCapableBool
 		}
 
-		_, updateErr := e.hfClientSet.HobbyfarmV1().Environments().Update(&environment)
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Environments().Update(&environment)
 		return updateErr
 	})
 
@@ -370,8 +370,8 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (e EnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthNAdmin(w, r)
+func (a AdminEnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := a.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get environment")
 		return
@@ -393,14 +393,14 @@ func (e EnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, r
 		return
 	}
 
-	environment, err := e.getEnvironment(environmentId)
+	environment, err := a.getEnvironment(environmentId)
 
 	if err != nil {
 		glog.Errorf("error while retrieving environment %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "no environment found")
 		return
 	}
-	max, err := util.MaxAvailableDuringPeriod(e.hfClientSet, environmentId, start, end)
+	max, err := util.MaxAvailableDuringPeriod(a.hfClientSet, environmentId, start, end)
 	if err != nil {
 		glog.Errorf("error while getting max available %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "error getting max available vms for environment")
