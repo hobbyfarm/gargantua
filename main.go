@@ -11,7 +11,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	adminCourseServer "github.com/hobbyfarm/gargantua/pkg/admin/courseserver"
-	adminVirtualMachineTemplateServer "github.com/hobbyfarm/gargantua/pkg/admin/vmtemplateserver"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
@@ -178,11 +177,6 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	adminVMTServer, err := adminVirtualMachineTemplateServer.NewAdminVirtualMachineTemplateServer(authClient, hfClient)
-	if err != nil {
-		glog.Fatal(err)
-	}
-
 	adminCServer, err := adminCourseServer.NewAdminCourseServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
@@ -202,7 +196,6 @@ func main() {
 		envServer.SetupRoutes(r)
 		adminSEServer.SetupRoutes(r)
 		adminUServer.SetupRoutes(r)
-		adminVMTServer.SetupRoutes(r)
 		adminCServer.SetupRoutes(r)
 	}
 
