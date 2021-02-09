@@ -2,6 +2,10 @@ package vmsetcontroller
 
 import (
 	"fmt"
+	"math/rand"
+	"strings"
+	"time"
+
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
@@ -16,9 +20,6 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
-	"math/rand"
-	"strings"
-	"time"
 )
 
 type VirtualMachineSetController struct {
@@ -209,6 +210,13 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		// 1. let's check the environment to see if there is available capacity
 		// 2. if available capacity is available let's create new VM's
 		env, err := v.envLister.Get(vmset.Spec.Environment)
+		var provision bool
+		provision = true
+		if provisionMethod, ok := env.Annotations["hobbyfarm.io/provisioner"]; ok {
+			if provisionMethod == "external" {
+				provision = false
+			}
+		}
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				glog.Errorf("environment invalid")
@@ -252,7 +260,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 					KeyPair:                  "",
 					VirtualMachineClaimId:    "",
 					UserId:                   "",
-					Provision:                true,
+					Provision:                provision,
 					VirtualMachineSetId:      vmset.Name,
 				},
 				Status: hfv1.VirtualMachineStatus{
@@ -265,6 +273,11 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 					EnvironmentId: env.Name,
 					Hostname:      "",
 				},
+			}
+
+			sshUser, exists := env.Spec.TemplateMapping[vmt.Name]["ssh_username"]
+			if exists {
+				vm.Spec.SshUsername = sshUser
 			}
 			if vmset.Spec.RestrictedBind {
 				vm.ObjectMeta.Labels["restrictedbind"] = "true"

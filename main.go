@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
 	"os"
 
 	"github.com/golang/glog"
@@ -9,9 +10,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	adminCourseServer "github.com/hobbyfarm/gargantua/pkg/admin/courseserver"
-	adminEnvironmentServer "github.com/hobbyfarm/gargantua/pkg/admin/environmentserver"
-	adminScenarioServer "github.com/hobbyfarm/gargantua/pkg/admin/scenarioserver"
-	adminScheduledEventServer "github.com/hobbyfarm/gargantua/pkg/admin/scheduledeventserver"
 	adminVirtualMachineTemplateServer "github.com/hobbyfarm/gargantua/pkg/admin/vmtemplateserver"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
@@ -163,17 +161,12 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	adminEnvServer, err := adminEnvironmentServer.NewAdminEnvironmentServer(authClient, hfClient)
+	adminEnvServer, err := adminEnvironmentServer.NewEnvironmentServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	adminScenServer, err := adminScenarioServer.NewAdminScenarioServer(authClient, hfClient)
-	if err != nil {
-		glog.Fatal(err)
-	}
-
-	adminSEServer, err := adminScheduledEventServer.NewAdminScheduledEventServer(authClient, hfClient)
+	adminSEServer, err := scheduledeventserver.NewScheduledEventServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -205,7 +198,6 @@ func main() {
 		//shellProxy.SetupRoutes(r)
 		vmClaimServer.SetupRoutes(r)
 		adminEnvServer.SetupRoutes(r)
-		adminScenServer.SetupRoutes(r)
 		adminSEServer.SetupRoutes(r)
 		adminUServer.SetupRoutes(r)
 		adminVMTServer.SetupRoutes(r)
