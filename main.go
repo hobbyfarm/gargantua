@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
 	"os"
 
 	"github.com/golang/glog"
@@ -9,7 +10,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	adminCourseServer "github.com/hobbyfarm/gargantua/pkg/admin/courseserver"
-	adminScheduledEventServer "github.com/hobbyfarm/gargantua/pkg/admin/scheduledeventserver"
 	adminUserServer "github.com/hobbyfarm/gargantua/pkg/admin/userserver"
 	adminVirtualMachineTemplateServer "github.com/hobbyfarm/gargantua/pkg/admin/vmtemplateserver"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
@@ -167,7 +167,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	adminSEServer, err := adminScheduledEventServer.NewAdminScheduledEventServer(authClient, hfClient)
+	adminSEServer, err := scheduledeventserver.NewScheduledEventServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
