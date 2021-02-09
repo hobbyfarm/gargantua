@@ -2,8 +2,9 @@ package main
 
 import (
 	"flag"
-	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
 	"os"
+
+	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
@@ -29,6 +30,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmsetcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/pkg/courseserver"
+	"github.com/hobbyfarm/gargantua/pkg/environmentserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
 	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
@@ -49,7 +51,7 @@ import (
 )
 
 const (
-	ClientGoQPS = 100
+	ClientGoQPS   = 100
 	ClientGoBurst = 100
 )
 
@@ -161,7 +163,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	adminEnvServer, err := adminEnvironmentServer.NewEnvironmentServer(authClient, hfClient)
+	envServer, err := environmentserver.NewEnvironmentServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -197,7 +199,7 @@ func main() {
 		vmServer.SetupRoutes(r)
 		//shellProxy.SetupRoutes(r)
 		vmClaimServer.SetupRoutes(r)
-		adminEnvServer.SetupRoutes(r)
+		envServer.SetupRoutes(r)
 		adminSEServer.SetupRoutes(r)
 		adminUServer.SetupRoutes(r)
 		adminVMTServer.SetupRoutes(r)
