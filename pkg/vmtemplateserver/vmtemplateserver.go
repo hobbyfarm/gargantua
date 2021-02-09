@@ -1,33 +1,41 @@
 package vmtemplateserver
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/golang/glog"
-	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/util"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/http"
+	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"k8s.io/client-go/tools/cache"
 )
 
-type VirtualMachineTemplateServer struct {
+const (
+	idIndex   = "vmts.hobbyfarm.io/id-index"
+	nameIndex = "vmts.hobbyfarm.io/name-index"
+)
+
+type VMTemplateServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet *hfClientset.Clientset
+
+	vmTemplateIndexer cache.Indexer
 }
 
-func NewVirtualMachineTemplateServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*VirtualMachineTemplateServer, error) {
-	as := VirtualMachineTemplateServer{}
+func NewVMTemplateServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*VMTemplateServer, error) {
+	vmts := VMTemplateServer{}
 
-	as.hfClientSet = hfClientset
-	as.auth = authClient
+	vmts.hfClientSet = hfClientset
+	vmts.auth = authClient
 
-	return &as, nil
+	inf := hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer()
+	indexers := map[string]cache.IndexFunc{idIndex: vmtIdIndexer, nameIndex: vmtNameIndexer}
+	inf.AddIndexers(indexers)
+	vmts.vmTemplateIndexer = inf.GetIndexer()
+
+	return &vmts, nil
 }
 
-func (v VirtualMachineTemplateServer) getVirtualMachineTemplate(id string) (hfv1.VirtualMachineTemplate, error) {
+func (vmts VMTemplateServer) GetVirtualMachineTemplateById(id string) (hfv1.VirtualMachineTemplate, error) {
 
 	empty := hfv1.VirtualMachineTemplate{}
 
@@ -35,86 +43,64 @@ func (v VirtualMachineTemplateServer) getVirtualMachineTemplate(id string) (hfv1
 		return empty, fmt.Errorf("vm template id passed in was empty")
 	}
 
-	obj, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Get(id, metav1.GetOptions{})
+	obj, err := vmts.vmTemplateIndexer.ByIndex(idIndex, id)
 	if err != nil {
-		return empty, fmt.Errorf("error while retrieving Virtual Machine Template by id: %s with error: %v", id, err)
+		return empty, fmt.Errorf("error while retrieving virtualmachinetemplate by id: %s with error: %v", id, err)
 	}
 
-	return *obj, nil
+	if len(obj) < 1 {
+		return empty, fmt.Errorf("virtualmachinetemplate not found by id: %s", id)
+	}
+
+	result, ok := obj[0].(*hfv1.VirtualMachineTemplate)
+
+	if !ok {
+		return empty, fmt.Errorf("error while converting virtualmachinetemplate found by id to object: %s", id)
+	}
+
+	return *result, nil
 
 }
 
-func (v VirtualMachineTemplateServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/a/vmtemplate/list", v.ListFunc).Methods("GET")
-	r.HandleFunc("/a/vmtemplate/{id}", v.GetFunc).Methods("GET")
-	glog.V(2).Infof("set up routes for admin vmtemplate server")
+func (vmts VMTemplateServer) GetVirtualMachineTemplateByName(name string) (hfv1.VirtualMachineTemplate, error) {
+
+	empty := hfv1.VirtualMachineTemplate{}
+
+	if len(name) == 0 {
+		return empty, fmt.Errorf("vm template name passed in was empty")
+	}
+
+	obj, err := vmts.vmTemplateIndexer.ByIndex(nameIndex, name)
+	if err != nil {
+		return empty, fmt.Errorf("error while retrieving virtualmachinetemplate by name: %s with error: %v", name, err)
+	}
+
+	if len(obj) < 1 {
+		return empty, fmt.Errorf("virtualmachinetemplate not found by name: %s", name)
+	}
+
+	result, ok := obj[0].(*hfv1.VirtualMachineTemplate)
+
+	if !ok {
+		return empty, fmt.Errorf("error while converting virtualmachinetemplate found by name to object: %s", name)
+	}
+
+	return *result, nil
+
 }
 
-type PreparedVMTemplate struct {
-	hfv1.VirtualMachineTemplateSpec
+func vmtIdIndexer(obj interface{}) ([]string, error) {
+	vmt, ok := obj.(*hfv1.VirtualMachineTemplate)
+	if !ok {
+		return []string{}, nil
+	}
+	return []string{vmt.Spec.Id}, nil
 }
 
-func (v VirtualMachineTemplateServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := v.auth.AuthNAdmin(w, r)
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm template")
-		return
+func vmtNameIndexer(obj interface{}) ([]string, error) {
+	vmt, ok := obj.(*hfv1.VirtualMachineTemplate)
+	if !ok {
+		return []string{}, nil
 	}
-
-	vars := mux.Vars(r)
-
-	vmtId := vars["id"]
-
-	if len(vmtId) == 0 {
-		util.ReturnHTTPMessage(w, r, 500, "error", "no vmt id passed in")
-		return
-	}
-
-	vmt, err := v.getVirtualMachineTemplate(vmtId)
-
-	if err != nil {
-		glog.Errorf("error while retrieving virtual machine template %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "error", "no virtual machine template found")
-		return
-	}
-
-	preparedEnvironment := PreparedVMTemplate{vmt.Spec}
-
-	encodedEnvironment, err := json.Marshal(preparedEnvironment)
-	if err != nil {
-		glog.Error(err)
-	}
-	util.ReturnHTTPContent(w, r, 200, "success", encodedEnvironment)
-
-	glog.V(2).Infof("retrieved vmt %s", vmt.Name)
-}
-
-func (v VirtualMachineTemplateServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := v.auth.AuthNAdmin(w, r)
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list vmts")
-		return
-	}
-
-	vmts, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
-
-	if err != nil {
-		glog.Errorf("error while listing all vmts %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "error", "error listing all vmts")
-		return
-	}
-
-	preparedVirtualMachineTemplates := []PreparedVMTemplate{}
-
-	for _, vmt := range vmts.Items {
-		preparedVirtualMachineTemplates = append(preparedVirtualMachineTemplates, PreparedVMTemplate{vmt.Spec})
-	}
-
-	encodedVirtualMachineTemplates, err := json.Marshal(preparedVirtualMachineTemplates)
-	if err != nil {
-		glog.Error(err)
-	}
-	util.ReturnHTTPContent(w, r, 200, "success", encodedVirtualMachineTemplates)
-
-	glog.V(2).Infof("retrieved list of all environments")
+	return []string{vmt.Spec.Name}, nil
 }
