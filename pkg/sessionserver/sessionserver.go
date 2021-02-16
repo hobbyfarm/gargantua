@@ -30,7 +30,7 @@ const (
 )
 
 type SessionServer struct {
-	hfClientSet      *hfClientset.Clientset
+	hfClientSet      hfClientset.Interface
 	courseClient     *courseclient.CourseClient
 	scenarioClient   *scenarioclient.ScenarioClient
 	accessCodeClient *accesscode.AccessCodeClient
@@ -38,7 +38,7 @@ type SessionServer struct {
 	ssIndexer        cache.Indexer
 }
 
-func NewSessionServer(authClient *authclient.AuthClient, accessCodeClient *accesscode.AccessCodeClient, scenarioClient *scenarioclient.ScenarioClient, courseClient *courseclient.CourseClient, hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*SessionServer, error) {
+func NewSessionServer(authClient *authclient.AuthClient, accessCodeClient *accesscode.AccessCodeClient, scenarioClient *scenarioclient.ScenarioClient, courseClient *courseclient.CourseClient, hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*SessionServer, error) {
 	a := SessionServer{}
 	a.hfClientSet = hfClientSet
 	a.courseClient = courseClient

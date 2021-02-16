@@ -25,7 +25,7 @@ const (
 )
 
 type VMClaimController struct {
-	hfClientSet *hfClientset.Clientset
+	hfClientSet hfClientset.Interface
 
 	vmLister      hfListers.VirtualMachineLister
 	vmClaimLister hfListers.VirtualMachineClaimLister
@@ -38,7 +38,7 @@ type VMClaimController struct {
 	vmHasSynced      cache.InformerSynced
 }
 
-func NewVMClaimController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*VMClaimController, error) {
+func NewVMClaimController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*VMClaimController, error) {
 	vmClaimController := VMClaimController{}
 	vmClaimController.hfClientSet = hfClientSet
 

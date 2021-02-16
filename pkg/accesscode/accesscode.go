@@ -11,10 +11,10 @@ import (
 )
 
 type AccessCodeClient struct {
-	hfClientSet *hfClientset.Clientset
+	hfClientSet hfClientset.Interface
 }
 
-func NewAccessCodeClient(hfClientset *hfClientset.Clientset) (*AccessCodeClient, error) {
+func NewAccessCodeClient(hfClientset hfClientset.Interface) (*AccessCodeClient, error) {
 	acc := AccessCodeClient{}
 	acc.hfClientSet = hfClientset
 	return &acc, nil

@@ -18,7 +18,7 @@ import (
 )
 
 type EnvironmentController struct {
-	hfClientSet  *hfClientset.Clientset
+	hfClientSet  hfClientset.Interface
 	envWorkqueue workqueue.RateLimitingInterface
 	vmWorkqueue  workqueue.RateLimitingInterface
 	//hfInformerFactory *hfInformers.SharedInformerFactory
@@ -36,7 +36,7 @@ const (
 	vmEnvironmentIndex = "vm.vmclaim.controllers.hobbyfarm.io/environment-index"
 )
 
-func NewEnvironmentController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*EnvironmentController, error) {
+func NewEnvironmentController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*EnvironmentController, error) {
 	envController := EnvironmentController{}
 	envController.hfClientSet = hfClientSet
 	envController.vmSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced

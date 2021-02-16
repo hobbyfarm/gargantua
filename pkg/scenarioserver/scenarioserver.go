@@ -28,7 +28,7 @@ const (
 
 type ScenarioServer struct {
 	auth            *authclient.AuthClient
-	hfClientSet     *hfClientset.Clientset
+	hfClientSet     hfClientset.Interface
 	acClient        *accesscode.AccessCodeClient
 	scenarioIndexer cache.Indexer
 }
@@ -52,7 +52,7 @@ type AdminPreparedScenario struct {
 	hfv1.ScenarioSpec
 }
 
-func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioServer, error) {
+func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioServer, error) {
 	scenario := ScenarioServer{}
 
 	scenario.hfClientSet = hfClientset

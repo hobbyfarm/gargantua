@@ -20,12 +20,12 @@ const (
 
 type VMServer struct {
 	auth        *authclient.AuthClient
-	hfClientSet *hfClientset.Clientset
+	hfClientSet hfClientset.Interface
 
 	vmIndexer cache.Indexer
 }
 
-func NewVMServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*VMServer, error) {
+func NewVMServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*VMServer, error) {
 	vms := VMServer{}
 
 	vms.hfClientSet = hfClientset
