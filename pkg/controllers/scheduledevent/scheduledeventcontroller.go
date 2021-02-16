@@ -20,7 +20,7 @@ import (
 )
 
 type ScheduledEventController struct {
-	hfClientSet *hfClientset.Clientset
+	hfClientSet hfClientset.Interface
 
 	//seWorkqueue workqueue.RateLimitingInterface
 	seWorkqueue workqueue.DelayingInterface
@@ -46,7 +46,7 @@ func init() {
 	}
 }
 
-func NewScheduledEventController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*ScheduledEventController, error) {
+func NewScheduledEventController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*ScheduledEventController, error) {
 	seController := ScheduledEventController{}
 	seController.hfClientSet = hfClientSet
 	seController.seSynced = hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer().HasSynced

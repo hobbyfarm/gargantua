@@ -23,7 +23,7 @@ import (
 )
 
 type VirtualMachineSetController struct {
-	hfClientSet *hfClientset.Clientset
+	hfClientSet hfClientset.Interface
 	//vmSetWorkqueue workqueue.RateLimitingInterface
 	//vmWorkqueue    workqueue.RateLimitingInterface
 	vmSetWorkqueue   workqueue.Interface
@@ -42,7 +42,7 @@ const (
 	vmEnvironmentIndex = "vm.vmclaim.controllers.hobbyfarm.io/environment-index"
 )
 
-func NewVirtualMachineSetController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*VirtualMachineSetController, error) {
+func NewVirtualMachineSetController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*VirtualMachineSetController, error) {
 	vmSetController := VirtualMachineSetController{}
 	vmSetController.hfClientSet = hfClientSet
 
