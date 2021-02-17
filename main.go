@@ -4,54 +4,47 @@ import (
 	"flag"
 	"os"
 
+	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
+	"github.com/hobbyfarm/gargantua/pkg/vmtemplateserver"
+
+	"net/http"
+	"sync"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
-	adminCourseServer "github.com/hobbyfarm/gargantua/pkg/admin/courseserver"
-	adminEnvironmentServer "github.com/hobbyfarm/gargantua/pkg/admin/environmentserver"
-	adminScenarioServer "github.com/hobbyfarm/gargantua/pkg/admin/scenarioserver"
-	adminScheduledEventServer "github.com/hobbyfarm/gargantua/pkg/admin/scheduledeventserver"
-	adminUserServer "github.com/hobbyfarm/gargantua/pkg/admin/userserver"
-	adminVirtualMachineTemplateServer "github.com/hobbyfarm/gargantua/pkg/admin/vmtemplateserver"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/dynamicbindcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
-
-	//"k8s.io/client-go/tools/cache"
-
-	//"github.com/hobbyfarm/gargantua/pkg/controllers/environment"
-
 	"github.com/hobbyfarm/gargantua/pkg/controllers/session"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/tfpcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmclaimcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/vmsetcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/pkg/courseserver"
+	"github.com/hobbyfarm/gargantua/pkg/environmentserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
 	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/shell"
 	"github.com/hobbyfarm/gargantua/pkg/signals"
+	"github.com/hobbyfarm/gargantua/pkg/userserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmclaimserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
 	"github.com/hobbyfarm/gargantua/pkg/vmserver"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	//"k8s.io/client-go/tools/cache"
-	"net/http"
-	"sync"
-	"time"
-
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
-	ClientGoQPS = 100
+	ClientGoQPS   = 100
 	ClientGoBurst = 100
 )
 
@@ -163,32 +156,22 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	adminEnvServer, err := adminEnvironmentServer.NewAdminEnvironmentServer(authClient, hfClient)
+	environmentServer, err := environmentserver.NewEnvironmentServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	adminScenServer, err := adminScenarioServer.NewAdminScenarioServer(authClient, hfClient)
+	scheduledEventServer, err := scheduledeventserver.NewScheduledEventServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	adminSEServer, err := adminScheduledEventServer.NewAdminScheduledEventServer(authClient, hfClient)
+	userServer, err := userserver.NewUserServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	adminUServer, err := adminUserServer.NewAdminUserServer(authClient, hfClient)
-	if err != nil {
-		glog.Fatal(err)
-	}
-
-	adminVMTServer, err := adminVirtualMachineTemplateServer.NewAdminVirtualMachineTemplateServer(authClient, hfClient)
-	if err != nil {
-		glog.Fatal(err)
-	}
-
-	adminCServer, err := adminCourseServer.NewAdminCourseServer(authClient, hfClient)
+	vmTemplateServer, err := vmtemplateserver.NewVirtualMachineTemplateServer(authClient, hfClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -204,12 +187,10 @@ func main() {
 		vmServer.SetupRoutes(r)
 		//shellProxy.SetupRoutes(r)
 		vmClaimServer.SetupRoutes(r)
-		adminEnvServer.SetupRoutes(r)
-		adminScenServer.SetupRoutes(r)
-		adminSEServer.SetupRoutes(r)
-		adminUServer.SetupRoutes(r)
-		adminVMTServer.SetupRoutes(r)
-		adminCServer.SetupRoutes(r)
+		environmentServer.SetupRoutes(r)
+		scheduledEventServer.SetupRoutes(r)
+		userServer.SetupRoutes(r)
+		vmTemplateServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
