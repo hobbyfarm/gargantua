@@ -28,11 +28,14 @@ import (
 	"time"
 )
 
+const (
+	RequeueDelay = time.Second * 5
+)
+
 type TerraformProvisionerController struct {
 	hfClientSet *hfClientset.Clientset
-	//vmWorkqueue workqueue.RateLimitingInterface
 
-	vmWorkqueue workqueue.Interface
+	vmWorkqueue workqueue.DelayingInterface
 
 	k8sClientset *k8s.Clientset
 
@@ -68,9 +71,7 @@ func NewTerraformProvisionerController(k8sClientSet *k8s.Clientset, hfClientSet 
 	tfpController.tfClientset = hfClientSet
 	tfpController.k8sClientset = k8sClientSet
 
-	//tfpController.vmWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "VM")
-
-	tfpController.vmWorkqueue = workqueue.New()
+	tfpController.vmWorkqueue = workqueue.NewDelayingQueue()
 
 	tfpController.vmLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Lister()
 	tfpController.vmSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
@@ -162,7 +163,8 @@ func (t *TerraformProvisionerController) processNextVM() bool {
 		}
 
 		if requeue {
-			t.vmWorkqueue.Add(obj)
+			// t.vmWorkqueue.Add(obj)
+			t.vmWorkqueue.AddAfter(obj, RequeueDelay)
 		}
 
 		//glog.V(4).Infof("vm processed by tfp controller %v", objName)
