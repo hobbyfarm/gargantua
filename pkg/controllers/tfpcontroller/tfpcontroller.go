@@ -3,6 +3,13 @@ package tfpcontroller
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
+	"os"
+	"reflect"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	tfv1 "github.com/hobbyfarm/gargantua/pkg/apis/terraformcontroller.cattle.io/v1"
@@ -20,12 +27,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
-	"math/rand"
-	"os"
-	"reflect"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type TerraformProvisionerController struct {
@@ -482,6 +483,12 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 
 		}
 	} else {
+		if provisionMethod, ok := vm.ObjectMeta.Labels["hobbyfarm.io/provisioner"]; ok {
+			if provisionMethod == "external" {
+				glog.V(8).Infof("vm %s ignored due to external provisioning label", vm.Name)
+				t.vmWorkqueue.Done(vm.Name)
+			}
+		}
 		glog.V(8).Infof("vm %s was not a provisioned vm", vm.Name)
 	}
 	return nil, false

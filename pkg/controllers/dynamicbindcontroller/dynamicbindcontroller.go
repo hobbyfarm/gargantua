@@ -306,6 +306,12 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 				vm.Spec.SshUsername = sshUser
 			}
 
+			// extra label to indicate external provisioning so tfpcontroller ignores this request //
+			if provisionMethod, ok := chosenEnvironment.Annotations["hobbyfarm.io/provisioner"]; ok {
+				vm.ObjectMeta.Labels["hobbyfarm.io/provisioner"] = provisionMethod
+				vm.Spec.Provision = false
+			}
+
 			if chosenDynamicBindConfiguration.Spec.RestrictedBind {
 				vm.ObjectMeta.Labels["restrictedbind"] = "true"
 				vm.ObjectMeta.Labels["restrictedbindvalue"] = chosenDynamicBindConfiguration.Spec.RestrictedBindValue
