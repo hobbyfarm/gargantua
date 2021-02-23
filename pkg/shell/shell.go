@@ -22,8 +22,8 @@ type ShellProxy struct {
 	auth     *authclient.AuthClient
 	vmClient *vmclient.VirtualMachineClient
 
-	hfClient   *hfClientset.Clientset
-	kubeClient *kubernetes.Clientset
+	hfClient   hfClientset.Interface
+	kubeClient kubernetes.Interface
 }
 
 var hfNamespace = "hobbyfarm"
@@ -42,7 +42,7 @@ func init() {
 	sshDevPort = os.Getenv("SSH_DEV_PORT")
 }
 
-func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.VirtualMachineClient, hfClientSet *hfClientset.Clientset, kubeClient *kubernetes.Clientset) (*ShellProxy, error) {
+func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.VirtualMachineClient, hfClientSet hfClientset.Interface, kubeClient kubernetes.Interface) (*ShellProxy, error) {
 	shellProxy := ShellProxy{}
 
 	shellProxy.auth = authClient

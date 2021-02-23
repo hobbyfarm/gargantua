@@ -20,12 +20,12 @@ const (
 
 type VMClaimServer struct {
 	auth        *authclient.AuthClient
-	hfClientSet *hfClientset.Clientset
+	hfClientSet hfClientset.Interface
 
 	vmClaimIndexer cache.Indexer
 }
 
-func NewVMClaimServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*VMClaimServer, error) {
+func NewVMClaimServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*VMClaimServer, error) {
 	vmcs := VMClaimServer{}
 
 	vmcs.hfClientSet = hfClientset

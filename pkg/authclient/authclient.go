@@ -17,11 +17,11 @@ const (
 )
 
 type AuthClient struct {
-	hfClientSet *hfClientset.Clientset
+	hfClientSet hfClientset.Interface
 	userIndexer cache.Indexer
 }
 
-func NewAuthClient(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*AuthClient, error) {
+func NewAuthClient(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*AuthClient, error) {
 	a := AuthClient{}
 	a.hfClientSet = hfClientSet
 	inf := hfInformerFactory.Hobbyfarm().V1().Users().Informer()

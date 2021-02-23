@@ -30,14 +30,14 @@ import (
 )
 
 type TerraformProvisionerController struct {
-	hfClientSet *hfClientset.Clientset
+	hfClientSet hfClientset.Interface
 	//vmWorkqueue workqueue.RateLimitingInterface
 
 	vmWorkqueue workqueue.Interface
 
-	k8sClientset *k8s.Clientset
+	k8sClientset k8s.Interface
 
-	tfClientset *hfClientset.Clientset
+	tfClientset hfClientset.Interface
 
 	vmLister  hfListers.VirtualMachineLister
 	envLister hfListers.EnvironmentLister
@@ -62,7 +62,7 @@ func init() {
 	}
 }
 
-func NewTerraformProvisionerController(k8sClientSet *k8s.Clientset, hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*TerraformProvisionerController, error) {
+func NewTerraformProvisionerController(k8sClientSet k8s.Interface, hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*TerraformProvisionerController, error) {
 	tfpController := TerraformProvisionerController{}
 	tfpController.hfClientSet = hfClientSet
 

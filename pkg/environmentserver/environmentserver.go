@@ -21,10 +21,10 @@ import (
 
 type EnvironmentServer struct {
 	auth        *authclient.AuthClient
-	hfClientSet *hfClientset.Clientset
+	hfClientSet hfClientset.Interface
 }
 
-func NewEnvironmentServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*EnvironmentServer, error) {
+func NewEnvironmentServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface) (*EnvironmentServer, error) {
 	es := EnvironmentServer{}
 
 	es.hfClientSet = hfClientset

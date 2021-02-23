@@ -15,10 +15,10 @@ import (
 
 type VirtualMachineTemplateServer struct {
 	auth        *authclient.AuthClient
-	hfClientSet *hfClientset.Clientset
+	hfClientSet hfClientset.Interface
 }
 
-func NewVirtualMachineTemplateServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*VirtualMachineTemplateServer, error) {
+func NewVirtualMachineTemplateServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface) (*VirtualMachineTemplateServer, error) {
 	as := VirtualMachineTemplateServer{}
 
 	as.hfClientSet = hfClientset

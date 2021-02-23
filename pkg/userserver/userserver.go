@@ -18,10 +18,10 @@ import (
 
 type UserServer struct {
 	auth        *authclient.AuthClient
-	hfClientSet *hfClientset.Clientset
+	hfClientSet hfClientset.Interface
 }
 
-func NewUserServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*UserServer, error) {
+func NewUserServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface) (*UserServer, error) {
 	s := UserServer{}
 
 	s.hfClientSet = hfClientset

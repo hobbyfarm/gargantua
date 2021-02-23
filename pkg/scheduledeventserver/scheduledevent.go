@@ -20,10 +20,10 @@ import (
 
 type ScheduledEventServer struct {
 	auth        *authclient.AuthClient
-	hfClientSet *hfClientset.Clientset
+	hfClientSet hfClientset.Interface
 }
 
-func NewScheduledEventServer(authClient *authclient.AuthClient, hfClientset *hfClientset.Clientset) (*ScheduledEventServer, error) {
+func NewScheduledEventServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface) (*ScheduledEventServer, error) {
 	es := ScheduledEventServer{}
 
 	es.hfClientSet = hfClientset

@@ -283,7 +283,7 @@ func VerifySession(sLister hfListers.SessionLister, s *hfv1.Session) error {
 
 }
 
-func EnsureVMNotReady(hfClientset *hfClientset.Clientset, vmLister hfListers.VirtualMachineLister, vmName string) error {
+func EnsureVMNotReady(hfClientset hfClientset.Interface, vmLister hfListers.VirtualMachineLister, vmName string) error {
 	//glog.V(5).Infof("ensuring VM %s is not ready", vmName)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := hfClientset.HobbyfarmV1().VirtualMachines().Get(vmName, metav1.GetOptions{})
@@ -315,7 +315,7 @@ func EnsureVMNotReady(hfClientset *hfClientset.Clientset, vmLister hfListers.Vir
 	return nil
 }
 
-func AvailableRawCapacity(hfClientset *hfClientset.Clientset, capacity hfv1.CMSStruct, virtualMachines []hfv1.VirtualMachine) *hfv1.CMSStruct {
+func AvailableRawCapacity(hfClientset hfClientset.Interface, capacity hfv1.CMSStruct, virtualMachines []hfv1.VirtualMachine) *hfv1.CMSStruct {
 	vmTemplates, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("unable to list virtual machine templates, got error %v", err)
@@ -342,7 +342,7 @@ func AvailableRawCapacity(hfClientset *hfClientset.Clientset, capacity hfv1.CMSS
 	return &availableCapacity
 }
 
-func MaxVMCountsRaw(hfClientset *hfClientset.Clientset, vmTemplates map[string]int, available hfv1.CMSStruct) int {
+func MaxVMCountsRaw(hfClientset hfClientset.Interface, vmTemplates map[string]int, available hfv1.CMSStruct) int {
 	vmTemplatesFromK8s, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("unable to list virtual machine templates, got error %v", err)
@@ -382,7 +382,7 @@ type Maximus struct {
 	AvailableCapacity hfv1.CMSStruct    `json:"available_capacity"`
 }
 
-func MaxAvailableDuringPeriod(hfClientset *hfClientset.Clientset, environment string, startString string, endString string) (Maximus, error) {
+func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string) (Maximus, error) {
 
 	duration, _ := time.ParseDuration("30m")
 

@@ -24,7 +24,7 @@ const (
 
 type CourseServer struct {
 	auth          *authclient.AuthClient
-	hfClientSet   *hfClientset.Clientset
+	hfClientSet   hfClientset.Interface
 	acClient      *accesscode.AccessCodeClient
 	courseIndexer cache.Indexer
 }
@@ -34,7 +34,7 @@ type PreparedCourse struct {
 	hfv1.CourseSpec
 }
 
-func NewCourseServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*CourseServer, error) {
+func NewCourseServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*CourseServer, error) {
 	course := CourseServer{}
 
 	course.hfClientSet = hfClientset

@@ -20,7 +20,7 @@ const (
 )
 
 type SessionController struct {
-	hfClientSet *hfClientset.Clientset
+	hfClientSet hfClientset.Interface
 
 	//ssWorkqueue workqueue.RateLimitingInterface
 	ssWorkqueue workqueue.DelayingInterface
@@ -34,7 +34,7 @@ type SessionController struct {
 	ssSynced  cache.InformerSynced
 }
 
-func NewSessionController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*SessionController, error) {
+func NewSessionController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*SessionController, error) {
 	ssController := SessionController{}
 	ssController.hfClientSet = hfClientSet
 	ssController.vmSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced

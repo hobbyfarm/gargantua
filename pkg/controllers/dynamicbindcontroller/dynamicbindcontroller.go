@@ -20,7 +20,7 @@ import (
 )
 
 type DynamicBindController struct {
-	hfClientSet                 *hfClientset.Clientset
+	hfClientSet                 hfClientset.Interface
 	dynamicBindRequestWorkqueue workqueue.RateLimitingInterface
 
 	dynamicBindRequestLister hfListers.DynamicBindRequestLister
@@ -28,7 +28,7 @@ type DynamicBindController struct {
 	dynamicBindRequestsSynced cache.InformerSynced
 }
 
-func NewDynamicBindController(hfClientSet *hfClientset.Clientset, hfInformerFactory hfInformers.SharedInformerFactory) (*DynamicBindController, error) {
+func NewDynamicBindController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*DynamicBindController, error) {
 	dynamicBindController := DynamicBindController{}
 	dynamicBindController.hfClientSet = hfClientSet
 
