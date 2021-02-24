@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -164,6 +165,19 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no access code passed in")
 		return
 	}
+	var onDemand bool
+	onDemandRaw := r.PostFormValue("on_demand")
+	if onDemandRaw == "" {
+		glog.Warning("scheduled event without use of on_demand flag is deprecated. please upgrade your client")
+		onDemand = false
+	} else {
+		onDemand, err = strconv.ParseBool(onDemandRaw)
+		if err != nil {
+			util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid value for on_demand")
+			return
+		}
+	}
+
 	scenariosRaw := r.PostFormValue("scenarios")
 	coursesRaw := r.PostFormValue("courses")
 	if scenariosRaw == "" && coursesRaw == "" {
@@ -224,6 +238,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 	scheduledEvent.Spec.Creator = user.Spec.Id
 	scheduledEvent.Spec.StartTime = startTime
 	scheduledEvent.Spec.EndTime = endTime
+	scheduledEvent.Spec.OnDemand = onDemand
 	scheduledEvent.Spec.RequiredVirtualMachines = requiredVMUnmarshaled
 	scheduledEvent.Spec.AccessCode = accessCode
 
