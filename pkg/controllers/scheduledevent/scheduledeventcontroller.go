@@ -30,6 +30,11 @@ type ScheduledEventController struct {
 var baseNameScheduledPrefix string
 var baseNameDynamicPrefix string
 
+const (
+	ScheduledEventBaseDelay = 5 * time.Millisecond
+	ScheduledEventMaxDelay  = 300 * time.Second
+)
+
 func init() {
 	bnsp := os.Getenv("HF_BASENAME_SCHEDULED_PREFIX")
 	if bnsp == "" {
@@ -52,7 +57,7 @@ func NewScheduledEventController(hfClientSet hfClientset.Interface, hfInformerFa
 	seController.seSynced = hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer().HasSynced
 
 	//seController.seWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ScheduledEvent")
-	seController.seWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(5*time.Millisecond, 300*time.Second), "sec-se")
+	seController.seWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(ScheduledEventBaseDelay, ScheduledEventMaxDelay), "sec-se")
 	seInformer := hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer()
 
 	seInformer.AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
