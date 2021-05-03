@@ -27,7 +27,7 @@ const (
 	keepaliveSSTimeout = "5m"
 	pauseSSTimeout     = "2h"
 	vmcSessionLabel    = "hobbyfarm.io/session"
-	userSessionLabel   = "hobbyfarm.io/user"
+	UserSessionLabel   = "hobbyfarm.io/user"
 )
 
 type SessionServer struct {
@@ -212,7 +212,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		vmcId := util.GenerateResourceName("vmc", util.RandStringRunes(10), 10)
 		labels := make(map[string]string)
 		labels[vmcSessionLabel] = session.Name  // map vmc to session
-		labels[userSessionLabel] = user.Spec.Id // map session to user in a way that is searchable
+		labels[UserSessionLabel] = user.Spec.Id // map session to user in a way that is searchable
 		virtualMachineClaim.Labels = labels
 		virtualMachineClaim.Spec.Id = vmcId
 		virtualMachineClaim.Name = vmcId
