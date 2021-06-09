@@ -30,6 +30,11 @@ type ScheduledEventController struct {
 var baseNameScheduledPrefix string
 var baseNameDynamicPrefix string
 
+const (
+	ScheduledEventBaseDelay = 5 * time.Millisecond
+	ScheduledEventMaxDelay  = 300 * time.Second
+)
+
 func init() {
 	bnsp := os.Getenv("HF_BASENAME_SCHEDULED_PREFIX")
 	if bnsp == "" {
@@ -52,7 +57,7 @@ func NewScheduledEventController(hfClientSet hfClientset.Interface, hfInformerFa
 	seController.seSynced = hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer().HasSynced
 
 	//seController.seWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ScheduledEvent")
-	seController.seWorkqueue = workqueue.NewNamedDelayingQueue("sec-se")
+	seController.seWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(ScheduledEventBaseDelay, ScheduledEventMaxDelay), "sec-se")
 	seInformer := hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer()
 
 	seInformer.AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
@@ -211,16 +216,15 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 
 		_, neededCapacity := calculateNeededCapacity(env, vmtMap, templates)
 
-
 		if env.Spec.CapacityMode == hfv1.CapacityModeRaw {
-			if env.Spec.Capacity.CPU < ( + neededCapacity.CPU) {
-				glog.Errorf("we are overprovisioning this environment %s by CPU, capacity is %d but need %d", envName, env.Spec.Capacity.CPU, usedCapacity.CPU + neededCapacity.CPU)
+			if env.Spec.Capacity.CPU < (+neededCapacity.CPU) {
+				glog.Errorf("we are overprovisioning this environment %s by CPU, capacity is %d but need %d", envName, env.Spec.Capacity.CPU, usedCapacity.CPU+neededCapacity.CPU)
 			}
 			if env.Spec.Capacity.Memory < (usedCapacity.Memory + neededCapacity.Memory) {
-				glog.Errorf("we are overprovisioning this environment %s by Memory, capacity is %d but need %d", envName, env.Spec.Capacity.Memory, usedCapacity.Memory + neededCapacity.Memory)
+				glog.Errorf("we are overprovisioning this environment %s by Memory, capacity is %d but need %d", envName, env.Spec.Capacity.Memory, usedCapacity.Memory+neededCapacity.Memory)
 			}
 			if env.Spec.Capacity.Storage < (usedCapacity.Storage + neededCapacity.Storage) {
-				glog.Errorf("we are overprovisioning this environment %s by Storage, capacity is %d but need %d", envName, env.Spec.Capacity.Storage, usedCapacity.Storage + neededCapacity.Storage)
+				glog.Errorf("we are overprovisioning this environment %s by Storage, capacity is %d but need %d", envName, env.Spec.Capacity.Storage, usedCapacity.Storage+neededCapacity.Storage)
 			}
 		} else if env.Spec.CapacityMode == hfv1.CapacityModeCount {
 			// todo: actually check for capacity usage
