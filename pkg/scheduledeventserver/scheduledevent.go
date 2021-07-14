@@ -5,6 +5,10 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -13,10 +17,6 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type ScheduledEventServer struct {
@@ -303,16 +303,6 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 			return fmt.Errorf("bad")
 		}
 
-		beginTime, err := time.Parse(time.UnixDate, scheduledEvent.Spec.StartTime)
-		if err != nil {
-			return err
-		}
-
-		if beginTime.Before(time.Now()) {
-			util.ReturnHTTPMessage(w, r, 303, "toolate", "too late")
-			return fmt.Errorf("too late")
-		}
-
 		name := r.PostFormValue("name")
 		description := r.PostFormValue("description")
 		startTime := r.PostFormValue("start_time")
@@ -339,23 +329,24 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 			scheduledEvent.Spec.AccessCode = accessCode
 		}
 
-		if requiredVM != "" {
-			requiredVMUnmarshaled := map[string]map[string]int{}
+		if !scheduledEvent.Status.Provisioned {
 
-			err = json.Unmarshal([]byte(requiredVM), &requiredVMUnmarshaled)
-			if err != nil {
-				glog.Errorf("error while unmarshaling required VM's %v", err)
-				return fmt.Errorf("bad")
+			if requiredVM != "" {
+				requiredVMUnmarshaled := map[string]map[string]int{}
+
+				err = json.Unmarshal([]byte(requiredVM), &requiredVMUnmarshaled)
+				if err != nil {
+					glog.Errorf("error while unmarshaling required VM's %v", err)
+					return fmt.Errorf("bad")
+				}
+				scheduledEvent.Spec.RequiredVirtualMachines = requiredVMUnmarshaled
+
+				//if scheduledEvent.Status.Provisioned {
+				//	scheduledEvent.Status.Provisioned = false
+				//}
 			}
-			scheduledEvent.Spec.RequiredVirtualMachines = requiredVMUnmarshaled
 
-			//if scheduledEvent.Status.Provisioned {
-			//	scheduledEvent.Status.Provisioned = false
-			//}
-		}
-
-		if coursesRaw != "" {
-			if !scheduledEvent.Status.Provisioned {
+			if coursesRaw != "" {
 				courses := []string{} // must be declared this way so as to JSON marshal into [] instead of null
 				err = json.Unmarshal([]byte(coursesRaw), &courses)
 				if err != nil {
@@ -364,10 +355,8 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 				}
 				scheduledEvent.Spec.Courses = courses
 			}
-		}
 
-		if scenariosRaw != "" {
-			if !scheduledEvent.Status.Provisioned { // we can't change the scenarios after the scheduled event was provisioned
+			if scenariosRaw != "" {
 				scenarios := []string{} // must be declared this way so as to JSON marshal into [] instead of null
 				err = json.Unmarshal([]byte(scenariosRaw), &scenarios)
 				if err != nil {
@@ -376,6 +365,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 				}
 				scheduledEvent.Spec.Scenarios = scenarios
 			}
+
 		}
 
 		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Update(scheduledEvent)

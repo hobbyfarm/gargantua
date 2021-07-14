@@ -143,23 +143,49 @@ func (s *ScheduledEventController) processNextScheduledEvent() bool {
 	return true
 }
 
-func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent) error {
-	glog.V(6).Infof("ScheduledEvent %s is done, deleting corresponding VMSets and marking as finished", se.Name)
-	// scheduled event is finished, we need to set the scheduled event to finished and delete the vm's
-	// get a list of the vmsets corresponding to this scheduled event
-	vmsList, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("scheduledevent=%s", se.Name),
-	})
+func (s ScheduledEventController) rescheduleScheduledEvent(se *hfv1.ScheduledEvent) error {
+	glog.V(6).Infof("ScheduledEvent %s is being rescheduled, deleting corresponding VMSets and marking as not provisioned", se.Name)
+	// event was scheduled to the future, delete existing vm's
+
+	err := s.deleteVMSetsFromScheduledEvent(se)
+
 	if err != nil {
 		return err
 	}
 
-	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
-	for _, vms := range vmsList.Items {
-		err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().Delete(vms.Name, &metav1.DeleteOptions{})
+	// update the scheduled event and set the various flags accordingly (provisioned, ready, finished)
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		seToUpdate, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(se.Name, metav1.GetOptions{})
+
 		if err != nil {
-			glog.Errorf("error deleting virtualmachineset %v", err)
+			return err
 		}
+
+		seToUpdate.Status.Provisioned = false
+		seToUpdate.Status.Ready = false
+		seToUpdate.Status.Finished = false
+
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Update(seToUpdate)
+		glog.V(4).Infof("updated result for scheduled event")
+
+		return updateErr
+	})
+
+	if retryErr != nil {
+		return retryErr
+	}
+
+	return nil // break (return) here because we're done with this SE.
+}
+
+func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent) error {
+	glog.V(6).Infof("ScheduledEvent %s is done, deleting corresponding VMSets and marking as finished", se.Name)
+	// scheduled event is finished, we need to set the scheduled event to finished and delete the vm's
+
+	err := s.deleteVMSetsFromScheduledEvent(se)
+
+	if err != nil {
+		return err
 	}
 
 	// update the scheduled event and set the various flags accordingly (provisioned, ready, finished)
@@ -185,6 +211,25 @@ func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent
 	}
 
 	return nil // break (return) here because we're done with this SE.
+}
+
+func (s ScheduledEventController) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
+	// get a list of the vmsets corresponding to this scheduled event
+	vmsList, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("scheduledevent=%s", se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
+	for _, vms := range vmsList.Items {
+		err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().Delete(vms.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			glog.Errorf("error deleting virtualmachineset %v", err)
+		}
+	}
+	return nil
 }
 
 func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.VirtualMachineTemplateList, se *hfv1.ScheduledEvent) error {
@@ -487,6 +532,11 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 
 	if endTime.Before(now) && se.Status.Finished {
 		// scheduled event is finished and nothing to do
+	}
+
+	// the SE has been rescheduled to the future but was already provisioned
+	if now.Before(beginTime) && se.Status.Provisioned && se.Status.Active {
+		return s.rescheduleScheduledEvent(se)
 	}
 
 	return nil
