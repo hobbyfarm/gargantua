@@ -56,6 +56,7 @@ func (s ScheduledEventServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/scheduledevent/new", s.CreateFunc).Methods("POST")
 	r.HandleFunc("/a/scheduledevent/{id}", s.GetFunc).Methods("GET")
 	r.HandleFunc("/a/scheduledevent/{id}", s.UpdateFunc).Methods("PUT")
+	r.HandleFunc("/a/scheduledevent/delete/{id}", s.DeleteFunc).Methods("DELETE")
 	glog.V(2).Infof("set up routes for admin scheduledevent server")
 }
 
@@ -398,6 +399,57 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 	}
 
 	util.ReturnHTTPMessage(w, r, 200, "updated", "")
+	return
+}
+
+func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := s.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete scheduledevents")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	id := vars["id"]
+	if id == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID passed in")
+		return
+	}
+
+	scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(id, metav1.GetOptions{})
+	if err != nil {
+		glog.Error(err)
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID found")
+		return
+	}
+
+	if scheduledEvent.Spec.Creator != user.Spec.Id {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "not creator")
+		return
+	}
+
+	err = s.deleteVMSetsFromScheduledEvent(scheduledEvent)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting scheduled event's vmsets")
+		return
+	}
+
+	err = s.deleteScheduledEventConfig(scheduledEvent)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting scheduled event's access code(s) and DBC(s)")
+		return
+	}
+
+	err = s.hfClientSet.HobbyfarmV1().ScheduledEvents().Delete(scheduledEvent.Name, &metav1.DeleteOptions{})
+
+	if err != nil {
+		glog.Errorf("error deleting scheduled event %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting scheduled event")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "deleted", "Deleted: "+scheduledEvent.Name)
 	return
 }
 
