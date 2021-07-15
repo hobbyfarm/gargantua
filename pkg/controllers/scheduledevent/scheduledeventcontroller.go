@@ -153,6 +153,38 @@ func (s ScheduledEventController) rescheduleScheduledEvent(se *hfv1.ScheduledEve
 		return err
 	}
 
+	// get a list of the vmsets corresponding to this scheduled event
+	dbcList, err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("scheduledevent=%s", se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
+	for _, dbc := range dbcList.Items {
+		err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().Delete(dbc.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			glog.Errorf("error deleting dbc %v", err)
+		}
+	}
+
+	// get a list of the access codes corresponding to this scheduled event
+	acList, err := s.hfClientSet.HobbyfarmV1().AccessCodes().List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("scheduledevent=%s", se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	// for each access code that belongs to this to-be-stoped scheduled event, delete that vmset
+	for _, ac := range acList.Items {
+		err := s.hfClientSet.HobbyfarmV1().AccessCodes().Delete(ac.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			glog.Errorf("error deleting access code %v", err)
+		}
+	}
+
 	// update the scheduled event and set the various flags accordingly (provisioned, ready, finished)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		seToUpdate, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(se.Name, metav1.GetOptions{})
@@ -397,6 +429,9 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 					Name:       se.Name,
 					UID:        se.UID,
 				},
+			},
+			Labels: map[string]string{
+				"scheduledevent": se.Name,
 			},
 		},
 		Spec: hfv1.AccessCodeSpec{
