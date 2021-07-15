@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -267,7 +268,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 	scheduledEvent, err = s.hfClientSet.HobbyfarmV1().ScheduledEvents().Create(scheduledEvent)
 	if err != nil {
 		glog.Errorf("error creating scheduled event %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scehduled event")
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scheduled event")
 		return
 	}
 
@@ -329,43 +330,62 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 			scheduledEvent.Spec.AccessCode = accessCode
 		}
 
-		if !scheduledEvent.Status.Provisioned {
+		if requiredVM != "" {
+			requiredVMUnmarshaled := map[string]map[string]int{}
 
-			if requiredVM != "" {
-				requiredVMUnmarshaled := map[string]map[string]int{}
+			err = json.Unmarshal([]byte(requiredVM), &requiredVMUnmarshaled)
+			if err != nil {
+				glog.Errorf("error while unmarshaling required VM's %v", err)
+				return fmt.Errorf("bad")
+			}
+			scheduledEvent.Spec.RequiredVirtualMachines = requiredVMUnmarshaled
+		}
 
-				err = json.Unmarshal([]byte(requiredVM), &requiredVMUnmarshaled)
-				if err != nil {
-					glog.Errorf("error while unmarshaling required VM's %v", err)
-					return fmt.Errorf("bad")
-				}
-				scheduledEvent.Spec.RequiredVirtualMachines = requiredVMUnmarshaled
+		if coursesRaw != "" {
+			courses := []string{} // must be declared this way so as to JSON marshal into [] instead of null
+			err = json.Unmarshal([]byte(coursesRaw), &courses)
+			if err != nil {
+				glog.Errorf("error while unmarshaling courses %v", err)
+				return fmt.Errorf("bad")
+			}
+			scheduledEvent.Spec.Courses = courses
+		}
 
-				//if scheduledEvent.Status.Provisioned {
-				//	scheduledEvent.Status.Provisioned = false
-				//}
+		if scenariosRaw != "" {
+			scenarios := []string{} // must be declared this way so as to JSON marshal into [] instead of null
+			err = json.Unmarshal([]byte(scenariosRaw), &scenarios)
+			if err != nil {
+				glog.Errorf("error while unmarshaling scenarios %v", err)
+				return fmt.Errorf("bad")
+			}
+			scheduledEvent.Spec.Scenarios = scenarios
+		}
+
+		// if our event is already provisioned, we need to undo that and delete the corresponding access code(s) and DBC(s)
+		// our scheduledeventcontroller will then provision our scheduledevent with the updated values
+		if scheduledEvent.Status.Provisioned {
+			now := time.Now()
+
+			beginTime, err := time.Parse(time.UnixDate, scheduledEvent.Spec.StartTime)
+			if err != nil {
+				return err
 			}
 
-			if coursesRaw != "" {
-				courses := []string{} // must be declared this way so as to JSON marshal into [] instead of null
-				err = json.Unmarshal([]byte(coursesRaw), &courses)
+			// the SE's begin time has been rescheduled to the future but was already provisioned
+			if now.Before(beginTime) && scheduledEvent.Status.Active {
+				err = s.deleteVMSetsFromScheduledEvent(scheduledEvent)
 				if err != nil {
-					glog.Errorf("error while unmarshaling courses %v", err)
-					return fmt.Errorf("bad")
+					return err
 				}
-				scheduledEvent.Spec.Courses = courses
 			}
 
-			if scenariosRaw != "" {
-				scenarios := []string{} // must be declared this way so as to JSON marshal into [] instead of null
-				err = json.Unmarshal([]byte(scenariosRaw), &scenarios)
-				if err != nil {
-					glog.Errorf("error while unmarshaling scenarios %v", err)
-					return fmt.Errorf("bad")
-				}
-				scheduledEvent.Spec.Scenarios = scenarios
+			err = s.deleteScheduledEventConfig(scheduledEvent)
+			if err != nil {
+				return err
 			}
-
+			scheduledEvent.Status.Provisioned = false
+			scheduledEvent.Status.Ready = false
+			scheduledEvent.Status.Finished = false
 		}
 
 		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Update(scheduledEvent)
@@ -379,4 +399,60 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 
 	util.ReturnHTTPMessage(w, r, 200, "updated", "")
 	return
+}
+
+func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent) error {
+	glog.V(6).Infof("ScheduledEvent %s is updated or deleted, deleting corresponding access code(s) and DBC(s)", se.Name)
+
+	// get a list of the DBCs corresponding to this scheduled event
+	dbcList, err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("scheduledevent=%s", se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	// for each DBC that belongs to this edited/deleted scheduled event, delete that DBC
+	for _, dbc := range dbcList.Items {
+		err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().Delete(dbc.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			glog.Errorf("error deleting dbc %v", err)
+		}
+	}
+
+	// get a list of the access codes corresponding to this scheduled event
+	acList, err := s.hfClientSet.HobbyfarmV1().AccessCodes().List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("scheduledevent=%s", se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	// for each access code that belongs to this edited/deleted scheduled event, delete that access code
+	for _, ac := range acList.Items {
+		err := s.hfClientSet.HobbyfarmV1().AccessCodes().Delete(ac.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			glog.Errorf("error deleting access code %v", err)
+		}
+	}
+	return nil // break (return) here because we're done with this SE.
+}
+
+func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
+	// get a list of the vmsets corresponding to this scheduled event
+	vmsList, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("scheduledevent=%s", se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
+	for _, vms := range vmsList.Items {
+		err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().Delete(vms.Name, &metav1.DeleteOptions{})
+		if err != nil {
+			glog.Errorf("error deleting virtualmachineset %v", err)
+		}
+	}
+	return nil
 }

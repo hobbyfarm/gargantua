@@ -143,73 +143,6 @@ func (s *ScheduledEventController) processNextScheduledEvent() bool {
 	return true
 }
 
-func (s ScheduledEventController) rescheduleScheduledEvent(se *hfv1.ScheduledEvent) error {
-	glog.V(6).Infof("ScheduledEvent %s is being rescheduled, deleting corresponding VMSets and marking as not provisioned", se.Name)
-	// event was scheduled to the future, delete existing vm's
-
-	err := s.deleteVMSetsFromScheduledEvent(se)
-
-	if err != nil {
-		return err
-	}
-
-	// get a list of the vmsets corresponding to this scheduled event
-	dbcList, err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("scheduledevent=%s", se.Name),
-	})
-	if err != nil {
-		return err
-	}
-
-	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
-	for _, dbc := range dbcList.Items {
-		err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().Delete(dbc.Name, &metav1.DeleteOptions{})
-		if err != nil {
-			glog.Errorf("error deleting dbc %v", err)
-		}
-	}
-
-	// get a list of the access codes corresponding to this scheduled event
-	acList, err := s.hfClientSet.HobbyfarmV1().AccessCodes().List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("scheduledevent=%s", se.Name),
-	})
-	if err != nil {
-		return err
-	}
-
-	// for each access code that belongs to this to-be-stoped scheduled event, delete that vmset
-	for _, ac := range acList.Items {
-		err := s.hfClientSet.HobbyfarmV1().AccessCodes().Delete(ac.Name, &metav1.DeleteOptions{})
-		if err != nil {
-			glog.Errorf("error deleting access code %v", err)
-		}
-	}
-
-	// update the scheduled event and set the various flags accordingly (provisioned, ready, finished)
-	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		seToUpdate, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(se.Name, metav1.GetOptions{})
-
-		if err != nil {
-			return err
-		}
-
-		seToUpdate.Status.Provisioned = false
-		seToUpdate.Status.Ready = false
-		seToUpdate.Status.Finished = false
-
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Update(seToUpdate)
-		glog.V(4).Infof("updated result for scheduled event")
-
-		return updateErr
-	})
-
-	if retryErr != nil {
-		return retryErr
-	}
-
-	return nil // break (return) here because we're done with this SE.
-}
-
 func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent) error {
 	glog.V(6).Infof("ScheduledEvent %s is done, deleting corresponding VMSets and marking as finished", se.Name)
 	// scheduled event is finished, we need to set the scheduled event to finished and delete the vm's
@@ -567,11 +500,6 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 
 	if endTime.Before(now) && se.Status.Finished {
 		// scheduled event is finished and nothing to do
-	}
-
-	// the SE has been rescheduled to the future but was already provisioned
-	if now.Before(beginTime) && se.Status.Provisioned && se.Status.Active {
-		return s.rescheduleScheduledEvent(se)
 	}
 
 	return nil
