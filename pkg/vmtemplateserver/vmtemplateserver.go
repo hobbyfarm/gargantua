@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type VirtualMachineTemplateServer struct {
@@ -53,6 +54,7 @@ func (v VirtualMachineTemplateServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/vmtemplate/{id}", v.GetFunc).Methods("GET")
 	r.HandleFunc("/a/vmtemplate/create", v.CreateFunc).Methods("POST")
 	r.HandleFunc("/a/vmtemplate/{id}/update", v.UpdateFunc).Methods("PUT")
+	r.HandleFunc("/a/vmtemplate/{id}/delete", v.DeleteFunc).Methods("DELETE")
 	glog.V(2).Infof("set up routes for admin vmtemplate server")
 }
 
@@ -206,11 +208,12 @@ func (v VirtualMachineTemplateServer) UpdateFunc(w http.ResponseWriter, r *http.
 	vars := mux.Vars(r)
 
 	id := vars["id"]
-	glog.V(2).Infof("user %s updating vmtemplate %s", user.Name, id)
 	if id == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no id passed in")
 		return
 	}
+
+	glog.V(2).Infof("user %s updating vmtemplate %s", user.Name, id)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		vmTemplate, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Get(id, metav1.GetOptions{})
@@ -267,6 +270,140 @@ func (v VirtualMachineTemplateServer) UpdateFunc(w http.ResponseWriter, r *http.
 }
 
 func (v VirtualMachineTemplateServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
-	// deleting a vmtemplate requires no existing VMs using it
-	// nor any future SEs using it.
+	// deleting a vmtemplate requires none of the following objects having reference to it
+	// - future scheduled events
+	// - virtualmachines
+	// - virtualmachineclaims
+	// - virtualmachinesets
+	user, err := v.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete vmt")
+		return
+	}
+
+	// first, check if the vmt exists
+	vars := mux.Vars(r)
+	id := vars["id"]
+	if id == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no id passed in")
+		return
+	}
+
+	glog.V(2).Infof("user %s deleting vmtemplate %s", user.Name, id)
+
+	vmt, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Get(id, metav1.GetOptions{})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 400, "notfound", "no vmt found")
+		return
+	}
+
+	// vmt exists, now we need to check all other objects for references
+	// start with virtualmachines
+	virtualmachines, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().List(metav1.ListOptions{LabelSelector:
+		fmt.Sprintf("hobbyfarm.io/vmtemplate=%s", vmt.Name)})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror",
+			"error listing virtual machines while attempting vmt deletion")
+		return
+	}
+
+	if len(virtualmachines.Items) > 0 {
+		util.ReturnHTTPMessage(w, r, 409, "conflict", "existing virtual machines reference this vmtemplate")
+		return
+	}
+
+	// now check scheduledevents
+	scheduledEvents, err := v.hfClientSet.HobbyfarmV1().ScheduledEvents().List(metav1.ListOptions{})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror",
+			"error listing scheduled events while attempting vmt deletion")
+		return
+	}
+
+	if len(scheduledEvents.Items) > 0 {
+		for _, v := range scheduledEvents.Items {
+			if v.Status.Finished != true {
+				// unfinished SE. Is it going on now or in the future?
+				startTime, err := time.Parse(time.UnixDate, v.Spec.StartTime)
+				if err != nil {
+					util.ReturnHTTPMessage(w, r, 500, "internalerror",
+						"error parsing time while checking scheduledevent for conflict")
+					return
+				}
+				endTime, err := time.Parse(time.UnixDate, v.Spec.EndTime)
+				if err != nil {
+					util.ReturnHTTPMessage(w, r, 500, "internalerror",
+						"error parsing time while checking scheduledevent for conflict")
+					return
+				}
+
+				// if this starts in the future, or hasn't ended
+				if startTime.After(time.Now()) || endTime.After(time.Now()) {
+					// check for template existence
+					if exists := searchForTemplateInRequiredVMs(v.Spec.RequiredVirtualMachines, vmt.Name); exists {
+						// if template exists in this to-be-happening SE, we can't delete it
+						util.ReturnHTTPMessage(w, r, 409, "conflict",
+							"existing or future scheduled event references this vmtemplate")
+					}
+				}
+			}
+		}
+	}
+
+	// now check virtul machine claims
+	vmcList, err := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s=%s", vmt.Name, "true"),
+	})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror",
+			"error listing virtual machine claims while attempting vmt deletion")
+		return
+	}
+
+	if len(vmcList.Items) > 0 {
+		util.ReturnHTTPMessage(w, r, 409, "conflict",
+			"existing virtual machine claims reference this vmtemplate")
+		return
+	}
+
+	// now check virtualmachinesets (theoretically the VM checks above should catch this, but let's be safe)
+	vmsetList, err := v.hfClientSet.HobbyfarmV1().VirtualMachineSets().List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s=%s", vmt.Name, "true"),
+	})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror",
+			"error listing virtual machine sets while attempting vmt deletion")
+		return
+	}
+
+	if len(vmsetList.Items) > 0 {
+		util.ReturnHTTPMessage(w, r, 409, "conflict",
+			"existing virtual machine sets reference this vmtemplate")
+		return
+	}
+
+	// if we get here, shouldn't be anything in our path stopping us from deleting the vmtemplate
+	// so do it!
+	err = v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Delete(vmt.Name, &metav1.DeleteOptions{})
+	if err != nil {
+		glog.Errorf("error deleting vmtemplate: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting vmtemplate")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "deleted", "vmtemplate deleted")
+}
+
+func searchForTemplateInRequiredVMs(req map[string]map[string]int, template string) bool {
+	for _, v := range req {
+		// k is environment, v is map[string]string
+		for kk, _ := range v {
+			// kk is vmtemplate, vv is count
+			if kk == template {
+				return true
+			}
+		}
+	}
+
+	return false
 }
