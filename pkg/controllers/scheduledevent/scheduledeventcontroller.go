@@ -154,6 +154,12 @@ func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent
 		return err
 	}
 
+	err = s.deleteVMsFromScheduledEvent(se)
+
+	if err != nil {
+		return err
+	}
+
 	// update the scheduled event and set the various flags accordingly (provisioned, ready, finished)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		seToUpdate, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(se.Name, metav1.GetOptions{})
@@ -177,6 +183,18 @@ func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent
 	}
 
 	return nil // break (return) here because we're done with this SE.
+}
+
+func (s ScheduledEventController) deleteVMsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
+	// for each VM that belongs to this to-be-stopped scheduled event, delete that VM
+	err := s.hfClientSet.HobbyfarmV1().VirtualMachines().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s ScheduledEventController) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {

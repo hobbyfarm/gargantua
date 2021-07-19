@@ -432,7 +432,13 @@ func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request)
 
 	err = s.deleteVMSetsFromScheduledEvent(scheduledEvent)
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting scheduled event's vmsets")
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting scheduled event's VMSets")
+		return
+	}
+
+	err = s.deleteVMsFromScheduledEvent(scheduledEvent)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting scheduled event's VMs")
 		return
 	}
 
@@ -474,6 +480,18 @@ func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent
 	}
 
 	return nil // break (return) here because we're done with this SE.
+}
+
+func (s ScheduledEventServer) deleteVMsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
+	// delete all vmsets corresponding to this scheduled event
+	err := s.hfClientSet.HobbyfarmV1().VirtualMachines().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", scheduledevent.ScheduledEventLabel, se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
