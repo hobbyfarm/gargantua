@@ -15,6 +15,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
@@ -456,55 +457,33 @@ func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request)
 func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent) error {
 	glog.V(6).Infof("ScheduledEvent %s is updated or deleted, deleting corresponding access code(s) and DBC(s)", se.Name)
 
-	// get a list of the DBCs corresponding to this scheduled event
-	dbcList, err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("scheduledevent=%s", se.Name),
-	})
-	if err != nil {
-		return err
-	}
-
-	// for each DBC that belongs to this edited/deleted scheduled event, delete that DBC
-	for _, dbc := range dbcList.Items {
-		err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().Delete(dbc.Name, &metav1.DeleteOptions{})
-		if err != nil {
-			glog.Errorf("error deleting dbc %v", err)
-		}
-	}
-
-	// get a list of the access codes corresponding to this scheduled event
-	acList, err := s.hfClientSet.HobbyfarmV1().AccessCodes().List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("scheduledevent=%s", se.Name),
+	// delete all DBCs corresponding to this scheduled event
+	err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", scheduledevent.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
 	}
 
 	// for each access code that belongs to this edited/deleted scheduled event, delete that access code
-	for _, ac := range acList.Items {
-		err := s.hfClientSet.HobbyfarmV1().AccessCodes().Delete(ac.Name, &metav1.DeleteOptions{})
-		if err != nil {
-			glog.Errorf("error deleting access code %v", err)
-		}
-	}
-	return nil // break (return) here because we're done with this SE.
-}
-
-func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
-	// get a list of the vmsets corresponding to this scheduled event
-	vmsList, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().List(metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("scheduledevent=%s", se.Name),
+	err = s.hfClientSet.HobbyfarmV1().AccessCodes().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", scheduledevent.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
 	}
 
-	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
-	for _, vms := range vmsList.Items {
-		err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().Delete(vms.Name, &metav1.DeleteOptions{})
-		if err != nil {
-			glog.Errorf("error deleting virtualmachineset %v", err)
-		}
+	return nil // break (return) here because we're done with this SE.
+}
+
+func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
+	// delete all vmsets corresponding to this scheduled event
+	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", scheduledevent.ScheduledEventLabel, se.Name),
+	})
+	if err != nil {
+		return err
 	}
+
 	return nil
 }
