@@ -28,6 +28,7 @@ const (
 	pauseSSTimeout     = "2h"
 	vmcSessionLabel    = "hobbyfarm.io/session"
 	UserSessionLabel   = "hobbyfarm.io/user"
+	AccessCodeLabel    = "accesscode.hobbyfarm.io"
 )
 
 type SessionServer struct {
@@ -198,7 +199,9 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	session.Spec.CourseId = course.Spec.Id
 	session.Spec.ScenarioId = scenario.Spec.Id
 	session.Spec.UserId = user.Spec.Id
-
+	labels := make(map[string]string)
+	labels[AccessCodeLabel] = accessCode // map accesscode to session
+	session.Labels = labels
 	var vms []map[string]string
 	if course.Spec.VirtualMachines != nil {
 		vms = course.Spec.VirtualMachines

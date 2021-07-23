@@ -16,6 +16,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
+	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
@@ -436,9 +437,9 @@ func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err = s.deleteVMsFromScheduledEvent(scheduledEvent)
+	err = s.finishSessions(scheduledEvent)
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting scheduled event's VMs")
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", err.Error())
 		return
 	}
 
@@ -482,18 +483,6 @@ func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent
 	return nil // break (return) here because we're done with this SE.
 }
 
-func (s ScheduledEventServer) deleteVMsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
-	// delete all vmsets corresponding to this scheduled event
-	err := s.hfClientSet.HobbyfarmV1().VirtualMachines().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", scheduledevent.ScheduledEventLabel, se.Name),
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// delete all vmsets corresponding to this scheduled event
 	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
@@ -503,5 +492,38 @@ func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledE
 		return err
 	}
 
+	return nil
+}
+
+func (s ScheduledEventServer) finishSessions(se *hfv1.ScheduledEvent) error {
+	// get a list of sessions for the user
+	sessionList, err := s.hfClientSet.HobbyfarmV1().Sessions().List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", sessionserver.AccessCodeLabel, se.Spec.AccessCode),
+	})
+
+	now := time.Now().Format(time.UnixDate)
+
+	for _, session := range sessionList.Items {
+		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions().Get(session.Spec.Id, metav1.GetOptions{})
+			if getErr != nil {
+				return fmt.Errorf("error retrieving latest version of session %s: %v", session.Spec.Id, getErr)
+			}
+
+			result.Status.ExpirationTime = now
+			result.Status.Active = false
+			result.Status.Finished = false
+
+			_, updateErr := s.hfClientSet.HobbyfarmV1().Sessions().Update(result)
+			glog.V(4).Infof("updated result for session")
+
+			return updateErr
+		})
+
+		if retryErr != nil {
+			glog.Errorf("error updating session %v", err)
+			return fmt.Errorf("error attempting to update")
+		}
+	}
 	return nil
 }
