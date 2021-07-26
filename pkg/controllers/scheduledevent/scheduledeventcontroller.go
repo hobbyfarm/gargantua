@@ -11,6 +11,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -154,7 +155,7 @@ func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent
 		return err
 	}
 
-	err = s.deleteVMsFromScheduledEvent(se)
+	err = s.finishSessionsFromScheduledEvent(se)
 
 	if err != nil {
 		return err
@@ -185,18 +186,6 @@ func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent
 	return nil // break (return) here because we're done with this SE.
 }
 
-func (s ScheduledEventController) deleteVMsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
-	// for each VM that belongs to this to-be-stopped scheduled event, delete that VM
-	err := s.hfClientSet.HobbyfarmV1().VirtualMachines().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, se.Name),
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (s ScheduledEventController) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
 	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
@@ -206,6 +195,39 @@ func (s ScheduledEventController) deleteVMSetsFromScheduledEvent(se *hfv1.Schedu
 		return err
 	}
 
+	return nil
+}
+
+func (s ScheduledEventController) finishSessionsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
+	// get a list of sessions for the user
+	sessionList, err := s.hfClientSet.HobbyfarmV1().Sessions().List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", sessionserver.AccessCodeLabel, se.Spec.AccessCode),
+	})
+
+	now := time.Now().Format(time.UnixDate)
+
+	for _, session := range sessionList.Items {
+		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions().Get(session.Spec.Id, metav1.GetOptions{})
+			if getErr != nil {
+				return fmt.Errorf("error retrieving latest version of session %s: %v", session.Spec.Id, getErr)
+			}
+
+			result.Status.ExpirationTime = now
+			result.Status.Active = false
+			result.Status.Finished = false
+
+			_, updateErr := s.hfClientSet.HobbyfarmV1().Sessions().Update(result)
+			glog.V(4).Infof("updated result for session")
+
+			return updateErr
+		})
+
+		if retryErr != nil {
+			glog.Errorf("error updating session %v", err)
+			return fmt.Errorf("error attempting to update")
+		}
+	}
 	return nil
 }
 
