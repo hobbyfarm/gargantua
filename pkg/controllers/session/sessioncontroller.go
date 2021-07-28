@@ -152,8 +152,17 @@ func (s *SessionController) reconcileSession(ssName string) error {
 
 	// clean up old (3 hours later) sessions, and only if they are finished
 	if expires.Add(SessionExpireTime).Before(now) && ss.Status.Finished {
-		// first we need to delete the vmclaims
-		err := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		// first we need to delete the DynamicBindRequests
+		err := s.hfClientSet.HobbyfarmV1().DynamicBindRequests().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("hobbyfarm.io/session=%s", ss.Name),
+		})
+
+		if err != nil {
+			return fmt.Errorf("error deleting dynamicbindrequests with session label %s: %s", ss.Name, err)
+		}
+
+		// then we need to delete the vmclaims
+		err = s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("hobbyfarm.io/session=%s", ss.Name),
 		})
 

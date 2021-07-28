@@ -281,7 +281,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := sss.auth.AuthN(w, r)
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create sessions")
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to finish sessions")
 		return
 	}
 	vars := mux.Vars(r)
