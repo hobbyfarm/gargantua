@@ -351,7 +351,7 @@ func (v *VMClaimController) processNextVMClaim() bool {
 								},
 							},
 							Labels: map[string]string{
-								"hobbyfarm.io/session": vmClaim.Name,
+								"hobbyfarm.io/session": vmClaim.Labels["hobbyfarm.io/session"],
 							},
 						},
 						Spec: hfv1.DynamicBindRequestSpec{
