@@ -5,18 +5,21 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
+	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type ScheduledEventServer struct {
@@ -55,6 +58,7 @@ func (s ScheduledEventServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/scheduledevent/new", s.CreateFunc).Methods("POST")
 	r.HandleFunc("/a/scheduledevent/{id}", s.GetFunc).Methods("GET")
 	r.HandleFunc("/a/scheduledevent/{id}", s.UpdateFunc).Methods("PUT")
+	r.HandleFunc("/a/scheduledevent/delete/{id}", s.DeleteFunc).Methods("DELETE")
 	glog.V(2).Infof("set up routes for admin scheduledevent server")
 }
 
@@ -267,7 +271,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 	scheduledEvent, err = s.hfClientSet.HobbyfarmV1().ScheduledEvents().Create(scheduledEvent)
 	if err != nil {
 		glog.Errorf("error creating scheduled event %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scehduled event")
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scheduled event")
 		return
 	}
 
@@ -301,16 +305,6 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 		if scheduledEvent.Spec.Creator != user.Spec.Id {
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "not creator")
 			return fmt.Errorf("bad")
-		}
-
-		beginTime, err := time.Parse(time.UnixDate, scheduledEvent.Spec.StartTime)
-		if err != nil {
-			return err
-		}
-
-		if beginTime.Before(time.Now()) {
-			util.ReturnHTTPMessage(w, r, 303, "toolate", "too late")
-			return fmt.Errorf("too late")
 		}
 
 		name := r.PostFormValue("name")
@@ -348,34 +342,53 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 				return fmt.Errorf("bad")
 			}
 			scheduledEvent.Spec.RequiredVirtualMachines = requiredVMUnmarshaled
-
-			//if scheduledEvent.Status.Provisioned {
-			//	scheduledEvent.Status.Provisioned = false
-			//}
 		}
 
 		if coursesRaw != "" {
-			if !scheduledEvent.Status.Provisioned {
-				courses := []string{} // must be declared this way so as to JSON marshal into [] instead of null
-				err = json.Unmarshal([]byte(coursesRaw), &courses)
-				if err != nil {
-					glog.Errorf("error while unmarshaling courses %v", err)
-					return fmt.Errorf("bad")
-				}
-				scheduledEvent.Spec.Courses = courses
+			courses := []string{} // must be declared this way so as to JSON marshal into [] instead of null
+			err = json.Unmarshal([]byte(coursesRaw), &courses)
+			if err != nil {
+				glog.Errorf("error while unmarshaling courses %v", err)
+				return fmt.Errorf("bad")
 			}
+			scheduledEvent.Spec.Courses = courses
 		}
 
 		if scenariosRaw != "" {
-			if !scheduledEvent.Status.Provisioned { // we can't change the scenarios after the scheduled event was provisioned
-				scenarios := []string{} // must be declared this way so as to JSON marshal into [] instead of null
-				err = json.Unmarshal([]byte(scenariosRaw), &scenarios)
-				if err != nil {
-					glog.Errorf("error while unmarshaling scenarios %v", err)
-					return fmt.Errorf("bad")
-				}
-				scheduledEvent.Spec.Scenarios = scenarios
+			scenarios := []string{} // must be declared this way so as to JSON marshal into [] instead of null
+			err = json.Unmarshal([]byte(scenariosRaw), &scenarios)
+			if err != nil {
+				glog.Errorf("error while unmarshaling scenarios %v", err)
+				return fmt.Errorf("bad")
 			}
+			scheduledEvent.Spec.Scenarios = scenarios
+		}
+
+		// if our event is already provisioned, we need to undo that and delete the corresponding access code(s) and DBC(s)
+		// our scheduledeventcontroller will then provision our scheduledevent with the updated values
+		if scheduledEvent.Status.Provisioned {
+			now := time.Now()
+
+			beginTime, err := time.Parse(time.UnixDate, scheduledEvent.Spec.StartTime)
+			if err != nil {
+				return err
+			}
+
+			// the SE's begin time has been rescheduled to the future but was already provisioned
+			if now.Before(beginTime) && scheduledEvent.Status.Active {
+				err = s.deleteVMSetsFromScheduledEvent(scheduledEvent)
+				if err != nil {
+					return err
+				}
+			}
+
+			err = s.deleteScheduledEventConfig(scheduledEvent)
+			if err != nil {
+				return err
+			}
+			scheduledEvent.Status.Provisioned = false
+			scheduledEvent.Status.Ready = false
+			scheduledEvent.Status.Finished = false
 		}
 
 		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Update(scheduledEvent)
@@ -389,4 +402,128 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 
 	util.ReturnHTTPMessage(w, r, 200, "updated", "")
 	return
+}
+
+func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := s.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete scheduledevents")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	id := vars["id"]
+	if id == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID passed in")
+		return
+	}
+
+	scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(id, metav1.GetOptions{})
+	if err != nil {
+		glog.Error(err)
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID found")
+		return
+	}
+
+	if scheduledEvent.Spec.Creator != user.Spec.Id {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "not creator")
+		return
+	}
+
+	err = s.deleteVMSetsFromScheduledEvent(scheduledEvent)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting scheduled event's VMSets")
+		return
+	}
+
+	err = s.finishSessions(scheduledEvent)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", err.Error())
+		return
+	}
+
+	err = s.deleteScheduledEventConfig(scheduledEvent)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting scheduled event's access code(s) and DBC(s)")
+		return
+	}
+
+	err = s.hfClientSet.HobbyfarmV1().ScheduledEvents().Delete(scheduledEvent.Name, &metav1.DeleteOptions{})
+
+	if err != nil {
+		glog.Errorf("error deleting scheduled event %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting scheduled event")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "deleted", "Deleted: "+scheduledEvent.Name)
+	return
+}
+
+func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent) error {
+	glog.V(6).Infof("ScheduledEvent %s is updated or deleted, deleting corresponding access code(s) and DBC(s)", se.Name)
+
+	// delete all DBCs corresponding to this scheduled event
+	err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", scheduledevent.ScheduledEventLabel, se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	// for each access code that belongs to this edited/deleted scheduled event, delete that access code
+	err = s.hfClientSet.HobbyfarmV1().AccessCodes().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", scheduledevent.ScheduledEventLabel, se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil // break (return) here because we're done with this SE.
+}
+
+func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
+	// delete all vmsets corresponding to this scheduled event
+	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", scheduledevent.ScheduledEventLabel, se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s ScheduledEventServer) finishSessions(se *hfv1.ScheduledEvent) error {
+	// get a list of sessions for the user
+	sessionList, err := s.hfClientSet.HobbyfarmV1().Sessions().List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", sessionserver.AccessCodeLabel, se.Spec.AccessCode),
+	})
+
+	now := time.Now().Format(time.UnixDate)
+
+	for _, session := range sessionList.Items {
+		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions().Get(session.Spec.Id, metav1.GetOptions{})
+			if getErr != nil {
+				return fmt.Errorf("error retrieving latest version of session %s: %v", session.Spec.Id, getErr)
+			}
+
+			result.Status.ExpirationTime = now
+			result.Status.Active = false
+			result.Status.Finished = false
+
+			_, updateErr := s.hfClientSet.HobbyfarmV1().Sessions().Update(result)
+			glog.V(4).Infof("updated result for session")
+
+			return updateErr
+		})
+
+		if retryErr != nil {
+			glog.Errorf("error updating session %v", err)
+			return fmt.Errorf("error attempting to update")
+		}
+	}
+	return nil
 }

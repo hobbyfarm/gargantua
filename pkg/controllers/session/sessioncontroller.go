@@ -2,6 +2,8 @@ package session
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/golang/glog"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
@@ -12,7 +14,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
-	"time"
 )
 
 const (
@@ -151,8 +152,17 @@ func (s *SessionController) reconcileSession(ssName string) error {
 
 	// clean up old (3 hours later) sessions, and only if they are finished
 	if expires.Add(SessionExpireTime).Before(now) && ss.Status.Finished {
-		// first we need to delete the vmclaims
-		err := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		// first we need to delete the DynamicBindRequests
+		err := s.hfClientSet.HobbyfarmV1().DynamicBindRequests().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("hobbyfarm.io/session=%s", ss.Name),
+		})
+
+		if err != nil {
+			return fmt.Errorf("error deleting dynamicbindrequests with session label %s: %s", ss.Name, err)
+		}
+
+		// then we need to delete the vmclaims
+		err = s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("hobbyfarm.io/session=%s", ss.Name),
 		})
 
@@ -175,7 +185,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 
 	if expires.Before(now) && !ss.Status.Finished {
 		// we need to set the session to finished and delete the vm's
-		if ss.Status.Paused && ss.Status.PausedTime != "" {
+		if ss.Status.Active && ss.Status.Paused && ss.Status.PausedTime != "" {
 			pausedExpiration, err := time.Parse(time.UnixDate, ss.Status.PausedTime)
 			if err != nil {
 				glog.Error(err)
