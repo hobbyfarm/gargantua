@@ -2,8 +2,10 @@ package shell
 
 import (
 	"bytes"
-	"github.com/gorilla/websocket"
 	"io"
+	"strconv"
+
+	"github.com/gorilla/websocket"
 )
 
 type InputWrapper struct {
@@ -23,6 +25,16 @@ func (this *InputWrapper) Read(out []byte) (n int, err error) {
 	_, data, err = this.ws.ReadMessage()
 	if err != nil {
 		return 0, io.EOF
+	}
+
+	// check if data is a resize event
+	if SIGWINCH.MatchString(string(data)) {
+		size := SIGWINCH.FindStringSubmatch(string(data))
+
+		h, _ := strconv.Atoi(size[1])
+		w, _ := strconv.Atoi(size[2])
+		ResizePty(h, w)
+		return 0, nil
 	}
 
 	if len(data) >= patternLen {
