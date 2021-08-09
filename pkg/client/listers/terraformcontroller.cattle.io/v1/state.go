@@ -26,8 +26,10 @@ import (
 )
 
 // StateLister helps list States.
+// All objects returned here must be treated as read-only.
 type StateLister interface {
 	// List lists all States in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.State, err error)
 	// States returns an object that can list and get States.
 	States(namespace string) StateNamespaceLister
@@ -58,10 +60,13 @@ func (s *stateLister) States(namespace string) StateNamespaceLister {
 }
 
 // StateNamespaceLister helps list and get States.
+// All objects returned here must be treated as read-only.
 type StateNamespaceLister interface {
 	// List lists all States in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.State, err error)
 	// Get retrieves the State from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1.State, error)
 	StateNamespaceListerExpansion
 }

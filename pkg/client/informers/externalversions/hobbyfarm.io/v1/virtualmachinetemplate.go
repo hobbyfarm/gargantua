@@ -19,6 +19,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	time "time"
 
 	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -60,13 +61,13 @@ func NewFilteredVirtualMachineTemplateInformer(client versioned.Interface, resyn
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().VirtualMachineTemplates().List(options)
+				return client.HobbyfarmV1().VirtualMachineTemplates().List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().VirtualMachineTemplates().Watch(options)
+				return client.HobbyfarmV1().VirtualMachineTemplates().Watch(context.TODO(), options)
 			},
 		},
 		&hobbyfarmiov1.VirtualMachineTemplate{},

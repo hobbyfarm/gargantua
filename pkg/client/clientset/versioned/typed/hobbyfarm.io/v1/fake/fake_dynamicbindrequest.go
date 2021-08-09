@@ -19,6 +19,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -38,7 +40,7 @@ var dynamicbindrequestsResource = schema.GroupVersionResource{Group: "hobbyfarm.
 var dynamicbindrequestsKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version: "v1", Kind: "DynamicBindRequest"}
 
 // Get takes name of the dynamicBindRequest, and returns the corresponding dynamicBindRequest object, and an error if there is any.
-func (c *FakeDynamicBindRequests) Get(name string, options v1.GetOptions) (result *hobbyfarmiov1.DynamicBindRequest, err error) {
+func (c *FakeDynamicBindRequests) Get(ctx context.Context, name string, options v1.GetOptions) (result *hobbyfarmiov1.DynamicBindRequest, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(dynamicbindrequestsResource, name), &hobbyfarmiov1.DynamicBindRequest{})
 	if obj == nil {
@@ -48,7 +50,7 @@ func (c *FakeDynamicBindRequests) Get(name string, options v1.GetOptions) (resul
 }
 
 // List takes label and field selectors, and returns the list of DynamicBindRequests that match those selectors.
-func (c *FakeDynamicBindRequests) List(opts v1.ListOptions) (result *hobbyfarmiov1.DynamicBindRequestList, err error) {
+func (c *FakeDynamicBindRequests) List(ctx context.Context, opts v1.ListOptions) (result *hobbyfarmiov1.DynamicBindRequestList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootListAction(dynamicbindrequestsResource, dynamicbindrequestsKind, opts), &hobbyfarmiov1.DynamicBindRequestList{})
 	if obj == nil {
@@ -69,13 +71,13 @@ func (c *FakeDynamicBindRequests) List(opts v1.ListOptions) (result *hobbyfarmio
 }
 
 // Watch returns a watch.Interface that watches the requested dynamicBindRequests.
-func (c *FakeDynamicBindRequests) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeDynamicBindRequests) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewRootWatchAction(dynamicbindrequestsResource, opts))
 }
 
 // Create takes the representation of a dynamicBindRequest and creates it.  Returns the server's representation of the dynamicBindRequest, and an error, if there is any.
-func (c *FakeDynamicBindRequests) Create(dynamicBindRequest *hobbyfarmiov1.DynamicBindRequest) (result *hobbyfarmiov1.DynamicBindRequest, err error) {
+func (c *FakeDynamicBindRequests) Create(ctx context.Context, dynamicBindRequest *hobbyfarmiov1.DynamicBindRequest, opts v1.CreateOptions) (result *hobbyfarmiov1.DynamicBindRequest, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(dynamicbindrequestsResource, dynamicBindRequest), &hobbyfarmiov1.DynamicBindRequest{})
 	if obj == nil {
@@ -85,7 +87,7 @@ func (c *FakeDynamicBindRequests) Create(dynamicBindRequest *hobbyfarmiov1.Dynam
 }
 
 // Update takes the representation of a dynamicBindRequest and updates it. Returns the server's representation of the dynamicBindRequest, and an error, if there is any.
-func (c *FakeDynamicBindRequests) Update(dynamicBindRequest *hobbyfarmiov1.DynamicBindRequest) (result *hobbyfarmiov1.DynamicBindRequest, err error) {
+func (c *FakeDynamicBindRequests) Update(ctx context.Context, dynamicBindRequest *hobbyfarmiov1.DynamicBindRequest, opts v1.UpdateOptions) (result *hobbyfarmiov1.DynamicBindRequest, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(dynamicbindrequestsResource, dynamicBindRequest), &hobbyfarmiov1.DynamicBindRequest{})
 	if obj == nil {
@@ -96,7 +98,7 @@ func (c *FakeDynamicBindRequests) Update(dynamicBindRequest *hobbyfarmiov1.Dynam
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeDynamicBindRequests) UpdateStatus(dynamicBindRequest *hobbyfarmiov1.DynamicBindRequest) (*hobbyfarmiov1.DynamicBindRequest, error) {
+func (c *FakeDynamicBindRequests) UpdateStatus(ctx context.Context, dynamicBindRequest *hobbyfarmiov1.DynamicBindRequest, opts v1.UpdateOptions) (*hobbyfarmiov1.DynamicBindRequest, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateSubresourceAction(dynamicbindrequestsResource, "status", dynamicBindRequest), &hobbyfarmiov1.DynamicBindRequest{})
 	if obj == nil {
@@ -106,22 +108,22 @@ func (c *FakeDynamicBindRequests) UpdateStatus(dynamicBindRequest *hobbyfarmiov1
 }
 
 // Delete takes name of the dynamicBindRequest and deletes it. Returns an error if one occurs.
-func (c *FakeDynamicBindRequests) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeDynamicBindRequests) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(dynamicbindrequestsResource, name), &hobbyfarmiov1.DynamicBindRequest{})
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeDynamicBindRequests) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(dynamicbindrequestsResource, listOptions)
+func (c *FakeDynamicBindRequests) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewRootDeleteCollectionAction(dynamicbindrequestsResource, listOpts)
 
 	_, err := c.Fake.Invokes(action, &hobbyfarmiov1.DynamicBindRequestList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched dynamicBindRequest.
-func (c *FakeDynamicBindRequests) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *hobbyfarmiov1.DynamicBindRequest, err error) {
+func (c *FakeDynamicBindRequests) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *hobbyfarmiov1.DynamicBindRequest, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(dynamicbindrequestsResource, name, pt, data, subresources...), &hobbyfarmiov1.DynamicBindRequest{})
 	if obj == nil {

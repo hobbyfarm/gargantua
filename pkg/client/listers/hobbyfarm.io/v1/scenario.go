@@ -26,10 +26,13 @@ import (
 )
 
 // ScenarioLister helps list Scenarios.
+// All objects returned here must be treated as read-only.
 type ScenarioLister interface {
 	// List lists all Scenarios in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.Scenario, err error)
 	// Get retrieves the Scenario from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1.Scenario, error)
 	ScenarioListerExpansion
 }

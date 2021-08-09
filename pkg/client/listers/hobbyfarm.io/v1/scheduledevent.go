@@ -26,10 +26,13 @@ import (
 )
 
 // ScheduledEventLister helps list ScheduledEvents.
+// All objects returned here must be treated as read-only.
 type ScheduledEventLister interface {
 	// List lists all ScheduledEvents in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.ScheduledEvent, err error)
 	// Get retrieves the ScheduledEvent from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1.ScheduledEvent, error)
 	ScheduledEventListerExpansion
 }

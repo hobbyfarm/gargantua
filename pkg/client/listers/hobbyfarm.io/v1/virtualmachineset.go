@@ -26,10 +26,13 @@ import (
 )
 
 // VirtualMachineSetLister helps list VirtualMachineSets.
+// All objects returned here must be treated as read-only.
 type VirtualMachineSetLister interface {
 	// List lists all VirtualMachineSets in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.VirtualMachineSet, err error)
 	// Get retrieves the VirtualMachineSet from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1.VirtualMachineSet, error)
 	VirtualMachineSetListerExpansion
 }

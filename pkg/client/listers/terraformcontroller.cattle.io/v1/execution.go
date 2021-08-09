@@ -26,8 +26,10 @@ import (
 )
 
 // ExecutionLister helps list Executions.
+// All objects returned here must be treated as read-only.
 type ExecutionLister interface {
 	// List lists all Executions in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.Execution, err error)
 	// Executions returns an object that can list and get Executions.
 	Executions(namespace string) ExecutionNamespaceLister
@@ -58,10 +60,13 @@ func (s *executionLister) Executions(namespace string) ExecutionNamespaceLister 
 }
 
 // ExecutionNamespaceLister helps list and get Executions.
+// All objects returned here must be treated as read-only.
 type ExecutionNamespaceLister interface {
 	// List lists all Executions in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.Execution, err error)
 	// Get retrieves the Execution from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1.Execution, error)
 	ExecutionNamespaceListerExpansion
 }

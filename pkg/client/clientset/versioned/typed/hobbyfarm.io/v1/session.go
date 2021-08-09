@@ -19,6 +19,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	"time"
 
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -37,15 +38,15 @@ type SessionsGetter interface {
 
 // SessionInterface has methods to work with Session resources.
 type SessionInterface interface {
-	Create(*v1.Session) (*v1.Session, error)
-	Update(*v1.Session) (*v1.Session, error)
-	UpdateStatus(*v1.Session) (*v1.Session, error)
-	Delete(name string, options *metav1.DeleteOptions) error
-	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
-	Get(name string, options metav1.GetOptions) (*v1.Session, error)
-	List(opts metav1.ListOptions) (*v1.SessionList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Session, err error)
+	Create(ctx context.Context, session *v1.Session, opts metav1.CreateOptions) (*v1.Session, error)
+	Update(ctx context.Context, session *v1.Session, opts metav1.UpdateOptions) (*v1.Session, error)
+	UpdateStatus(ctx context.Context, session *v1.Session, opts metav1.UpdateOptions) (*v1.Session, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Session, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.SessionList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Session, err error)
 	SessionExpansion
 }
 
@@ -62,19 +63,19 @@ func newSessions(c *HobbyfarmV1Client) *sessions {
 }
 
 // Get takes name of the session, and returns the corresponding session object, and an error if there is any.
-func (c *sessions) Get(name string, options metav1.GetOptions) (result *v1.Session, err error) {
+func (c *sessions) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Session, err error) {
 	result = &v1.Session{}
 	err = c.client.Get().
 		Resource("sessions").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // List takes label and field selectors, and returns the list of Sessions that match those selectors.
-func (c *sessions) List(opts metav1.ListOptions) (result *v1.SessionList, err error) {
+func (c *sessions) List(ctx context.Context, opts metav1.ListOptions) (result *v1.SessionList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -84,13 +85,13 @@ func (c *sessions) List(opts metav1.ListOptions) (result *v1.SessionList, err er
 		Resource("sessions").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Watch returns a watch.Interface that watches the requested sessions.
-func (c *sessions) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *sessions) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -100,81 +101,84 @@ func (c *sessions) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 		Resource("sessions").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(ctx)
 }
 
 // Create takes the representation of a session and creates it.  Returns the server's representation of the session, and an error, if there is any.
-func (c *sessions) Create(session *v1.Session) (result *v1.Session, err error) {
+func (c *sessions) Create(ctx context.Context, session *v1.Session, opts metav1.CreateOptions) (result *v1.Session, err error) {
 	result = &v1.Session{}
 	err = c.client.Post().
 		Resource("sessions").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(session).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Update takes the representation of a session and updates it. Returns the server's representation of the session, and an error, if there is any.
-func (c *sessions) Update(session *v1.Session) (result *v1.Session, err error) {
+func (c *sessions) Update(ctx context.Context, session *v1.Session, opts metav1.UpdateOptions) (result *v1.Session, err error) {
 	result = &v1.Session{}
 	err = c.client.Put().
 		Resource("sessions").
 		Name(session.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(session).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-
-func (c *sessions) UpdateStatus(session *v1.Session) (result *v1.Session, err error) {
+func (c *sessions) UpdateStatus(ctx context.Context, session *v1.Session, opts metav1.UpdateOptions) (result *v1.Session, err error) {
 	result = &v1.Session{}
 	err = c.client.Put().
 		Resource("sessions").
 		Name(session.Name).
 		SubResource("status").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(session).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Delete takes name of the session and deletes it. Returns an error if one occurs.
-func (c *sessions) Delete(name string, options *metav1.DeleteOptions) error {
+func (c *sessions) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
 		Resource("sessions").
 		Name(name).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *sessions) DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
+func (c *sessions) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOptions.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	if listOpts.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
 		Resource("sessions").
-		VersionedParams(&listOptions, scheme.ParameterCodec).
+		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // Patch applies the patch and returns the patched session.
-func (c *sessions) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Session, err error) {
+func (c *sessions) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Session, err error) {
 	result = &v1.Session{}
 	err = c.client.Patch(pt).
 		Resource("sessions").
-		SubResource(subresources...).
 		Name(name).
+		SubResource(subresources...).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(data).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }

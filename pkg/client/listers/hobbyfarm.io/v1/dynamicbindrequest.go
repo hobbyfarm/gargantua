@@ -26,10 +26,13 @@ import (
 )
 
 // DynamicBindRequestLister helps list DynamicBindRequests.
+// All objects returned here must be treated as read-only.
 type DynamicBindRequestLister interface {
 	// List lists all DynamicBindRequests in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.DynamicBindRequest, err error)
 	// Get retrieves the DynamicBindRequest from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1.DynamicBindRequest, error)
 	DynamicBindRequestListerExpansion
 }

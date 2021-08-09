@@ -19,6 +19,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -38,7 +40,7 @@ var virtualmachineclaimsResource = schema.GroupVersionResource{Group: "hobbyfarm
 var virtualmachineclaimsKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version: "v1", Kind: "VirtualMachineClaim"}
 
 // Get takes name of the virtualMachineClaim, and returns the corresponding virtualMachineClaim object, and an error if there is any.
-func (c *FakeVirtualMachineClaims) Get(name string, options v1.GetOptions) (result *hobbyfarmiov1.VirtualMachineClaim, err error) {
+func (c *FakeVirtualMachineClaims) Get(ctx context.Context, name string, options v1.GetOptions) (result *hobbyfarmiov1.VirtualMachineClaim, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(virtualmachineclaimsResource, name), &hobbyfarmiov1.VirtualMachineClaim{})
 	if obj == nil {
@@ -48,7 +50,7 @@ func (c *FakeVirtualMachineClaims) Get(name string, options v1.GetOptions) (resu
 }
 
 // List takes label and field selectors, and returns the list of VirtualMachineClaims that match those selectors.
-func (c *FakeVirtualMachineClaims) List(opts v1.ListOptions) (result *hobbyfarmiov1.VirtualMachineClaimList, err error) {
+func (c *FakeVirtualMachineClaims) List(ctx context.Context, opts v1.ListOptions) (result *hobbyfarmiov1.VirtualMachineClaimList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootListAction(virtualmachineclaimsResource, virtualmachineclaimsKind, opts), &hobbyfarmiov1.VirtualMachineClaimList{})
 	if obj == nil {
@@ -69,13 +71,13 @@ func (c *FakeVirtualMachineClaims) List(opts v1.ListOptions) (result *hobbyfarmi
 }
 
 // Watch returns a watch.Interface that watches the requested virtualMachineClaims.
-func (c *FakeVirtualMachineClaims) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeVirtualMachineClaims) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewRootWatchAction(virtualmachineclaimsResource, opts))
 }
 
 // Create takes the representation of a virtualMachineClaim and creates it.  Returns the server's representation of the virtualMachineClaim, and an error, if there is any.
-func (c *FakeVirtualMachineClaims) Create(virtualMachineClaim *hobbyfarmiov1.VirtualMachineClaim) (result *hobbyfarmiov1.VirtualMachineClaim, err error) {
+func (c *FakeVirtualMachineClaims) Create(ctx context.Context, virtualMachineClaim *hobbyfarmiov1.VirtualMachineClaim, opts v1.CreateOptions) (result *hobbyfarmiov1.VirtualMachineClaim, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(virtualmachineclaimsResource, virtualMachineClaim), &hobbyfarmiov1.VirtualMachineClaim{})
 	if obj == nil {
@@ -85,7 +87,7 @@ func (c *FakeVirtualMachineClaims) Create(virtualMachineClaim *hobbyfarmiov1.Vir
 }
 
 // Update takes the representation of a virtualMachineClaim and updates it. Returns the server's representation of the virtualMachineClaim, and an error, if there is any.
-func (c *FakeVirtualMachineClaims) Update(virtualMachineClaim *hobbyfarmiov1.VirtualMachineClaim) (result *hobbyfarmiov1.VirtualMachineClaim, err error) {
+func (c *FakeVirtualMachineClaims) Update(ctx context.Context, virtualMachineClaim *hobbyfarmiov1.VirtualMachineClaim, opts v1.UpdateOptions) (result *hobbyfarmiov1.VirtualMachineClaim, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(virtualmachineclaimsResource, virtualMachineClaim), &hobbyfarmiov1.VirtualMachineClaim{})
 	if obj == nil {
@@ -96,7 +98,7 @@ func (c *FakeVirtualMachineClaims) Update(virtualMachineClaim *hobbyfarmiov1.Vir
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeVirtualMachineClaims) UpdateStatus(virtualMachineClaim *hobbyfarmiov1.VirtualMachineClaim) (*hobbyfarmiov1.VirtualMachineClaim, error) {
+func (c *FakeVirtualMachineClaims) UpdateStatus(ctx context.Context, virtualMachineClaim *hobbyfarmiov1.VirtualMachineClaim, opts v1.UpdateOptions) (*hobbyfarmiov1.VirtualMachineClaim, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateSubresourceAction(virtualmachineclaimsResource, "status", virtualMachineClaim), &hobbyfarmiov1.VirtualMachineClaim{})
 	if obj == nil {
@@ -106,22 +108,22 @@ func (c *FakeVirtualMachineClaims) UpdateStatus(virtualMachineClaim *hobbyfarmio
 }
 
 // Delete takes name of the virtualMachineClaim and deletes it. Returns an error if one occurs.
-func (c *FakeVirtualMachineClaims) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeVirtualMachineClaims) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(virtualmachineclaimsResource, name), &hobbyfarmiov1.VirtualMachineClaim{})
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeVirtualMachineClaims) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(virtualmachineclaimsResource, listOptions)
+func (c *FakeVirtualMachineClaims) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewRootDeleteCollectionAction(virtualmachineclaimsResource, listOpts)
 
 	_, err := c.Fake.Invokes(action, &hobbyfarmiov1.VirtualMachineClaimList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched virtualMachineClaim.
-func (c *FakeVirtualMachineClaims) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *hobbyfarmiov1.VirtualMachineClaim, err error) {
+func (c *FakeVirtualMachineClaims) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *hobbyfarmiov1.VirtualMachineClaim, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(virtualmachineclaimsResource, name, pt, data, subresources...), &hobbyfarmiov1.VirtualMachineClaim{})
 	if obj == nil {

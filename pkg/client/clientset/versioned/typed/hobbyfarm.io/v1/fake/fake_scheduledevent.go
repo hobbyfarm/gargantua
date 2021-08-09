@@ -19,6 +19,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -38,7 +40,7 @@ var scheduledeventsResource = schema.GroupVersionResource{Group: "hobbyfarm.io",
 var scheduledeventsKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version: "v1", Kind: "ScheduledEvent"}
 
 // Get takes name of the scheduledEvent, and returns the corresponding scheduledEvent object, and an error if there is any.
-func (c *FakeScheduledEvents) Get(name string, options v1.GetOptions) (result *hobbyfarmiov1.ScheduledEvent, err error) {
+func (c *FakeScheduledEvents) Get(ctx context.Context, name string, options v1.GetOptions) (result *hobbyfarmiov1.ScheduledEvent, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(scheduledeventsResource, name), &hobbyfarmiov1.ScheduledEvent{})
 	if obj == nil {
@@ -48,7 +50,7 @@ func (c *FakeScheduledEvents) Get(name string, options v1.GetOptions) (result *h
 }
 
 // List takes label and field selectors, and returns the list of ScheduledEvents that match those selectors.
-func (c *FakeScheduledEvents) List(opts v1.ListOptions) (result *hobbyfarmiov1.ScheduledEventList, err error) {
+func (c *FakeScheduledEvents) List(ctx context.Context, opts v1.ListOptions) (result *hobbyfarmiov1.ScheduledEventList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootListAction(scheduledeventsResource, scheduledeventsKind, opts), &hobbyfarmiov1.ScheduledEventList{})
 	if obj == nil {
@@ -69,13 +71,13 @@ func (c *FakeScheduledEvents) List(opts v1.ListOptions) (result *hobbyfarmiov1.S
 }
 
 // Watch returns a watch.Interface that watches the requested scheduledEvents.
-func (c *FakeScheduledEvents) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeScheduledEvents) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewRootWatchAction(scheduledeventsResource, opts))
 }
 
 // Create takes the representation of a scheduledEvent and creates it.  Returns the server's representation of the scheduledEvent, and an error, if there is any.
-func (c *FakeScheduledEvents) Create(scheduledEvent *hobbyfarmiov1.ScheduledEvent) (result *hobbyfarmiov1.ScheduledEvent, err error) {
+func (c *FakeScheduledEvents) Create(ctx context.Context, scheduledEvent *hobbyfarmiov1.ScheduledEvent, opts v1.CreateOptions) (result *hobbyfarmiov1.ScheduledEvent, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(scheduledeventsResource, scheduledEvent), &hobbyfarmiov1.ScheduledEvent{})
 	if obj == nil {
@@ -85,7 +87,7 @@ func (c *FakeScheduledEvents) Create(scheduledEvent *hobbyfarmiov1.ScheduledEven
 }
 
 // Update takes the representation of a scheduledEvent and updates it. Returns the server's representation of the scheduledEvent, and an error, if there is any.
-func (c *FakeScheduledEvents) Update(scheduledEvent *hobbyfarmiov1.ScheduledEvent) (result *hobbyfarmiov1.ScheduledEvent, err error) {
+func (c *FakeScheduledEvents) Update(ctx context.Context, scheduledEvent *hobbyfarmiov1.ScheduledEvent, opts v1.UpdateOptions) (result *hobbyfarmiov1.ScheduledEvent, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(scheduledeventsResource, scheduledEvent), &hobbyfarmiov1.ScheduledEvent{})
 	if obj == nil {
@@ -96,7 +98,7 @@ func (c *FakeScheduledEvents) Update(scheduledEvent *hobbyfarmiov1.ScheduledEven
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeScheduledEvents) UpdateStatus(scheduledEvent *hobbyfarmiov1.ScheduledEvent) (*hobbyfarmiov1.ScheduledEvent, error) {
+func (c *FakeScheduledEvents) UpdateStatus(ctx context.Context, scheduledEvent *hobbyfarmiov1.ScheduledEvent, opts v1.UpdateOptions) (*hobbyfarmiov1.ScheduledEvent, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateSubresourceAction(scheduledeventsResource, "status", scheduledEvent), &hobbyfarmiov1.ScheduledEvent{})
 	if obj == nil {
@@ -106,22 +108,22 @@ func (c *FakeScheduledEvents) UpdateStatus(scheduledEvent *hobbyfarmiov1.Schedul
 }
 
 // Delete takes name of the scheduledEvent and deletes it. Returns an error if one occurs.
-func (c *FakeScheduledEvents) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeScheduledEvents) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(scheduledeventsResource, name), &hobbyfarmiov1.ScheduledEvent{})
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeScheduledEvents) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(scheduledeventsResource, listOptions)
+func (c *FakeScheduledEvents) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewRootDeleteCollectionAction(scheduledeventsResource, listOpts)
 
 	_, err := c.Fake.Invokes(action, &hobbyfarmiov1.ScheduledEventList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched scheduledEvent.
-func (c *FakeScheduledEvents) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *hobbyfarmiov1.ScheduledEvent, err error) {
+func (c *FakeScheduledEvents) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *hobbyfarmiov1.ScheduledEvent, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(scheduledeventsResource, name, pt, data, subresources...), &hobbyfarmiov1.ScheduledEvent{})
 	if obj == nil {
