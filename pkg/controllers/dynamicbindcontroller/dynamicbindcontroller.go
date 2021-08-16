@@ -314,6 +314,9 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 				vm.Spec.Provision = false
 			}
 
+			// label to indicate which vmtemplate being used for querying reasons
+			vm.ObjectMeta.Labels["hobbyfarm.io/vmtemplate"] = vm.Spec.VirtualMachineTemplateId
+
 			if chosenDynamicBindConfiguration.Spec.RestrictedBind {
 				vm.ObjectMeta.Labels["restrictedbind"] = "true"
 				vm.ObjectMeta.Labels["restrictedbindvalue"] = chosenDynamicBindConfiguration.Spec.RestrictedBindValue

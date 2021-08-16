@@ -222,6 +222,8 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		virtualMachineClaim.Spec.VirtualMachines = make(map[string]hfv1.VirtualMachineClaimVM)
 		for vmName, vmTemplateName := range vmset {
 			virtualMachineClaim.Spec.VirtualMachines[vmName] = hfv1.VirtualMachineClaimVM{vmTemplateName, ""}
+			// also label this vmc so we can query against it later
+			labels[fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", vmTemplateName)] = "true"
 		}
 		virtualMachineClaim.Spec.UserId = user.Spec.Id
 		virtualMachineClaim.Status.Bound = false

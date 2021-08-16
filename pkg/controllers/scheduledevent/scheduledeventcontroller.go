@@ -293,8 +293,9 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 							},
 						},
 						Labels: map[string]string{
-							"environment":       env.Name,
-							ScheduledEventLabel: se.Name,
+							"environment":    env.Name,
+							"scheduledevent": se.Name,
+							fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", templateName): "true",
 						},
 					},
 					Spec: hfv1.VirtualMachineSetSpec{
