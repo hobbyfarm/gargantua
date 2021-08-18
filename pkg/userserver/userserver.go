@@ -1,6 +1,7 @@
 package userserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
@@ -19,13 +20,15 @@ import (
 type UserServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet hfClientset.Interface
+	ctx context.Context
 }
 
-func NewUserServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface) (*UserServer, error) {
+func NewUserServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, ctx context.Context) (*UserServer, error) {
 	s := UserServer{}
 
 	s.hfClientSet = hfClientset
 	s.auth = authClient
+	s.ctx = ctx
 
 	return &s, nil
 }
@@ -38,7 +41,7 @@ func (u UserServer) getUser(id string) (hfv1.User, error) {
 		return empty, fmt.Errorf("user id passed in was empty")
 	}
 
-	obj, err := u.hfClientSet.HobbyfarmV1().Users().Get(id, metav1.GetOptions{})
+	obj, err := u.hfClientSet.HobbyfarmV1().Users().Get(u.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving User by id: %s with error: %v", id, err)
 	}
@@ -101,7 +104,7 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users, err := u.hfClientSet.HobbyfarmV1().Users().List(metav1.ListOptions{})
+	users, err := u.hfClientSet.HobbyfarmV1().Users().List(u.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while retrieving users %v", err)
@@ -137,7 +140,7 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := u.hfClientSet.HobbyfarmV1().Users().Get(id, metav1.GetOptions{})
+		user, err := u.hfClientSet.HobbyfarmV1().Users().Get(u.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			return fmt.Errorf("bad")
@@ -178,7 +181,7 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		_, updateErr := u.hfClientSet.HobbyfarmV1().Users().Update(user)
+		_, updateErr := u.hfClientSet.HobbyfarmV1().Users().Update(u.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 

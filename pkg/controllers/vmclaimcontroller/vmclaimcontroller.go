@@ -1,6 +1,7 @@
 package vmclaimcontroller
 
 import (
+	"context"
 	"fmt"
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -36,9 +37,10 @@ type VMClaimController struct {
 
 	vmClaimHasSynced cache.InformerSynced
 	vmHasSynced      cache.InformerSynced
+	ctx context.Context
 }
 
-func NewVMClaimController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*VMClaimController, error) {
+func NewVMClaimController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMClaimController, error) {
 	vmClaimController := VMClaimController{}
 	vmClaimController.hfClientSet = hfClientSet
 
@@ -70,6 +72,7 @@ func NewVMClaimController(hfClientSet hfClientset.Interface, hfInformerFactory h
 
 	vmClaimController.vmClaimHasSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced
 	vmClaimController.vmHasSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
+	vmClaimController.ctx = ctx
 
 	return &vmClaimController, nil
 }
@@ -135,7 +138,7 @@ func (v *VMClaimController) processNextVM() bool {
 	err := func() error {
 		defer v.vmWorkqueue.Done(obj)
 		_, objName, err := cache.SplitMetaNamespaceKey(obj.(string))
-		vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Get(objName, metav1.GetOptions{})
+		vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Get(v.ctx, objName, metav1.GetOptions{})
 
 		if err != nil {
 			// ideally should put logic here to determine if we need to retry and push this vm back onto the workqueue
@@ -174,7 +177,7 @@ func (v *VMClaimController) processNextVMClaim() bool {
 			return nil
 		}
 
-		vmClaim, err := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(objName, metav1.GetOptions{})
+		vmClaim, err := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(v.ctx, objName, metav1.GetOptions{})
 		if err != nil {
 			glog.Errorf("error while retrieving virtual machine claim %s, likely deleted %v", objName, err)
 			//v.vmClaimWorkqueue.Forget(obj)
@@ -197,7 +200,7 @@ func (v *VMClaimController) processNextVMClaim() bool {
 			vmClaimIsReady := true
 			for _, needed := range vmClaim.Spec.VirtualMachines {
 				if needed.VirtualMachineId != "" {
-					vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Get(needed.VirtualMachineId, metav1.GetOptions{})
+					vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Get(v.ctx, needed.VirtualMachineId, metav1.GetOptions{})
 
 					if err != nil {
 						glog.Errorf("error while retrieving vm from k8s api: %v", err)
@@ -233,7 +236,7 @@ func (v *VMClaimController) processNextVMClaim() bool {
 
 			// let's check to see if there is an active DynamicBindRequest
 
-			dynamicBindRequest, err := v.hfClientSet.HobbyfarmV1().DynamicBindRequests().Get(vmClaim.Status.DynamicBindRequestId, metav1.GetOptions{})
+			dynamicBindRequest, err := v.hfClientSet.HobbyfarmV1().DynamicBindRequests().Get(v.ctx, vmClaim.Status.DynamicBindRequestId, metav1.GetOptions{})
 
 			if err != nil {
 				glog.Errorf("Error while attempting to retrieve the dynamic bind request. Perhaps this is a transient error, queuing again.")
@@ -281,7 +284,7 @@ func (v *VMClaimController) processNextVMClaim() bool {
 				return nil
 			}
 
-			envList, err := v.hfClientSet.HobbyfarmV1().Environments().List(metav1.ListOptions{})
+			envList, err := v.hfClientSet.HobbyfarmV1().Environments().List(v.ctx, metav1.ListOptions{})
 
 			if err != nil {
 				glog.Error(err)
@@ -363,7 +366,7 @@ func (v *VMClaimController) processNextVMClaim() bool {
 						},
 					}
 
-					dbr, err := v.hfClientSet.HobbyfarmV1().DynamicBindRequests().Create(dbr)
+					dbr, err := v.hfClientSet.HobbyfarmV1().DynamicBindRequests().Create(v.ctx, dbr, metav1.CreateOptions{})
 					if err != nil {
 						glog.Errorf("Error creating dynamic bind request for VMClaim %s: %v", vmClaim.Spec.Id, err)
 						//v.vmClaimWorkqueue.AddRateLimited(obj)
@@ -443,7 +446,7 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, temp
 			vmId = vm.Spec.Id
 
 			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachines().Get(vmId, metav1.GetOptions{})
+				result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachines().Get(v.ctx, vmId, metav1.GetOptions{})
 				if getErr != nil {
 					return fmt.Errorf("Error retrieving latest version of Virtual Machine %s: %v", vmId, getErr)
 				}
@@ -454,7 +457,7 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, temp
 
 				result.Labels["bound"] = "true"
 
-				vm, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachines().Update(result)
+				vm, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachines().Update(v.ctx, result, metav1.UpdateOptions{})
 				if updateErr != nil {
 					return updateErr
 				}
@@ -485,7 +488,7 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, temp
 func (v *VMClaimController) updateVMClaimWithVM(vmName string, vmId string, vmClaimId string) error {
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(vmClaimId, metav1.GetOptions{})
+		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(v.ctx, vmClaimId, metav1.GetOptions{})
 		if getErr != nil {
 			return fmt.Errorf("Error retrieving latest version of Virtual Machine Claim %s: %v", vmClaimId, getErr)
 		}
@@ -496,7 +499,7 @@ func (v *VMClaimController) updateVMClaimWithVM(vmName string, vmId string, vmCl
 
 		result.Spec.VirtualMachines[vmName] = vmClaimVM
 
-		vmc, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Update(result)
+		vmc, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Update(v.ctx, result, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for virtual machine claim")
 
 		if updateErr != nil {
@@ -518,7 +521,7 @@ func (v *VMClaimController) updateVMClaimWithVM(vmName string, vmId string, vmCl
 func (v *VMClaimController) updateVMClaimStatus(bound bool, ready bool, vmClaimId string) error {
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(vmClaimId, metav1.GetOptions{})
+		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(v.ctx, vmClaimId, metav1.GetOptions{})
 		if getErr != nil {
 			return fmt.Errorf("Error retrieving latest version of Virtual Machine Claim %s: %v", vmClaimId, getErr)
 		}
@@ -526,7 +529,7 @@ func (v *VMClaimController) updateVMClaimStatus(bound bool, ready bool, vmClaimI
 		result.Status.Bound = bound
 		result.Status.Ready = ready
 
-		vmc, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Update(result)
+		vmc, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Update(v.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
@@ -548,7 +551,7 @@ func (v *VMClaimController) updateVMClaimStatus(bound bool, ready bool, vmClaimI
 func (v *VMClaimController) updateVMClaimBindMode(bindMode string, dynamicBindRequestId string, vmClaimId string) error {
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(vmClaimId, metav1.GetOptions{})
+		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(v.ctx, vmClaimId, metav1.GetOptions{})
 		if getErr != nil {
 			return fmt.Errorf("Error retrieving latest version of Virtual Machine Claim %s: %v", vmClaimId, getErr)
 		}
@@ -559,7 +562,7 @@ func (v *VMClaimController) updateVMClaimBindMode(bindMode string, dynamicBindRe
 		result.Status.BindMode = bindMode
 		result.Status.DynamicBindRequestId = dynamicBindRequestId
 
-		vmc, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Update(result)
+		vmc, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Update(v.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
@@ -581,14 +584,14 @@ func (v *VMClaimController) updateVMClaimBindMode(bindMode string, dynamicBindRe
 func (v *VMClaimController) updateVMClaimStaticBindAttempts(staticBindAttempts int, vmClaimId string) error {
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(vmClaimId, metav1.GetOptions{})
+		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(v.ctx, vmClaimId, metav1.GetOptions{})
 		if getErr != nil {
 			return fmt.Errorf("Error retrieving latest version of Virtual Machine Claim %s: %v", vmClaimId, getErr)
 		}
 
 		result.Status.StaticBindAttempts = staticBindAttempts
 
-		vmc, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Update(result)
+		vmc, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Update(v.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}

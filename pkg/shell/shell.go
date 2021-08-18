@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"os"
@@ -24,6 +25,7 @@ type ShellProxy struct {
 
 	hfClient   hfClientset.Interface
 	kubeClient kubernetes.Interface
+	ctx context.Context
 }
 
 var hfNamespace = "hobbyfarm"
@@ -42,13 +44,14 @@ func init() {
 	sshDevPort = os.Getenv("SSH_DEV_PORT")
 }
 
-func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.VirtualMachineClient, hfClientSet hfClientset.Interface, kubeClient kubernetes.Interface) (*ShellProxy, error) {
+func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.VirtualMachineClient, hfClientSet hfClientset.Interface, kubeClient kubernetes.Interface, ctx context.Context) (*ShellProxy, error) {
 	shellProxy := ShellProxy{}
 
 	shellProxy.auth = authClient
 	shellProxy.vmClient = vmClient
 	shellProxy.hfClient = hfClientSet
 	shellProxy.kubeClient = kubeClient
+	shellProxy.ctx = ctx
 
 	return &shellProxy, nil
 }
@@ -100,7 +103,7 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 	glog.Infof("Going to upgrade connection now... %s", vm.Spec.Id)
 
 	// ok first get the secret for the vm
-	secret, err := sp.kubeClient.CoreV1().Secrets(hfNamespace).Get(vm.Spec.KeyPair, v1.GetOptions{}) // idk?
+	secret, err := sp.kubeClient.CoreV1().Secrets(hfNamespace).Get(sp.ctx, vm.Spec.KeyPair, v1.GetOptions{}) // idk?
 	if err != nil {
 		glog.Errorf("did not find secret for virtual machine")
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")

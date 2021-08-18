@@ -1,6 +1,7 @@
 package vmtemplateserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
@@ -16,14 +17,15 @@ import (
 type VirtualMachineTemplateServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet hfClientset.Interface
+	ctx context.Context
 }
 
-func NewVirtualMachineTemplateServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface) (*VirtualMachineTemplateServer, error) {
+func NewVirtualMachineTemplateServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, ctx context.Context) (*VirtualMachineTemplateServer, error) {
 	as := VirtualMachineTemplateServer{}
 
 	as.hfClientSet = hfClientset
 	as.auth = authClient
-
+	as.ctx = ctx
 	return &as, nil
 }
 
@@ -35,7 +37,7 @@ func (v VirtualMachineTemplateServer) getVirtualMachineTemplate(id string) (hfv1
 		return empty, fmt.Errorf("vm template id passed in was empty")
 	}
 
-	obj, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Get(id, metav1.GetOptions{})
+	obj, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Get(v.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving Virtual Machine Template by id: %s with error: %v", id, err)
 	}
@@ -96,7 +98,7 @@ func (v VirtualMachineTemplateServer) ListFunc(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	vmts, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
+	vmts, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().List(v.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while listing all vmts %v", err)

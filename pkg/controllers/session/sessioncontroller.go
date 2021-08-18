@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"fmt"
 	"github.com/golang/glog"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
@@ -32,10 +33,12 @@ type SessionController struct {
 	vmSynced  cache.InformerSynced
 	vmcSynced cache.InformerSynced
 	ssSynced  cache.InformerSynced
+	ctx context.Context
 }
 
-func NewSessionController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*SessionController, error) {
+func NewSessionController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*SessionController, error) {
 	ssController := SessionController{}
+	ssController.ctx = ctx
 	ssController.hfClientSet = hfClientSet
 	ssController.vmSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
 	ssController.vmcSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced
@@ -152,7 +155,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 	// clean up old (3 hours later) sessions, and only if they are finished
 	if expires.Add(SessionExpireTime).Before(now) && ss.Status.Finished {
 		// first we need to delete the vmclaims
-		err := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+		err := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("hobbyfarm.io/session=%s", ss.Name),
 		})
 
@@ -163,7 +166,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 		glog.V(6).Infof("deleted vmclaims for old session %s", ss.Name)
 
 		// now that the vmclaims are deleted, go ahead and delete the session
-		err = s.hfClientSet.HobbyfarmV1().Sessions().Delete(ss.Name, &metav1.DeleteOptions{})
+		err = s.hfClientSet.HobbyfarmV1().Sessions().Delete(s.ctx, ss.Name, metav1.DeleteOptions{})
 
 		if err != nil {
 			return fmt.Errorf("error deleting session %s: %s", ss.Name, err)
@@ -209,7 +212,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 		}
 
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions().Get(ssName, metav1.GetOptions{})
+			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions().Get(s.ctx, ssName, metav1.GetOptions{})
 			if getErr != nil {
 				return getErr
 			}
@@ -217,7 +220,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 			result.Status.Finished = true
 			result.Status.Active = false
 
-			result, updateErr := s.hfClientSet.HobbyfarmV1().Sessions().Update(result)
+			result, updateErr := s.hfClientSet.HobbyfarmV1().Sessions().Update(s.ctx, result, metav1.UpdateOptions{})
 			if updateErr != nil {
 				return updateErr
 			}
@@ -247,14 +250,14 @@ func (s *SessionController) reconcileSession(ssName string) error {
 func (s *SessionController) taintVM(vmName string) error {
 	glog.V(5).Infof("tainting VM %s", vmName)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := s.hfClientSet.HobbyfarmV1().VirtualMachines().Get(vmName, metav1.GetOptions{})
+		result, getErr := s.hfClientSet.HobbyfarmV1().VirtualMachines().Get(s.ctx, vmName, metav1.GetOptions{})
 		if getErr != nil {
 			return getErr
 		}
 		result.Labels["ready"] = "false"
 		result.Status.Tainted = true
 
-		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachines().Update(result)
+		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachines().Update(s.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
@@ -277,13 +280,13 @@ func (s *SessionController) taintVM(vmName string) error {
 func (s *SessionController) taintVMC(vmcName string) error {
 	glog.V(5).Infof("tainting VMC %s", vmcName)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(vmcName, metav1.GetOptions{})
+		result, getErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(s.ctx, vmcName, metav1.GetOptions{})
 		if getErr != nil {
 			return getErr
 		}
 		result.Status.Tainted = true
 
-		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Update(result)
+		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Update(s.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}

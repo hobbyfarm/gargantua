@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
@@ -67,7 +68,7 @@ func main() {
 	//signal = make(chan struct{})
 
 	stopCh := signals.SetupSignalHandler()
-
+	ctx := context.Background()
 	flag.Parse()
 	glog.V(2).Infof("Starting Gargantua")
 	r := mux.NewRouter()
@@ -101,17 +102,17 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	authServer, err := authserver.NewAuthServer(authClient, hfClient)
+	authServer, err := authserver.NewAuthServer(authClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	acClient, err := accesscode.NewAccessCodeClient(hfClient)
+	acClient, err := accesscode.NewAccessCodeClient(hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	courseServer, err := courseserver.NewCourseServer(authClient, acClient, hfClient, hfInformerFactory)
+	courseServer, err := courseserver.NewCourseServer(authClient, acClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -121,7 +122,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	scenarioServer, err := scenarioserver.NewScenarioServer(authClient, acClient, hfClient, hfInformerFactory)
+	scenarioServer, err := scenarioserver.NewScenarioServer(authClient, acClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -131,7 +132,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	sessionServer, err := sessionserver.NewSessionServer(authClient, acClient, scenarioClient, courseClient, hfClient, hfInformerFactory)
+	sessionServer, err := sessionserver.NewSessionServer(authClient, acClient, scenarioClient, courseClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -151,27 +152,27 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	shellProxy, err := shell.NewShellProxy(authClient, vmClient, hfClient, kubeClient)
+	shellProxy, err := shell.NewShellProxy(authClient, vmClient, hfClient, kubeClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	environmentServer, err := environmentserver.NewEnvironmentServer(authClient, hfClient)
+	environmentServer, err := environmentserver.NewEnvironmentServer(authClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	scheduledEventServer, err := scheduledeventserver.NewScheduledEventServer(authClient, hfClient)
+	scheduledEventServer, err := scheduledeventserver.NewScheduledEventServer(authClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	userServer, err := userserver.NewUserServer(authClient, hfClient)
+	userServer, err := userserver.NewUserServer(authClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	vmTemplateServer, err := vmtemplateserver.NewVirtualMachineTemplateServer(authClient, hfClient)
+	vmTemplateServer, err := vmtemplateserver.NewVirtualMachineTemplateServer(authClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -225,28 +226,28 @@ func main() {
 			}
 		*/
 		glog.V(2).Infof("Starting controllers")
-		sessionController, err := session.NewSessionController(hfClient, hfInformerFactory)
+		sessionController, err := session.NewSessionController(hfClient, hfInformerFactory, ctx)
 		if err != nil {
 			glog.Fatal(err)
 		}
-		scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory)
+		scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory, ctx)
 		if err != nil {
 			glog.Fatal(err)
 		}
-		vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory)
+		vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory, ctx)
 		if err != nil {
 			glog.Fatal(err)
 		}
-		tfpController, err := tfpcontroller.NewTerraformProvisionerController(kubeClient, hfClient, hfInformerFactory)
+		tfpController, err := tfpcontroller.NewTerraformProvisionerController(kubeClient, hfClient, hfInformerFactory, ctx)
 		if err != nil {
 			glog.Fatal(err)
 		}
-		vmSetController, err := vmsetcontroller.NewVirtualMachineSetController(hfClient, hfInformerFactory)
+		vmSetController, err := vmsetcontroller.NewVirtualMachineSetController(hfClient, hfInformerFactory, ctx)
 		if err != nil {
 			glog.Fatal(err)
 		}
 
-		dynamicBindController, err := dynamicbindcontroller.NewDynamicBindController(hfClient, hfInformerFactory)
+		dynamicBindController, err := dynamicbindcontroller.NewDynamicBindController(hfClient, hfInformerFactory, ctx)
 		if err != nil {
 			glog.Fatal(err)
 		}

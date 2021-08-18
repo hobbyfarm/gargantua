@@ -1,6 +1,7 @@
 package scheduledeventserver
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/json"
@@ -22,13 +23,15 @@ import (
 type ScheduledEventServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet hfClientset.Interface
+	ctx context.Context
 }
 
-func NewScheduledEventServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface) (*ScheduledEventServer, error) {
+func NewScheduledEventServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, ctx context.Context) (*ScheduledEventServer, error) {
 	es := ScheduledEventServer{}
 
 	es.hfClientSet = hfClientset
 	es.auth = authClient
+	es.ctx = ctx
 
 	return &es, nil
 }
@@ -41,7 +44,7 @@ func (s ScheduledEventServer) getScheduledEvent(id string) (hfv1.ScheduledEvent,
 		return empty, fmt.Errorf("scheduledevent passed in was empty")
 	}
 
-	obj, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(id, metav1.GetOptions{})
+	obj, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(s.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving ScheduledEvent by id: %s with error: %v", id, err)
 	}
@@ -106,7 +109,7 @@ func (s ScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scheduledEvents, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().List(metav1.ListOptions{})
+	scheduledEvents, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().List(s.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while retrieving scheduledevents %v", err)
@@ -264,7 +267,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		scheduledEvent.Spec.RestrictedBindValue = "se-" + strings.ToLower(sha)
 	}
 
-	scheduledEvent, err = s.hfClientSet.HobbyfarmV1().ScheduledEvents().Create(scheduledEvent)
+	scheduledEvent, err = s.hfClientSet.HobbyfarmV1().ScheduledEvents().Create(s.ctx, scheduledEvent, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating scheduled event %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scehduled event")
@@ -291,7 +294,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(id, metav1.GetOptions{})
+		scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(s.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID found")
@@ -378,7 +381,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 			}
 		}
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Update(scheduledEvent)
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Update(s.ctx, scheduledEvent, metav1.UpdateOptions{})
 		return updateErr
 	})
 
