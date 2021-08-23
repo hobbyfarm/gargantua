@@ -14,15 +14,15 @@ endif
 all: manager
 
 # Run tests
-test: generate fmt
+test: generate fmt vet
 	go test ./... -coverprofile cover.out
 
 # Build manager binary
-manager: generate fmt
+manager: generate fmt vet
 	go build -o bin/gargantua main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: generate fmt
+run: generate fmt vet
 	go run ./main.go
 
 # Run go fmt against code
@@ -38,7 +38,7 @@ generate:
 	./generate-client.sh
 
 # Build the docker image
-docker-build:
+docker-build: fmt vet
 	docker build . -t ${IMG}
 
 # Push the docker image
