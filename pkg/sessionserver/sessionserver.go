@@ -28,6 +28,8 @@ const (
 	keepaliveSSTimeout = "5m"
 	pauseSSTimeout     = "2h"
 	vmcSessionLabel    = "hobbyfarm.io/session"
+	UserSessionLabel   = "hobbyfarm.io/user"
+	AccessCodeLabel    = "accesscode.hobbyfarm.io"
 )
 
 type SessionServer struct {
@@ -201,7 +203,9 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	session.Spec.CourseId = course.Spec.Id
 	session.Spec.ScenarioId = scenario.Spec.Id
 	session.Spec.UserId = user.Spec.Id
-
+	labels := make(map[string]string)
+	labels[AccessCodeLabel] = accessCode // map accesscode to session
+	session.Labels = labels
 	var vms []map[string]string
 	if course.Spec.VirtualMachines != nil {
 		vms = course.Spec.VirtualMachines
@@ -213,14 +217,17 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	for index, vmset := range vms {
 		virtualMachineClaim := hfv1.VirtualMachineClaim{}
 		vmcId := util.GenerateResourceName("vmc", util.RandStringRunes(10), 10)
-		vmcLabels := make(map[string]string)
-		vmcLabels[vmcSessionLabel] = session.Name // map vmc to session
-		virtualMachineClaim.Labels = vmcLabels
+		labels := make(map[string]string)
+		labels[vmcSessionLabel] = session.Name  // map vmc to session
+		labels[UserSessionLabel] = user.Spec.Id // map session to user in a way that is searchable
+		virtualMachineClaim.Labels = labels
 		virtualMachineClaim.Spec.Id = vmcId
 		virtualMachineClaim.Name = vmcId
 		virtualMachineClaim.Spec.VirtualMachines = make(map[string]hfv1.VirtualMachineClaimVM)
 		for vmName, vmTemplateName := range vmset {
 			virtualMachineClaim.Spec.VirtualMachines[vmName] = hfv1.VirtualMachineClaimVM{Template: vmTemplateName, VirtualMachineId: ""}
+			// also label this vmc so we can query against it later
+			labels[fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", vmTemplateName)] = "true"
 		}
 		virtualMachineClaim.Spec.UserId = user.Spec.Id
 		virtualMachineClaim.Status.Bound = false
@@ -280,7 +287,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := sss.auth.AuthN(w, r)
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create sessions")
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to finish sessions")
 		return
 	}
 	vars := mux.Vars(r)

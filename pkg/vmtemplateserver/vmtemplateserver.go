@@ -2,8 +2,14 @@ package vmtemplateserver
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base32"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -11,7 +17,7 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/http"
+	"k8s.io/client-go/util/retry"
 )
 
 type VirtualMachineTemplateServer struct {
@@ -49,6 +55,9 @@ func (v VirtualMachineTemplateServer) getVirtualMachineTemplate(id string) (hfv1
 func (v VirtualMachineTemplateServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/vmtemplate/list", v.ListFunc).Methods("GET")
 	r.HandleFunc("/a/vmtemplate/{id}", v.GetFunc).Methods("GET")
+	r.HandleFunc("/a/vmtemplate/create", v.CreateFunc).Methods("POST")
+	r.HandleFunc("/a/vmtemplate/{id}/update", v.UpdateFunc).Methods("PUT")
+	r.HandleFunc("/a/vmtemplate/{id}/delete", v.DeleteFunc).Methods("DELETE")
 	glog.V(2).Infof("set up routes for admin vmtemplate server")
 }
 
@@ -119,4 +128,284 @@ func (v VirtualMachineTemplateServer) ListFunc(w http.ResponseWriter, r *http.Re
 	util.ReturnHTTPContent(w, r, 200, "success", encodedVirtualMachineTemplates)
 
 	glog.V(2).Infof("retrieved list of all environments")
+}
+
+func (v VirtualMachineTemplateServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := v.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create vmt")
+		return
+	}
+
+	name := r.PostFormValue("name")
+	if name == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "missing name")
+		return
+	}
+
+	image := r.PostFormValue("image")
+	if image == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "missing image")
+		return
+	}
+
+	resourcesRaw := r.PostFormValue("resources") // no validation, resources not required
+	countMapRaw := r.PostFormValue("count_map")  // no validation, count_map not required
+
+	vmTemplate := &hfv1.VirtualMachineTemplate{Spec: hfv1.VirtualMachineTemplateSpec{}}
+
+	resources := hfv1.CMSStruct{}
+	countMap := map[string]string{}
+	if resourcesRaw != "" {
+		// attempt to decode if resources passed in
+		err := json.Unmarshal([]byte(resourcesRaw), &resources)
+		if err != nil {
+			glog.Errorf("error while unmarshalling resources: %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing resources")
+			return
+		}
+		// no error, assign to vmtemplate
+		vmTemplate.Spec.Resources = resources
+	}
+
+	if countMapRaw != "" {
+		// attempt to decode if count_map passed in
+		err := json.Unmarshal([]byte(countMapRaw), &countMap)
+		if err != nil {
+			glog.Errorf("error while unmarshalling count_map: %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing count_map")
+			return
+		}
+		// no error, assign to vmtemplate
+		vmTemplate.Spec.CountMap = countMap
+	}
+
+	hasher := sha256.New()
+	hasher.Write([]byte(name))
+	sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:10]
+	vmTemplate.Name = "vmt-" + strings.ToLower(sha)
+	vmTemplate.Spec.Id = vmTemplate.Name
+	vmTemplate.Spec.Name = name
+	vmTemplate.Spec.Image = image
+
+	glog.V(2).Infof("user %s creating vmtemplate", user.Name)
+
+	vmTemplate, err = v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Create(v.ctx, vmTemplate, metav1.CreateOptions{})
+	if err != nil {
+		glog.Errorf("error creating vmtemplate %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating vmtemplate")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 201, "created", vmTemplate.Name)
+	return
+}
+
+func (v VirtualMachineTemplateServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := v.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update vmt")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	id := vars["id"]
+	if id == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no id passed in")
+		return
+	}
+
+	glog.V(2).Infof("user %s updating vmtemplate %s", user.Name, id)
+
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		vmTemplate, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Get(v.ctx, id, metav1.GetOptions{})
+		if err != nil {
+			glog.Error(err)
+			util.ReturnHTTPMessage(w, r, 400, "badrequest", "vmtemplate not found")
+			return fmt.Errorf("bad")
+		}
+
+		name := r.PostFormValue("name")
+		image := r.PostFormValue("image")
+		resourcesRaw := r.PostFormValue("resources")
+		countMapRaw := r.PostFormValue("count_map")
+
+		if name != "" {
+			vmTemplate.Spec.Name = name
+		}
+
+		if image != "" {
+			vmTemplate.Spec.Image = image
+		}
+
+		if resourcesRaw != "" {
+			cms := hfv1.CMSStruct{}
+			err := json.Unmarshal([]byte(resourcesRaw), &cms)
+			if err != nil {
+				glog.Error(err)
+				return fmt.Errorf("bad")
+			}
+			vmTemplate.Spec.Resources = cms
+		}
+
+		if countMapRaw != "" {
+			countMap := map[string]string{}
+			err := json.Unmarshal([]byte(countMapRaw), &countMap)
+			if err != nil {
+				glog.Error(err)
+				return fmt.Errorf("bad")
+			}
+			vmTemplate.Spec.CountMap = countMap
+		}
+
+		_, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Update(v.ctx, vmTemplate, metav1.UpdateOptions{})
+		return updateErr
+	})
+
+	if retryErr != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "error attempting to update vmtemplate")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "updated", "")
+	return
+}
+
+func (v VirtualMachineTemplateServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
+	// deleting a vmtemplate requires none of the following objects having reference to it
+	// - future scheduled events
+	// - virtualmachines
+	// - virtualmachineclaims
+	// - virtualmachinesets
+	user, err := v.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete vmt")
+		return
+	}
+
+	// first, check if the vmt exists
+	vars := mux.Vars(r)
+	id := vars["id"]
+	if id == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no id passed in")
+		return
+	}
+
+	glog.V(2).Infof("user %s deleting vmtemplate %s", user.Name, id)
+
+	vmt, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Get(v.ctx, id, metav1.GetOptions{})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 400, "notfound", "no vmt found")
+		return
+	}
+
+	// vmt exists, now we need to check all other objects for references
+	// start with virtualmachines
+	virtualmachines, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().List(v.ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("hobbyfarm.io/vmtemplate=%s", vmt.Name)})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror",
+			"error listing virtual machines while attempting vmt deletion")
+		return
+	}
+
+	if len(virtualmachines.Items) > 0 {
+		util.ReturnHTTPMessage(w, r, 409, "conflict", "existing virtual machines reference this vmtemplate")
+		return
+	}
+
+	// now check scheduledevents
+	scheduledEvents, err := v.hfClientSet.HobbyfarmV1().ScheduledEvents().List(v.ctx, metav1.ListOptions{})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror",
+			"error listing scheduled events while attempting vmt deletion")
+		return
+	}
+
+	if len(scheduledEvents.Items) > 0 {
+		for _, v := range scheduledEvents.Items {
+			if v.Status.Finished != true {
+				// unfinished SE. Is it going on now or in the future?
+				startTime, err := time.Parse(time.UnixDate, v.Spec.StartTime)
+				if err != nil {
+					util.ReturnHTTPMessage(w, r, 500, "internalerror",
+						"error parsing time while checking scheduledevent for conflict")
+					return
+				}
+				endTime, err := time.Parse(time.UnixDate, v.Spec.EndTime)
+				if err != nil {
+					util.ReturnHTTPMessage(w, r, 500, "internalerror",
+						"error parsing time while checking scheduledevent for conflict")
+					return
+				}
+
+				// if this starts in the future, or hasn't ended
+				if startTime.After(time.Now()) || endTime.After(time.Now()) {
+					// check for template existence
+					if exists := searchForTemplateInRequiredVMs(v.Spec.RequiredVirtualMachines, vmt.Name); exists {
+						// if template exists in this to-be-happening SE, we can't delete it
+						util.ReturnHTTPMessage(w, r, 409, "conflict",
+							"existing or future scheduled event references this vmtemplate")
+					}
+				}
+			}
+		}
+	}
+
+	// now check virtul machine claims
+	vmcList, err := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().List(v.ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s=%s", vmt.Name, "true"),
+	})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror",
+			"error listing virtual machine claims while attempting vmt deletion")
+		return
+	}
+
+	if len(vmcList.Items) > 0 {
+		util.ReturnHTTPMessage(w, r, 409, "conflict",
+			"existing virtual machine claims reference this vmtemplate")
+		return
+	}
+
+	// now check virtualmachinesets (theoretically the VM checks above should catch this, but let's be safe)
+	vmsetList, err := v.hfClientSet.HobbyfarmV1().VirtualMachineSets().List(v.ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s=%s", vmt.Name, "true"),
+	})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror",
+			"error listing virtual machine sets while attempting vmt deletion")
+		return
+	}
+
+	if len(vmsetList.Items) > 0 {
+		util.ReturnHTTPMessage(w, r, 409, "conflict",
+			"existing virtual machine sets reference this vmtemplate")
+		return
+	}
+
+	// if we get here, shouldn't be anything in our path stopping us from deleting the vmtemplate
+	// so do it!
+	err = v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Delete(v.ctx, vmt.Name, metav1.DeleteOptions{})
+	if err != nil {
+		glog.Errorf("error deleting vmtemplate: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting vmtemplate")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "deleted", "vmtemplate deleted")
+}
+
+func searchForTemplateInRequiredVMs(req map[string]map[string]int, template string) bool {
+	for _, v := range req {
+		// k is environment, v is map[string]string
+		for kk, _ := range v {
+			// kk is vmtemplate, vv is count
+			if kk == template {
+				return true
+			}
+		}
+	}
+
+	return false
 }

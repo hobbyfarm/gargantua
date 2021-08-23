@@ -12,6 +12,7 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -274,13 +275,14 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 						},
 					},
 					Labels: map[string]string{
-						"dynamic":                  "true",
-						"dynamicbindrequest":       dynamicBindRequest.Name,
-						"dynamicbindconfiguration": chosenDynamicBindConfiguration.Spec.Id,
-						"template":                 vmX.Template,
-						"environment":              chosenDynamicBindConfiguration.Spec.Environment,
-						"bound":                    "true",
-						"ready":                    "false",
+						"dynamic":                          "true",
+						"dynamicbindrequest":               dynamicBindRequest.Name,
+						"dynamicbindconfiguration":         chosenDynamicBindConfiguration.Spec.Id,
+						"template":                         vmX.Template,
+						"environment":                      chosenDynamicBindConfiguration.Spec.Environment,
+						"bound":                            "true",
+						"ready":                            "false",
+						scheduledevent.ScheduledEventLabel: chosenDynamicBindConfiguration.ObjectMeta.Labels[scheduledevent.ScheduledEventLabel],
 					},
 				},
 				Spec: hfv1.VirtualMachineSpec{
@@ -314,6 +316,9 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 				vm.ObjectMeta.Labels["hobbyfarm.io/provisioner"] = provisionMethod
 				vm.Spec.Provision = false
 			}
+
+			// label to indicate which vmtemplate being used for querying reasons
+			vm.ObjectMeta.Labels["hobbyfarm.io/vmtemplate"] = vm.Spec.VirtualMachineTemplateId
 
 			if chosenDynamicBindConfiguration.Spec.RestrictedBind {
 				vm.ObjectMeta.Labels["restrictedbind"] = "true"

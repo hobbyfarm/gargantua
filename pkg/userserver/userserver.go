@@ -4,17 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"golang.org/x/crypto/bcrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
-	"net/http"
-	"strings"
 )
 
 type UserServer struct {
@@ -54,6 +56,7 @@ func (u UserServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/user/list", u.ListFunc).Methods("GET")
 	r.HandleFunc("/a/user/{id}", u.GetFunc).Methods("GET")
 	r.HandleFunc("/a/user", u.UpdateFunc).Methods("PUT")
+	r.HandleFunc("/a/user/{id}", u.DeleteFunc).Methods("DELETE")
 	glog.V(2).Infof("set up routes for User server")
 }
 
@@ -192,4 +195,88 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 
 	util.ReturnHTTPMessage(w, r, 200, "updated", "")
 	return
+}
+
+func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
+	// criteria to delete user:
+	// 1. must not have an active session
+	// that's about it.
+
+	_, err := u.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update users")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	id := vars["id"]
+
+	if len(id) == 0 {
+		util.ReturnHTTPMessage(w, r, 400, "error", "no id passed in")
+		return
+	}
+
+	user, err := u.hfClientSet.HobbyfarmV1().Users().Get(u.ctx, id, metav1.GetOptions{})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "error fetching user from server")
+		glog.Errorf("error fetching user %s from server during delete request: %s", id, err)
+		return
+	}
+
+	// get a list of sessions for the user
+	sessionList, err := u.hfClientSet.HobbyfarmV1().Sessions().List(u.ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", sessionserver.UserSessionLabel, id),
+	})
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "error retrieving session list for user")
+		glog.Errorf("error retrieving session list for user %s during delete: %s", id, err)
+		return
+	}
+
+	if len(sessionList.Items) > 0 {
+		// there are sessions present but they may be expired. let's check
+		for _, v := range sessionList.Items {
+			if !v.Status.Finished {
+				util.ReturnHTTPMessage(w, r, 409, "error", "cannot delete user, existing sessions found")
+				return
+			}
+		}
+
+		// getting here means there are sessions present but they are not active
+		// let's delete them for cleanliness' sake
+		if ok, err := u.deleteSessions(sessionList.Items); !ok {
+			util.ReturnHTTPMessage(w, r, 409, "error", "cannot delete user, error removing old sessions")
+			glog.Errorf("error deleting old sessions for user %s: %s", id, err)
+			return
+		}
+	}
+
+	// at this point we have either delete all old sessions, or there were no sessions  to begin with
+	// so we should be safe to delete the user
+
+	deleteErr := u.hfClientSet.HobbyfarmV1().Users().Delete(u.ctx, user.Name, metav1.DeleteOptions{})
+	if deleteErr != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "error deleting user")
+		glog.Errorf("error deleting user %s: %s", id, deleteErr)
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "success", "user deleted")
+}
+
+func (u UserServer) deleteSessions(sessions []hfv1.Session) (bool, error) {
+	for _, v := range sessions {
+		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			err := u.hfClientSet.HobbyfarmV1().Sessions().Delete(u.ctx, v.Name, metav1.DeleteOptions{})
+			return err
+		})
+
+		if retryErr != nil {
+			return false, retryErr
+		}
+	}
+
+	return true, nil
 }

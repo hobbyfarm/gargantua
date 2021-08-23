@@ -3,6 +3,10 @@ package vmclaimcontroller
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"strings"
+	"time"
+
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
@@ -15,9 +19,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
-	"math/rand"
-	"strings"
-	"time"
 )
 
 const (
@@ -351,6 +352,9 @@ func (v *VMClaimController) processNextVMClaim() bool {
 									Name:       vmClaim.Name,
 									UID:        vmClaim.UID,
 								},
+							},
+							Labels: map[string]string{
+								"hobbyfarm.io/session": vmClaim.Labels["hobbyfarm.io/session"],
 							},
 						},
 						Spec: hfv1.DynamicBindRequestSpec{
