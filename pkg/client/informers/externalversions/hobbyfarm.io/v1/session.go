@@ -19,6 +19,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	time "time"
 
 	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -60,13 +61,13 @@ func NewFilteredSessionInformer(client versioned.Interface, resyncPeriod time.Du
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().Sessions().List(options)
+				return client.HobbyfarmV1().Sessions().List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().Sessions().Watch(options)
+				return client.HobbyfarmV1().Sessions().Watch(context.TODO(), options)
 			},
 		},
 		&hobbyfarmiov1.Session{},

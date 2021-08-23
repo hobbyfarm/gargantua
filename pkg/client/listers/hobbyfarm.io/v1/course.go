@@ -26,10 +26,13 @@ import (
 )
 
 // CourseLister helps list Courses.
+// All objects returned here must be treated as read-only.
 type CourseLister interface {
 	// List lists all Courses in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.Course, err error)
 	// Get retrieves the Course from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1.Course, error)
 	CourseListerExpansion
 }

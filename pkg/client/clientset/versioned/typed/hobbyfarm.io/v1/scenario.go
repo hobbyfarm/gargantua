@@ -19,6 +19,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	"time"
 
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -37,14 +38,14 @@ type ScenariosGetter interface {
 
 // ScenarioInterface has methods to work with Scenario resources.
 type ScenarioInterface interface {
-	Create(*v1.Scenario) (*v1.Scenario, error)
-	Update(*v1.Scenario) (*v1.Scenario, error)
-	Delete(name string, options *metav1.DeleteOptions) error
-	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
-	Get(name string, options metav1.GetOptions) (*v1.Scenario, error)
-	List(opts metav1.ListOptions) (*v1.ScenarioList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Scenario, err error)
+	Create(ctx context.Context, scenario *v1.Scenario, opts metav1.CreateOptions) (*v1.Scenario, error)
+	Update(ctx context.Context, scenario *v1.Scenario, opts metav1.UpdateOptions) (*v1.Scenario, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Scenario, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.ScenarioList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Scenario, err error)
 	ScenarioExpansion
 }
 
@@ -61,19 +62,19 @@ func newScenarios(c *HobbyfarmV1Client) *scenarios {
 }
 
 // Get takes name of the scenario, and returns the corresponding scenario object, and an error if there is any.
-func (c *scenarios) Get(name string, options metav1.GetOptions) (result *v1.Scenario, err error) {
+func (c *scenarios) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Scenario, err error) {
 	result = &v1.Scenario{}
 	err = c.client.Get().
 		Resource("scenarios").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // List takes label and field selectors, and returns the list of Scenarios that match those selectors.
-func (c *scenarios) List(opts metav1.ListOptions) (result *v1.ScenarioList, err error) {
+func (c *scenarios) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ScenarioList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -83,13 +84,13 @@ func (c *scenarios) List(opts metav1.ListOptions) (result *v1.ScenarioList, err 
 		Resource("scenarios").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Watch returns a watch.Interface that watches the requested scenarios.
-func (c *scenarios) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *scenarios) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -99,66 +100,69 @@ func (c *scenarios) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 		Resource("scenarios").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(ctx)
 }
 
 // Create takes the representation of a scenario and creates it.  Returns the server's representation of the scenario, and an error, if there is any.
-func (c *scenarios) Create(scenario *v1.Scenario) (result *v1.Scenario, err error) {
+func (c *scenarios) Create(ctx context.Context, scenario *v1.Scenario, opts metav1.CreateOptions) (result *v1.Scenario, err error) {
 	result = &v1.Scenario{}
 	err = c.client.Post().
 		Resource("scenarios").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(scenario).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Update takes the representation of a scenario and updates it. Returns the server's representation of the scenario, and an error, if there is any.
-func (c *scenarios) Update(scenario *v1.Scenario) (result *v1.Scenario, err error) {
+func (c *scenarios) Update(ctx context.Context, scenario *v1.Scenario, opts metav1.UpdateOptions) (result *v1.Scenario, err error) {
 	result = &v1.Scenario{}
 	err = c.client.Put().
 		Resource("scenarios").
 		Name(scenario.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(scenario).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Delete takes name of the scenario and deletes it. Returns an error if one occurs.
-func (c *scenarios) Delete(name string, options *metav1.DeleteOptions) error {
+func (c *scenarios) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
 		Resource("scenarios").
 		Name(name).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *scenarios) DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
+func (c *scenarios) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOptions.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	if listOpts.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
 		Resource("scenarios").
-		VersionedParams(&listOptions, scheme.ParameterCodec).
+		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // Patch applies the patch and returns the patched scenario.
-func (c *scenarios) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Scenario, err error) {
+func (c *scenarios) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Scenario, err error) {
 	result = &v1.Scenario{}
 	err = c.client.Patch(pt).
 		Resource("scenarios").
-		SubResource(subresources...).
 		Name(name).
+		SubResource(subresources...).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(data).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }

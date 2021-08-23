@@ -1,6 +1,7 @@
 package scheduledeventserver
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/json"
@@ -25,13 +26,15 @@ import (
 type ScheduledEventServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet hfClientset.Interface
+	ctx         context.Context
 }
 
-func NewScheduledEventServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface) (*ScheduledEventServer, error) {
+func NewScheduledEventServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, ctx context.Context) (*ScheduledEventServer, error) {
 	es := ScheduledEventServer{}
 
 	es.hfClientSet = hfClientset
 	es.auth = authClient
+	es.ctx = ctx
 
 	return &es, nil
 }
@@ -44,7 +47,7 @@ func (s ScheduledEventServer) getScheduledEvent(id string) (hfv1.ScheduledEvent,
 		return empty, fmt.Errorf("scheduledevent passed in was empty")
 	}
 
-	obj, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(id, metav1.GetOptions{})
+	obj, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(s.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving ScheduledEvent by id: %s with error: %v", id, err)
 	}
@@ -110,7 +113,7 @@ func (s ScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scheduledEvents, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().List(metav1.ListOptions{})
+	scheduledEvents, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().List(s.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while retrieving scheduledevents %v", err)
@@ -268,7 +271,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		scheduledEvent.Spec.RestrictedBindValue = "se-" + strings.ToLower(sha)
 	}
 
-	scheduledEvent, err = s.hfClientSet.HobbyfarmV1().ScheduledEvents().Create(scheduledEvent)
+	scheduledEvent, err = s.hfClientSet.HobbyfarmV1().ScheduledEvents().Create(s.ctx, scheduledEvent, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating scheduled event %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scheduled event")
@@ -295,7 +298,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(id, metav1.GetOptions{})
+		scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(s.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID found")
@@ -391,7 +394,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 			scheduledEvent.Status.Finished = false
 		}
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Update(scheduledEvent)
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Update(s.ctx, scheduledEvent, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -419,7 +422,7 @@ func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(id, metav1.GetOptions{})
+	scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(s.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		glog.Error(err)
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID found")
@@ -449,7 +452,7 @@ func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err = s.hfClientSet.HobbyfarmV1().ScheduledEvents().Delete(scheduledEvent.Name, &metav1.DeleteOptions{})
+	err = s.hfClientSet.HobbyfarmV1().ScheduledEvents().Delete(s.ctx, scheduledEvent.Name, metav1.DeleteOptions{})
 
 	if err != nil {
 		glog.Errorf("error deleting scheduled event %v", err)
@@ -465,7 +468,7 @@ func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent
 	glog.V(6).Infof("ScheduledEvent %s is updated or deleted, deleting corresponding access code(s) and DBC(s)", se.Name)
 
 	// delete all DBCs corresponding to this scheduled event
-	err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+	err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", scheduledevent.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
@@ -473,7 +476,7 @@ func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent
 	}
 
 	// for each access code that belongs to this edited/deleted scheduled event, delete that access code
-	err = s.hfClientSet.HobbyfarmV1().AccessCodes().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+	err = s.hfClientSet.HobbyfarmV1().AccessCodes().DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", scheduledevent.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
@@ -485,7 +488,7 @@ func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent
 
 func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// delete all vmsets corresponding to this scheduled event
-	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().DeleteCollection(&metav1.DeleteOptions{}, metav1.ListOptions{
+	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", scheduledevent.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
@@ -497,7 +500,7 @@ func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledE
 
 func (s ScheduledEventServer) finishSessions(se *hfv1.ScheduledEvent) error {
 	// get a list of sessions for the user
-	sessionList, err := s.hfClientSet.HobbyfarmV1().Sessions().List(metav1.ListOptions{
+	sessionList, err := s.hfClientSet.HobbyfarmV1().Sessions().List(s.ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", sessionserver.AccessCodeLabel, se.Spec.AccessCode),
 	})
 
@@ -505,7 +508,7 @@ func (s ScheduledEventServer) finishSessions(se *hfv1.ScheduledEvent) error {
 
 	for _, session := range sessionList.Items {
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions().Get(session.Spec.Id, metav1.GetOptions{})
+			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions().Get(s.ctx, session.Spec.Id, metav1.GetOptions{})
 			if getErr != nil {
 				return fmt.Errorf("error retrieving latest version of session %s: %v", session.Spec.Id, getErr)
 			}
@@ -514,7 +517,7 @@ func (s ScheduledEventServer) finishSessions(se *hfv1.ScheduledEvent) error {
 			result.Status.Active = false
 			result.Status.Finished = false
 
-			_, updateErr := s.hfClientSet.HobbyfarmV1().Sessions().Update(result)
+			_, updateErr := s.hfClientSet.HobbyfarmV1().Sessions().Update(s.ctx, result, metav1.UpdateOptions{})
 			glog.V(4).Infof("updated result for session")
 
 			return updateErr

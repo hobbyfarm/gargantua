@@ -26,10 +26,13 @@ import (
 )
 
 // VirtualMachineTemplateLister helps list VirtualMachineTemplates.
+// All objects returned here must be treated as read-only.
 type VirtualMachineTemplateLister interface {
 	// List lists all VirtualMachineTemplates in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.VirtualMachineTemplate, err error)
 	// Get retrieves the VirtualMachineTemplate from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1.VirtualMachineTemplate, error)
 	VirtualMachineTemplateListerExpansion
 }

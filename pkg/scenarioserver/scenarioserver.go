@@ -1,6 +1,7 @@
 package scenarioserver
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/base64"
@@ -31,6 +32,7 @@ type ScenarioServer struct {
 	hfClientSet     hfClientset.Interface
 	acClient        *accesscode.AccessCodeClient
 	scenarioIndexer cache.Indexer
+	ctx             context.Context
 }
 
 type PreparedScenarioStep struct {
@@ -52,7 +54,7 @@ type AdminPreparedScenario struct {
 	hfv1.ScenarioSpec
 }
 
-func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*ScenarioServer, error) {
+func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*ScenarioServer, error) {
 	scenario := ScenarioServer{}
 
 	scenario.hfClientSet = hfClientset
@@ -65,6 +67,7 @@ func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.A
 		glog.Errorf("error adding scenario indexer %s", idIndex)
 	}
 	scenario.scenarioIndexer = inf.GetIndexer()
+	scenario.ctx = ctx
 	return &scenario, nil
 }
 
@@ -262,7 +265,7 @@ func (s ScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scenarios, err := s.hfClientSet.HobbyfarmV1().Scenarios().List(metav1.ListOptions{})
+	scenarios, err := s.hfClientSet.HobbyfarmV1().Scenarios().List(s.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while retrieving scenarios %v", err)
@@ -417,7 +420,7 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		scenario.Spec.PauseDuration = pauseDuration
 	}
 
-	scenario, err = s.hfClientSet.HobbyfarmV1().Scenarios().Create(scenario)
+	scenario, err = s.hfClientSet.HobbyfarmV1().Scenarios().Create(s.ctx, scenario, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating scenario %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scenario")
@@ -444,7 +447,7 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		scenario, err := s.hfClientSet.HobbyfarmV1().Scenarios().Get(id, metav1.GetOptions{})
+		scenario, err := s.hfClientSet.HobbyfarmV1().Scenarios().Get(s.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID found")
@@ -502,7 +505,7 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			scenario.Spec.VirtualMachines = virtualmachines
 		}
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().Scenarios().Update(scenario)
+		_, updateErr := s.hfClientSet.HobbyfarmV1().Scenarios().Update(s.ctx, scenario, metav1.UpdateOptions{})
 		return updateErr
 	})
 

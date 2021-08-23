@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -283,10 +284,10 @@ func VerifySession(sLister hfListers.SessionLister, s *hfv1.Session) error {
 
 }
 
-func EnsureVMNotReady(hfClientset hfClientset.Interface, vmLister hfListers.VirtualMachineLister, vmName string) error {
+func EnsureVMNotReady(hfClientset hfClientset.Interface, vmLister hfListers.VirtualMachineLister, vmName string, ctx context.Context) error {
 	//glog.V(5).Infof("ensuring VM %s is not ready", vmName)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := hfClientset.HobbyfarmV1().VirtualMachines().Get(vmName, metav1.GetOptions{})
+		result, getErr := hfClientset.HobbyfarmV1().VirtualMachines().Get(ctx, vmName, metav1.GetOptions{})
 		if getErr != nil {
 			return getErr
 		}
@@ -295,11 +296,11 @@ func EnsureVMNotReady(hfClientset hfClientset.Interface, vmLister hfListers.Virt
 		}
 		result.Labels["ready"] = "false"
 
-		result, updateErr := hfClientset.HobbyfarmV1().VirtualMachines().Update(result)
+		result, updateErr := hfClientset.HobbyfarmV1().VirtualMachines().Update(ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
-		glog.V(4).Infof("set vm %s to not ready")
+		glog.V(4).Infof("set vm %s to not ready", vmName)
 
 		verifyErr := VerifyVM(vmLister, result)
 
@@ -315,8 +316,8 @@ func EnsureVMNotReady(hfClientset hfClientset.Interface, vmLister hfListers.Virt
 	return nil
 }
 
-func AvailableRawCapacity(hfClientset hfClientset.Interface, capacity hfv1.CMSStruct, virtualMachines []hfv1.VirtualMachine) *hfv1.CMSStruct {
-	vmTemplates, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
+func AvailableRawCapacity(hfClientset hfClientset.Interface, capacity hfv1.CMSStruct, virtualMachines []hfv1.VirtualMachine, ctx context.Context) *hfv1.CMSStruct {
+	vmTemplates, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("unable to list virtual machine templates, got error %v", err)
 		return nil
@@ -342,8 +343,8 @@ func AvailableRawCapacity(hfClientset hfClientset.Interface, capacity hfv1.CMSSt
 	return &availableCapacity
 }
 
-func MaxVMCountsRaw(hfClientset hfClientset.Interface, vmTemplates map[string]int, available hfv1.CMSStruct) int {
-	vmTemplatesFromK8s, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
+func MaxVMCountsRaw(hfClientset hfClientset.Interface, vmTemplates map[string]int, available hfv1.CMSStruct, ctx context.Context) int {
+	vmTemplatesFromK8s, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("unable to list virtual machine templates, got error %v", err)
 		return 0
@@ -382,7 +383,7 @@ type Maximus struct {
 	AvailableCapacity hfv1.CMSStruct    `json:"available_capacity"`
 }
 
-func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string) (Maximus, error) {
+func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context) (Maximus, error) {
 
 	duration, _ := time.ParseDuration("30m")
 
@@ -402,13 +403,13 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 
 	end = end.Round(duration)
 
-	environmentFromK8s, err := hfClientset.HobbyfarmV1().Environments().Get(environment, metav1.GetOptions{})
+	environmentFromK8s, err := hfClientset.HobbyfarmV1().Environments().Get(ctx, environment, metav1.GetOptions{})
 
 	if err != nil {
 		return Maximus{}, fmt.Errorf("error retrieving environment %v", err)
 	}
 
-	vmTemplatesFromK8s, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(metav1.ListOptions{})
+	vmTemplatesFromK8s, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(ctx, metav1.ListOptions{})
 
 	if err != nil {
 		return Maximus{}, fmt.Errorf("error retrieving virtual machine templates %v", err)
@@ -420,7 +421,7 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 		vmTemplateResources[vmTemplateInfo.Name] = vmTemplateInfo.Spec.Resources
 	}
 
-	scheduledEvents, err := hfClientset.HobbyfarmV1().ScheduledEvents().List(metav1.ListOptions{})
+	scheduledEvents, err := hfClientset.HobbyfarmV1().ScheduledEvents().List(ctx, metav1.ListOptions{})
 
 	if err != nil {
 		return Maximus{}, fmt.Errorf("error retrieving scheduled events %v", err)
@@ -452,7 +453,7 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 				// if the time to be checked is after or equal to the start time of the scheduled event
 				// and if i is before or equal to the end of the scheduled event
 				if i.Equal(seStart) || i.Equal(seEnd) || (i.Before(seEnd) && i.After(seStart)) {
-					glog.V(4).Infof("Scheduled Event %s was within the time period")
+					glog.V(4).Infof("Scheduled Event %s was within the time period", se.Name)
 					if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeRaw {
 						for vmTemplateName, vmTemplateCount := range vmMapping {
 							if vmTemplateR, ok := vmTemplateResources[vmTemplateName]; ok {

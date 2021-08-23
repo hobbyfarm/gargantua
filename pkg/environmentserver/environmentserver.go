@@ -1,6 +1,7 @@
 package environmentserver
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/json"
@@ -22,13 +23,15 @@ import (
 type EnvironmentServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet hfClientset.Interface
+	ctx         context.Context
 }
 
-func NewEnvironmentServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface) (*EnvironmentServer, error) {
+func NewEnvironmentServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, ctx context.Context) (*EnvironmentServer, error) {
 	es := EnvironmentServer{}
 
 	es.hfClientSet = hfClientset
 	es.auth = authClient
+	es.ctx = ctx
 
 	return &es, nil
 }
@@ -41,7 +44,7 @@ func (e EnvironmentServer) getEnvironment(id string) (hfv1.Environment, error) {
 		return empty, fmt.Errorf("vm claim id passed in was empty")
 	}
 
-	obj, err := e.hfClientSet.HobbyfarmV1().Environments().Get(id, metav1.GetOptions{})
+	obj, err := e.hfClientSet.HobbyfarmV1().Environments().Get(e.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving Environment by id: %s with error: %v", id, err)
 	}
@@ -89,7 +92,7 @@ func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preparedEnvironment := PreparedEnvironment{environment.Name,environment.Spec, environment.Status}
+	preparedEnvironment := PreparedEnvironment{environment.Name, environment.Spec, environment.Status}
 
 	encodedEnvironment, err := json.Marshal(preparedEnvironment)
 	if err != nil {
@@ -107,7 +110,7 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	environments, err := e.hfClientSet.HobbyfarmV1().Environments().List(metav1.ListOptions{})
+	environments, err := e.hfClientSet.HobbyfarmV1().Environments().List(e.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while listing all environments %v", err)
@@ -118,7 +121,7 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	preparedEnvironments := []PreparedEnvironment{} // must be declared this way so as to JSON marshal into [] instead of null
 
 	for _, e := range environments.Items {
-		preparedEnvironments = append(preparedEnvironments, PreparedEnvironment{e.Name,e.Spec, e.Status})
+		preparedEnvironments = append(preparedEnvironments, PreparedEnvironment{e.Name, e.Spec, e.Status})
 	}
 
 	encodedEnvironments, err := json.Marshal(preparedEnvironments)
@@ -244,7 +247,7 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 
 	environment.Spec.BurstCapable = burstCapableBool
 
-	environment, err = e.hfClientSet.HobbyfarmV1().Environments().Create(environment)
+	environment, err = e.hfClientSet.HobbyfarmV1().Environments().Create(e.ctx, environment, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating environment %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating environment")
@@ -357,7 +360,7 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			environment.Spec.BurstCapable = burstCapableBool
 		}
 
-		_, updateErr := e.hfClientSet.HobbyfarmV1().Environments().Update(&environment)
+		_, updateErr := e.hfClientSet.HobbyfarmV1().Environments().Update(e.ctx, &environment, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -400,7 +403,7 @@ func (e EnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, r
 		util.ReturnHTTPMessage(w, r, 500, "error", "no environment found")
 		return
 	}
-	max, err := util.MaxAvailableDuringPeriod(e.hfClientSet, environmentId, start, end)
+	max, err := util.MaxAvailableDuringPeriod(e.hfClientSet, environmentId, start, end, e.ctx)
 	if err != nil {
 		glog.Errorf("error while getting max available %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "error getting max available vms for environment")

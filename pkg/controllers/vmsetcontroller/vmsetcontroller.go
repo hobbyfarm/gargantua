@@ -1,6 +1,7 @@
 package vmsetcontroller
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -37,13 +38,14 @@ type VirtualMachineSetController struct {
 	vmSynced         cache.InformerSynced
 	envSynced        cache.InformerSynced
 	vmTemplateSynced cache.InformerSynced
+	ctx              context.Context
 }
 
 const (
 	vmEnvironmentIndex = "vm.vmclaim.controllers.hobbyfarm.io/environment-index"
 )
 
-func NewVirtualMachineSetController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*VirtualMachineSetController, error) {
+func NewVirtualMachineSetController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VirtualMachineSetController, error) {
 	vmSetController := VirtualMachineSetController{}
 	vmSetController.hfClientSet = hfClientSet
 
@@ -81,6 +83,8 @@ func NewVirtualMachineSetController(hfClientSet hfClientset.Interface, hfInforme
 		},
 		DeleteFunc: vmSetController.handleVM,
 	}, time.Minute*30)
+	vmSetController.ctx = ctx
+
 	return &vmSetController, nil
 }
 
@@ -287,7 +291,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			} else {
 				vm.ObjectMeta.Labels["restrictedbind"] = "false"
 			}
-			vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Create(vm)
+			vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Create(v.ctx, vm, metav1.CreateOptions{})
 			if err != nil {
 				glog.Error(err)
 			}
@@ -343,7 +347,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 }
 
 func (v *VirtualMachineSetController) deleteVM(vm *hfv1.VirtualMachine) error {
-	err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Delete(vm.Name, &metav1.DeleteOptions{})
+	err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Delete(v.ctx, vm.Name, metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
@@ -363,7 +367,7 @@ func (v *VirtualMachineSetController) deleteVM(vm *hfv1.VirtualMachine) error {
 }
 
 func (v *VirtualMachineSetController) createVM(vm *hfv1.VirtualMachine) error {
-	vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Create(vm)
+	vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Create(v.ctx, vm, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
@@ -385,7 +389,7 @@ func (v *VirtualMachineSetController) createVM(vm *hfv1.VirtualMachine) error {
 
 func (v *VirtualMachineSetController) updateVMSetCount(vmSetName string, active int, prov int) error {
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineSets().Get(vmSetName, metav1.GetOptions{})
+		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineSets().Get(v.ctx, vmSetName, metav1.GetOptions{})
 		if getErr != nil {
 			return fmt.Errorf("Error retrieving latest version of Virtual Machine Set %s: %v", vmSetName, getErr)
 		}
@@ -393,7 +397,7 @@ func (v *VirtualMachineSetController) updateVMSetCount(vmSetName string, active 
 		result.Status.ProvisionedCount = prov
 		result.Status.AvailableCount = active
 
-		vms, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineSets().Update(result)
+		vms, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineSets().Update(v.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			glog.Error(updateErr)
 			return updateErr

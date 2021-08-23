@@ -26,10 +26,13 @@ import (
 )
 
 // SessionLister helps list Sessions.
+// All objects returned here must be treated as read-only.
 type SessionLister interface {
 	// List lists all Sessions in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.Session, err error)
 	// Get retrieves the Session from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1.Session, error)
 	SessionListerExpansion
 }

@@ -26,10 +26,13 @@ import (
 )
 
 // EnvironmentLister helps list Environments.
+// All objects returned here must be treated as read-only.
 type EnvironmentLister interface {
 	// List lists all Environments in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.Environment, err error)
 	// Get retrieves the Environment from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1.Environment, error)
 	EnvironmentListerExpansion
 }

@@ -26,8 +26,10 @@ import (
 )
 
 // ModuleLister helps list Modules.
+// All objects returned here must be treated as read-only.
 type ModuleLister interface {
 	// List lists all Modules in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.Module, err error)
 	// Modules returns an object that can list and get Modules.
 	Modules(namespace string) ModuleNamespaceLister
@@ -58,10 +60,13 @@ func (s *moduleLister) Modules(namespace string) ModuleNamespaceLister {
 }
 
 // ModuleNamespaceLister helps list and get Modules.
+// All objects returned here must be treated as read-only.
 type ModuleNamespaceLister interface {
 	// List lists all Modules in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.Module, err error)
 	// Get retrieves the Module from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1.Module, error)
 	ModuleNamespaceListerExpansion
 }

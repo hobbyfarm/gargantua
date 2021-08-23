@@ -26,10 +26,13 @@ import (
 )
 
 // DynamicBindConfigurationLister helps list DynamicBindConfigurations.
+// All objects returned here must be treated as read-only.
 type DynamicBindConfigurationLister interface {
 	// List lists all DynamicBindConfigurations in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.DynamicBindConfiguration, err error)
 	// Get retrieves the DynamicBindConfiguration from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1.DynamicBindConfiguration, error)
 	DynamicBindConfigurationListerExpansion
 }

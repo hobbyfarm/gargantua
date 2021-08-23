@@ -1,8 +1,8 @@
 package errors
 
 type HobbyfarmError struct {
-	Code int
-	Message string
+	Code        int
+	Message     string
 	Description string
 }
 
@@ -12,8 +12,8 @@ func (h HobbyfarmError) Error() string {
 
 func NewAlreadyExists(msg string) HobbyfarmError {
 	return HobbyfarmError{
-		Code: 409,
-		Message: msg,
+		Code:        409,
+		Message:     msg,
 		Description: "resource already exists",
 	}
 }
@@ -23,6 +23,6 @@ func IsAlreadyExists(err error) bool {
 	if !ok {
 		return false
 	}
-	
+
 	return he.Code == 409
 }
