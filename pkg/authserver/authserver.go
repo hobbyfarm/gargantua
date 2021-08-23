@@ -29,7 +29,7 @@ const (
 type AuthServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet hfClientset.Interface
-	ctx context.Context
+	ctx         context.Context
 }
 
 func NewAuthServer(authClient *authclient.AuthClient, hfClientSet hfClientset.Interface, ctx context.Context) (AuthServer, error) {

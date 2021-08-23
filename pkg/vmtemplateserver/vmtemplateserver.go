@@ -17,7 +17,7 @@ import (
 type VirtualMachineTemplateServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet hfClientset.Interface
-	ctx context.Context
+	ctx         context.Context
 }
 
 func NewVirtualMachineTemplateServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, ctx context.Context) (*VirtualMachineTemplateServer, error) {

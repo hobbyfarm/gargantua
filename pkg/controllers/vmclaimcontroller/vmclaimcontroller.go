@@ -37,7 +37,7 @@ type VMClaimController struct {
 
 	vmClaimHasSynced cache.InformerSynced
 	vmHasSynced      cache.InformerSynced
-	ctx context.Context
+	ctx              context.Context
 }
 
 func NewVMClaimController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMClaimController, error) {

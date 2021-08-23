@@ -20,7 +20,7 @@ import (
 type UserServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet hfClientset.Interface
-	ctx context.Context
+	ctx         context.Context
 }
 
 func NewUserServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, ctx context.Context) (*UserServer, error) {

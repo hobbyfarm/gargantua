@@ -32,7 +32,7 @@ type ScenarioServer struct {
 	hfClientSet     hfClientset.Interface
 	acClient        *accesscode.AccessCodeClient
 	scenarioIndexer cache.Indexer
-	ctx context.Context
+	ctx             context.Context
 }
 
 type PreparedScenarioStep struct {

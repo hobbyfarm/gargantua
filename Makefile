@@ -1,6 +1,6 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= hobbyfarm/ec2-operator:dev
+IMG ?= hobbyfarm/gargantua:dev
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
@@ -14,33 +14,16 @@ endif
 all: manager
 
 # Run tests
-test: generate fmt vet manifests
+test: generate fmt
 	go test ./... -coverprofile cover.out
 
 # Build manager binary
-manager: generate fmt vet
-	go build -o bin/manager main.go
+manager: generate fmt
+	go build -o bin/gargantua main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: generate fmt vet manifests
+run: generate fmt
 	go run ./main.go
-
-# Install CRDs into a cluster
-install: manifests
-	kustomize build config/crd | kubectl apply -f -
-
-# Uninstall CRDs from a cluster
-uninstall: manifests
-	kustomize build config/crd | kubectl delete -f -
-
-# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests
-	cd config/manager && kustomize edit set image controller=${IMG}
-	kustomize build config/default | kubectl apply -f -
-
-# Generate manifests e.g. CRD, RBAC etc.
-manifests: controller-gen
-	$(CODE_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 # Run go fmt against code
 fmt:
@@ -51,30 +34,14 @@ vet:
 	go vet ./...
 
 # Generate code
-generate: code-generator
-	$(CODE_GEN) generate-groups.sh all
+generate:
+	./generate-client.sh
 
 # Build the docker image
-docker-build: test
+docker-build:
 	docker build . -t ${IMG}
 
 # Push the docker image
 docker-push:
 	docker push ${IMG}
 
-# find or download controller-gen
-# download controller-gen if necessary
-code-generator:
-ifeq (, $(shell which generate-groups.sh))
-	@{ \
-	set -e ;\
-	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$CONTROLLER_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	go get k8s.io/code-generator@v0.20.2 ;\
-	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
-	}
-CODE_GEN=$(GOBIN)/generate-groups.sh
-else
-CODE_GEN=$(shell which generate-groups.sh)
-endif

@@ -52,7 +52,7 @@ type TerraformProvisionerController struct {
 	tfsSynced cache.InformerSynced
 	tfeSynced cache.InformerSynced
 	envSynced cache.InformerSynced
-	ctx context.Context
+	ctx       context.Context
 }
 
 var provisionNS = "hobbyfarm"

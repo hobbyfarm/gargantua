@@ -26,7 +26,7 @@ type ScheduledEventController struct {
 	//seWorkqueue workqueue.RateLimitingInterface
 	seWorkqueue workqueue.DelayingInterface
 	seSynced    cache.InformerSynced
-	ctx context.Context
+	ctx         context.Context
 }
 
 var baseNameScheduledPrefix string

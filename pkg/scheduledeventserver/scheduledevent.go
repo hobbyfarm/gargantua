@@ -23,7 +23,7 @@ import (
 type ScheduledEventServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet hfClientset.Interface
-	ctx context.Context
+	ctx         context.Context
 }
 
 func NewScheduledEventServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, ctx context.Context) (*ScheduledEventServer, error) {

@@ -27,7 +27,7 @@ type DynamicBindController struct {
 	dynamicBindRequestLister hfListers.DynamicBindRequestLister
 
 	dynamicBindRequestsSynced cache.InformerSynced
-	ctx context.Context
+	ctx                       context.Context
 }
 
 func NewDynamicBindController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*DynamicBindController, error) {

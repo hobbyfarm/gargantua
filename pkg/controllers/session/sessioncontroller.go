@@ -33,7 +33,7 @@ type SessionController struct {
 	vmSynced  cache.InformerSynced
 	vmcSynced cache.InformerSynced
 	ssSynced  cache.InformerSynced
-	ctx context.Context
+	ctx       context.Context
 }
 
 func NewSessionController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*SessionController, error) {

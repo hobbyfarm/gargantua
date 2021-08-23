@@ -28,7 +28,7 @@ type CourseServer struct {
 	hfClientSet   hfClientset.Interface
 	acClient      *accesscode.AccessCodeClient
 	courseIndexer cache.Indexer
-	ctx context.Context
+	ctx           context.Context
 }
 
 type PreparedCourse struct {
@@ -93,7 +93,7 @@ func (c CourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 
 	var courses []PreparedCourse
 	for _, c := range tempCourses.Items {
-		courses = append(courses, PreparedCourse{ c.Name, c.Spec})
+		courses = append(courses, PreparedCourse{c.Name, c.Spec})
 	}
 
 	encodedCourses, err := json.Marshal(courses)

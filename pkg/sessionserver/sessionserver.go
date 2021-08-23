@@ -37,7 +37,7 @@ type SessionServer struct {
 	accessCodeClient *accesscode.AccessCodeClient
 	auth             *authclient.AuthClient
 	ssIndexer        cache.Indexer
-	ctx context.Context
+	ctx              context.Context
 }
 
 func NewSessionServer(authClient *authclient.AuthClient, accessCodeClient *accesscode.AccessCodeClient, scenarioClient *scenarioclient.ScenarioClient, courseClient *courseclient.CourseClient, hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*SessionServer, error) {
@@ -220,7 +220,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		virtualMachineClaim.Name = vmcId
 		virtualMachineClaim.Spec.VirtualMachines = make(map[string]hfv1.VirtualMachineClaimVM)
 		for vmName, vmTemplateName := range vmset {
-			virtualMachineClaim.Spec.VirtualMachines[vmName] = hfv1.VirtualMachineClaimVM{vmTemplateName, ""}
+			virtualMachineClaim.Spec.VirtualMachines[vmName] = hfv1.VirtualMachineClaimVM{Template: vmTemplateName, VirtualMachineId: ""}
 		}
 		virtualMachineClaim.Spec.UserId = user.Spec.Id
 		virtualMachineClaim.Status.Bound = false

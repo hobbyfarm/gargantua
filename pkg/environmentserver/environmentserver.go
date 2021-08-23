@@ -23,7 +23,7 @@ import (
 type EnvironmentServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet hfClientset.Interface
-	ctx context.Context
+	ctx         context.Context
 }
 
 func NewEnvironmentServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, ctx context.Context) (*EnvironmentServer, error) {
@@ -92,7 +92,7 @@ func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preparedEnvironment := PreparedEnvironment{environment.Name,environment.Spec, environment.Status}
+	preparedEnvironment := PreparedEnvironment{environment.Name, environment.Spec, environment.Status}
 
 	encodedEnvironment, err := json.Marshal(preparedEnvironment)
 	if err != nil {
@@ -121,7 +121,7 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	preparedEnvironments := []PreparedEnvironment{} // must be declared this way so as to JSON marshal into [] instead of null
 
 	for _, e := range environments.Items {
-		preparedEnvironments = append(preparedEnvironments, PreparedEnvironment{e.Name,e.Spec, e.Status})
+		preparedEnvironments = append(preparedEnvironments, PreparedEnvironment{e.Name, e.Spec, e.Status})
 	}
 
 	encodedEnvironments, err := json.Marshal(preparedEnvironments)

@@ -13,7 +13,7 @@ import (
 
 type AccessCodeClient struct {
 	hfClientSet hfClientset.Interface
-	ctx context.Context
+	ctx         context.Context
 }
 
 func NewAccessCodeClient(hfClientset hfClientset.Interface, ctx context.Context) (*AccessCodeClient, error) {

@@ -300,7 +300,7 @@ func EnsureVMNotReady(hfClientset hfClientset.Interface, vmLister hfListers.Virt
 		if updateErr != nil {
 			return updateErr
 		}
-		glog.V(4).Infof("set vm %s to not ready")
+		glog.V(4).Infof("set vm %s to not ready", vmName)
 
 		verifyErr := VerifyVM(vmLister, result)
 
@@ -453,7 +453,7 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 				// if the time to be checked is after or equal to the start time of the scheduled event
 				// and if i is before or equal to the end of the scheduled event
 				if i.Equal(seStart) || i.Equal(seEnd) || (i.Before(seEnd) && i.After(seStart)) {
-					glog.V(4).Infof("Scheduled Event %s was within the time period")
+					glog.V(4).Infof("Scheduled Event %s was within the time period", se.Name)
 					if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeRaw {
 						for vmTemplateName, vmTemplateCount := range vmMapping {
 							if vmTemplateR, ok := vmTemplateResources[vmTemplateName]; ok {

@@ -25,7 +25,7 @@ type ShellProxy struct {
 
 	hfClient   hfClientset.Interface
 	kubeClient kubernetes.Interface
-	ctx context.Context
+	ctx        context.Context
 }
 
 var hfNamespace = "hobbyfarm"

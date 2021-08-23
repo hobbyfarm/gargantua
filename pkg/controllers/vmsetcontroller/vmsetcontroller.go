@@ -37,7 +37,7 @@ type VirtualMachineSetController struct {
 	vmSynced         cache.InformerSynced
 	envSynced        cache.InformerSynced
 	vmTemplateSynced cache.InformerSynced
-	ctx context.Context
+	ctx              context.Context
 }
 
 const (
