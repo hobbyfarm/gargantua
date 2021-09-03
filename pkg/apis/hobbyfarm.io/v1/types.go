@@ -39,7 +39,8 @@ type VirtualMachineSpec struct {
 	Id                       string `json:"id"`
 	VirtualMachineTemplateId string `json:"vm_template_id"`
 	SshUsername              string `json:"ssh_username"`
-	KeyPair                  string `json:"keypair_name"` // this refers to the secret name for the keypair
+	Protocol                 string `json:"protocol"`
+	SecretName               string `json:"secret_name"` // this refers to the secret name for the keypair
 	VirtualMachineClaimId    string `json:"vm_claim_id"`
 	UserId                   string `json:"user"`
 	Provision                bool   `json:"provision"`
@@ -402,7 +403,7 @@ type ScheduledEventSpec struct {
 	Description             string                    `json:"description"`
 	StartTime               string                    `json:"start_time"`
 	EndTime                 string                    `json:"end_time"`
-	OnDemand			    bool					  `json:"on_demand"` // whether or not to provision VMs on-demand
+	OnDemand                bool                      `json:"on_demand"`    // whether or not to provision VMs on-demand
 	RequiredVirtualMachines map[string]map[string]int `json:"required_vms"` // map of environment to a map of strings it should be environment: vm template: count
 	AccessCode              string                    `json:"access_code"`
 	RestrictedBind          bool                      `json:"restricted_bind"` // if restricted_bind is true, we need to make the scenario sessions when they get created only bind to vmsets that are created by this scheduledevent

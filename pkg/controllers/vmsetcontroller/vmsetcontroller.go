@@ -259,7 +259,8 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 				Spec: hfv1.VirtualMachineSpec{
 					Id:                       vmName,
 					VirtualMachineTemplateId: vmt.Spec.Id,
-					KeyPair:                  "",
+					SecretName:               "",
+					Protocol:                 "ssh",
 					VirtualMachineClaimId:    "",
 					UserId:                   "",
 					Provision:                provision,

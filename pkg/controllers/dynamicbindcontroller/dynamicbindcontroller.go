@@ -285,7 +285,8 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 				Spec: hfv1.VirtualMachineSpec{
 					Id:                       vmName,
 					VirtualMachineTemplateId: vmX.Template,
-					KeyPair:                  "",
+					SecretName:               "",
+					Protocol:                 "ssh", //default protocol is ssh
 					VirtualMachineClaimId:    dynamicBindRequest.Spec.VirtualMachineClaim,
 					UserId:                   vmClaim.Spec.UserId,
 					Provision:                provision,
