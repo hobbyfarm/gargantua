@@ -127,7 +127,7 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get the host and port
-	host := vm.Status.PublicIP
+	host := vm.Annotations["sshEndpoint"]
 	port := "22"
 	if sshDev == "true" {
 		if sshDevHost != "" {
