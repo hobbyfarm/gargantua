@@ -371,11 +371,16 @@ type UserList struct {
 }
 
 type UserSpec struct {
-	Id          string   `json:"id"`
-	Email       string   `json:"email"`
-	Password    string   `json:"password"`
-	AccessCodes []string `json:"access_codes"`
-	Admin       bool     `json:"admin"`
+	Id          string       `json:"id"`
+	Email       string       `json:"email"`
+	Password    string       `json:"password"`
+	AccessCodes []string     `json:"access_codes"`
+	Admin       bool         `json:"admin"`
+	Settings    UserSettings `json:"settings"`
+}
+
+type UserSettings struct {
+	TerminalTheme string `json:"terminal_theme"`
 }
 
 // +genclient

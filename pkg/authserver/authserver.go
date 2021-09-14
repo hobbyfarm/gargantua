@@ -6,6 +6,10 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -17,9 +21,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
-	"net/http"
-	"strings"
-	"time"
 )
 
 const (
@@ -46,6 +47,7 @@ func (a AuthServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/auth/accesscode", a.AddAccessCodeFunc).Methods("POST")
 	r.HandleFunc("/auth/accesscode/{access_code}", a.RemoveAccessCodeFunc).Methods("DELETE")
 	r.HandleFunc("/auth/changepassword", a.ChangePasswordFunc).Methods("POST")
+	r.HandleFunc("/auth/updatesettings", a.UpdateSettingsFunc).Methods("POST")
 	r.HandleFunc("/auth/authenticate", a.AuthNFunc).Methods("POST")
 	glog.V(2).Infof("set up route")
 }
@@ -129,6 +131,7 @@ func (a AuthServer) NewUser(email string, password string) (string, error) {
 	newUser.Name = id
 	newUser.Spec.Id = id
 	newUser.Spec.Email = email
+	newUser.Spec.Settings.TerminalTheme = "default"
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -149,7 +152,7 @@ func (a AuthServer) NewUser(email string, password string) (string, error) {
 func (a AuthServer) ChangePasswordFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := a.auth.AuthN(w, r)
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get accesscode")
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to change password")
 		return
 	}
 
@@ -168,6 +171,32 @@ func (a AuthServer) ChangePasswordFunc(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPMessage(w, r, 200, "success", fmt.Sprintf("password changed"))
 
 	glog.V(2).Infof("changed password for user %s", user.Spec.Email)
+}
+
+func (a AuthServer) UpdateSettingsFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := a.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update settings")
+		return
+	}
+
+	r.ParseForm()
+
+	newSettings := make(map[string]string)
+	for key, _ := range r.Form {
+		newSettings[key] = r.FormValue(key) //Ignore when multiple values were set for one argument. Just take the first one
+	}
+
+	err = a.UpdateSettings(user.Spec.Id, newSettings)
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", fmt.Sprintf("error updating settings for user %s", user.Name))
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "success", fmt.Sprintf("settings updated"))
+
+	glog.V(2).Infof("settings updated for user %s", user.Spec.Email)
 }
 
 func (a AuthServer) ListAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
@@ -358,6 +387,34 @@ func (a AuthServer) ChangePassword(userId string, oldPassword string, newPasswor
 		}
 
 		user.Spec.Password = string(passwordHash)
+
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(a.ctx, user, metav1.UpdateOptions{})
+		return updateErr
+	})
+
+	if retryErr != nil {
+		return retryErr
+	}
+
+	return nil
+}
+
+func (a AuthServer) UpdateSettings(userId string, newSettings map[string]string) error {
+	if len(userId) == 0 {
+		return fmt.Errorf("bad parameters passed, %s", userId)
+	}
+
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(a.ctx, userId, metav1.GetOptions{})
+
+		if err != nil {
+			return fmt.Errorf("error retrieving user")
+		}
+
+		terminalTheme, ok := newSettings["terminal_theme"]
+		if ok {
+			user.Spec.Settings.TerminalTheme = string(terminalTheme)
+		}
 
 		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(a.ctx, user, metav1.UpdateOptions{})
 		return updateErr
