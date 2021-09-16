@@ -220,6 +220,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		labels := make(map[string]string)
 		labels[vmcSessionLabel] = session.Name  // map vmc to session
 		labels[UserSessionLabel] = user.Spec.Id // map session to user in a way that is searchable
+		labels[AccessCodeLabel] = session.Labels[AccessCodeLabel]
 		virtualMachineClaim.Labels = labels
 		virtualMachineClaim.Spec.Id = vmcId
 		virtualMachineClaim.Name = vmcId
