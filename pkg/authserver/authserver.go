@@ -47,6 +47,7 @@ func (a AuthServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/auth/accesscode", a.AddAccessCodeFunc).Methods("POST")
 	r.HandleFunc("/auth/accesscode/{access_code}", a.RemoveAccessCodeFunc).Methods("DELETE")
 	r.HandleFunc("/auth/changepassword", a.ChangePasswordFunc).Methods("POST")
+	r.HandleFunc("/auth/settings", a.RetreiveSettingsFunc).Methods("GET")
 	r.HandleFunc("/auth/updatesettings", a.UpdateSettingsFunc).Methods("POST")
 	r.HandleFunc("/auth/authenticate", a.AuthNFunc).Methods("POST")
 	glog.V(2).Infof("set up route")
@@ -220,6 +221,30 @@ func (a AuthServer) ListAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPContent(w, r, 200, "success", encodedACList)
 
 	glog.V(2).Infof("retrieved accesscode list for user %s", user.Spec.Email)
+}
+
+func (a AuthServer) RetreiveSettingsFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := a.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get settings")
+		return
+	}
+
+	latestUser, err := a.hfClientSet.HobbyfarmV1().Users().Get(a.ctx, user.Name, metav1.GetOptions{})
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", fmt.Sprintf("error retrieving user %s", user.Name))
+		return
+	}
+
+	encodedSettings, err := json.Marshal(latestUser.Spec.Settings)
+
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedSettings)
+
+	glog.V(2).Infof("retrieved settings list for user %s", user.Spec.Email)
 }
 
 func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
