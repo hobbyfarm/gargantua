@@ -196,6 +196,8 @@ func (v *VirtualMachineSetController) processNextVMSet() bool {
 		return true
 	}
 
+	// successfully reconcilled, mark object as done
+	v.vmSetWorkqueue.Done(obj)
 	return true
 }
 

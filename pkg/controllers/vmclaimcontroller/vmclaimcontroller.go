@@ -3,10 +3,11 @@ package vmclaimcontroller
 import (
 	"context"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
-	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	"math/rand"
 	"time"
+
+	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
+	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -16,7 +17,6 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
@@ -215,76 +215,6 @@ func (v *VMClaimController) processNextVMClaim() bool {
 
 	v.vmClaimWorkqueue.Done(obj)
 	return true
-}
-
-func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, template string, environmentId string, restrictedBind bool, restrictedBindValue string) (string, error) {
-
-	vmLabels := labels.Set{
-		"bound":       "false",
-		"environment": environmentId,
-		"ready":       "true",
-		"template":    template,
-	}
-
-	if restrictedBind {
-		vmLabels["restrictedbind"] = "true"
-		vmLabels["restrictedbindvalue"] = restrictedBindValue
-	} else {
-		vmLabels["restrictedbind"] = "false"
-	}
-
-	vms, err := v.vmLister.List(vmLabels.AsSelector())
-
-	if err != nil {
-		return "", fmt.Errorf("error while listing all vms %v", err)
-	}
-
-	assigned := false
-	vmId := ""
-	for _, vm := range vms {
-		if !vm.Status.Allocated && vm.Status.Status == hfv1.VmStatusRunning && !vm.Status.Tainted {
-			// we can assign this vm
-			assigned = true
-			vmId = vm.Spec.Id
-
-			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachines().Get(v.ctx, vmId, metav1.GetOptions{})
-				if getErr != nil {
-					return fmt.Errorf("Error retrieving latest version of Virtual Machine %s: %v", vmId, getErr)
-				}
-
-				result.Status.Allocated = true
-				result.Spec.VirtualMachineClaimId = vmClaimId
-				result.Spec.UserId = user
-
-				result.Labels["bound"] = "true"
-
-				vm, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachines().Update(v.ctx, result, metav1.UpdateOptions{})
-				if updateErr != nil {
-					return updateErr
-				}
-				glog.V(4).Infof("updated result for virtual machine")
-
-				verifyErr := util.VerifyVM(v.vmLister, vm)
-
-				if verifyErr != nil {
-					return verifyErr
-				}
-				return nil
-			})
-			if retryErr != nil {
-				return "", fmt.Errorf("Error updating Virtual Machine: %s, %v", vmId, retryErr)
-			}
-			break
-		}
-	}
-
-	if assigned {
-		return vmId, nil
-	}
-
-	return vmId, fmt.Errorf("unknown error while assigning next free vm")
-
 }
 
 func (v *VMClaimController) updateVMClaimWithVM(vmDetails map[string]string, vmClaimId string) error {
