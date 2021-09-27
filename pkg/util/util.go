@@ -221,10 +221,10 @@ func VerifyVMSet(vmSetLister hfListers.VirtualMachineSetLister, vms *hfv1.Virtua
 		var fromCache *hfv1.VirtualMachineSet
 		fromCache, err = vmSetLister.Get(vms.Name)
 		if err != nil {
-			glog.Error(err)
 			if apierrors.IsNotFound(err) {
-				continue
+				return nil
 			}
+			glog.Error(err)
 			return err
 		}
 		if ResourceVersionAtLeast(fromCache.ResourceVersion, vms.ResourceVersion) {
@@ -245,10 +245,10 @@ func VerifyVMClaim(vmClaimLister hfListers.VirtualMachineClaimLister, vmc *hfv1.
 		var fromCache *hfv1.VirtualMachineClaim
 		fromCache, err = vmClaimLister.Get(vmc.Name)
 		if err != nil {
-			glog.Error(err)
 			if apierrors.IsNotFound(err) {
-				continue
+				return nil
 			}
+			glog.Error(err)
 			return err
 		}
 		if ResourceVersionAtLeast(fromCache.ResourceVersion, vmc.ResourceVersion) {
@@ -269,10 +269,10 @@ func VerifySession(sLister hfListers.SessionLister, s *hfv1.Session) error {
 		var fromCache *hfv1.Session
 		fromCache, err = sLister.Get(s.Name)
 		if err != nil {
-			glog.Error(err)
 			if apierrors.IsNotFound(err) {
-				continue
+				return nil
 			}
+			glog.Error(err)
 			return err
 		}
 		if ResourceVersionAtLeast(fromCache.ResourceVersion, s.ResourceVersion) {
