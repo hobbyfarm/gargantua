@@ -277,8 +277,8 @@ func (v *VMClaimController) updateVMClaimStatus(bound bool, ready bool, vmc *hfv
 
 func (v *VMClaimController) processVMClaim(vmc *hfv1.VirtualMachineClaim) (err error) {
 	if vmc.Status.Tainted {
-		glog.Infof("vmclaim %v is tainted.. ignoring", vmc.Name)
-		return nil
+		glog.Infof("vmclaim %v is tainted.. cleaning it up", vmc.Name)
+		return v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Delete(v.ctx, vmc.Name, metav1.DeleteOptions{})
 	}
 
 	if !vmc.Status.Bound && !vmc.Status.Ready {
@@ -302,6 +302,11 @@ func (v *VMClaimController) processVMClaim(vmc *hfv1.VirtualMachineClaim) (err e
 		// update status
 		glog.V(4).Infof("vm's have been requested for vmclaim: %s", vmc.Name)
 		return v.updateVMClaimStatus(true, ready, vmc)
+	}
+
+	// handle tainted VM's by cleaning them up
+	if vmc.Status.Tainted {
+		return v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Delete(v.ctx, vmc.Name, metav1.DeleteOptions{})
 	}
 
 	if vmc.Status.Bound && vmc.Status.Ready {
