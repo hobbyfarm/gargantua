@@ -318,6 +318,8 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 		accessCode := r.PostFormValue("access_code")
 		scenariosRaw := r.PostFormValue("scenarios")
 		coursesRaw := r.PostFormValue("courses")
+		onDemandRaw := r.PostFormValue("on_demand")
+		restrictionDisabledRaw := r.PostFormValue("disable_restriction")
 
 		if name != "" {
 			scheduledEvent.Spec.Name = name
@@ -367,6 +369,35 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 			scheduledEvent.Spec.Scenarios = scenarios
 		}
 
+		restrictionDisabled := scheduledEvent.Spec.RestrictedBind
+
+		if restrictionDisabledRaw != "" {
+			if strings.ToLower(restrictionDisabledRaw) == "false" {
+				restrictionDisabled = false
+			} else {
+				restrictionDisabled = true
+			}
+		}
+		if restrictionDisabled {
+			scheduledEvent.Spec.RestrictedBind = false
+			scheduledEvent.Spec.RestrictedBindValue = ""
+		} else {
+			scheduledEvent.Spec.RestrictedBind = true
+			scheduledEvent.Spec.RestrictedBindValue = scheduledEvent.Name
+		}
+
+		onDemand := scheduledEvent.Spec.OnDemand
+		onDemandBeforeUpdate := onDemand
+
+		if onDemandRaw != "" {
+			onDemand, err = strconv.ParseBool(onDemandRaw)
+			if err != nil {
+				util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid value for on_demand")
+				return err
+			}
+		}
+		scheduledEvent.Spec.OnDemand = onDemand
+
 		// if our event is already provisioned, we need to undo that and delete the corresponding access code(s) and DBC(s)
 		// our scheduledeventcontroller will then provision our scheduledevent with the updated values
 		if scheduledEvent.Status.Provisioned {
@@ -378,7 +409,8 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 			}
 
 			// the SE's begin time has been rescheduled to the future but was already provisioned
-			if now.Before(beginTime) && scheduledEvent.Status.Active {
+			// OR the on demand setting has been removed completely.
+			if (now.Before(beginTime) && scheduledEvent.Status.Active) || (!onDemandBeforeUpdate && onDemand) {
 				err = s.deleteVMSetsFromScheduledEvent(scheduledEvent)
 				if err != nil {
 					return err
