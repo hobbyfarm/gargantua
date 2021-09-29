@@ -1,6 +1,8 @@
 package shell
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -123,8 +125,14 @@ func (sp ShellProxy) ConnectGuacFunc(w http.ResponseWriter, r *http.Request) {
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
 		return
 	}
-	username := string(secret.Data["username"])
-	password := string(secret.Data["password"])
+
+	md5HashInBytes := md5.Sum(secret.Data["private_key"])
+	password := hex.EncodeToString(md5HashInBytes[:])
+
+	username := vm.Spec.SshUsername
+	if len(username) < 1 {
+		username = defaultSshUsername
+	}
 
 	// get the host and port
 	host := vm.Status.PublicIP

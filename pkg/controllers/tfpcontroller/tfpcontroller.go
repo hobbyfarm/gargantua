@@ -1,6 +1,8 @@
 package tfpcontroller
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -238,11 +240,22 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				config[k] = v
 			}
 
+			isWindowsMachine := false
+			_, ok := envTemplateInfo["is_windows"]
+			if ok {
+				isWindowsMachine = true
+			}
+
 			config["name"] = vm.Name
 			config["public_key"] = pubKey
 			config["cpu"] = strconv.Itoa(vmt.Spec.Resources.CPU)
 			config["memory"] = strconv.Itoa(vmt.Spec.Resources.Memory)
 			config["disk"] = strconv.Itoa(vmt.Spec.Resources.Storage)
+			if isWindowsMachine {
+				md5HashInBytes := md5.Sum([]byte(privKey))
+				config["admin_pass"] = hex.EncodeToString(md5HashInBytes[:]) //use the md5 hash of the priv. key as the admin password
+				config["admin_username"] = "Administrator"
+			}
 			image, exists := envTemplateInfo["image"]
 			if !exists {
 				glog.Errorf("image does not exist in env template")
@@ -361,7 +374,6 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 					}
 				}
 				toUpdate.Spec.SecretName = keypair.Name
-				toUpdate.Spec.Protocol = "ssh" //default protocol is ssh
 				toUpdate.Status.Status = hfv1.VmStatusProvisioned
 				toUpdate.Status.TFState = tfs.Name
 				toUpdate.Labels["ready"] = "false"
