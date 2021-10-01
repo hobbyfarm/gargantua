@@ -30,6 +30,7 @@ const (
 	vmcSessionLabel    = "hobbyfarm.io/session"
 	UserSessionLabel   = "hobbyfarm.io/user"
 	AccessCodeLabel    = "accesscode.hobbyfarm.io"
+	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
 )
 
 type SessionServer struct {
@@ -213,6 +214,26 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		vms = scenario.Spec.VirtualMachines
 	}
 
+	// find bindMode by quering the scheduledEvent
+	owners := accessCodeObj.GetOwnerReferences()
+	if len(owners) != 1 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "access code has multiple owners.. invalid request")
+		return
+	}
+
+	schedEvent, err := sss.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(sss.ctx, owners[0].Name, metav1.GetOptions{})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find scheduledEvent")
+		return
+	}
+
+	var bindMode string
+	if schedEvent.Spec.OnDemand {
+		bindMode = "dynamic"
+	} else {
+		bindMode = "static"
+	}
+
 	session.Spec.VmClaimSet = make([]string, len(vms))
 	for index, vmset := range vms {
 		virtualMachineClaim := hfv1.VirtualMachineClaim{}
@@ -221,6 +242,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		labels[vmcSessionLabel] = session.Name  // map vmc to session
 		labels[UserSessionLabel] = user.Spec.Id // map session to user in a way that is searchable
 		labels[AccessCodeLabel] = session.Labels[AccessCodeLabel]
+		labels[ScheduledEventLabel] = schedEvent.Name
 		virtualMachineClaim.Labels = labels
 		virtualMachineClaim.Spec.Id = vmcId
 		virtualMachineClaim.Name = vmcId
@@ -233,6 +255,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		virtualMachineClaim.Spec.UserId = user.Spec.Id
 		virtualMachineClaim.Status.Bound = false
 		virtualMachineClaim.Status.Ready = false
+		virtualMachineClaim.Status.BindMode = bindMode
 		virtualMachineClaim.Spec.DynamicCapable = true
 
 		if restrictedBind {

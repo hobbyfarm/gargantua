@@ -14,6 +14,7 @@ import (
 	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
 	"github.com/hobbyfarm/gargantua/pkg/util"
+	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -21,13 +22,12 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog"
 )
 
 type VirtualMachineSetController struct {
 	hfClientSet hfClientset.Interface
 	//vmSetWorkqueue workqueue.RateLimitingInterface
-	//vmWorkqueue    workqueue.RateLimitingInterface
+	vmWorkqueue      workqueue.RateLimitingInterface
 	vmSetWorkqueue   workqueue.Interface
 	vmSetLister      hfListers.VirtualMachineSetLister
 	vmLister         hfListers.VirtualMachineLister
@@ -43,6 +43,7 @@ type VirtualMachineSetController struct {
 
 const (
 	vmEnvironmentIndex = "vm.vmclaim.controllers.hobbyfarm.io/environment-index"
+	vmSetFinalizer     = "finalizer.hobbyfarm.io/vmset"
 )
 
 func NewVirtualMachineSetController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VirtualMachineSetController, error) {
@@ -55,8 +56,9 @@ func NewVirtualMachineSetController(hfClientSet hfClientset.Interface, hfInforme
 	vmSetController.vmTemplateSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Informer().HasSynced
 
 	//vmSetController.vmSetWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "VMSet")
-	//vmSetController.vmWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "VM")
+	vmSetController.vmWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "VM")
 	vmSetController.vmSetWorkqueue = workqueue.NewNamed("vmsc-vms")
+
 	//vmClaimController.hfInformerFactory = hfInformerFactory
 
 	vmSetController.vmSetLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineSets().Lister()
@@ -89,38 +91,13 @@ func NewVirtualMachineSetController(hfClientSet hfClientset.Interface, hfInforme
 }
 
 func (v *VirtualMachineSetController) handleVM(obj interface{}) {
-	var object metav1.Object
-	var ok bool
-	if object, ok = obj.(metav1.Object); !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			glog.Errorf("error decoding object, invalid type")
-			return
-		}
-		object, ok = tombstone.Obj.(metav1.Object)
-		if !ok {
-			glog.Errorf("error decoding object tombstone, invalid type")
-			return
-		}
-		klog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
-	}
-	klog.V(4).Infof("Processing object: %s", object.GetName())
-	if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
-		// If this object is not owned by a VirtualMachineSet, we should not do anything more
-		// with it.
-		if ownerRef.Kind != "VirtualMachineSet" {
-			return
-		}
-
-		vms, err := v.vmSetLister.Get(ownerRef.Name)
-		if err != nil {
-			klog.V(4).Infof("ignoring orphaned object '%s' of vmset '%s'", object.GetSelfLink(), ownerRef.Name)
-			return
-		}
-
-		v.enqueueVMSet(vms)
+	var key string
+	var err error
+	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
 		return
 	}
+	glog.V(8).Infof("enqueueing vm %v to check associated vmsets in vmsetcontroller", key)
+	v.vmWorkqueue.Add(key)
 }
 
 func (v *VirtualMachineSetController) enqueueVMSet(obj interface{}) {
@@ -145,6 +122,7 @@ func (v *VirtualMachineSetController) Run(stopCh <-chan struct{}) error {
 	}
 	glog.Info("Starting vm set controller worker")
 	go wait.Until(v.runVMSetWorker, time.Second, stopCh)
+	go wait.Until(v.runVMWorker, time.Second, stopCh)
 	glog.Info("Started vm set controller worker")
 	//if ok := cache.WaitForCacheSync(stopCh, )
 	<-stopCh
@@ -157,6 +135,59 @@ func (v *VirtualMachineSetController) runVMSetWorker() {
 	}
 }
 
+func (v *VirtualMachineSetController) runVMWorker() {
+	for v.processNextVM() {
+
+	}
+}
+
+func (v *VirtualMachineSetController) processNextVM() bool {
+	obj, shutdown := v.vmWorkqueue.Get()
+	glog.V(8).Infof("processing VM in vmsetcontroller controller for update")
+
+	if shutdown {
+		return false
+	}
+
+	err := func() error {
+		_, objName, err := cache.SplitMetaNamespaceKey(obj.(string))
+		if err != nil {
+			return err
+		}
+		vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Get(v.ctx, objName, metav1.GetOptions{})
+
+		if err != nil {
+
+			// ideally should put logic here to determine if we need to retry and push this vm back onto the workqueue
+			if errors.IsNotFound(err) {
+				return nil
+
+			} else {
+				glog.Errorf("error while retrieving vm %s: %v, will be requeued", objName, err)
+				return err
+			}
+		}
+
+		// trigger reconcile on vmClaims only when associated VM is running
+		// this should avoid triggering unwanted reconciles of VMClaims until the VM's are running
+		if !vm.DeletionTimestamp.IsZero() {
+			glog.V(4).Infof("requeuing vmset %s to account for tainted vm %s", vm.Spec.VirtualMachineSetId, vm.Name)
+			defer v.vmSetWorkqueue.Add(vm.Spec.VirtualMachineSetId)
+			return v.removeVMFinalizer(vm)
+		}
+
+		return nil
+	}()
+
+	if err != nil {
+		// return and requeue the object
+		//v.vmWorkqueue.Add(obj)
+		return true
+	}
+	//vm event has been processed successfully ignore it
+	v.vmWorkqueue.Done(obj)
+	return true
+}
 func (v *VirtualMachineSetController) processNextVMSet() bool {
 	obj, shutdown := v.vmSetWorkqueue.Get()
 
@@ -207,15 +238,15 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		"vmset": vmset.Name,
 	}.AsSelector())
 
-	if len(currentVMs) > vmset.Spec.Count {
-		// if the desired number of vms is less than the current number of VM's
-		// let's go through and taint/delete the ones that don't belong
-
+	if err != nil {
+		glog.Errorf("error listing vms in vmset controller")
+		return err
 	}
 
 	if len(currentVMs) < vmset.Spec.Count { // if desired count is greater than the current provisioned
 		// 1. let's check the environment to see if there is available capacity
 		// 2. if available capacity is available let's create new VM's
+		glog.V(4).Infof("vmset %s needs %d vm's but current vm count is %d", vmset.Name, vmset.Spec.Count, len(currentVMs))
 		env, err := v.envLister.Get(vmset.Spec.Environment)
 		var provision bool
 		provision = true
@@ -235,7 +266,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		if err != nil {
 			return fmt.Errorf("error while retrieving virtual machine template %s %v", vmset.Spec.VMTemplate, err)
 		}
-		needed := vmset.Spec.Count - vmset.Status.ProvisionedCount
+		needed := vmset.Spec.Count - len(currentVMs)
 
 		glog.V(5).Infof("provisioning %d vms", needed)
 		// this code is so... verbose...
@@ -293,6 +324,8 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			} else {
 				vm.ObjectMeta.Labels["restrictedbind"] = "false"
 			}
+			// adding a custom finalizer for reconcile of vmsets
+			vm.SetFinalizers([]string{vmSetFinalizer})
 			vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Create(v.ctx, vm, metav1.CreateOptions{})
 			if err != nil {
 				glog.Error(err)
@@ -305,28 +338,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		}
 	}
 
-	// no matter what we should list the vm's and delete the ones that are ready for deletion
-
 	vms, err := v.vmLister.List(labels.Set{
-		"vmset": string(vmset.Name),
-	}.AsSelector())
-
-	if err != nil {
-		glog.Errorf("error while retrieving vms owned by vmset %s", vmset.Name)
-	}
-
-	/* TFP Controller will be the one responsible for deleting tainted vm's
-	for _, x := range vms {
-		if x.DeletionTimestamp == nil && x.Status.Tainted {
-			err := v.deleteVM(x)
-			if err != nil {
-				glog.Error(err)
-			}
-		}
-	}
-	*/
-
-	vms, err = v.vmLister.List(labels.Set{
 		"vmset": string(vmset.Name),
 	}.AsSelector())
 
@@ -345,55 +357,14 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 
 	err = v.updateVMSetCount(vmset.Name, activeCount, provisionedCount)
 
-	return nil
-}
-
-func (v *VirtualMachineSetController) deleteVM(vm *hfv1.VirtualMachine) error {
-	err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Delete(v.ctx, vm.Name, metav1.DeleteOptions{})
-	if err != nil {
-		return err
-	}
-	for i := 0; i < 25; i++ {
-		vmFromLister, err := v.vmLister.Get(vm.Name)
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return nil
-			}
-			return err
-		}
-		if vmFromLister.DeletionTimestamp != nil {
-			return nil // we are done waiting for delete to happen finalizers can happen in the background doesn't matter
-		}
-	}
-	return nil
-}
-
-func (v *VirtualMachineSetController) createVM(vm *hfv1.VirtualMachine) error {
-	vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Create(v.ctx, vm, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-	for i := 0; i < 25; i++ {
-		vmFromLister, err := v.vmLister.Get(vm.Name)
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				glog.V(5).Infof("vm not in lister yet %s", vm.Name)
-				break
-			}
-		}
-		if util.ResourceVersionAtLeast(vmFromLister.ResourceVersion, vm.ResourceVersion) {
-			return nil
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	return nil
+	return err
 }
 
 func (v *VirtualMachineSetController) updateVMSetCount(vmSetName string, active int, prov int) error {
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineSets().Get(v.ctx, vmSetName, metav1.GetOptions{})
 		if getErr != nil {
-			return fmt.Errorf("Error retrieving latest version of Virtual Machine Set %s: %v", vmSetName, getErr)
+			return fmt.Errorf("error retrieving latest version of Virtual Machine Set %s: %v", vmSetName, getErr)
 		}
 
 		result.Status.ProvisionedCount = prov
@@ -413,8 +384,41 @@ func (v *VirtualMachineSetController) updateVMSetCount(vmSetName string, active 
 		return nil
 	})
 	if retryErr != nil {
-		return fmt.Errorf("Error updating Virtual Machine Set: %s, %v", vmSetName, retryErr)
+		return fmt.Errorf("error updating Virtual Machine Set: %s, %v", vmSetName, retryErr)
 	}
 
 	return nil
+}
+
+func (v *VirtualMachineSetController) removeVMFinalizer(vm *hfv1.VirtualMachine) (err error) {
+	if ContainsFinalizer(vm, vmSetFinalizer) {
+		RemoveFinalizer(vm, vmSetFinalizer)
+		_, err = v.hfClientSet.HobbyfarmV1().VirtualMachines().Update(v.ctx, vm, metav1.UpdateOptions{})
+	}
+	return err
+}
+
+// From ControllerUtil to save dep issues
+
+// RemoveFinalizer accepts an Object and removes the provided finalizer if present.
+func RemoveFinalizer(vm *hfv1.VirtualMachine, finalizer string) {
+	f := vm.GetFinalizers()
+	for i := 0; i < len(f); i++ {
+		if f[i] == finalizer {
+			f = append(f[:i], f[i+1:]...)
+			i--
+		}
+	}
+	vm.SetFinalizers(f)
+}
+
+// ContainsFinalizer checks an Object that the provided finalizer is present.
+func ContainsFinalizer(vm *hfv1.VirtualMachine, finalizer string) bool {
+	f := vm.GetFinalizers()
+	for _, e := range f {
+		if e == finalizer {
+			return true
+		}
+	}
+	return false
 }
