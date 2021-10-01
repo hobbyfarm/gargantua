@@ -266,7 +266,7 @@ func (v *VMClaimController) processVMClaim(vmc *hfv1.VirtualMachineClaim) (err e
 				return err
 			}
 		} else {
-			glog.Error("vmc bind mode needs to be either dynamic or static.. ignoring this object %s", vmc.Name)
+			glog.Errorf("vmc bind mode needs to be either dynamic or static.. ignoring this object %s", vmc.Name)
 			return nil
 		}
 
@@ -503,7 +503,7 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, temp
 	}
 
 	vms, err := v.vmLister.List(vmLabels.AsSelector())
-	glog.V(4).Info("found %d vm's matching this requirement", len(vms))
+	glog.V(4).Infof("found %d vm's matching this requirement", len(vms))
 	if err != nil {
 		return "", fmt.Errorf("error while listing all vms %v", err)
 	}

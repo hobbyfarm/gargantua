@@ -23,13 +23,13 @@ import (
 )
 
 const (
-	ssIndex            = "sss.hobbyfarm.io/session-id-index"
-	newSSTimeout       = "5m"
-	keepaliveSSTimeout = "5m"
-	pauseSSTimeout     = "2h"
-	vmcSessionLabel    = "hobbyfarm.io/session"
-	UserSessionLabel   = "hobbyfarm.io/user"
-	AccessCodeLabel    = "accesscode.hobbyfarm.io"
+	ssIndex             = "sss.hobbyfarm.io/session-id-index"
+	newSSTimeout        = "5m"
+	keepaliveSSTimeout  = "5m"
+	pauseSSTimeout      = "2h"
+	vmcSessionLabel     = "hobbyfarm.io/session"
+	UserSessionLabel    = "hobbyfarm.io/user"
+	AccessCodeLabel     = "accesscode.hobbyfarm.io"
 	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
 )
 
