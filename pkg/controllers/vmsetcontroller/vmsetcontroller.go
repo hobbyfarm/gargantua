@@ -172,8 +172,12 @@ func (v *VirtualMachineSetController) processNextVM() bool {
 		// this should avoid triggering unwanted reconciles of VMClaims until the VM's are running
 		if !vm.DeletionTimestamp.IsZero() {
 			glog.V(4).Infof("requeuing vmset %s to account for tainted vm %s", vm.Spec.VirtualMachineSetId, vm.Name)
+			err = v.removeVMFinalizer(vm)
+			if err != nil {
+				glog.Errorf("error removing vm finalizer on vm %s", vm.Name)
+				return err
+			}
 			defer v.vmSetWorkqueue.Add(vm.Spec.VirtualMachineSetId)
-			return v.removeVMFinalizer(vm)
 		}
 
 		return nil
