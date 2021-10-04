@@ -250,7 +250,10 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 	for envName, vmtMap := range se.Spec.RequiredVirtualMachines {
 		// get the environment we're provisioning into (envName)
 		env, err := s.hfClientSet.HobbyfarmV1().Environments().Get(s.ctx, envName, metav1.GetOptions{})
-
+		if err != nil {
+			glog.Errorf("error retreiving environment %s", err.Error())
+			return err
+		}
 		// get all vmsets that are being provisioned into this environment (label selector)
 		vmsList, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().List(s.ctx, metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("environment=%s", envName),
@@ -281,43 +284,70 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 
 		for templateName, count := range vmtMap {
 			if count > 0 && !se.Spec.OnDemand { // only setup vmsets if >0 VMs are requested, and they aren't ondemand
-				vmsRand := fmt.Sprintf("%s-%08x", baseNameScheduledPrefix, rand.Uint32())
-				vmsName := strings.Join([]string{"se", se.Name, "vms", vmsRand}, "-")
-				vmSets = append(vmSets, vmsName)
-				vms := &hfv1.VirtualMachineSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: vmsName,
-						OwnerReferences: []metav1.OwnerReference{
-							{
-								APIVersion: "hobbyfarm.io/v1",
-								Kind:       "ScheduledEvent",
-								Name:       se.Name,
-								UID:        se.UID,
+				if len(se.Status.VirtualMachineSets) == 0 {
+					vmsRand := fmt.Sprintf("%s-%08x", baseNameScheduledPrefix, rand.Uint32())
+					vmsName := strings.Join([]string{"se", se.Name, "vms", vmsRand}, "-")
+					vmSets = append(vmSets, vmsName)
+					vms := &hfv1.VirtualMachineSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: vmsName,
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									APIVersion: "hobbyfarm.io/v1",
+									Kind:       "ScheduledEvent",
+									Name:       se.Name,
+									UID:        se.UID,
+								},
+							},
+							Labels: map[string]string{
+								"environment":    env.Name,
+								"scheduledevent": se.Name,
+								fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", templateName): "true",
 							},
 						},
-						Labels: map[string]string{
-							"environment":    env.Name,
-							"scheduledevent": se.Name,
-							fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", templateName): "true",
+						Spec: hfv1.VirtualMachineSetSpec{
+							Count:       count,
+							Environment: envName,
+							VMTemplate:  templateName,
+							BaseName:    vmsRand,
 						},
-					},
-					Spec: hfv1.VirtualMachineSetSpec{
-						Count:       count,
-						Environment: envName,
-						VMTemplate:  templateName,
-						BaseName:    vmsRand,
-					},
-				}
-				if se.Spec.RestrictedBind {
-					vms.Spec.RestrictedBind = true
-					vms.Spec.RestrictedBindValue = se.Spec.RestrictedBindValue
+					}
+					if se.Spec.RestrictedBind {
+						vms.Spec.RestrictedBind = true
+						vms.Spec.RestrictedBindValue = se.Spec.RestrictedBindValue
+					} else {
+						vms.Spec.RestrictedBind = false
+					}
+					_, err = s.hfClientSet.HobbyfarmV1().VirtualMachineSets().Create(s.ctx, vms, metav1.CreateOptions{})
+					if err != nil {
+						glog.Error(err)
+						return err
+					}
 				} else {
-					vms.Spec.RestrictedBind = false
+					vmSetName := se.Status.VirtualMachineSets[0]
+					vmSetOrg, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().Get(s.ctx, vmSetName, metav1.GetOptions{})
+					if err != nil {
+						glog.Error(err)
+						return err
+					}
+
+					vmSetOrg.Labels["environment"] = env.Name
+					vmSetOrg.Spec.Count = count
+					vmSetOrg.Spec.Environment = envName
+					vmSetOrg.Spec.VMTemplate = templateName
+					if se.Spec.RestrictedBind {
+						vmSetOrg.Spec.RestrictedBind = true
+
+					} else {
+						vmSetOrg.Spec.RestrictedBind = false
+					}
+					_, err = s.hfClientSet.HobbyfarmV1().VirtualMachineSets().Update(s.ctx, vmSetOrg, metav1.UpdateOptions{})
+					if err != nil {
+						glog.Errorf("error updating vmset config %s", err.Error())
+						return err
+					}
 				}
-				vms, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets().Create(s.ctx, vms, metav1.CreateOptions{})
-				if err != nil {
-					glog.Error(err)
-				}
+
 			}
 		}
 
