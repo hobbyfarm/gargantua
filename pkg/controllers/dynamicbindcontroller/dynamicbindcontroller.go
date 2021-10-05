@@ -144,6 +144,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 
 	if err != nil {
 		glog.Errorf("error retrieving corresponding virtual machine claim %s for dynamic bind request %s", dynamicBindRequest.Spec.VirtualMachineClaim, dynamicBindRequest.Spec.Id)
+		return err
 	}
 
 	var dbcSelector metav1.ListOptions
@@ -161,6 +162,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 
 	if err != nil {
 		glog.Errorf("Error while retrieving dynamic bind configurations, %v", err)
+		return err
 	}
 
 	var chosenDynamicBindConfiguration *hfv1.DynamicBindConfiguration
@@ -179,7 +181,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 		}
 		if err != nil {
 			glog.Errorf("Error while retrieving environment %v", err)
-			return nil
+			return err
 		}
 
 		if !environment.Spec.BurstCapable {

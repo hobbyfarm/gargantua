@@ -11,6 +11,8 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	mrand "math/rand"
+
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
@@ -18,13 +20,13 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
-	mrand "math/rand"
 
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 )
 
 type HTTPMessage struct {
@@ -178,10 +180,10 @@ func VerifyVM(vmLister hfListers.VirtualMachineLister, vm *hfv1.VirtualMachine) 
 		var fromCache *hfv1.VirtualMachine
 		fromCache, err = vmLister.Get(vm.Name)
 		if err != nil {
-			glog.Error(err)
 			if apierrors.IsNotFound(err) {
-				continue
+				return nil
 			}
+			glog.Error(err)
 			return err
 		}
 		if ResourceVersionAtLeast(fromCache.ResourceVersion, vm.ResourceVersion) {
@@ -219,10 +221,10 @@ func VerifyVMSet(vmSetLister hfListers.VirtualMachineSetLister, vms *hfv1.Virtua
 		var fromCache *hfv1.VirtualMachineSet
 		fromCache, err = vmSetLister.Get(vms.Name)
 		if err != nil {
-			glog.Error(err)
 			if apierrors.IsNotFound(err) {
-				continue
+				return nil
 			}
+			glog.Error(err)
 			return err
 		}
 		if ResourceVersionAtLeast(fromCache.ResourceVersion, vms.ResourceVersion) {
@@ -243,10 +245,10 @@ func VerifyVMClaim(vmClaimLister hfListers.VirtualMachineClaimLister, vmc *hfv1.
 		var fromCache *hfv1.VirtualMachineClaim
 		fromCache, err = vmClaimLister.Get(vmc.Name)
 		if err != nil {
-			glog.Error(err)
 			if apierrors.IsNotFound(err) {
-				continue
+				return nil
 			}
+			glog.Error(err)
 			return err
 		}
 		if ResourceVersionAtLeast(fromCache.ResourceVersion, vmc.ResourceVersion) {
@@ -267,10 +269,10 @@ func VerifySession(sLister hfListers.SessionLister, s *hfv1.Session) error {
 		var fromCache *hfv1.Session
 		fromCache, err = sLister.Get(s.Name)
 		if err != nil {
-			glog.Error(err)
 			if apierrors.IsNotFound(err) {
-				continue
+				return nil
 			}
+			glog.Error(err)
 			return err
 		}
 		if ResourceVersionAtLeast(fromCache.ResourceVersion, s.ResourceVersion) {
