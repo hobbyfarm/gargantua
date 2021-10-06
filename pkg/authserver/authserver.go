@@ -48,7 +48,7 @@ func (a AuthServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/auth/accesscode/{access_code}", a.RemoveAccessCodeFunc).Methods("DELETE")
 	r.HandleFunc("/auth/changepassword", a.ChangePasswordFunc).Methods("POST")
 	r.HandleFunc("/auth/settings", a.RetreiveSettingsFunc).Methods("GET")
-	r.HandleFunc("/auth/updatesettings", a.UpdateSettingsFunc).Methods("POST")
+	r.HandleFunc("/auth/settings", a.UpdateSettingsFunc).Methods("POST")
 	r.HandleFunc("/auth/authenticate", a.AuthNFunc).Methods("POST")
 	glog.V(2).Infof("set up route")
 }
@@ -132,7 +132,11 @@ func (a AuthServer) NewUser(email string, password string) (string, error) {
 	newUser.Name = id
 	newUser.Spec.Id = id
 	newUser.Spec.Email = email
-	newUser.Spec.Settings.TerminalTheme = "default"
+
+	settings := make(map[string]string)
+	settings["terminal_theme"] = "default"
+
+	newUser.Spec.Settings = settings
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -436,10 +440,7 @@ func (a AuthServer) UpdateSettings(userId string, newSettings map[string]string)
 			return fmt.Errorf("error retrieving user")
 		}
 
-		terminalTheme, ok := newSettings["terminal_theme"]
-		if ok {
-			user.Spec.Settings.TerminalTheme = string(terminalTheme)
-		}
+		user.Spec.Settings = newSettings
 
 		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(a.ctx, user, metav1.UpdateOptions{})
 		return updateErr
