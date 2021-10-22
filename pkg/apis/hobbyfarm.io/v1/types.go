@@ -272,6 +272,8 @@ type ScenarioSpec struct {
 	Name              string              `json:"name"`
 	Description       string              `json:"description"`
 	Steps             []ScenarioStep      `json:"steps"`
+	Categories        []string            `json:"categories"`
+	Tags              []string            `json:"tags"`
 	VirtualMachines   []map[string]string `json:"virtualmachines"`
 	KeepAliveDuration string              `json:"keepalive_duration"`
 	PauseDuration     string              `json:"pause_duration"`

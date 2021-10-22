@@ -7,6 +7,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
@@ -18,9 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
-	"net/http"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -371,12 +372,34 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 
 	steps := []hfv1.ScenarioStep{}
 	virtualmachines := []map[string]string{}
+	categories := []string{}
+	tags := []string{}
 
 	rawSteps := r.PostFormValue("steps")
 	if rawSteps != "" {
 		err = json.Unmarshal([]byte(rawSteps), &steps)
 		if err != nil {
 			glog.Errorf("error while unmarshaling steps %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	rawCategories := r.PostFormValue("categories")
+	if rawCategories != "" {
+		err = json.Unmarshal([]byte(rawCategories), &categories)
+		if err != nil {
+			glog.Errorf("error while unmarshaling categories %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	rawTags := r.PostFormValue("tags")
+	if rawTags != "" {
+		err = json.Unmarshal([]byte(rawTags), &tags)
+		if err != nil {
+			glog.Errorf("error while unmarshaling tags %v", err)
 			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
 			return
 		}
@@ -407,6 +430,8 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	scenario.Spec.Description = description
 	scenario.Spec.VirtualMachines = virtualmachines
 	scenario.Spec.Steps = steps
+	scenario.Spec.Categories = categories
+	scenario.Spec.Tags = tags
 	scenario.Spec.KeepAliveDuration = keepaliveDuration
 
 	scenario.Spec.Pauseable = false
@@ -461,6 +486,8 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		pauseDuration := r.PostFormValue("pause_duration")
 		keepaliveDuration := r.PostFormValue("keepalive_duration")
 		rawVirtualMachines := r.PostFormValue("virtualmachines")
+		rawCategories := r.PostFormValue("categories")
+		rawTags := r.PostFormValue("tags")
 
 		if name != "" {
 			scenario.Spec.Name = name
@@ -503,6 +530,28 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("bad")
 			}
 			scenario.Spec.VirtualMachines = virtualmachines
+		}
+
+		if rawCategories != "" {
+			categories := []string{}
+			err = json.Unmarshal([]byte(rawCategories), &categories)
+			if err != nil {
+				glog.Errorf("error while unmarshaling categories %v", err)
+				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+				return fmt.Errorf("bad")
+			}
+			scenario.Spec.Categories = categories
+		}
+
+		if rawTags != "" {
+			tags := []string{}
+			err = json.Unmarshal([]byte(rawTags), &tags)
+			if err != nil {
+				glog.Errorf("error while unmarshaling tags %v", err)
+				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+				return fmt.Errorf("bad")
+			}
+			scenario.Spec.Tags = tags
 		}
 
 		_, updateErr := s.hfClientSet.HobbyfarmV1().Scenarios().Update(s.ctx, scenario, metav1.UpdateOptions{})
