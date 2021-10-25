@@ -533,25 +533,25 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if rawCategories != "" {
-			categories := []string{}
-			err = json.Unmarshal([]byte(rawCategories), &categories)
+			categoriesSlice := make([]string, 0)
+			err = json.Unmarshal([]byte(rawCategories), &categoriesSlice)
 			if err != nil {
 				glog.Errorf("error while unmarshaling categories %v", err)
 				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
 				return fmt.Errorf("bad")
 			}
-			scenario.Spec.Categories = categories
+			scenario.Spec.Categories = categoriesSlice
 		}
 
 		if rawTags != "" {
-			tags := []string{}
-			err = json.Unmarshal([]byte(rawTags), &tags)
+			tagsSlice := make([]string, 0)
+			err = json.Unmarshal([]byte(rawTags), &tagsSlice)
 			if err != nil {
 				glog.Errorf("error while unmarshaling tags %v", err)
 				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
 				return fmt.Errorf("bad")
 			}
-			scenario.Spec.Tags = tags
+			scenario.Spec.Tags = tagsSlice
 		}
 
 		_, updateErr := s.hfClientSet.HobbyfarmV1().Scenarios().Update(s.ctx, scenario, metav1.UpdateOptions{})
