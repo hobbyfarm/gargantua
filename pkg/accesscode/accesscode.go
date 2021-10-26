@@ -3,12 +3,14 @@ package accesscode
 import (
 	"context"
 	"fmt"
+	"sort"
+	"time"
+
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sort"
-	"time"
 )
 
 type AccessCodeClient struct {
@@ -193,4 +195,34 @@ func (acc AccessCodeClient) GetClosestAccessCode(userID string, scenarioOrCourse
 	}
 
 	return accessCodes[0].Name, nil
+}
+
+/* Object with max available AC uses, counter how many were used and an timestamp */
+type OTACused struct {
+	Available int
+	Used      int
+	Timestamp []string
+}
+
+/* A map to save the access codes, how often a access code was used and when */
+var OTAClist map[string]OTACused
+
+func (acc AccessCodeClient) GetRandomAccessCode(quantity int) map[string]OTACused {
+	/* 'n' length of the generated OTAC */
+	n := 8
+	/* Add a random key, the quantity of participants to the map */
+	var timestampList []string
+	OTAClist[util.RandStringRunes(n)] = OTACused{quantity, 0, timestampList}
+	
+	return OTAClist
+}
+
+func (acc AccessCodeClient) UpdateOTACList(ac string) bool {
+	/* Check if ther */
+	if OTAClist[ac].Available > OTAClist[ac].Used {
+		list := append(OTAClist[ac].Timestamp, time.Now().Format(time.RFC850))
+		OTAClist[ac] = OTACused{OTAClist[ac].Available, OTAClist[ac].Used+1, list}
+		return false
+	}
+	return true
 }
