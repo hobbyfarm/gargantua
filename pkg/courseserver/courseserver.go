@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
@@ -15,8 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
-	"net/http"
-	"strconv"
 )
 
 const (
@@ -186,6 +187,14 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 	pauseDuration := r.PostFormValue("pause_duration")
 
+	keepVMRaw := r.PostFormValue("keep_vm")
+	keepVM, err := strconv.ParseBool(keepVMRaw)
+	if err != nil {
+		glog.Errorf("error while parsing bool: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+		return
+	}
+
 	course := &hfv1.Course{}
 
 	generatedName := util.GenerateResourceName("c", name, 10)
@@ -204,6 +213,7 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	if pauseDuration != "" {
 		course.Spec.PauseDuration = pauseDuration
 	}
+	course.Spec.KeepVM = keepVM
 
 	course, err = c.hfClientSet.HobbyfarmV1().Courses().Create(c.ctx, course, metav1.CreateOptions{})
 	if err != nil {
@@ -248,6 +258,7 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		keepaliveDuration := r.PostFormValue("keepalive_duration")
 		pauseDuration := r.PostFormValue("pause_duration")
 		pauseableRaw := r.PostFormValue("pauseable")
+		keepVMRaw := r.PostFormValue("keep_vm")
 
 		if name != "" {
 			course.Spec.Name = name
@@ -298,6 +309,17 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			}
 
 			course.Spec.Pauseable = pauseable
+		}
+
+		if keepVMRaw != "" {
+			keepVM, err := strconv.ParseBool(keepVMRaw)
+			if err != nil {
+				glog.Errorf("error while parsing bool: %v", err)
+				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+				return fmt.Errorf("bad")
+			}
+
+			course.Spec.KeepVM = keepVM
 		}
 
 		_, updateErr := c.hfClientSet.HobbyfarmV1().Courses().Update(c.ctx, course, metav1.UpdateOptions{})
