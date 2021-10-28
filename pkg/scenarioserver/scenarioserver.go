@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -74,7 +75,9 @@ func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.A
 
 func (s ScenarioServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/scenario/list", s.ListScenarioForAccessCodes).Methods("GET")
-	r.HandleFunc("/a/scenario/list", s.ListFunc).Methods("GET")
+	r.HandleFunc("/a/scenario/categories", s.ListCategories).Methods("GET")
+	r.HandleFunc("/a/scenario/list/{category}", s.ListByCategoryFunc).Methods("GET")
+	r.HandleFunc("/a/scenario/list", s.ListAllFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}", s.AdminGetFunc).Methods("GET")
 	r.HandleFunc("/scenario/{scenario_id}", s.GetScenarioFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}/printable", s.PrintFunc).Methods("GET")
@@ -259,14 +262,38 @@ func (s ScenarioServer) ListScenarioForAccessCodes(w http.ResponseWriter, r *htt
 	util.ReturnHTTPContent(w, r, 200, "success", encodedScenarios)
 }
 
-func (s ScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request) {
+func (s ScenarioServer) ListAllFunc(w http.ResponseWriter, r *http.Request) {
+	s.ListFunc(w, r, "")
+}
+
+func (s ScenarioServer) ListByCategoryFunc(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	category := vars["category"]
+
+	if len(category) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no category passed in")
+		return
+	}
+
+	s.ListFunc(w, r, category)
+}
+
+func (s ScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request, category string) {
 	_, err := s.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios")
 		return
 	}
 
-	scenarios, err := s.hfClientSet.HobbyfarmV1().Scenarios().List(s.ctx, metav1.ListOptions{})
+	categorySelector := metav1.ListOptions{}
+	if category != "" {
+		categorySelector = metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("category-%s=true", category),
+		}
+	}
+
+	scenarios, err := s.hfClientSet.HobbyfarmV1().Scenarios().List(s.ctx, categorySelector)
 
 	if err != nil {
 		glog.Errorf("error while retrieving scenarios %v", err)
@@ -288,6 +315,57 @@ func (s ScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPContent(w, r, 200, "success", encodedScenarios)
 
 	glog.V(2).Infof("listed scenarios")
+}
+
+func (s ScenarioServer) ListCategories(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list categories")
+		return
+	}
+
+	scenarios, err := s.hfClientSet.HobbyfarmV1().Scenarios().List(s.ctx, metav1.ListOptions{})
+
+	if err != nil {
+		glog.Errorf("error while retrieving scenarios %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "no scenarios found")
+		return
+	}
+
+	categories := []string{}
+
+	for _, s := range scenarios.Items {
+		if len(s.Spec.Categories) != 0 {
+			categories = append(categories, s.Spec.Categories...)
+		}
+	}
+
+	categories = removeDuplicateValues(categories)
+	sort.Strings(categories)
+
+	encodedCategories, err := json.Marshal(categories)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedCategories)
+
+	glog.V(2).Infof("listed categories")
+}
+
+func removeDuplicateValues(stringSlice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+
+	// If the key(values of the slice) is not equal
+	// to the already present value in new slice (list)
+	// then we append it. else we jump on another element.
+	for _, entry := range stringSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }
 
 func (s ScenarioServer) PrintFunc(w http.ResponseWriter, r *http.Request) {
@@ -533,14 +611,29 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if rawCategories != "" {
-			categoriesSlice := make([]string, 0)
-			err = json.Unmarshal([]byte(rawCategories), &categoriesSlice)
+			oldCategories := []string{}
+			if len(scenario.Spec.Categories) != 0 {
+				oldCategories = scenario.Spec.Categories
+			}
+
+			if scenario.ObjectMeta.Labels == nil {
+				scenario.ObjectMeta.Labels = make(map[string]string)
+			}
+
+			for _, category := range oldCategories {
+				scenario.ObjectMeta.Labels["category-"+category] = "false"
+			}
+			newCategoriesSlice := make([]string, 0)
+			err = json.Unmarshal([]byte(rawCategories), &newCategoriesSlice)
 			if err != nil {
 				glog.Errorf("error while unmarshaling categories %v", err)
 				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
 				return fmt.Errorf("bad")
 			}
-			scenario.Spec.Categories = categoriesSlice
+			for _, category := range newCategoriesSlice {
+				scenario.ObjectMeta.Labels["category-"+category] = "true"
+			}
+			scenario.Spec.Categories = newCategoriesSlice
 		}
 
 		if rawTags != "" {
