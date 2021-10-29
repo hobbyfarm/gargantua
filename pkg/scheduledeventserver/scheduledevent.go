@@ -178,13 +178,13 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 	*/
 	oneTimeAccessCode := r.PostFormValue("one_time_access_code")
 	if len(oneTimeAccessCode) > 0 {
-		var text string
+		quantity, _ := strconv.Atoi(oneTimeAccessCode)
 		acc, err := accesscode.NewAccessCodeClient(s.hfClientSet,context.TODO())
 		if err != nil {
 			util.ReturnHTTPMessage(w, r, 400, "badrequest", "corrupted one time access code")
 			return
 		}
-		acc.GenerateRandomOneTimeAccessCode(text, user.Name, accessCode)
+		acc.GenerateRandomOneTimeAccessCode(quantity, accessCode)
 	}
 	var onDemand bool
 	onDemandRaw := r.PostFormValue("on_demand")
