@@ -242,6 +242,7 @@ type CourseSpec struct {
 	Name              string              `json:"name"`
 	Description       string              `json:"description"`
 	Scenarios         []string            `json:"scenarios"`
+	Categories        []string            `json:"categories"`
 	VirtualMachines   []map[string]string `json:"virtualmachines"`
 	KeepAliveDuration string              `json:"keepalive_duration"`
 	PauseDuration     string              `json:"pause_duration"`

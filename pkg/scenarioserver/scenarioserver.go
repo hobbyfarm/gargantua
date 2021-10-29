@@ -340,7 +340,7 @@ func (s ScenarioServer) ListCategories(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	categories = removeDuplicateValues(categories)
+	categories = util.UniqueStringSlice(categories)
 	sort.Strings(categories)
 
 	encodedCategories, err := json.Marshal(categories)
@@ -350,22 +350,6 @@ func (s ScenarioServer) ListCategories(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPContent(w, r, 200, "success", encodedCategories)
 
 	glog.V(2).Infof("listed categories")
-}
-
-func removeDuplicateValues(stringSlice []string) []string {
-	keys := make(map[string]bool)
-	list := []string{}
-
-	// If the key(values of the slice) is not equal
-	// to the already present value in new slice (list)
-	// then we append it. else we jump on another element.
-	for _, entry := range stringSlice {
-		if _, value := keys[entry]; !value {
-			keys[entry] = true
-			list = append(list, entry)
-		}
-	}
-	return list
 }
 
 func (s ScenarioServer) PrintFunc(w http.ResponseWriter, r *http.Request) {
