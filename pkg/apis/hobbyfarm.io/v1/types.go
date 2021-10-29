@@ -351,6 +351,13 @@ type AccessCodeSpec struct {
 	RestrictedBindValue string   `json:"restricted_bind_value"`
 }
 
+type OneTimeAccessCode struct {
+	UserIdentifier string `json:"user"`
+	Code string `json:"code"`
+	AccessCodeIdentifier string `json:"one_time_access_code"`
+	Timestamp string `json:"timestamp"` 
+}
+
 // +genclient
 // +genclient:noStatus
 // +genclient:nonNamespaced

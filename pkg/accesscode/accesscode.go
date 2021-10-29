@@ -197,32 +197,27 @@ func (acc AccessCodeClient) GetClosestAccessCode(userID string, scenarioOrCourse
 	return accessCodes[0].Name, nil
 }
 
-/* Object with max available AC uses, counter how many were used and an timestamp */
-type OTACused struct {
-	Available int
-	Used      int
-	Timestamp []string
-}
-
 /* A map to save the access codes, how often a access code was used and when */
-var OTAClist map[string]OTACused
+var OTAClist map[string]hfv1.OneTimeAccessCode
 
-func (acc AccessCodeClient) GetRandomAccessCode(quantity int) map[string]OTACused {
-	/* 'n' length of the generated OTAC */
-	n := 8
-	/* Add a random key, the quantity of participants to the map */
-	var timestampList []string
-	OTAClist[util.RandStringRunes(n)] = OTACused{quantity, 0, timestampList}
-	
-	return OTAClist
+func (acc AccessCodeClient) GenerateRandomOneTimeAccessCode(code, user, acIdent string) {
+	ac := util.RandStringRunes(32)
+	OTAClist[ac] = hfv1.OneTimeAccessCode{
+		UserIdentifier:       user,
+		Code:                 code,
+		AccessCodeIdentifier: ac,
+		Timestamp:            "",
+	}
 }
 
-func (acc AccessCodeClient) UpdateOTACList(ac string) bool {
+func (acc AccessCodeClient) UpdateOneTimeAccessCode(ac string) {
 	/* Check if ther */
-	if OTAClist[ac].Available > OTAClist[ac].Used {
-		list := append(OTAClist[ac].Timestamp, time.Now().Format(time.RFC850))
-		OTAClist[ac] = OTACused{OTAClist[ac].Available, OTAClist[ac].Used+1, list}
-		return false
+	if len(OTAClist[ac].Timestamp) > 0 {
+		OTAClist[ac] = hfv1.OneTimeAccessCode{
+			UserIdentifier:       OTAClist[ac].UserIdentifier,
+			Code:                 OTAClist[ac].Code,
+			AccessCodeIdentifier: OTAClist[ac].AccessCodeIdentifier,
+			Timestamp:            time.Now().Format(time.RFC850),
+		}
 	}
-	return true
 }

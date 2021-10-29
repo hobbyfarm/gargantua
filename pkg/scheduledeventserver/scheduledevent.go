@@ -13,6 +13,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
@@ -171,6 +172,19 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 	if accessCode == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no access code passed in")
 		return
+	}
+	/* 
+		Load 'One Time Access Code', check and generate OTAC
+	*/
+	oneTimeAccessCode := r.PostFormValue("one_time_access_code")
+	if len(oneTimeAccessCode) > 0 {
+		var text string
+		acc, err := accesscode.NewAccessCodeClient(s.hfClientSet,context.TODO())
+		if err != nil {
+			util.ReturnHTTPMessage(w, r, 400, "badrequest", "corrupted one time access code")
+			return
+		}
+		acc.GenerateRandomOneTimeAccessCode(text, user.Name, accessCode)
 	}
 	var onDemand bool
 	onDemandRaw := r.PostFormValue("on_demand")
