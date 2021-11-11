@@ -84,7 +84,7 @@ func (c CourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tempCourses, err := c.hfClientSet.HobbyfarmV1().Courses().List(c.ctx, metav1.ListOptions{})
+	tempCourses, err := c.hfClientSet.HobbyfarmV1().Courses(util.GetReleaseNamespace()).List(c.ctx, metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("error listing courses: %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing courses")
@@ -205,7 +205,7 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		course.Spec.PauseDuration = pauseDuration
 	}
 
-	course, err = c.hfClientSet.HobbyfarmV1().Courses().Create(c.ctx, course, metav1.CreateOptions{})
+	course, err = c.hfClientSet.HobbyfarmV1().Courses(util.GetReleaseNamespace()).Create(c.ctx, course, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating course %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating course")
@@ -233,7 +233,7 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		course, err := c.hfClientSet.HobbyfarmV1().Courses().Get(c.ctx, id, metav1.GetOptions{})
+		course, err := c.hfClientSet.HobbyfarmV1().Courses(util.GetReleaseNamespace()).Get(c.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			util.ReturnHTTPMessage(w, r, 400, "badrequest", "no id found")
@@ -300,7 +300,7 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			course.Spec.Pauseable = pauseable
 		}
 
-		_, updateErr := c.hfClientSet.HobbyfarmV1().Courses().Update(c.ctx, course, metav1.UpdateOptions{})
+		_, updateErr := c.hfClientSet.HobbyfarmV1().Courses(util.GetReleaseNamespace()).Update(c.ctx, course, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -333,7 +333,7 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	// 1. when there are no active scheduled events using the course
 	// 2. when there are no sessions using the course
 
-	seList, err := c.hfClientSet.HobbyfarmV1().ScheduledEvents().List(c.ctx, metav1.ListOptions{})
+	seList, err := c.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).List(c.ctx, metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("error retrieving scheduledevent list: %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting course")
@@ -342,7 +342,7 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 
 	seInUse := filterScheduledEvents(id, seList)
 
-	sessList, err := c.hfClientSet.HobbyfarmV1().Sessions().List(c.ctx, metav1.ListOptions{})
+	sessList, err := c.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(c.ctx, metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("error retrieving session list: %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting course")
@@ -376,7 +376,7 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = c.hfClientSet.HobbyfarmV1().Courses().Delete(c.ctx, id, metav1.DeleteOptions{})
+	err = c.hfClientSet.HobbyfarmV1().Courses(util.GetReleaseNamespace()).Delete(c.ctx, id, metav1.DeleteOptions{})
 	if err != nil {
 		glog.Errorf("error deleting course: %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting course")

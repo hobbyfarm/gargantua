@@ -31,9 +31,8 @@ type DynamicBindRequestLister interface {
 	// List lists all DynamicBindRequests in the indexer.
 	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.DynamicBindRequest, err error)
-	// Get retrieves the DynamicBindRequest from the index for a given name.
-	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.DynamicBindRequest, error)
+	// DynamicBindRequests returns an object that can list and get DynamicBindRequests.
+	DynamicBindRequests(namespace string) DynamicBindRequestNamespaceLister
 	DynamicBindRequestListerExpansion
 }
 
@@ -55,9 +54,41 @@ func (s *dynamicBindRequestLister) List(selector labels.Selector) (ret []*v1.Dyn
 	return ret, err
 }
 
-// Get retrieves the DynamicBindRequest from the index for a given name.
-func (s *dynamicBindRequestLister) Get(name string) (*v1.DynamicBindRequest, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// DynamicBindRequests returns an object that can list and get DynamicBindRequests.
+func (s *dynamicBindRequestLister) DynamicBindRequests(namespace string) DynamicBindRequestNamespaceLister {
+	return dynamicBindRequestNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// DynamicBindRequestNamespaceLister helps list and get DynamicBindRequests.
+// All objects returned here must be treated as read-only.
+type DynamicBindRequestNamespaceLister interface {
+	// List lists all DynamicBindRequests in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
+	List(selector labels.Selector) (ret []*v1.DynamicBindRequest, err error)
+	// Get retrieves the DynamicBindRequest from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*v1.DynamicBindRequest, error)
+	DynamicBindRequestNamespaceListerExpansion
+}
+
+// dynamicBindRequestNamespaceLister implements the DynamicBindRequestNamespaceLister
+// interface.
+type dynamicBindRequestNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all DynamicBindRequests in the indexer for a given namespace.
+func (s dynamicBindRequestNamespaceLister) List(selector labels.Selector) (ret []*v1.DynamicBindRequest, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.DynamicBindRequest))
+	})
+	return ret, err
+}
+
+// Get retrieves the DynamicBindRequest from the indexer for a given namespace and name.
+func (s dynamicBindRequestNamespaceLister) Get(name string) (*v1.DynamicBindRequest, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}

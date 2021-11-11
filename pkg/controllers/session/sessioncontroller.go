@@ -137,7 +137,7 @@ func (s *SessionController) processNextSession() bool {
 func (s *SessionController) reconcileSession(ssName string) error {
 	glog.V(4).Infof("reconciling session %s", ssName)
 
-	ss, err := s.ssLister.Get(ssName)
+	ss, err := s.ssLister.Sessions(util.GetReleaseNamespace()).Get(ssName)
 
 	if err != nil {
 		return err
@@ -158,7 +158,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 		glog.V(6).Infof("deleted finished session  %s", ss.Name)
 
 		// now that the vmclaims are deleted, go ahead and delete the session
-		err = s.hfClientSet.HobbyfarmV1().Sessions().Delete(s.ctx, ss.Name, metav1.DeleteOptions{})
+		err = s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Delete(s.ctx, ss.Name, metav1.DeleteOptions{})
 
 		if err != nil {
 			return fmt.Errorf("error deleting session %s: %s", ss.Name, err)
@@ -184,7 +184,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 			glog.V(4).Infof("Session %s was paused, but the pause expiration was before now, so cleaning up.", ss.Spec.Id)
 		}
 		for _, vmc := range ss.Spec.VmClaimSet {
-			vmcObj, err := s.vmcLister.Get(vmc)
+			vmcObj, err := s.vmcLister.VirtualMachineClaims(util.GetReleaseNamespace()).Get(vmc)
 
 			if err != nil {
 				break
@@ -204,7 +204,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 		}
 
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions().Get(s.ctx, ssName, metav1.GetOptions{})
+			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(s.ctx, ssName, metav1.GetOptions{})
 			if getErr != nil {
 				return getErr
 			}
@@ -212,7 +212,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 			result.Status.Finished = true
 			result.Status.Active = false
 
-			result, updateErr := s.hfClientSet.HobbyfarmV1().Sessions().Update(s.ctx, result, metav1.UpdateOptions{})
+			result, updateErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(s.ctx, result, metav1.UpdateOptions{})
 			if updateErr != nil {
 				return updateErr
 			}
@@ -242,14 +242,14 @@ func (s *SessionController) reconcileSession(ssName string) error {
 func (s *SessionController) taintVM(vmName string) error {
 	glog.V(5).Infof("tainting VM %s", vmName)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := s.hfClientSet.HobbyfarmV1().VirtualMachines().Get(s.ctx, vmName, metav1.GetOptions{})
+		result, getErr := s.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Get(s.ctx, vmName, metav1.GetOptions{})
 		if getErr != nil {
 			return getErr
 		}
 		result.Labels["ready"] = "false"
 		result.Status.Tainted = true
 
-		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachines().Update(s.ctx, result, metav1.UpdateOptions{})
+		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(s.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
@@ -272,13 +272,13 @@ func (s *SessionController) taintVM(vmName string) error {
 func (s *SessionController) taintVMC(vmcName string) error {
 	glog.V(5).Infof("tainting VMC %s", vmcName)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(s.ctx, vmcName, metav1.GetOptions{})
+		result, getErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Get(s.ctx, vmcName, metav1.GetOptions{})
 		if getErr != nil {
 			return getErr
 		}
 		result.Status.Tainted = true
 
-		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Update(s.ctx, result, metav1.UpdateOptions{})
+		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Update(s.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}

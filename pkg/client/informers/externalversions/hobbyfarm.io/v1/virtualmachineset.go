@@ -32,6 +32,7 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
+
 // VirtualMachineSetInformer provides access to a shared informer and lister for
 // VirtualMachineSets.
 type VirtualMachineSetInformer interface {
@@ -40,34 +41,35 @@ type VirtualMachineSetInformer interface {
 }
 
 type virtualMachineSetInformer struct {
-	factory          internalinterfaces.SharedInformerFactory
+	factory internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
+	namespace string
 }
 
 // NewVirtualMachineSetInformer constructs a new informer for VirtualMachineSet type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewVirtualMachineSetInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredVirtualMachineSetInformer(client, resyncPeriod, indexers, nil)
+func NewVirtualMachineSetInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredVirtualMachineSetInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
 // NewFilteredVirtualMachineSetInformer constructs a new informer for VirtualMachineSet type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredVirtualMachineSetInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredVirtualMachineSetInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().VirtualMachineSets().List(context.TODO(), options)
+				return client.HobbyfarmV1().VirtualMachineSets(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().VirtualMachineSets().Watch(context.TODO(), options)
+				return client.HobbyfarmV1().VirtualMachineSets(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&hobbyfarmiov1.VirtualMachineSet{},
@@ -77,7 +79,7 @@ func NewFilteredVirtualMachineSetInformer(client versioned.Interface, resyncPeri
 }
 
 func (f *virtualMachineSetInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredVirtualMachineSetInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredVirtualMachineSetInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
 func (f *virtualMachineSetInformer) Informer() cache.SharedIndexInformer {

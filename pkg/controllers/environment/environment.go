@@ -9,6 +9,7 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/hobbyfarm/gargantua/pkg/util"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
@@ -131,7 +132,7 @@ func (e *EnvironmentController) handleVM(obj interface{}) {
 			return
 		}
 
-		env, err := e.envLister.Get(ownerRef.Name)
+		env, err := e.envLister.Environments(util.GetReleaseNamespace()).Get(ownerRef.Name)
 		if err != nil {
 			klog.V(4).Infof("ignoring orphaned object '%s' of foo '%s'", object.GetSelfLink(), ownerRef.Name)
 			return
@@ -181,7 +182,7 @@ func (e *EnvironmentController) processNextEnvironment() bool {
 func (e *EnvironmentController) reconcileEnvironment(environmentId string) error {
 	glog.V(4).Infof("reconciling environment %s", environmentId)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := e.hfClientSet.HobbyfarmV1().Environments().Get(e.ctx, environmentId, metav1.GetOptions{})
+		result, getErr := e.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Get(e.ctx, environmentId, metav1.GetOptions{})
 		if getErr != nil {
 			return fmt.Errorf("error retrieving latest version of Environment %s: %v", environmentId, getErr)
 		}
@@ -231,7 +232,7 @@ func (e *EnvironmentController) reconcileEnvironment(environmentId string) error
 
 		result.Status.AvailableCount = available
 
-		_, updateErr := e.hfClientSet.HobbyfarmV1().Environments().Update(e.ctx, result, metav1.UpdateOptions{})
+		_, updateErr := e.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Update(e.ctx, result, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for environment")
 
 		return updateErr
