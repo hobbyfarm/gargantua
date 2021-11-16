@@ -28,7 +28,6 @@ type ShellProxy struct {
 	ctx        context.Context
 }
 
-var hfNamespace = "hobbyfarm"
 var sshDev = ""
 var sshDevHost = ""
 var sshDevPort = ""
@@ -39,10 +38,6 @@ var SIGWINCH *regexp.Regexp
 var sess *ssh.Session
 
 func init() {
-	ns := os.Getenv("HF_NAMESPACE")
-	if ns != "" {
-		hfNamespace = ns
-	}
 	sshDev = os.Getenv("SSH_DEV")
 	sshDevHost = os.Getenv("SSH_DEV_HOST")
 	sshDevPort = os.Getenv("SSH_DEV_PORT")
@@ -97,7 +92,7 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 	glog.Infof("Going to upgrade connection now... %s", vm.Spec.Id)
 
 	// ok first get the secret for the vm
-	secret, err := sp.kubeClient.CoreV1().Secrets(hfNamespace).Get(sp.ctx, vm.Spec.KeyPair, v1.GetOptions{}) // idk?
+	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.KeyPair, v1.GetOptions{}) // idk?
 	if err != nil {
 		glog.Errorf("did not find secret for virtual machine")
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
