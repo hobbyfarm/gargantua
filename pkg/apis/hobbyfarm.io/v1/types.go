@@ -357,10 +357,9 @@ type AccessCodeSpec struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type OneTimeAccessCode struct {
-	UserIdentifier       string `json:"user"`
-	Code                 string `json:"code"`
-	AccessCodeIdentifier string `json:"one_time_access_code"`
-	Timestamp            string `json:"timestamp"`
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              OneTimeAccessCodeSpec `json:"items"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -369,6 +368,13 @@ type OneTimeAccessCodeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 	Items           []OneTimeAccessCode `json:"items"`
+}
+
+type OneTimeAccessCodeSpec struct {
+	UserIdentifier       string `json:"user"`
+	Code                 string `json:"code"`
+	AccessCodeIdentifier string `json:"one_time_access_code"`
+	Timestamp            string `json:"timestamp"`
 }
 
 // +genclient
