@@ -116,7 +116,7 @@ func (c *oneTimeAccessCodes) Create(ctx context.Context, accessCode *v1.OneTimeA
 }
 
 // Update takes the representation of a accessCode and updates it. Returns the server's representation of the accessCode, and an error, if there is any.
-func (c *oneTimeAccessCodes) Update(ctx context.Context, accessCode *v1.OneTimeAccessCode, opts metav1.UpdateOptions) (result *v1.OneTimeAccessCode, err error) {
+func (c *oneTimeAccessCodes) Update(ctx context.Context, accessCode *v1.OneTimeAccessCodeSpec, opts metav1.UpdateOptions) (result *v1.OneTimeAccessCode, err error) {
 	result = &v1.OneTimeAccessCode{}
 	err = c.client.Put().
 		Resource("onetimeaccesscodes").
