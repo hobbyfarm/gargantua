@@ -351,11 +351,24 @@ type AccessCodeSpec struct {
 	RestrictedBindValue string   `json:"restricted_bind_value"`
 }
 
+// +genclient
+// +genclient:noStatus
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 type OneTimeAccessCode struct {
-	UserIdentifier string `json:"user"`
-	Code string `json:"code"`
+	UserIdentifier       string `json:"user"`
+	Code                 string `json:"code"`
 	AccessCodeIdentifier string `json:"one_time_access_code"`
-	Timestamp string `json:"timestamp"` 
+	Timestamp            string `json:"timestamp"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type OneTimeAccessCodeList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []OneTimeAccessCode `json:"items"`
 }
 
 // +genclient
