@@ -200,17 +200,12 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	sessionName := util.GenerateResourceName("ss", random, 10)
 	session := hfv1.Session{}
 
-	var keepCourseVM = true
-	if course.Spec.KeepVM {
-		keepCourseVM = course.Spec.KeepVM
-	}
-
 	session.Name = sessionName
 	session.Spec.Id = sessionName
 	session.Spec.CourseId = course.Spec.Id
 	session.Spec.ScenarioId = scenario.Spec.Id
 	session.Spec.UserId = user.Spec.Id
-	session.Spec.KeepCourseVM = keepCourseVM
+	session.Spec.KeepCourseVM = course.Spec.KeepVM
 	labels := make(map[string]string)
 	labels[AccessCodeLabel] = accessCode    // map accesscode to session
 	labels[UserSessionLabel] = user.Spec.Id // map user to session
