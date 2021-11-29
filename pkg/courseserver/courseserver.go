@@ -65,6 +65,7 @@ func (c CourseServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/course/{id}", c.GetCourse).Methods("GET")
 	r.HandleFunc("/a/course/{id}", c.UpdateFunc).Methods("PUT")
 	r.HandleFunc("/a/course/{id}", c.DeleteFunc).Methods("DELETE")
+	r.HandleFunc("/a/course/previewDynamicScenarios", c.previewDynamicScenarios).Methods("POST")
 }
 
 func (c CourseServer) getPreparedCourseById(id string) (PreparedCourse, error) {
@@ -459,7 +460,7 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 		if err != nil {
 			glog.Errorf("error retrieving course %v", err)
 		} else {
-			course = c.AppendDynamicScenariosByCategories(course)
+			course.Spec.Scenarios = c.AppendDynamicScenariosByCategories(course.Spec.Scenarios, course.Spec.Categories)
 
 			pCourse := PreparedCourse{course.Name, course.Spec}
 			courses = append(courses, pCourse)
@@ -473,9 +474,36 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 	util.ReturnHTTPContent(w, r, 200, "success", encodedCourses)
 }
 
-func (c CourseServer) AppendDynamicScenariosByCategories(course hfv1.Course) hfv1.Course {
-	scenariosList := course.Spec.Scenarios
-	categories := course.Spec.Categories
+func (c CourseServer) previewDynamicScenarios(w http.ResponseWriter, r *http.Request) {
+	_, err := c.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to preview dynamic scenarios")
+		return
+	}
+
+	categories := r.PostFormValue("categories")
+	categoriesSlice := make([]string, 0)
+	if categories != "" {
+		err = json.Unmarshal([]byte(categories), &categoriesSlice)
+		if err != nil {
+			glog.Errorf("error while unmarshalling categories %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	scenarios := []string{}
+
+	scenarios = c.AppendDynamicScenariosByCategories(scenarios, categoriesSlice)
+
+	encodedScenarios, err := json.Marshal(scenarios)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedScenarios)
+}
+
+func (c CourseServer) AppendDynamicScenariosByCategories(scenariosList []string, categories []string) []string {
 	categorySelector := metav1.ListOptions{}
 	for _, categoryQuery := range categories {
 		categorySelectors := []string{}
@@ -505,8 +533,7 @@ func (c CourseServer) AppendDynamicScenariosByCategories(course hfv1.Course) hfv
 	}
 
 	scenariosList = util.UniqueStringSlice(scenariosList)
-	course.Spec.Scenarios = scenariosList
-	return course
+	return scenariosList
 }
 
 func (c CourseServer) GetCourseById(id string) (hfv1.Course, error) {
