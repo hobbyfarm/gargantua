@@ -185,6 +185,19 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	var printable bool
+	printableRaw := r.PostFormValue("printable")
+	if printableRaw == "" {
+		glog.Warning("scheduled event without use of printable flag is deprecated. please upgrade your client")
+		printable = false
+	} else {
+		printable, err = strconv.ParseBool(printableRaw)
+		if err != nil {
+			util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid value for printable")
+			return
+		}
+	}
+
 	scenariosRaw := r.PostFormValue("scenarios")
 	coursesRaw := r.PostFormValue("courses")
 	if scenariosRaw == "" && coursesRaw == "" {
@@ -246,6 +259,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 	scheduledEvent.Spec.StartTime = startTime
 	scheduledEvent.Spec.EndTime = endTime
 	scheduledEvent.Spec.OnDemand = onDemand
+	scheduledEvent.Spec.Printable = printable
 	scheduledEvent.Spec.RequiredVirtualMachines = requiredVMUnmarshaled
 	scheduledEvent.Spec.AccessCode = accessCode
 
@@ -320,6 +334,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 		coursesRaw := r.PostFormValue("courses")
 		onDemandRaw := r.PostFormValue("on_demand")
 		restrictionDisabledRaw := r.PostFormValue("disable_restriction")
+		printableRaw := r.PostFormValue("printable")
 
 		if name != "" {
 			scheduledEvent.Spec.Name = name
@@ -397,6 +412,17 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 			}
 		}
 		scheduledEvent.Spec.OnDemand = onDemand
+
+		var printable bool
+		if printableRaw != "" {
+			printable, err = strconv.ParseBool(printableRaw)
+			if err != nil {
+				util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid value for on_demand")
+				return err
+			} else {
+				scheduledEvent.Spec.Printable = printable
+			}
+		}
 
 		// if our event is already provisioned, we need to undo that and delete the corresponding access code(s) and DBC(s)
 		// our scheduledeventcontroller will then provision our scheduledevent with the updated values

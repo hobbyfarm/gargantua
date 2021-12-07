@@ -452,6 +452,12 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 		ac.Spec.RestrictedBind = false
 	}
 
+	if se.Spec.Printable {
+		ac.Spec.Printable = true
+	} else {
+		ac.Spec.Printable = false
+	}
+
 	ac, err := s.hfClientSet.HobbyfarmV1().AccessCodes().Create(s.ctx, ac, metav1.CreateOptions{})
 	if err != nil {
 		glog.Error(err)
