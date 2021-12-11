@@ -315,6 +315,36 @@ type SessionStatus struct {
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type Progress struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              ProgressSpec   `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ProgressList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Progress `json:"items"`
+}
+
+type ProgressSpec struct {
+	CurrentStep         int   `json:"current_step"`
+	MaxStep 			int   `json:"max_step"`
+	TotalStep 			int   `json:"total_step"`
+	Course   			string `json:"course"`
+	Scenario   			string `json:"scenario"`
+	UserId     			string `json:"user"`
+	Started 			string `json:"started"`
+	LastUpdate 			string `json:"last_update"`
+	Finished 			string `json:"finished"`
+}
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // AccessCode is used for defining access code for scheduled events
 
 type AccessCode struct {
