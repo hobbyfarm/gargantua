@@ -27,7 +27,7 @@ const (
 	newSSTimeout        = "5m"
 	keepaliveSSTimeout  = "5m"
 	pauseSSTimeout      = "2h"
-	vmcSessionLabel     = "hobbyfarm.io/session"
+	SessionLabel     	= "hobbyfarm.io/session"
 	UserSessionLabel    = "hobbyfarm.io/user"
 	AccessCodeLabel     = "accesscode.hobbyfarm.io"
 	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
@@ -239,7 +239,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		virtualMachineClaim := hfv1.VirtualMachineClaim{}
 		vmcId := util.GenerateResourceName("vmc", util.RandStringRunes(10), 10)
 		labels := make(map[string]string)
-		labels[vmcSessionLabel] = session.Name  // map vmc to session
+		labels[SessionLabel] = session.Name  // map vmc to session
 		labels[UserSessionLabel] = user.Spec.Id // map session to user in a way that is searchable
 		labels[AccessCodeLabel] = session.Labels[AccessCodeLabel]
 		labels[ScheduledEventLabel] = schedEvent.Name
@@ -300,12 +300,79 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	}
 
 	glog.V(2).Infof("created session ID %s", createdSession.Spec.Id)
+
+	sss.CreateProgress(createdSession.Spec.Id, accessCodeObj.Labels[ScheduledEventLabel] ,scenario.Spec.Id, course.Spec.Id, user.Spec.Id, len(scenario.Spec.Steps))
+
 	encodedSS, err := json.Marshal(createdSession.Spec)
 	if err != nil {
 		glog.Error(err)
 	}
 	util.ReturnHTTPContent(w, r, 201, "created", encodedSS)
 	return
+}
+
+func (sss SessionServer) CreateProgress(sessionId string, scheduledEventId string, scenarioId string, courseId string, userId string, totalSteps int) {
+	random := util.RandStringRunes(16)
+	now := time.Now()
+
+	progressName := util.GenerateResourceName("progress", random, 16)
+	progress := hfv1.Progress{}
+
+	progress.Name = progressName
+	progress.Spec.Id = progressName
+	progress.Spec.Course = courseId
+	progress.Spec.Scenario = scenarioId
+	progress.Spec.UserId = userId
+	progress.Spec.Started = now.Format(time.UnixDate)
+	progress.Spec.LastUpdate = now.Format(time.UnixDate)
+	progress.Spec.Finished = "false"
+	progress.Spec.TotalStep = totalSteps
+	progress.Spec.MaxStep = 0
+	progress.Spec.CurrentStep = 0
+	labels := make(map[string]string)
+	labels[SessionLabel] = sessionId // map to session
+	labels[ScheduledEventLabel] = scheduledEventId // map to scheduledevent
+	labels[UserSessionLabel] = userId // map to scheduledevent
+	labels["finished"] = "false" // default is in progress, finished = false
+	progress.Labels = labels
+
+	createdProgress, err := sss.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Create(sss.ctx, &progress, metav1.CreateOptions{})
+
+	if err != nil {
+		glog.Errorf("error creating progress %v", err)
+		return
+	}
+
+	glog.V(2).Infof("created progress with ID %s", createdProgress.Spec.Id)
+}
+
+func (sss SessionServer) FinishProgress(sessionId string, userId string) {
+	now := time.Now()
+
+	progress, err := sss.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(sss.ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", SessionLabel, sessionId, UserSessionLabel, userId)})
+
+	if err != nil {
+		glog.Errorf("error while retrieving progress %v", err)
+		return
+	}
+
+	for _, p := range progress.Items {
+		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			p.Labels["finished"] = "true"
+			p.Spec.LastUpdate = now.Format(time.UnixDate)
+			p.Spec.Finished = "true"
+	
+			_, updateErr := sss.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Update(sss.ctx, &p, metav1.UpdateOptions{})
+			glog.V(4).Infof("updated progress with ID %s", p.Spec.Id)
+	
+			return updateErr
+		})
+		if retryErr != nil {
+			glog.Errorf("error finishing progress %v", err)
+			return
+		}
+	}
 }
 
 func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Request) {
@@ -347,10 +414,12 @@ func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Requ
 	})
 
 	if retryErr != nil {
-		glog.Errorf("error creating session %v", err)
+		glog.Errorf("error deleting session %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "something happened")
 		return
 	}
+
+	sss.FinishProgress(sessionId, user.Spec.Id)
 
 	util.ReturnHTTPMessage(w, r, 200, "updated", "updated session")
 	return

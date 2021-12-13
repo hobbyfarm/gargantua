@@ -24,23 +24,22 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-
 type HobbyfarmV1Interface interface {
-    RESTClient() rest.Interface
-     AccessCodesGetter
-     CoursesGetter
-     DynamicBindConfigurationsGetter
-     DynamicBindRequestsGetter
-     EnvironmentsGetter
-     ScenariosGetter
-     ScheduledEventsGetter
-     SessionsGetter
-     UsersGetter
-     VirtualMachinesGetter
-     VirtualMachineClaimsGetter
-     VirtualMachineSetsGetter
-     VirtualMachineTemplatesGetter
-    
+	RESTClient() rest.Interface
+	AccessCodesGetter
+	CoursesGetter
+	DynamicBindConfigurationsGetter
+	DynamicBindRequestsGetter
+	EnvironmentsGetter
+	ProgressesGetter
+	ScenariosGetter
+	ScheduledEventsGetter
+	SessionsGetter
+	UsersGetter
+	VirtualMachinesGetter
+	VirtualMachineClaimsGetter
+	VirtualMachineSetsGetter
+	VirtualMachineTemplatesGetter
 }
 
 // HobbyfarmV1Client is used to interact with features provided by the hobbyfarm.io group.
@@ -66,6 +65,10 @@ func (c *HobbyfarmV1Client) DynamicBindRequests(namespace string) DynamicBindReq
 
 func (c *HobbyfarmV1Client) Environments(namespace string) EnvironmentInterface {
 	return newEnvironments(c, namespace)
+}
+
+func (c *HobbyfarmV1Client) Progresses(namespace string) ProgressInterface {
+	return newProgresses(c, namespace)
 }
 
 func (c *HobbyfarmV1Client) Scenarios(namespace string) ScenarioInterface {
@@ -130,7 +133,7 @@ func New(c rest.Interface) *HobbyfarmV1Client {
 
 func setConfigDefaults(config *rest.Config) error {
 	gv := v1.SchemeGroupVersion
-	config.GroupVersion =  &gv
+	config.GroupVersion = &gv
 	config.APIPath = "/apis"
 	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 

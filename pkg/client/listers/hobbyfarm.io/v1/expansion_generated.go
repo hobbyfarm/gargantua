@@ -58,6 +58,14 @@ type EnvironmentListerExpansion interface{}
 // EnvironmentNamespaceLister.
 type EnvironmentNamespaceListerExpansion interface{}
 
+// ProgressListerExpansion allows custom methods to be added to
+// ProgressLister.
+type ProgressListerExpansion interface{}
+
+// ProgressNamespaceListerExpansion allows custom methods to be added to
+// ProgressNamespaceLister.
+type ProgressNamespaceListerExpansion interface{}
+
 // ScenarioListerExpansion allows custom methods to be added to
 // ScenarioLister.
 type ScenarioListerExpansion interface{}

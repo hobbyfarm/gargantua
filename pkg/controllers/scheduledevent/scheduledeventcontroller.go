@@ -37,7 +37,7 @@ var baseNameDynamicPrefix string
 const (
 	ScheduledEventBaseDelay = 5 * time.Millisecond
 	ScheduledEventMaxDelay  = 300 * time.Second
-	ScheduledEventLabel     = "scheduledevent.hobbyfarm.io"
+	ScheduledEventLabel     = "hobbyfarm.io/scheduledevent"
 )
 
 func init() {

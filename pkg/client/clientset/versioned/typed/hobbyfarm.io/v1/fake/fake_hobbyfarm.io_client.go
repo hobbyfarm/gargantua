@@ -48,6 +48,10 @@ func (c *FakeHobbyfarmV1) Environments(namespace string) v1.EnvironmentInterface
 	return &FakeEnvironments{c, namespace}
 }
 
+func (c *FakeHobbyfarmV1) Progresses(namespace string) v1.ProgressInterface {
+	return &FakeProgresses{c, namespace}
+}
+
 func (c *FakeHobbyfarmV1) Scenarios(namespace string) v1.ScenarioInterface {
 	return &FakeScenarios{c, namespace}
 }

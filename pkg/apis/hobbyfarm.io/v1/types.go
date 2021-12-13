@@ -331,6 +331,7 @@ type ProgressList struct {
 }
 
 type ProgressSpec struct {
+	Id					string `json:"id"`
 	CurrentStep         int   `json:"current_step"`
 	MaxStep 			int   `json:"max_step"`
 	TotalStep 			int   `json:"total_step"`
