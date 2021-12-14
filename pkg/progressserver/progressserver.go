@@ -72,7 +72,13 @@ func (s ProgressServer) ListByScheduledEventFunc(w http.ResponseWriter, r *http.
 		return
 	}
 
-	s.ListByLabel(w, r, ScheduledEventLabel, id)
+	includeFinished := false
+	includeFinishedParam := r.URL.Query().Get("includeFinished")
+  	if includeFinishedParam != "" {
+		includeFinished = true
+  	}
+
+	s.ListByLabel(w, r, ScheduledEventLabel, id, includeFinished)
 
 	glog.V(2).Infof("listed progress for scheduledevent %s", id)
 }
@@ -98,14 +104,18 @@ func (s ProgressServer) ListByUserFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.ListByLabel(w, r, UserLabel, id)
+	s.ListByLabel(w, r, UserLabel, id, true)
 
 	glog.V(2).Infof("listed progress for user %s", id)
 }
 
-func (s ProgressServer) ListByLabel(w http.ResponseWriter, r *http.Request, label string, value string){
+func (s ProgressServer) ListByLabel(w http.ResponseWriter, r *http.Request, label string, value string, includeFinished bool){
+	includeFinishedFilter := ",finished=false" // Default is to only include active (finished=false) progress
+	if includeFinished {
+		includeFinishedFilter = ""
+	}
 	progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", label, value)})
+		LabelSelector: fmt.Sprintf("%s=%s%s", label, value, includeFinishedFilter)})
 
 	if err != nil {
 		glog.Errorf("error while retrieving progress %v", err)
@@ -162,28 +172,32 @@ func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s,%s=%s", SessionLabel, id, UserLabel, user.Spec.Id)})
+		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", SessionLabel, id, UserLabel, user.Spec.Id)})
 
 	if err != nil {
 		glog.Errorf("error while retrieving progress %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "error", "no progress for this session found")
+		util.ReturnHTTPMessage(w, r, 500, "error", "no active progress for this session found")
+		return
+	}
+
+	if len(progress.Items) < 1 {
+		util.ReturnHTTPMessage(w, r, 404, "error", "no active progress for this session found")
 		return
 	}
 
 	for _, p := range progress.Items {
-		if(step > p.Spec.MaxStep){
-			p.Spec.MaxStep = step
-		}
-		p.Spec.LastUpdate = now.Format(time.UnixDate)
-
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			if(step > p.Spec.MaxStep){
 				p.Spec.MaxStep = step
 			}
 			p.Spec.CurrentStep = step
 			p.Spec.LastUpdate = now.Format(time.UnixDate)
+
+			steps := p.Spec.Steps
+			newStep := hfv1.ProgressStep{Step: step, Timestamp: now.Format(time.UnixDate)}
+			steps = append(steps, newStep)
+			p.Spec.Steps = steps
 	
 			_, updateErr := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Update(s.ctx, &p, metav1.UpdateOptions{})
 			glog.V(4).Infof("updated result for environment")
@@ -192,10 +206,11 @@ func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if retryErr != nil {
-			glog.Errorf("error updating progress %v", err)
+			glog.Errorf("error updating progress %s: %v", p.Spec.Id, err)
 			util.ReturnHTTPMessage(w, r, 500, "error", "progress could not be updated")
 			return
 		}
 	}
 
+	util.ReturnHTTPMessage(w, r, 200, "success", "Progress was updated")
 }

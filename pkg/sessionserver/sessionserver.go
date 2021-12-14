@@ -329,6 +329,12 @@ func (sss SessionServer) CreateProgress(sessionId string, scheduledEventId strin
 	progress.Spec.TotalStep = totalSteps
 	progress.Spec.MaxStep = 0
 	progress.Spec.CurrentStep = 0
+
+	steps := []hfv1.ProgressStep{}
+	step := hfv1.ProgressStep{Step: 0, Timestamp: now.Format(time.UnixDate)}
+	steps = append(steps, step)
+	progress.Spec.Steps = steps
+
 	labels := make(map[string]string)
 	labels[SessionLabel] = sessionId // map to session
 	labels[ScheduledEventLabel] = scheduledEventId // map to scheduledevent
@@ -361,7 +367,7 @@ func (sss SessionServer) FinishProgress(sessionId string, userId string) {
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			p.Labels["finished"] = "true"
 			p.Spec.LastUpdate = now.Format(time.UnixDate)
-			p.Spec.Finished = "true"
+			p.Spec.Finished = now.Format(time.UnixDate)
 	
 			_, updateErr := sss.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Update(sss.ctx, &p, metav1.UpdateOptions{})
 			glog.V(4).Infof("updated progress with ID %s", p.Spec.Id)

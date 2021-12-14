@@ -341,6 +341,12 @@ type ProgressSpec struct {
 	Started 			string `json:"started"`
 	LastUpdate 			string `json:"last_update"`
 	Finished 			string `json:"finished"`
+	Steps				[]ProgressStep `json:"steps"`
+}
+
+type ProgressStep struct {
+	Step				int `json:"step"`
+	Timestamp 			string `json:"timestamp"`
 }
 
 // +genclient
