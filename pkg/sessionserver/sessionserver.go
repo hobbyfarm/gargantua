@@ -367,7 +367,7 @@ func (sss SessionServer) FinishProgress(sessionId string, userId string) {
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			p.Labels["finished"] = "true"
 			p.Spec.LastUpdate = now.Format(time.UnixDate)
-			p.Spec.Finished = now.Format(time.UnixDate)
+			p.Spec.Finished = "true"
 	
 			_, updateErr := sss.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Update(sss.ctx, &p, metav1.UpdateOptions{})
 			glog.V(4).Infof("updated progress with ID %s", p.Spec.Id)

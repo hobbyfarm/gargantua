@@ -74,7 +74,7 @@ func (s ProgressServer) ListByScheduledEventFunc(w http.ResponseWriter, r *http.
 
 	includeFinished := false
 	includeFinishedParam := r.URL.Query().Get("includeFinished")
-  	if includeFinishedParam != "" {
+  	if includeFinishedParam != "" && includeFinishedParam != "false" {
 		includeFinished = true
   	}
 
