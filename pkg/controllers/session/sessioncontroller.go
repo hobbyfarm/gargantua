@@ -19,6 +19,8 @@ import (
 
 const (
 	SessionExpireTime = time.Hour * 3
+	SessionLabel     	= "hobbyfarm.io/session"
+	UserSessionLabel    = "hobbyfarm.io/user"
 )
 
 type SessionController struct {
@@ -165,6 +167,9 @@ func (s *SessionController) reconcileSession(ssName string) error {
 		}
 
 		glog.V(6).Infof("deleted old session %s", ss.Name)
+
+		s.FinishProgress(ss.Name, ss.Spec.UserId)
+
 		return nil
 	}
 
@@ -294,4 +299,33 @@ func (s *SessionController) taintVMC(vmcName string) error {
 	}
 
 	return nil
+}
+
+func (s *SessionController) FinishProgress(sessionId string, userId string) {
+	now := time.Now()
+
+	progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", SessionLabel, sessionId, UserSessionLabel, userId)})
+
+	if err != nil {
+		glog.Errorf("error while retrieving progress %v", err)
+		return
+	}
+
+	for _, p := range progress.Items {
+		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			p.Labels["finished"] = "true"
+			p.Spec.LastUpdate = now.Format(time.UnixDate)
+			p.Spec.Finished = "true"
+	
+			_, updateErr := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Update(s.ctx, &p, metav1.UpdateOptions{})
+			glog.V(4).Infof("updated progress with ID %s", p.Spec.Id)
+	
+			return updateErr
+		})
+		if retryErr != nil {
+			glog.Errorf("error finishing progress %v", err)
+			return
+		}
+	}
 }
