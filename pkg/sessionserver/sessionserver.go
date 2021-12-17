@@ -175,6 +175,11 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 					_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(sss.ctx, result, metav1.UpdateOptions{})
 					glog.V(4).Infof("updated session for new scenario")
 
+					//finish old progress & create new progress for the new scenario
+					sss.FinishProgress(result.Spec.Id, user.Spec.Id)
+					sss.CreateProgress(result.Spec.Id, accessCodeObj.Labels[ScheduledEventLabel] ,scenario.Spec.Id, course.Spec.Id, user.Spec.Id, len(scenario.Spec.Steps))
+
+
 					return updateErr
 				})
 
@@ -350,6 +355,35 @@ func (sss SessionServer) CreateProgress(sessionId string, scheduledEventId strin
 	}
 
 	glog.V(2).Infof("created progress with ID %s", createdProgress.Spec.Id)
+}
+
+func (sss SessionServer) FinishProgress(sessionId string, userId string) {
+	now := time.Now()
+
+	progress, err := sss.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(sss.ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", SessionLabel, sessionId, UserSessionLabel, userId)})
+
+	if err != nil {
+		glog.Errorf("error while retrieving progress %v", err)
+		return
+	}
+
+	for _, p := range progress.Items {
+		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			p.Labels["finished"] = "true"
+			p.Spec.LastUpdate = now.Format(time.UnixDate)
+			p.Spec.Finished = "true"
+	
+			_, updateErr := sss.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Update(sss.ctx, &p, metav1.UpdateOptions{})
+			glog.V(4).Infof("updated progress with ID %s", p.Spec.Id)
+	
+			return updateErr
+		})
+		if retryErr != nil {
+			glog.Errorf("error finishing progress %v", err)
+			return
+		}
+	}
 }
 
 
