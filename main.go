@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"flag"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"os"
 
 	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
@@ -218,77 +220,6 @@ func main() {
 	http.Handle("/", r)
 
 	var wg sync.WaitGroup
-	if !disableControllers {
-		/*
-			environmentController, err := environment.NewEnvironmentController(hfClient, hfInformerFactory)
-			if err != nil {
-				glog.Fatal(err)
-			}
-		*/
-		glog.V(2).Infof("Starting controllers")
-		sessionController, err := session.NewSessionController(hfClient, hfInformerFactory, ctx)
-		if err != nil {
-			glog.Fatal(err)
-		}
-		scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory, ctx)
-		if err != nil {
-			glog.Fatal(err)
-		}
-		vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory, ctx)
-		if err != nil {
-			glog.Fatal(err)
-		}
-		tfpController, err := tfpcontroller.NewTerraformProvisionerController(kubeClient, hfClient, hfInformerFactory, ctx)
-		if err != nil {
-			glog.Fatal(err)
-		}
-		vmSetController, err := vmsetcontroller.NewVirtualMachineSetController(hfClient, hfInformerFactory, ctx)
-		if err != nil {
-			glog.Fatal(err)
-		}
-
-		dynamicBindController, err := dynamicbindcontroller.NewDynamicBindController(hfClient, hfInformerFactory, ctx)
-		if err != nil {
-			glog.Fatal(err)
-		}
-
-		wg.Add(6)
-		/*
-			go func() {
-				defer wg.Done()
-				environmentController.Run(stopCh)
-			}()
-		*/
-		go func() {
-			defer wg.Done()
-			sessionController.Run(stopCh)
-		}()
-
-		go func() {
-			defer wg.Done()
-			scheduledEventController.Run(stopCh)
-		}()
-
-		go func() {
-			defer wg.Done()
-			vmClaimController.Run(stopCh)
-		}()
-
-		go func() {
-			defer wg.Done()
-			tfpController.Run(stopCh)
-		}()
-
-		go func() {
-			defer wg.Done()
-			vmSetController.Run(stopCh)
-		}()
-
-		go func() {
-			defer wg.Done()
-			dynamicBindController.Run(stopCh)
-		}()
-	}
 
 	hfInformerFactory.Start(stopCh)
 
@@ -305,6 +236,126 @@ func main() {
 		glog.Fatal(http.ListenAndServe(":"+port, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
 	}()
 
+	lock, err := getLock(cfg)
+	if err != nil {
+		glog.Error(err)
+		os.Exit(1)
+	}
+	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
+		Lock:            lock,
+		ReleaseOnCancel: true,
+		LeaseDuration:   30 * time.Second,
+		RenewDeadline:   15 * time.Second,
+		RetryPeriod:     2 * time.Second,
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(c context.Context) {
+				err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, ctx, stopCh)
+				if err != nil {
+					glog.Error(err)
+					os.Exit(1)
+				}
+			},
+			OnStoppedLeading: func() {
+				glog.Info("waiting to be elected leader")
+			},
+			OnNewLeader: func(current_id string) {
+				if current_id == lock.Identity() {
+					glog.Info("currently the leader")
+					return
+				}
+				glog.Infof("current leader is %s", lock.Identity())
+			},
+		},
+	})
 	wg.Wait()
+}
 
+func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientset.Clientset,
+	hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context, stopCh <-chan struct{}) error {
+	var wg sync.WaitGroup
+
+	glog.V(2).Infof("Starting controllers")
+	sessionController, err := session.NewSessionController(hfClient, hfInformerFactory, ctx)
+	if err != nil {
+		glog.Fatal(err)
+		return err
+	}
+	scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory, ctx)
+	if err != nil {
+		glog.Fatal(err)
+		return err
+	}
+	vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory, ctx)
+	if err != nil {
+		glog.Fatal(err)
+		return err
+	}
+	tfpController, err := tfpcontroller.NewTerraformProvisionerController(kubeClient, hfClient, hfInformerFactory, ctx)
+	if err != nil {
+		glog.Fatal(err)
+		return err
+	}
+	vmSetController, err := vmsetcontroller.NewVirtualMachineSetController(hfClient, hfInformerFactory, ctx)
+	if err != nil {
+		glog.Fatal(err)
+		return err
+	}
+
+	dynamicBindController, err := dynamicbindcontroller.NewDynamicBindController(hfClient, hfInformerFactory, ctx)
+	if err != nil {
+		glog.Fatal(err)
+		return err
+	}
+
+	wg.Add(6)
+	/*
+		go func() {
+			defer wg.Done()
+			environmentController.Run(stopCh)
+		}()
+	*/
+	go err := func() error {
+		defer wg.Done()
+		return sessionController.Run(stopCh)
+	}()
+
+	go func() {
+		defer wg.Done()
+		scheduledEventController.Run(stopCh)
+	}()
+
+	go func() {
+		defer wg.Done()
+		vmClaimController.Run(stopCh)
+	}()
+
+	go func() {
+		defer wg.Done()
+		tfpController.Run(stopCh)
+	}()
+
+	go func() {
+		defer wg.Done()
+		vmSetController.Run(stopCh)
+	}()
+
+	go func() {
+		defer wg.Done()
+		dynamicBindController.Run(stopCh)
+	}()
+
+	return nil
+}
+
+func getLock(cfg *rest.Config) (resourcelock.Interface, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+
+	ns := os.Getenv("NAMESPACE")
+	if ns == "" {
+		ns = "hobbyfarm"
+	}
+	return resourcelock.NewFromKubeconfig(resourcelock.ConfigMapsLeasesResourceLock, ns, "gargantua-leader", resourcelock.ResourceLockConfig{Identity: hostname}, cfg, 15*time.Second)
 }
