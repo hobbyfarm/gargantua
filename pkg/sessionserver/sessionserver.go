@@ -138,9 +138,10 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// now we should check for existing sessions
-
-	sessions, err := sss.hfClientSet.HobbyfarmV1().Sessions().List(sss.ctx, metav1.ListOptions{})
+	// now we should check for existing sessions for the user
+	sessions, err := sss.hfClientSet.HobbyfarmV1().Sessions().List(sss.ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", UserSessionLabel, user.Spec.Id),
+	})
 
 	if err != nil {
 		glog.Error(err)
@@ -204,8 +205,10 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	session.Spec.CourseId = course.Spec.Id
 	session.Spec.ScenarioId = scenario.Spec.Id
 	session.Spec.UserId = user.Spec.Id
+	session.Spec.KeepCourseVM = course.Spec.KeepVM
 	labels := make(map[string]string)
-	labels[AccessCodeLabel] = accessCode // map accesscode to session
+	labels[AccessCodeLabel] = accessCode    // map accesscode to session
+	labels[UserSessionLabel] = user.Spec.Id // map user to session
 	session.Labels = labels
 	var vms []map[string]string
 	if course.Spec.VirtualMachines != nil {
