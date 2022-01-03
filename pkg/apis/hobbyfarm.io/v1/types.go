@@ -84,6 +84,7 @@ type VirtualMachineClaimSpec struct {
 	RestrictedBindValue string                           `json:"restricted_bind_value"`
 	VirtualMachines     map[string]VirtualMachineClaimVM `json:"vm"`
 	DynamicCapable      bool                             `json:"dynamic_bind_capable"`
+	BaseName            string			        		 `json:"base_name"`
 }
 
 type VirtualMachineClaimStatus struct {
