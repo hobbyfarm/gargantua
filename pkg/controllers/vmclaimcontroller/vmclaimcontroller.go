@@ -308,7 +308,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 	}
 	vmMap := make(map[string]hfv1.VirtualMachineClaimVM)
 	for vmName, vmDetails := range vmc.Spec.VirtualMachines {
-		genName := fmt.Sprintf("%s-%08x", vmc.Name, rand.Uint32())
+		genName := fmt.Sprintf("%s-%08x", vmc.Spec.BaseName, rand.Uint32())
 		vm := &hfv1.VirtualMachine{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: genName,

@@ -82,6 +82,7 @@ type VirtualMachineClaimSpec struct {
 	RestrictedBindValue string                           `json:"restricted_bind_value"`
 	VirtualMachines     map[string]VirtualMachineClaimVM `json:"vm"`
 	DynamicCapable      bool                             `json:"dynamic_bind_capable"`
+	BaseName            string			        		 `json:"base_name"`
 }
 
 type VirtualMachineClaimStatus struct {
@@ -236,10 +237,12 @@ type CourseSpec struct {
 	Name              string              `json:"name"`
 	Description       string              `json:"description"`
 	Scenarios         []string            `json:"scenarios"`
+	Categories        []string            `json:"categories"`
 	VirtualMachines   []map[string]string `json:"virtualmachines"`
 	KeepAliveDuration string              `json:"keepalive_duration"`
 	PauseDuration     string              `json:"pause_duration"`
 	Pauseable         bool                `json:"pauseable"`
+	KeepVM            bool                `json:"keep_vm"`
 }
 
 // +genclient
@@ -265,6 +268,8 @@ type ScenarioSpec struct {
 	Name              string              `json:"name"`
 	Description       string              `json:"description"`
 	Steps             []ScenarioStep      `json:"steps"`
+	Categories        []string            `json:"categories"`
+	Tags              []string            `json:"tags"`
 	VirtualMachines   []map[string]string `json:"virtualmachines"`
 	KeepAliveDuration string              `json:"keepalive_duration"`
 	PauseDuration     string              `json:"pause_duration"`
@@ -295,12 +300,13 @@ type SessionList struct {
 }
 
 type SessionSpec struct {
-	Id         string   `json:"id"`
-	ScenarioId string   `json:"scenario"`
-	CourseId   string   `json:"course"`
-	UserId     string   `json:"user"`
-	VmClaimSet []string `json:"vm_claim"`
-	AccessCode string   `json:"access_code"`
+	Id           string   `json:"id"`
+	ScenarioId   string   `json:"scenario"`
+	CourseId     string   `json:"course"`
+	KeepCourseVM bool     `json:"keep_course_vm"`
+	UserId       string   `json:"user"`
+	VmClaimSet   []string `json:"vm_claim"`
+	AccessCode   string   `json:"access_code"`
 }
 
 type SessionStatus struct {
