@@ -420,7 +420,7 @@ func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Requ
 	}
 
 	ss, err := sss.GetSessionById(sessionId)
-	if ss.Spec.UserId != user.Spec.Id {
+	if ss.Spec.UserId != user.Spec.Id && !user.Spec.Admin {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no session found that matches this user")
 		return
 	}
