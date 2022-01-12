@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"os"
@@ -221,8 +222,6 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	hfInformerFactory.Start(stopCh)
-
 	wg.Add(1)
 
 	port := os.Getenv("PORT")
@@ -238,8 +237,7 @@ func main() {
 
 	lock, err := getLock(cfg)
 	if err != nil {
-		glog.Error(err)
-		os.Exit(1)
+		glog.Fatal(err)
 	}
 	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
 		Lock:            lock,
@@ -251,8 +249,7 @@ func main() {
 			OnStartedLeading: func(c context.Context) {
 				err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, ctx, stopCh)
 				if err != nil {
-					glog.Error(err)
-					os.Exit(1)
+					glog.Fatal(err)
 				}
 			},
 			OnStoppedLeading: func() {
@@ -263,7 +260,7 @@ func main() {
 					glog.Info("currently the leader")
 					return
 				}
-				glog.Infof("current leader is %s", lock.Identity())
+				glog.Infof("current leader is %s", current_id)
 			},
 		},
 	})
@@ -272,77 +269,64 @@ func main() {
 
 func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientset.Clientset,
 	hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context, stopCh <-chan struct{}) error {
-	var wg sync.WaitGroup
-
+	g, gctx := errgroup.WithContext(ctx)
 	glog.V(2).Infof("Starting controllers")
-	sessionController, err := session.NewSessionController(hfClient, hfInformerFactory, ctx)
+	sessionController, err := session.NewSessionController(hfClient, hfInformerFactory, gctx)
 	if err != nil {
-		glog.Fatal(err)
 		return err
 	}
-	scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory, ctx)
+	scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory, gctx)
 	if err != nil {
-		glog.Fatal(err)
 		return err
 	}
-	vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory, ctx)
+	vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory, gctx)
 	if err != nil {
-		glog.Fatal(err)
 		return err
 	}
-	tfpController, err := tfpcontroller.NewTerraformProvisionerController(kubeClient, hfClient, hfInformerFactory, ctx)
+	tfpController, err := tfpcontroller.NewTerraformProvisionerController(kubeClient, hfClient, hfInformerFactory, gctx)
 	if err != nil {
-		glog.Fatal(err)
 		return err
 	}
-	vmSetController, err := vmsetcontroller.NewVirtualMachineSetController(hfClient, hfInformerFactory, ctx)
+	vmSetController, err := vmsetcontroller.NewVirtualMachineSetController(hfClient, hfInformerFactory, gctx)
 	if err != nil {
-		glog.Fatal(err)
 		return err
 	}
 
-	dynamicBindController, err := dynamicbindcontroller.NewDynamicBindController(hfClient, hfInformerFactory, ctx)
+	dynamicBindController, err := dynamicbindcontroller.NewDynamicBindController(hfClient, hfInformerFactory, gctx)
 	if err != nil {
-		glog.Fatal(err)
 		return err
 	}
 
-	wg.Add(6)
-	/*
-		go func() {
-			defer wg.Done()
-			environmentController.Run(stopCh)
-		}()
-	*/
-	go err := func() error {
-		defer wg.Done()
+	g.Go(func() error {
 		return sessionController.Run(stopCh)
-	}()
+	})
 
-	go func() {
-		defer wg.Done()
-		scheduledEventController.Run(stopCh)
-	}()
+	g.Go(func() error {
+		return scheduledEventController.Run(stopCh)
+	})
 
-	go func() {
-		defer wg.Done()
-		vmClaimController.Run(stopCh)
-	}()
+	g.Go(func() error {
+		return vmClaimController.Run(stopCh)
+	})
 
-	go func() {
-		defer wg.Done()
-		tfpController.Run(stopCh)
-	}()
+	g.Go(func() error {
+		return tfpController.Run(stopCh)
+	})
 
-	go func() {
-		defer wg.Done()
-		vmSetController.Run(stopCh)
-	}()
+	g.Go(func() error {
+		return vmSetController.Run(stopCh)
+	})
 
-	go func() {
-		defer wg.Done()
-		dynamicBindController.Run(stopCh)
-	}()
+	g.Go(func() error {
+		return dynamicBindController.Run(stopCh)
+	})
+
+	hfInformerFactory.Start(stopCh)
+
+	if err = g.Wait(); err != nil {
+		glog.Errorf("error starting up the controllers: %v", err)
+		return err
+	}
 
 	return nil
 }
