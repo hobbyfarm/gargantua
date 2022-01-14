@@ -557,7 +557,7 @@ func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledE
 }
 
 func (s ScheduledEventServer) finishSessions(se *hfv1.ScheduledEvent) error {
-	// get a list of sessions for the user
+	// get a list of sessions for the event
 	sessionList, err := s.hfClientSet.HobbyfarmV1().Sessions().List(s.ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", sessionserver.AccessCodeLabel, se.Spec.AccessCode),
 	})

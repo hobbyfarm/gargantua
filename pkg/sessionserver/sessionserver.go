@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+	"os"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -138,9 +139,10 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// now we should check for existing sessions
-
-	sessions, err := sss.hfClientSet.HobbyfarmV1().Sessions().List(sss.ctx, metav1.ListOptions{})
+	// now we should check for existing sessions for the user
+	sessions, err := sss.hfClientSet.HobbyfarmV1().Sessions().List(sss.ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", UserSessionLabel, user.Spec.Id),
+	})
 
 	if err != nil {
 		glog.Error(err)
@@ -204,8 +206,10 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	session.Spec.CourseId = course.Spec.Id
 	session.Spec.ScenarioId = scenario.Spec.Id
 	session.Spec.UserId = user.Spec.Id
+	session.Spec.KeepCourseVM = course.Spec.KeepVM
 	labels := make(map[string]string)
-	labels[AccessCodeLabel] = accessCode // map accesscode to session
+	labels[AccessCodeLabel] = accessCode    // map accesscode to session
+	labels[UserSessionLabel] = user.Spec.Id // map user to session
 	session.Labels = labels
 	var vms []map[string]string
 	if course.Spec.VirtualMachines != nil {
@@ -228,16 +232,29 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var bindMode string
+	var baseName string
 	if schedEvent.Spec.OnDemand {
 		bindMode = "dynamic"
+		bndp := os.Getenv("HF_BASENAME_DYNAMIC_PREFIX")
+		if bndp == "" {
+			baseName = "vmc"
+		} else {
+			baseName = bndp
+		}
 	} else {
 		bindMode = "static"
+		bnsp := os.Getenv("HF_BASENAME_SCHEDULED_PREFIX")
+		if bnsp == "" {
+			baseName = "scheduled"
+		} else {
+			baseName = bnsp
+		}
 	}
 
 	session.Spec.VmClaimSet = make([]string, len(vms))
 	for index, vmset := range vms {
 		virtualMachineClaim := hfv1.VirtualMachineClaim{}
-		vmcId := util.GenerateResourceName("vmc", util.RandStringRunes(10), 10)
+		vmcId := util.GenerateResourceName(baseName, util.RandStringRunes(10), 10)
 		labels := make(map[string]string)
 		labels[vmcSessionLabel] = session.Name  // map vmc to session
 		labels[UserSessionLabel] = user.Spec.Id // map session to user in a way that is searchable
@@ -245,6 +262,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		labels[ScheduledEventLabel] = schedEvent.Name
 		virtualMachineClaim.Labels = labels
 		virtualMachineClaim.Spec.Id = vmcId
+		virtualMachineClaim.Spec.BaseName = vmcId
 		virtualMachineClaim.Name = vmcId
 		virtualMachineClaim.Spec.VirtualMachines = make(map[string]hfv1.VirtualMachineClaimVM)
 		for vmName, vmTemplateName := range vmset {
