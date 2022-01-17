@@ -30,35 +30,38 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
+
 // ScheduledEventsGetter has a method to return a ScheduledEventInterface.
 // A group's client should implement this interface.
 type ScheduledEventsGetter interface {
-	ScheduledEvents() ScheduledEventInterface
+	ScheduledEvents(namespace string) ScheduledEventInterface
 }
 
 // ScheduledEventInterface has methods to work with ScheduledEvent resources.
 type ScheduledEventInterface interface {
-	Create(ctx context.Context, scheduledEvent *v1.ScheduledEvent, opts metav1.CreateOptions) (*v1.ScheduledEvent, error)
-	Update(ctx context.Context, scheduledEvent *v1.ScheduledEvent, opts metav1.UpdateOptions) (*v1.ScheduledEvent, error)
-	UpdateStatus(ctx context.Context, scheduledEvent *v1.ScheduledEvent, opts metav1.UpdateOptions) (*v1.ScheduledEvent, error)
-	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.ScheduledEvent, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1.ScheduledEventList, error)
-	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.ScheduledEvent, err error)
+Create(ctx context.Context, scheduledEvent *v1.ScheduledEvent, opts metav1.CreateOptions) (*v1.ScheduledEvent, error)
+Update(ctx context.Context, scheduledEvent *v1.ScheduledEvent, opts metav1.UpdateOptions) (*v1.ScheduledEvent, error)
+UpdateStatus(ctx context.Context, scheduledEvent *v1.ScheduledEvent, opts metav1.UpdateOptions) (*v1.ScheduledEvent, error)
+Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.ScheduledEvent, error)
+List(ctx context.Context, opts metav1.ListOptions) (*v1.ScheduledEventList, error)
+Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.ScheduledEvent, err error)
 	ScheduledEventExpansion
 }
 
 // scheduledEvents implements ScheduledEventInterface
 type scheduledEvents struct {
 	client rest.Interface
+	ns     string
 }
 
 // newScheduledEvents returns a ScheduledEvents
-func newScheduledEvents(c *HobbyfarmV1Client) *scheduledEvents {
+func newScheduledEvents(c *HobbyfarmV1Client, namespace string) *scheduledEvents {
 	return &scheduledEvents{
 		client: c.RESTClient(),
+		ns:     namespace,
 	}
 }
 
@@ -66,6 +69,7 @@ func newScheduledEvents(c *HobbyfarmV1Client) *scheduledEvents {
 func (c *scheduledEvents) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.ScheduledEvent, err error) {
 	result = &v1.ScheduledEvent{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("scheduledevents").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -77,11 +81,12 @@ func (c *scheduledEvents) Get(ctx context.Context, name string, options metav1.G
 // List takes label and field selectors, and returns the list of ScheduledEvents that match those selectors.
 func (c *scheduledEvents) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ScheduledEventList, err error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
+	if opts.TimeoutSeconds != nil{
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.ScheduledEventList{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("scheduledevents").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -93,11 +98,12 @@ func (c *scheduledEvents) List(ctx context.Context, opts metav1.ListOptions) (re
 // Watch returns a watch.Interface that watches the requested scheduledEvents.
 func (c *scheduledEvents) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
+	if opts.TimeoutSeconds != nil{
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Namespace(c.ns).
 		Resource("scheduledevents").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -108,6 +114,7 @@ func (c *scheduledEvents) Watch(ctx context.Context, opts metav1.ListOptions) (w
 func (c *scheduledEvents) Create(ctx context.Context, scheduledEvent *v1.ScheduledEvent, opts metav1.CreateOptions) (result *v1.ScheduledEvent, err error) {
 	result = &v1.ScheduledEvent{}
 	err = c.client.Post().
+		Namespace(c.ns).
 		Resource("scheduledevents").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(scheduledEvent).
@@ -120,6 +127,7 @@ func (c *scheduledEvents) Create(ctx context.Context, scheduledEvent *v1.Schedul
 func (c *scheduledEvents) Update(ctx context.Context, scheduledEvent *v1.ScheduledEvent, opts metav1.UpdateOptions) (result *v1.ScheduledEvent, err error) {
 	result = &v1.ScheduledEvent{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("scheduledevents").
 		Name(scheduledEvent.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -134,6 +142,7 @@ func (c *scheduledEvents) Update(ctx context.Context, scheduledEvent *v1.Schedul
 func (c *scheduledEvents) UpdateStatus(ctx context.Context, scheduledEvent *v1.ScheduledEvent, opts metav1.UpdateOptions) (result *v1.ScheduledEvent, err error) {
 	result = &v1.ScheduledEvent{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("scheduledevents").
 		Name(scheduledEvent.Name).
 		SubResource("status").
@@ -147,6 +156,7 @@ func (c *scheduledEvents) UpdateStatus(ctx context.Context, scheduledEvent *v1.S
 // Delete takes name of the scheduledEvent and deletes it. Returns an error if one occurs.
 func (c *scheduledEvents) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("scheduledevents").
 		Name(name).
 		Body(&opts).
@@ -157,10 +167,11 @@ func (c *scheduledEvents) Delete(ctx context.Context, name string, opts metav1.D
 // DeleteCollection deletes a collection of objects.
 func (c *scheduledEvents) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
+	if listOpts.TimeoutSeconds != nil{
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("scheduledevents").
 		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -173,6 +184,7 @@ func (c *scheduledEvents) DeleteCollection(ctx context.Context, opts metav1.Dele
 func (c *scheduledEvents) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.ScheduledEvent, err error) {
 	result = &v1.ScheduledEvent{}
 	err = c.client.Patch(pt).
+		Namespace(c.ns).
 		Resource("scheduledevents").
 		Name(name).
 		SubResource(subresources...).

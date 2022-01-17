@@ -44,7 +44,7 @@ func (e EnvironmentServer) getEnvironment(id string) (hfv1.Environment, error) {
 		return empty, fmt.Errorf("vm claim id passed in was empty")
 	}
 
-	obj, err := e.hfClientSet.HobbyfarmV1().Environments().Get(e.ctx, id, metav1.GetOptions{})
+	obj, err := e.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Get(e.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving Environment by id: %s with error: %v", id, err)
 	}
@@ -110,7 +110,7 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	environments, err := e.hfClientSet.HobbyfarmV1().Environments().List(e.ctx, metav1.ListOptions{})
+	environments, err := e.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).List(e.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while listing all environments %v", err)
@@ -247,7 +247,7 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 
 	environment.Spec.BurstCapable = burstCapableBool
 
-	environment, err = e.hfClientSet.HobbyfarmV1().Environments().Create(e.ctx, environment, metav1.CreateOptions{})
+	environment, err = e.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Create(e.ctx, environment, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating environment %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating environment")
@@ -360,7 +360,7 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			environment.Spec.BurstCapable = burstCapableBool
 		}
 
-		_, updateErr := e.hfClientSet.HobbyfarmV1().Environments().Update(e.ctx, &environment, metav1.UpdateOptions{})
+		_, updateErr := e.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Update(e.ctx, &environment, metav1.UpdateOptions{})
 		return updateErr
 	})
 

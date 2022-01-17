@@ -33,7 +33,7 @@ import (
 // EnvironmentsGetter has a method to return a EnvironmentInterface.
 // A group's client should implement this interface.
 type EnvironmentsGetter interface {
-	Environments() EnvironmentInterface
+	Environments(namespace string) EnvironmentInterface
 }
 
 // EnvironmentInterface has methods to work with Environment resources.
@@ -53,12 +53,14 @@ type EnvironmentInterface interface {
 // environments implements EnvironmentInterface
 type environments struct {
 	client rest.Interface
+	ns     string
 }
 
 // newEnvironments returns a Environments
-func newEnvironments(c *HobbyfarmV1Client) *environments {
+func newEnvironments(c *HobbyfarmV1Client, namespace string) *environments {
 	return &environments{
 		client: c.RESTClient(),
+		ns:     namespace,
 	}
 }
 
@@ -66,6 +68,7 @@ func newEnvironments(c *HobbyfarmV1Client) *environments {
 func (c *environments) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Environment, err error) {
 	result = &v1.Environment{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("environments").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -82,6 +85,7 @@ func (c *environments) List(ctx context.Context, opts metav1.ListOptions) (resul
 	}
 	result = &v1.EnvironmentList{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("environments").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -98,6 +102,7 @@ func (c *environments) Watch(ctx context.Context, opts metav1.ListOptions) (watc
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Namespace(c.ns).
 		Resource("environments").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -108,6 +113,7 @@ func (c *environments) Watch(ctx context.Context, opts metav1.ListOptions) (watc
 func (c *environments) Create(ctx context.Context, environment *v1.Environment, opts metav1.CreateOptions) (result *v1.Environment, err error) {
 	result = &v1.Environment{}
 	err = c.client.Post().
+		Namespace(c.ns).
 		Resource("environments").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(environment).
@@ -120,6 +126,7 @@ func (c *environments) Create(ctx context.Context, environment *v1.Environment, 
 func (c *environments) Update(ctx context.Context, environment *v1.Environment, opts metav1.UpdateOptions) (result *v1.Environment, err error) {
 	result = &v1.Environment{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("environments").
 		Name(environment.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -134,6 +141,7 @@ func (c *environments) Update(ctx context.Context, environment *v1.Environment, 
 func (c *environments) UpdateStatus(ctx context.Context, environment *v1.Environment, opts metav1.UpdateOptions) (result *v1.Environment, err error) {
 	result = &v1.Environment{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("environments").
 		Name(environment.Name).
 		SubResource("status").
@@ -147,6 +155,7 @@ func (c *environments) UpdateStatus(ctx context.Context, environment *v1.Environ
 // Delete takes name of the environment and deletes it. Returns an error if one occurs.
 func (c *environments) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("environments").
 		Name(name).
 		Body(&opts).
@@ -161,6 +170,7 @@ func (c *environments) DeleteCollection(ctx context.Context, opts metav1.DeleteO
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("environments").
 		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -173,6 +183,7 @@ func (c *environments) DeleteCollection(ctx context.Context, opts metav1.DeleteO
 func (c *environments) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Environment, err error) {
 	result = &v1.Environment{}
 	err = c.client.Patch(pt).
+		Namespace(c.ns).
 		Resource("environments").
 		Name(name).
 		SubResource(subresources...).

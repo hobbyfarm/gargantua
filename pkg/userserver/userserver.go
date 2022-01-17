@@ -43,7 +43,7 @@ func (u UserServer) getUser(id string) (hfv1.User, error) {
 		return empty, fmt.Errorf("user id passed in was empty")
 	}
 
-	obj, err := u.hfClientSet.HobbyfarmV1().Users().Get(u.ctx, id, metav1.GetOptions{})
+	obj, err := u.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(u.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving User by id: %s with error: %v", id, err)
 	}
@@ -107,7 +107,7 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users, err := u.hfClientSet.HobbyfarmV1().Users().List(u.ctx, metav1.ListOptions{})
+	users, err := u.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).List(u.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while retrieving users %v", err)
@@ -143,7 +143,7 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := u.hfClientSet.HobbyfarmV1().Users().Get(u.ctx, id, metav1.GetOptions{})
+		user, err := u.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(u.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			return fmt.Errorf("bad")
@@ -184,7 +184,7 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		_, updateErr := u.hfClientSet.HobbyfarmV1().Users().Update(u.ctx, user, metav1.UpdateOptions{})
+		_, updateErr := u.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(u.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -217,7 +217,7 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := u.hfClientSet.HobbyfarmV1().Users().Get(u.ctx, id, metav1.GetOptions{})
+	user, err := u.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(u.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "error fetching user from server")
 		glog.Errorf("error fetching user %s from server during delete request: %s", id, err)
@@ -225,7 +225,7 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get a list of sessions for the user
-	sessionList, err := u.hfClientSet.HobbyfarmV1().Sessions().List(u.ctx, metav1.ListOptions{
+	sessionList, err := u.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(u.ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", sessionserver.UserSessionLabel, id),
 	})
 
@@ -256,7 +256,7 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	// at this point we have either delete all old sessions, or there were no sessions  to begin with
 	// so we should be safe to delete the user
 
-	deleteErr := u.hfClientSet.HobbyfarmV1().Users().Delete(u.ctx, user.Name, metav1.DeleteOptions{})
+	deleteErr := u.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Delete(u.ctx, user.Name, metav1.DeleteOptions{})
 	if deleteErr != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "error deleting user")
 		glog.Errorf("error deleting user %s: %s", id, deleteErr)
@@ -269,7 +269,7 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 func (u UserServer) deleteSessions(sessions []hfv1.Session) (bool, error) {
 	for _, v := range sessions {
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			err := u.hfClientSet.HobbyfarmV1().Sessions().Delete(u.ctx, v.Name, metav1.DeleteOptions{})
+			err := u.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Delete(u.ctx, v.Name, metav1.DeleteOptions{})
 			return err
 		})
 

@@ -33,6 +33,7 @@ import (
 // FakeScenarios implements ScenarioInterface
 type FakeScenarios struct {
 	Fake *FakeHobbyfarmV1
+	ns   string
 }
 
 var scenariosResource = schema.GroupVersionResource{Group: "hobbyfarm.io", Version: "v1", Resource: "scenarios"}
@@ -42,7 +43,8 @@ var scenariosKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version: "v1"
 // Get takes name of the scenario, and returns the corresponding scenario object, and an error if there is any.
 func (c *FakeScenarios) Get(ctx context.Context, name string, options v1.GetOptions) (result *hobbyfarmiov1.Scenario, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(scenariosResource, name), &hobbyfarmiov1.Scenario{})
+		Invokes(testing.NewGetAction(scenariosResource, c.ns, name), &hobbyfarmiov1.Scenario{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -52,7 +54,8 @@ func (c *FakeScenarios) Get(ctx context.Context, name string, options v1.GetOpti
 // List takes label and field selectors, and returns the list of Scenarios that match those selectors.
 func (c *FakeScenarios) List(ctx context.Context, opts v1.ListOptions) (result *hobbyfarmiov1.ScenarioList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(scenariosResource, scenariosKind, opts), &hobbyfarmiov1.ScenarioList{})
+		Invokes(testing.NewListAction(scenariosResource, scenariosKind, c.ns, opts), &hobbyfarmiov1.ScenarioList{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -73,13 +76,15 @@ func (c *FakeScenarios) List(ctx context.Context, opts v1.ListOptions) (result *
 // Watch returns a watch.Interface that watches the requested scenarios.
 func (c *FakeScenarios) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(scenariosResource, opts))
+		InvokesWatch(testing.NewWatchAction(scenariosResource, c.ns, opts))
+
 }
 
 // Create takes the representation of a scenario and creates it.  Returns the server's representation of the scenario, and an error, if there is any.
 func (c *FakeScenarios) Create(ctx context.Context, scenario *hobbyfarmiov1.Scenario, opts v1.CreateOptions) (result *hobbyfarmiov1.Scenario, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(scenariosResource, scenario), &hobbyfarmiov1.Scenario{})
+		Invokes(testing.NewCreateAction(scenariosResource, c.ns, scenario), &hobbyfarmiov1.Scenario{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -89,7 +94,8 @@ func (c *FakeScenarios) Create(ctx context.Context, scenario *hobbyfarmiov1.Scen
 // Update takes the representation of a scenario and updates it. Returns the server's representation of the scenario, and an error, if there is any.
 func (c *FakeScenarios) Update(ctx context.Context, scenario *hobbyfarmiov1.Scenario, opts v1.UpdateOptions) (result *hobbyfarmiov1.Scenario, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(scenariosResource, scenario), &hobbyfarmiov1.Scenario{})
+		Invokes(testing.NewUpdateAction(scenariosResource, c.ns, scenario), &hobbyfarmiov1.Scenario{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -99,13 +105,14 @@ func (c *FakeScenarios) Update(ctx context.Context, scenario *hobbyfarmiov1.Scen
 // Delete takes name of the scenario and deletes it. Returns an error if one occurs.
 func (c *FakeScenarios) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(scenariosResource, name), &hobbyfarmiov1.Scenario{})
+		Invokes(testing.NewDeleteAction(scenariosResource, c.ns, name), &hobbyfarmiov1.Scenario{})
+
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeScenarios) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(scenariosResource, listOpts)
+	action := testing.NewDeleteCollectionAction(scenariosResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &hobbyfarmiov1.ScenarioList{})
 	return err
@@ -114,7 +121,8 @@ func (c *FakeScenarios) DeleteCollection(ctx context.Context, opts v1.DeleteOpti
 // Patch applies the patch and returns the patched scenario.
 func (c *FakeScenarios) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *hobbyfarmiov1.Scenario, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(scenariosResource, name, pt, data, subresources...), &hobbyfarmiov1.Scenario{})
+		Invokes(testing.NewPatchSubresourceAction(scenariosResource, c.ns, name, pt, data, subresources...), &hobbyfarmiov1.Scenario{})
+
 	if obj == nil {
 		return nil, err
 	}

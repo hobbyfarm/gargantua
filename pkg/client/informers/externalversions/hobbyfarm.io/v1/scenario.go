@@ -32,6 +32,7 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
+
 // ScenarioInformer provides access to a shared informer and lister for
 // Scenarios.
 type ScenarioInformer interface {
@@ -40,34 +41,35 @@ type ScenarioInformer interface {
 }
 
 type scenarioInformer struct {
-	factory          internalinterfaces.SharedInformerFactory
+	factory internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
+	namespace string
 }
 
 // NewScenarioInformer constructs a new informer for Scenario type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewScenarioInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredScenarioInformer(client, resyncPeriod, indexers, nil)
+func NewScenarioInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredScenarioInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
 // NewFilteredScenarioInformer constructs a new informer for Scenario type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredScenarioInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredScenarioInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().Scenarios().List(context.TODO(), options)
+				return client.HobbyfarmV1().Scenarios(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().Scenarios().Watch(context.TODO(), options)
+				return client.HobbyfarmV1().Scenarios(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&hobbyfarmiov1.Scenario{},
@@ -77,7 +79,7 @@ func NewFilteredScenarioInformer(client versioned.Interface, resyncPeriod time.D
 }
 
 func (f *scenarioInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredScenarioInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredScenarioInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
 func (f *scenarioInformer) Informer() cache.SharedIndexInformer {

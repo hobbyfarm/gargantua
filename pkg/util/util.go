@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"os"
 
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 )
@@ -178,7 +179,7 @@ func VerifyVM(vmLister hfListers.VirtualMachineLister, vm *hfv1.VirtualMachine) 
 	glog.V(5).Infof("Verifying vm %s", vm.Name)
 	for i := 0; i < 150000; i++ {
 		var fromCache *hfv1.VirtualMachine
-		fromCache, err = vmLister.Get(vm.Name)
+		fromCache, err = vmLister.VirtualMachines(GetReleaseNamespace()).Get(vm.Name)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return nil
@@ -200,7 +201,7 @@ func VerifyVMDeleted(vmLister hfListers.VirtualMachineLister, vm *hfv1.VirtualMa
 	var err error
 	glog.V(5).Infof("Verifying vm %s", vm.Name)
 	for i := 0; i < 150000; i++ {
-		_, err = vmLister.Get(vm.Name)
+		_, err = vmLister.VirtualMachines(GetReleaseNamespace()).Get(vm.Name)
 		if err != nil {
 			glog.Error(err)
 			if apierrors.IsNotFound(err) {
@@ -219,7 +220,7 @@ func VerifyVMSet(vmSetLister hfListers.VirtualMachineSetLister, vms *hfv1.Virtua
 	glog.V(5).Infof("Verifying vms %s", vms.Name)
 	for i := 0; i < 150000; i++ {
 		var fromCache *hfv1.VirtualMachineSet
-		fromCache, err = vmSetLister.Get(vms.Name)
+		fromCache, err = vmSetLister.VirtualMachineSets(GetReleaseNamespace()).Get(vms.Name)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return nil
@@ -243,7 +244,7 @@ func VerifyVMClaim(vmClaimLister hfListers.VirtualMachineClaimLister, vmc *hfv1.
 	glog.V(5).Infof("Verifying vms %s", vmc.Name)
 	for i := 0; i < 150000; i++ {
 		var fromCache *hfv1.VirtualMachineClaim
-		fromCache, err = vmClaimLister.Get(vmc.Name)
+		fromCache, err = vmClaimLister.VirtualMachineClaims(GetReleaseNamespace()).Get(vmc.Name)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return nil
@@ -267,7 +268,7 @@ func VerifySession(sLister hfListers.SessionLister, s *hfv1.Session) error {
 	glog.V(5).Infof("Verifying cs %s", s.Name)
 	for i := 0; i < 150000; i++ {
 		var fromCache *hfv1.Session
-		fromCache, err = sLister.Get(s.Name)
+		fromCache, err = sLister.Sessions(GetReleaseNamespace()).Get(s.Name)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return nil
@@ -289,7 +290,7 @@ func VerifySession(sLister hfListers.SessionLister, s *hfv1.Session) error {
 func EnsureVMNotReady(hfClientset hfClientset.Interface, vmLister hfListers.VirtualMachineLister, vmName string, ctx context.Context) error {
 	//glog.V(5).Infof("ensuring VM %s is not ready", vmName)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := hfClientset.HobbyfarmV1().VirtualMachines().Get(ctx, vmName, metav1.GetOptions{})
+		result, getErr := hfClientset.HobbyfarmV1().VirtualMachines(GetReleaseNamespace()).Get(ctx, vmName, metav1.GetOptions{})
 		if getErr != nil {
 			return getErr
 		}
@@ -298,7 +299,7 @@ func EnsureVMNotReady(hfClientset hfClientset.Interface, vmLister hfListers.Virt
 		}
 		result.Labels["ready"] = "false"
 
-		result, updateErr := hfClientset.HobbyfarmV1().VirtualMachines().Update(ctx, result, metav1.UpdateOptions{})
+		result, updateErr := hfClientset.HobbyfarmV1().VirtualMachines(GetReleaseNamespace()).Update(ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
@@ -319,7 +320,7 @@ func EnsureVMNotReady(hfClientset hfClientset.Interface, vmLister hfListers.Virt
 }
 
 func AvailableRawCapacity(hfClientset hfClientset.Interface, capacity hfv1.CMSStruct, virtualMachines []hfv1.VirtualMachine, ctx context.Context) *hfv1.CMSStruct {
-	vmTemplates, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(ctx, metav1.ListOptions{})
+	vmTemplates, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates(GetReleaseNamespace()).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("unable to list virtual machine templates, got error %v", err)
 		return nil
@@ -346,7 +347,7 @@ func AvailableRawCapacity(hfClientset hfClientset.Interface, capacity hfv1.CMSSt
 }
 
 func MaxVMCountsRaw(hfClientset hfClientset.Interface, vmTemplates map[string]int, available hfv1.CMSStruct, ctx context.Context) int {
-	vmTemplatesFromK8s, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(ctx, metav1.ListOptions{})
+	vmTemplatesFromK8s, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates(GetReleaseNamespace()).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("unable to list virtual machine templates, got error %v", err)
 		return 0
@@ -405,13 +406,13 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 
 	end = end.Round(duration)
 
-	environmentFromK8s, err := hfClientset.HobbyfarmV1().Environments().Get(ctx, environment, metav1.GetOptions{})
+	environmentFromK8s, err := hfClientset.HobbyfarmV1().Environments(GetReleaseNamespace()).Get(ctx, environment, metav1.GetOptions{})
 
 	if err != nil {
 		return Maximus{}, fmt.Errorf("error retrieving environment %v", err)
 	}
 
-	vmTemplatesFromK8s, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates().List(ctx, metav1.ListOptions{})
+	vmTemplatesFromK8s, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates(GetReleaseNamespace()).List(ctx, metav1.ListOptions{})
 
 	if err != nil {
 		return Maximus{}, fmt.Errorf("error retrieving virtual machine templates %v", err)
@@ -423,7 +424,7 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 		vmTemplateResources[vmTemplateInfo.Name] = vmTemplateInfo.Spec.Resources
 	}
 
-	scheduledEvents, err := hfClientset.HobbyfarmV1().ScheduledEvents().List(ctx, metav1.ListOptions{})
+	scheduledEvents, err := hfClientset.HobbyfarmV1().ScheduledEvents(GetReleaseNamespace()).List(ctx, metav1.ListOptions{})
 
 	if err != nil {
 		return Maximus{}, fmt.Errorf("error retrieving scheduled events %v", err)
@@ -529,4 +530,13 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 		return Maximus{}, fmt.Errorf("environment %s had unexpected capacity mode %s", environment, environmentFromK8s.Spec.CapacityMode)
 	}
 	return max, nil
+}
+
+func GetReleaseNamespace()(string){
+	provisionNS := "hobbyfarm"
+	ns := os.Getenv("HF_NAMESPACE")
+	if ns != "" {
+		provisionNS = ns
+	}
+	return provisionNS
 }
