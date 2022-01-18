@@ -35,6 +35,8 @@ type Interface interface {
 		DynamicBindRequests() DynamicBindRequestInformer
 	// Environments returns a EnvironmentInformer.
 		Environments() EnvironmentInformer
+	// Progresses returns a ProgressInformer.
+		Progresses() ProgressInformer
 	// Scenarios returns a ScenarioInformer.
 		Scenarios() ScenarioInformer
 	// ScheduledEvents returns a ScheduledEventInformer.
@@ -88,6 +90,11 @@ func (v *version) DynamicBindRequests() DynamicBindRequestInformer {
 // Environments returns a EnvironmentInformer.
 func (v *version) Environments() EnvironmentInformer {
 	return &environmentInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// Progresses returns a ProgressInformer.
+func (v *version) Progresses() ProgressInformer {
+	return &progressInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Scenarios returns a ScenarioInformer.
