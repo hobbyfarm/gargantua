@@ -24,6 +24,7 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
+
 type HobbyfarmV1Interface interface {
 	RESTClient() rest.Interface
 	AccessCodesGetter
@@ -133,7 +134,7 @@ func New(c rest.Interface) *HobbyfarmV1Client {
 
 func setConfigDefaults(config *rest.Config) error {
 	gv := v1.SchemeGroupVersion
-	config.GroupVersion = &gv
+	config.GroupVersion =  &gv
 	config.APIPath = "/apis"
 	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 
