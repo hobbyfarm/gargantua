@@ -154,7 +154,7 @@ func (v *VirtualMachineSetController) processNextVM() bool {
 		if err != nil {
 			return err
 		}
-		vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Get(v.ctx, objName, metav1.GetOptions{})
+		vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Get(v.ctx, objName, metav1.GetOptions{})
 
 		if err != nil {
 
@@ -210,7 +210,7 @@ func (v *VirtualMachineSetController) processNextVMSet() bool {
 			return nil
 		}
 
-		vmSet, err := v.vmSetLister.Get(objName)
+		vmSet, err := v.vmSetLister.VirtualMachineSets(util.GetReleaseNamespace()).Get(objName)
 		if err != nil {
 			glog.Errorf("error while retrieving virtual machine set %s, likely deleted %v", objName, err)
 			//v.vmSetWorkqueue.Forget(obj)
@@ -251,7 +251,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		// 1. let's check the environment to see if there is available capacity
 		// 2. if available capacity is available let's create new VM's
 		glog.V(4).Infof("vmset %s needs %d vm's but current vm count is %d", vmset.Name, vmset.Spec.Count, len(currentVMs))
-		env, err := v.envLister.Get(vmset.Spec.Environment)
+		env, err := v.envLister.Environments(util.GetReleaseNamespace()).Get(vmset.Spec.Environment)
 		var provision bool
 		provision = true
 		if provisionMethod, ok := env.Annotations["hobbyfarm.io/provisioner"]; ok {
@@ -266,7 +266,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			return err
 		}
 
-		vmt, err := v.vmTemplateLister.Get(vmset.Spec.VMTemplate)
+		vmt, err := v.vmTemplateLister.VirtualMachineTemplates(util.GetReleaseNamespace()).Get(vmset.Spec.VMTemplate)
 		if err != nil {
 			return fmt.Errorf("error while retrieving virtual machine template %s %v", vmset.Spec.VMTemplate, err)
 		}
@@ -330,7 +330,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			}
 			// adding a custom finalizer for reconcile of vmsets
 			vm.SetFinalizers([]string{vmSetFinalizer})
-			vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().Create(v.ctx, vm, metav1.CreateOptions{})
+			vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Create(v.ctx, vm, metav1.CreateOptions{})
 			if err != nil {
 				glog.Error(err)
 			}
@@ -366,7 +366,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 
 func (v *VirtualMachineSetController) updateVMSetCount(vmSetName string, active int, prov int) error {
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineSets().Get(v.ctx, vmSetName, metav1.GetOptions{})
+		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Get(v.ctx, vmSetName, metav1.GetOptions{})
 		if getErr != nil {
 			return fmt.Errorf("error retrieving latest version of Virtual Machine Set %s: %v", vmSetName, getErr)
 		}
@@ -374,7 +374,7 @@ func (v *VirtualMachineSetController) updateVMSetCount(vmSetName string, active 
 		result.Status.ProvisionedCount = prov
 		result.Status.AvailableCount = active
 
-		vms, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineSets().Update(v.ctx, result, metav1.UpdateOptions{})
+		vms, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Update(v.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			glog.Error(updateErr)
 			return updateErr
@@ -397,7 +397,7 @@ func (v *VirtualMachineSetController) updateVMSetCount(vmSetName string, active 
 func (v *VirtualMachineSetController) removeVMFinalizer(vm *hfv1.VirtualMachine) (err error) {
 	if ContainsFinalizer(vm, vmSetFinalizer) {
 		RemoveFinalizer(vm, vmSetFinalizer)
-		_, err = v.hfClientSet.HobbyfarmV1().VirtualMachines().Update(v.ctx, vm, metav1.UpdateOptions{})
+		_, err = v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(v.ctx, vm, metav1.UpdateOptions{})
 	}
 	return err
 }

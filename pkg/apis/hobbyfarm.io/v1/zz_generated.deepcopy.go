@@ -958,6 +958,13 @@ func (in *UserSpec) DeepCopyInto(out *UserSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Settings != nil {
+		in, out := &in.Settings, &out.Settings
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 

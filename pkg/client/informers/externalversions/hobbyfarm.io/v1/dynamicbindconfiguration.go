@@ -32,6 +32,7 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
+
 // DynamicBindConfigurationInformer provides access to a shared informer and lister for
 // DynamicBindConfigurations.
 type DynamicBindConfigurationInformer interface {
@@ -40,34 +41,35 @@ type DynamicBindConfigurationInformer interface {
 }
 
 type dynamicBindConfigurationInformer struct {
-	factory          internalinterfaces.SharedInformerFactory
+	factory internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
+	namespace string
 }
 
 // NewDynamicBindConfigurationInformer constructs a new informer for DynamicBindConfiguration type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewDynamicBindConfigurationInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredDynamicBindConfigurationInformer(client, resyncPeriod, indexers, nil)
+func NewDynamicBindConfigurationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredDynamicBindConfigurationInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
 // NewFilteredDynamicBindConfigurationInformer constructs a new informer for DynamicBindConfiguration type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredDynamicBindConfigurationInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredDynamicBindConfigurationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().DynamicBindConfigurations().List(context.TODO(), options)
+				return client.HobbyfarmV1().DynamicBindConfigurations(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().DynamicBindConfigurations().Watch(context.TODO(), options)
+				return client.HobbyfarmV1().DynamicBindConfigurations(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&hobbyfarmiov1.DynamicBindConfiguration{},
@@ -77,7 +79,7 @@ func NewFilteredDynamicBindConfigurationInformer(client versioned.Interface, res
 }
 
 func (f *dynamicBindConfigurationInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredDynamicBindConfigurationInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredDynamicBindConfigurationInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
 func (f *dynamicBindConfigurationInformer) Informer() cache.SharedIndexInformer {

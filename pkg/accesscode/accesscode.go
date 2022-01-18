@@ -7,6 +7,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/hobbyfarm/gargantua/pkg/util"
 	"sort"
 	"time"
 )
@@ -32,7 +33,7 @@ func (acc AccessCodeClient) GetAccessCodes(codes []string, expiredOk bool) ([]hf
 		return nil, fmt.Errorf("code list passed in was less than 0")
 	}
 
-	accessCodeList, err := acc.hfClientSet.HobbyfarmV1().AccessCodes().List(acc.ctx, metav1.ListOptions{})
+	accessCodeList, err := acc.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).List(acc.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		return nil, fmt.Errorf("error while retrieving access codes %v", err)
@@ -131,7 +132,7 @@ func (acc AccessCodeClient) GetCourseIds(code string) ([]string, error) {
 func (acc AccessCodeClient) GetClosestAccessCode(userID string, scenarioOrCourseId string) (string, error) {
 	// basically let's get all of the access codes, sort them by expiration, and start going down the list looking for access codes.
 
-	user, err := acc.hfClientSet.HobbyfarmV1().Users().Get(acc.ctx, userID, metav1.GetOptions{}) // @TODO: FIX THIS TO NOT DIRECTLY CALL USER
+	user, err := acc.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(acc.ctx, userID, metav1.GetOptions{}) // @TODO: FIX THIS TO NOT DIRECTLY CALL USER
 
 	if err != nil {
 		return "", fmt.Errorf("error retrieving user: %v", err)

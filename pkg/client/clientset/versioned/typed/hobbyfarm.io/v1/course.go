@@ -33,31 +33,33 @@ import (
 // CoursesGetter has a method to return a CourseInterface.
 // A group's client should implement this interface.
 type CoursesGetter interface {
-	Courses() CourseInterface
+	Courses(namespace string) CourseInterface
 }
 
 // CourseInterface has methods to work with Course resources.
 type CourseInterface interface {
-	Create(ctx context.Context, course *v1.Course, opts metav1.CreateOptions) (*v1.Course, error)
-	Update(ctx context.Context, course *v1.Course, opts metav1.UpdateOptions) (*v1.Course, error)
-	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Course, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1.CourseList, error)
-	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Course, err error)
+Create(ctx context.Context, course *v1.Course, opts metav1.CreateOptions) (*v1.Course, error)
+Update(ctx context.Context, course *v1.Course, opts metav1.UpdateOptions) (*v1.Course, error)
+Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Course, error)
+List(ctx context.Context, opts metav1.ListOptions) (*v1.CourseList, error)
+Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Course, err error)
 	CourseExpansion
 }
 
 // courses implements CourseInterface
 type courses struct {
 	client rest.Interface
+	ns     string
 }
 
 // newCourses returns a Courses
-func newCourses(c *HobbyfarmV1Client) *courses {
+func newCourses(c *HobbyfarmV1Client, namespace string) *courses {
 	return &courses{
 		client: c.RESTClient(),
+		ns:     namespace,
 	}
 }
 
@@ -65,6 +67,7 @@ func newCourses(c *HobbyfarmV1Client) *courses {
 func (c *courses) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Course, err error) {
 	result = &v1.Course{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("courses").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -76,11 +79,12 @@ func (c *courses) Get(ctx context.Context, name string, options metav1.GetOption
 // List takes label and field selectors, and returns the list of Courses that match those selectors.
 func (c *courses) List(ctx context.Context, opts metav1.ListOptions) (result *v1.CourseList, err error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
+	if opts.TimeoutSeconds != nil{
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.CourseList{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("courses").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -92,11 +96,12 @@ func (c *courses) List(ctx context.Context, opts metav1.ListOptions) (result *v1
 // Watch returns a watch.Interface that watches the requested courses.
 func (c *courses) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
+	if opts.TimeoutSeconds != nil{
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Namespace(c.ns).
 		Resource("courses").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -107,6 +112,7 @@ func (c *courses) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Int
 func (c *courses) Create(ctx context.Context, course *v1.Course, opts metav1.CreateOptions) (result *v1.Course, err error) {
 	result = &v1.Course{}
 	err = c.client.Post().
+		Namespace(c.ns).
 		Resource("courses").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(course).
@@ -119,6 +125,7 @@ func (c *courses) Create(ctx context.Context, course *v1.Course, opts metav1.Cre
 func (c *courses) Update(ctx context.Context, course *v1.Course, opts metav1.UpdateOptions) (result *v1.Course, err error) {
 	result = &v1.Course{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("courses").
 		Name(course.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -131,6 +138,7 @@ func (c *courses) Update(ctx context.Context, course *v1.Course, opts metav1.Upd
 // Delete takes name of the course and deletes it. Returns an error if one occurs.
 func (c *courses) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("courses").
 		Name(name).
 		Body(&opts).
@@ -141,10 +149,11 @@ func (c *courses) Delete(ctx context.Context, name string, opts metav1.DeleteOpt
 // DeleteCollection deletes a collection of objects.
 func (c *courses) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
+	if listOpts.TimeoutSeconds != nil{
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("courses").
 		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -157,6 +166,7 @@ func (c *courses) DeleteCollection(ctx context.Context, opts metav1.DeleteOption
 func (c *courses) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Course, err error) {
 	result = &v1.Course{}
 	err = c.client.Patch(pt).
+		Namespace(c.ns).
 		Resource("courses").
 		Name(name).
 		SubResource(subresources...).

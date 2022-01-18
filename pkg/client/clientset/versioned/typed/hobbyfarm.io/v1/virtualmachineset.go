@@ -30,35 +30,38 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
+
 // VirtualMachineSetsGetter has a method to return a VirtualMachineSetInterface.
 // A group's client should implement this interface.
 type VirtualMachineSetsGetter interface {
-	VirtualMachineSets() VirtualMachineSetInterface
+	VirtualMachineSets(namespace string) VirtualMachineSetInterface
 }
 
 // VirtualMachineSetInterface has methods to work with VirtualMachineSet resources.
 type VirtualMachineSetInterface interface {
-	Create(ctx context.Context, virtualMachineSet *v1.VirtualMachineSet, opts metav1.CreateOptions) (*v1.VirtualMachineSet, error)
-	Update(ctx context.Context, virtualMachineSet *v1.VirtualMachineSet, opts metav1.UpdateOptions) (*v1.VirtualMachineSet, error)
-	UpdateStatus(ctx context.Context, virtualMachineSet *v1.VirtualMachineSet, opts metav1.UpdateOptions) (*v1.VirtualMachineSet, error)
-	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.VirtualMachineSet, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1.VirtualMachineSetList, error)
-	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.VirtualMachineSet, err error)
+Create(ctx context.Context, virtualMachineSet *v1.VirtualMachineSet, opts metav1.CreateOptions) (*v1.VirtualMachineSet, error)
+Update(ctx context.Context, virtualMachineSet *v1.VirtualMachineSet, opts metav1.UpdateOptions) (*v1.VirtualMachineSet, error)
+UpdateStatus(ctx context.Context, virtualMachineSet *v1.VirtualMachineSet, opts metav1.UpdateOptions) (*v1.VirtualMachineSet, error)
+Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.VirtualMachineSet, error)
+List(ctx context.Context, opts metav1.ListOptions) (*v1.VirtualMachineSetList, error)
+Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.VirtualMachineSet, err error)
 	VirtualMachineSetExpansion
 }
 
 // virtualMachineSets implements VirtualMachineSetInterface
 type virtualMachineSets struct {
 	client rest.Interface
+	ns     string
 }
 
 // newVirtualMachineSets returns a VirtualMachineSets
-func newVirtualMachineSets(c *HobbyfarmV1Client) *virtualMachineSets {
+func newVirtualMachineSets(c *HobbyfarmV1Client, namespace string) *virtualMachineSets {
 	return &virtualMachineSets{
 		client: c.RESTClient(),
+		ns:     namespace,
 	}
 }
 
@@ -66,6 +69,7 @@ func newVirtualMachineSets(c *HobbyfarmV1Client) *virtualMachineSets {
 func (c *virtualMachineSets) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.VirtualMachineSet, err error) {
 	result = &v1.VirtualMachineSet{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("virtualmachinesets").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -77,11 +81,12 @@ func (c *virtualMachineSets) Get(ctx context.Context, name string, options metav
 // List takes label and field selectors, and returns the list of VirtualMachineSets that match those selectors.
 func (c *virtualMachineSets) List(ctx context.Context, opts metav1.ListOptions) (result *v1.VirtualMachineSetList, err error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
+	if opts.TimeoutSeconds != nil{
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.VirtualMachineSetList{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("virtualmachinesets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -93,11 +98,12 @@ func (c *virtualMachineSets) List(ctx context.Context, opts metav1.ListOptions) 
 // Watch returns a watch.Interface that watches the requested virtualMachineSets.
 func (c *virtualMachineSets) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
+	if opts.TimeoutSeconds != nil{
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Namespace(c.ns).
 		Resource("virtualmachinesets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -108,6 +114,7 @@ func (c *virtualMachineSets) Watch(ctx context.Context, opts metav1.ListOptions)
 func (c *virtualMachineSets) Create(ctx context.Context, virtualMachineSet *v1.VirtualMachineSet, opts metav1.CreateOptions) (result *v1.VirtualMachineSet, err error) {
 	result = &v1.VirtualMachineSet{}
 	err = c.client.Post().
+		Namespace(c.ns).
 		Resource("virtualmachinesets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(virtualMachineSet).
@@ -120,6 +127,7 @@ func (c *virtualMachineSets) Create(ctx context.Context, virtualMachineSet *v1.V
 func (c *virtualMachineSets) Update(ctx context.Context, virtualMachineSet *v1.VirtualMachineSet, opts metav1.UpdateOptions) (result *v1.VirtualMachineSet, err error) {
 	result = &v1.VirtualMachineSet{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("virtualmachinesets").
 		Name(virtualMachineSet.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -134,6 +142,7 @@ func (c *virtualMachineSets) Update(ctx context.Context, virtualMachineSet *v1.V
 func (c *virtualMachineSets) UpdateStatus(ctx context.Context, virtualMachineSet *v1.VirtualMachineSet, opts metav1.UpdateOptions) (result *v1.VirtualMachineSet, err error) {
 	result = &v1.VirtualMachineSet{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("virtualmachinesets").
 		Name(virtualMachineSet.Name).
 		SubResource("status").
@@ -147,6 +156,7 @@ func (c *virtualMachineSets) UpdateStatus(ctx context.Context, virtualMachineSet
 // Delete takes name of the virtualMachineSet and deletes it. Returns an error if one occurs.
 func (c *virtualMachineSets) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("virtualmachinesets").
 		Name(name).
 		Body(&opts).
@@ -157,10 +167,11 @@ func (c *virtualMachineSets) Delete(ctx context.Context, name string, opts metav
 // DeleteCollection deletes a collection of objects.
 func (c *virtualMachineSets) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
+	if listOpts.TimeoutSeconds != nil{
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("virtualmachinesets").
 		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -173,6 +184,7 @@ func (c *virtualMachineSets) DeleteCollection(ctx context.Context, opts metav1.D
 func (c *virtualMachineSets) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.VirtualMachineSet, err error) {
 	result = &v1.VirtualMachineSet{}
 	err = c.client.Patch(pt).
+		Namespace(c.ns).
 		Resource("virtualmachinesets").
 		Name(name).
 		SubResource(subresources...).

@@ -17,7 +17,6 @@ const (
 )
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type VirtualMachine struct {
@@ -59,7 +58,6 @@ type VirtualMachineStatus struct {
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type VirtualMachineClaim struct {
@@ -103,7 +101,6 @@ type VirtualMachineClaimVM struct {
 
 // +genclient
 // +genclient:noStatus
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type VirtualMachineTemplate struct {
@@ -131,7 +128,6 @@ type VirtualMachineTemplateSpec struct {
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type Environment struct {
@@ -180,7 +176,6 @@ type CMSStruct struct {
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type VirtualMachineSet struct {
@@ -221,7 +216,6 @@ type VirtualMachineSetList struct {
 
 // +genclient
 // +genclient:noStatus
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type Course struct {
@@ -253,7 +247,6 @@ type CourseSpec struct {
 
 // +genclient
 // +genclient:noStatus
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type Scenario struct {
@@ -289,7 +282,6 @@ type ScenarioStep struct {
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type Session struct {
@@ -328,7 +320,6 @@ type SessionStatus struct {
 
 // +genclient
 // +genclient:noStatus
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // AccessCode is used for defining access code for scheduled events
 
@@ -360,7 +351,6 @@ type AccessCodeSpec struct {
 
 // +genclient
 // +genclient:noStatus
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type User struct {
@@ -387,7 +377,6 @@ type UserSpec struct {
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type ScheduledEvent struct {
@@ -432,7 +421,6 @@ type ScheduledEventStatus struct {
 
 // +genclient
 // +genclient:noStatus
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type DynamicBindConfiguration struct {
@@ -465,7 +453,6 @@ type DynamicBindConfigurationSpec struct {
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type DynamicBindRequest struct {
