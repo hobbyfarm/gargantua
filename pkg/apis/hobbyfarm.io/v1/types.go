@@ -346,6 +346,7 @@ type AccessCodeSpec struct {
 	VirtualMachineSets  []string `json:"vmsets"`
 	RestrictedBind      bool     `json:"restricted_bind"`
 	RestrictedBindValue string   `json:"restricted_bind_value"`
+	Printable           bool     `json:"printable"`
 }
 
 // +genclient
@@ -404,6 +405,7 @@ type ScheduledEventSpec struct {
 	AccessCode              string                    `json:"access_code"`
 	RestrictedBind          bool                      `json:"restricted_bind"` // if restricted_bind is true, we need to make the scenario sessions when they get created only bind to vmsets that are created by this scheduledevent
 	RestrictedBindValue     string                    `json:"restricted_bind_value"`
+	Printable               bool                      `json:"printable"`
 	Scenarios               []string                  `json:"scenarios"`
 	Courses                 []string                  `json:"courses"`
 }

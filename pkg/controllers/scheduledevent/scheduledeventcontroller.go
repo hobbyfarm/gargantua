@@ -13,9 +13,9 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
+	"github.com/hobbyfarm/gargantua/pkg/util"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"github.com/hobbyfarm/gargantua/pkg/util"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
@@ -451,6 +451,12 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 		ac.Spec.RestrictedBindValue = se.Spec.RestrictedBindValue
 	} else {
 		ac.Spec.RestrictedBind = false
+	}
+
+	if se.Spec.Printable {
+		ac.Spec.Printable = true
+	} else {
+		ac.Spec.Printable = false
 	}
 
 	ac, err := s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Create(s.ctx, ac, metav1.CreateOptions{})
