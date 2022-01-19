@@ -43,7 +43,7 @@ func (v VirtualMachineTemplateServer) getVirtualMachineTemplate(id string) (hfv1
 		return empty, fmt.Errorf("vm template id passed in was empty")
 	}
 
-	obj, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Get(v.ctx, id, metav1.GetOptions{})
+	obj, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Get(v.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving Virtual Machine Template by id: %s with error: %v", id, err)
 	}
@@ -107,7 +107,7 @@ func (v VirtualMachineTemplateServer) ListFunc(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	vmts, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().List(v.ctx, metav1.ListOptions{})
+	vmts, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while listing all vmts %v", err)
@@ -190,7 +190,7 @@ func (v VirtualMachineTemplateServer) CreateFunc(w http.ResponseWriter, r *http.
 
 	glog.V(2).Infof("user %s creating vmtemplate", user.Name)
 
-	vmTemplate, err = v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Create(v.ctx, vmTemplate, metav1.CreateOptions{})
+	vmTemplate, err = v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Create(v.ctx, vmTemplate, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating vmtemplate %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating vmtemplate")
@@ -219,7 +219,7 @@ func (v VirtualMachineTemplateServer) UpdateFunc(w http.ResponseWriter, r *http.
 	glog.V(2).Infof("user %s updating vmtemplate %s", user.Name, id)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		vmTemplate, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Get(v.ctx, id, metav1.GetOptions{})
+		vmTemplate, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Get(v.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			util.ReturnHTTPMessage(w, r, 400, "badrequest", "vmtemplate not found")
@@ -259,7 +259,7 @@ func (v VirtualMachineTemplateServer) UpdateFunc(w http.ResponseWriter, r *http.
 			vmTemplate.Spec.CountMap = countMap
 		}
 
-		_, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Update(v.ctx, vmTemplate, metav1.UpdateOptions{})
+		_, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Update(v.ctx, vmTemplate, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -294,7 +294,7 @@ func (v VirtualMachineTemplateServer) DeleteFunc(w http.ResponseWriter, r *http.
 
 	glog.V(2).Infof("user %s deleting vmtemplate %s", user.Name, id)
 
-	vmt, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Get(v.ctx, id, metav1.GetOptions{})
+	vmt, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Get(v.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 400, "notfound", "no vmt found")
 		return
@@ -302,7 +302,7 @@ func (v VirtualMachineTemplateServer) DeleteFunc(w http.ResponseWriter, r *http.
 
 	// vmt exists, now we need to check all other objects for references
 	// start with virtualmachines
-	virtualmachines, err := v.hfClientSet.HobbyfarmV1().VirtualMachines().List(v.ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("hobbyfarm.io/vmtemplate=%s", vmt.Name)})
+	virtualmachines, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("hobbyfarm.io/vmtemplate=%s", vmt.Name)})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror",
 			"error listing virtual machines while attempting vmt deletion")
@@ -315,7 +315,7 @@ func (v VirtualMachineTemplateServer) DeleteFunc(w http.ResponseWriter, r *http.
 	}
 
 	// now check scheduledevents
-	scheduledEvents, err := v.hfClientSet.HobbyfarmV1().ScheduledEvents().List(v.ctx, metav1.ListOptions{})
+	scheduledEvents, err := v.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror",
 			"error listing scheduled events while attempting vmt deletion")
@@ -353,7 +353,7 @@ func (v VirtualMachineTemplateServer) DeleteFunc(w http.ResponseWriter, r *http.
 	}
 
 	// now check virtul machine claims
-	vmcList, err := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims().List(v.ctx, metav1.ListOptions{
+	vmcList, err := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s=%s", vmt.Name, "true"),
 	})
 	if err != nil {
@@ -369,7 +369,7 @@ func (v VirtualMachineTemplateServer) DeleteFunc(w http.ResponseWriter, r *http.
 	}
 
 	// now check virtualmachinesets (theoretically the VM checks above should catch this, but let's be safe)
-	vmsetList, err := v.hfClientSet.HobbyfarmV1().VirtualMachineSets().List(v.ctx, metav1.ListOptions{
+	vmsetList, err := v.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s=%s", vmt.Name, "true"),
 	})
 	if err != nil {
@@ -386,7 +386,7 @@ func (v VirtualMachineTemplateServer) DeleteFunc(w http.ResponseWriter, r *http.
 
 	// if we get here, shouldn't be anything in our path stopping us from deleting the vmtemplate
 	// so do it!
-	err = v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates().Delete(v.ctx, vmt.Name, metav1.DeleteOptions{})
+	err = v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Delete(v.ctx, vmt.Name, metav1.DeleteOptions{})
 	if err != nil {
 		glog.Errorf("error deleting vmtemplate: %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting vmtemplate")

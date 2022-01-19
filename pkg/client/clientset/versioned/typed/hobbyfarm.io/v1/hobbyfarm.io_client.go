@@ -24,6 +24,7 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
+
 type HobbyfarmV1Interface interface {
 	RESTClient() rest.Interface
 	AccessCodesGetter
@@ -31,6 +32,7 @@ type HobbyfarmV1Interface interface {
 	DynamicBindConfigurationsGetter
 	DynamicBindRequestsGetter
 	EnvironmentsGetter
+	ProgressesGetter
 	ScenariosGetter
 	ScheduledEventsGetter
 	SessionsGetter
@@ -46,56 +48,60 @@ type HobbyfarmV1Client struct {
 	restClient rest.Interface
 }
 
-func (c *HobbyfarmV1Client) AccessCodes() AccessCodeInterface {
-	return newAccessCodes(c)
+func (c *HobbyfarmV1Client) AccessCodes(namespace string) AccessCodeInterface {
+	return newAccessCodes(c, namespace)
 }
 
-func (c *HobbyfarmV1Client) Courses() CourseInterface {
-	return newCourses(c)
+func (c *HobbyfarmV1Client) Courses(namespace string) CourseInterface {
+	return newCourses(c, namespace)
 }
 
-func (c *HobbyfarmV1Client) DynamicBindConfigurations() DynamicBindConfigurationInterface {
-	return newDynamicBindConfigurations(c)
+func (c *HobbyfarmV1Client) DynamicBindConfigurations(namespace string) DynamicBindConfigurationInterface {
+	return newDynamicBindConfigurations(c, namespace)
 }
 
-func (c *HobbyfarmV1Client) DynamicBindRequests() DynamicBindRequestInterface {
-	return newDynamicBindRequests(c)
+func (c *HobbyfarmV1Client) DynamicBindRequests(namespace string) DynamicBindRequestInterface {
+	return newDynamicBindRequests(c, namespace)
 }
 
-func (c *HobbyfarmV1Client) Environments() EnvironmentInterface {
-	return newEnvironments(c)
+func (c *HobbyfarmV1Client) Environments(namespace string) EnvironmentInterface {
+	return newEnvironments(c, namespace)
 }
 
-func (c *HobbyfarmV1Client) Scenarios() ScenarioInterface {
-	return newScenarios(c)
+func (c *HobbyfarmV1Client) Progresses(namespace string) ProgressInterface {
+	return newProgresses(c, namespace)
 }
 
-func (c *HobbyfarmV1Client) ScheduledEvents() ScheduledEventInterface {
-	return newScheduledEvents(c)
+func (c *HobbyfarmV1Client) Scenarios(namespace string) ScenarioInterface {
+	return newScenarios(c, namespace)
 }
 
-func (c *HobbyfarmV1Client) Sessions() SessionInterface {
-	return newSessions(c)
+func (c *HobbyfarmV1Client) ScheduledEvents(namespace string) ScheduledEventInterface {
+	return newScheduledEvents(c, namespace)
 }
 
-func (c *HobbyfarmV1Client) Users() UserInterface {
-	return newUsers(c)
+func (c *HobbyfarmV1Client) Sessions(namespace string) SessionInterface {
+	return newSessions(c, namespace)
 }
 
-func (c *HobbyfarmV1Client) VirtualMachines() VirtualMachineInterface {
-	return newVirtualMachines(c)
+func (c *HobbyfarmV1Client) Users(namespace string) UserInterface {
+	return newUsers(c, namespace)
 }
 
-func (c *HobbyfarmV1Client) VirtualMachineClaims() VirtualMachineClaimInterface {
-	return newVirtualMachineClaims(c)
+func (c *HobbyfarmV1Client) VirtualMachines(namespace string) VirtualMachineInterface {
+	return newVirtualMachines(c, namespace)
 }
 
-func (c *HobbyfarmV1Client) VirtualMachineSets() VirtualMachineSetInterface {
-	return newVirtualMachineSets(c)
+func (c *HobbyfarmV1Client) VirtualMachineClaims(namespace string) VirtualMachineClaimInterface {
+	return newVirtualMachineClaims(c, namespace)
 }
 
-func (c *HobbyfarmV1Client) VirtualMachineTemplates() VirtualMachineTemplateInterface {
-	return newVirtualMachineTemplates(c)
+func (c *HobbyfarmV1Client) VirtualMachineSets(namespace string) VirtualMachineSetInterface {
+	return newVirtualMachineSets(c, namespace)
+}
+
+func (c *HobbyfarmV1Client) VirtualMachineTemplates(namespace string) VirtualMachineTemplateInterface {
+	return newVirtualMachineTemplates(c, namespace)
 }
 
 // NewForConfig creates a new HobbyfarmV1Client for the given config.
@@ -128,7 +134,7 @@ func New(c rest.Interface) *HobbyfarmV1Client {
 
 func setConfigDefaults(config *rest.Config) error {
 	gv := v1.SchemeGroupVersion
-	config.GroupVersion = &gv
+	config.GroupVersion =  &gv
 	config.APIPath = "/apis"
 	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 

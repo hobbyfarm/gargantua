@@ -31,9 +31,8 @@ type SessionLister interface {
 	// List lists all Sessions in the indexer.
 	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.Session, err error)
-	// Get retrieves the Session from the index for a given name.
-	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.Session, error)
+	// Sessions returns an object that can list and get Sessions.
+	Sessions(namespace string) SessionNamespaceLister
 	SessionListerExpansion
 }
 
@@ -55,9 +54,41 @@ func (s *sessionLister) List(selector labels.Selector) (ret []*v1.Session, err e
 	return ret, err
 }
 
-// Get retrieves the Session from the index for a given name.
-func (s *sessionLister) Get(name string) (*v1.Session, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// Sessions returns an object that can list and get Sessions.
+func (s *sessionLister) Sessions(namespace string) SessionNamespaceLister {
+	return sessionNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// SessionNamespaceLister helps list and get Sessions.
+// All objects returned here must be treated as read-only.
+type SessionNamespaceLister interface {
+	// List lists all Sessions in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
+	List(selector labels.Selector) (ret []*v1.Session, err error)
+	// Get retrieves the Session from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*v1.Session, error)
+	SessionNamespaceListerExpansion
+}
+
+// sessionNamespaceLister implements the SessionNamespaceLister
+// interface.
+type sessionNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all Sessions in the indexer for a given namespace.
+func (s sessionNamespaceLister) List(selector labels.Selector) (ret []*v1.Session, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.Session))
+	})
+	return ret, err
+}
+
+// Get retrieves the Session from the indexer for a given namespace and name.
+func (s sessionNamespaceLister) Get(name string) (*v1.Session, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}

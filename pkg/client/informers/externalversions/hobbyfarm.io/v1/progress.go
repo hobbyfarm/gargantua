@@ -32,60 +32,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-
-// ScenarioInformer provides access to a shared informer and lister for
-// Scenarios.
-type ScenarioInformer interface {
+// ProgressInformer provides access to a shared informer and lister for
+// Progresses.
+type ProgressInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.ScenarioLister
+	Lister() v1.ProgressLister
 }
 
-type scenarioInformer struct {
-	factory internalinterfaces.SharedInformerFactory
+type progressInformer struct {
+	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
-	namespace string
+	namespace        string
 }
 
-// NewScenarioInformer constructs a new informer for Scenario type.
+// NewProgressInformer constructs a new informer for Progress type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewScenarioInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredScenarioInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewProgressInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredProgressInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredScenarioInformer constructs a new informer for Scenario type.
+// NewFilteredProgressInformer constructs a new informer for Progress type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredScenarioInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredProgressInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().Scenarios(namespace).List(context.TODO(), options)
+				return client.HobbyfarmV1().Progresses(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().Scenarios(namespace).Watch(context.TODO(), options)
+				return client.HobbyfarmV1().Progresses(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&hobbyfarmiov1.Scenario{},
+		&hobbyfarmiov1.Progress{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *scenarioInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredScenarioInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *progressInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredProgressInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *scenarioInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&hobbyfarmiov1.Scenario{}, f.defaultInformer)
+func (f *progressInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&hobbyfarmiov1.Progress{}, f.defaultInformer)
 }
 
-func (f *scenarioInformer) Lister() v1.ScenarioLister {
-	return v1.NewScenarioLister(f.Informer().GetIndexer())
+func (f *progressInformer) Lister() v1.ProgressLister {
+	return v1.NewProgressLister(f.Informer().GetIndexer())
 }

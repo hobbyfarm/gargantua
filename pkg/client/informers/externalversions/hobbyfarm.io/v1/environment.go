@@ -32,6 +32,7 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
+
 // EnvironmentInformer provides access to a shared informer and lister for
 // Environments.
 type EnvironmentInformer interface {
@@ -40,34 +41,35 @@ type EnvironmentInformer interface {
 }
 
 type environmentInformer struct {
-	factory          internalinterfaces.SharedInformerFactory
+	factory internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
+	namespace string
 }
 
 // NewEnvironmentInformer constructs a new informer for Environment type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewEnvironmentInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredEnvironmentInformer(client, resyncPeriod, indexers, nil)
+func NewEnvironmentInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredEnvironmentInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
 // NewFilteredEnvironmentInformer constructs a new informer for Environment type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredEnvironmentInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredEnvironmentInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().Environments().List(context.TODO(), options)
+				return client.HobbyfarmV1().Environments(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().Environments().Watch(context.TODO(), options)
+				return client.HobbyfarmV1().Environments(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&hobbyfarmiov1.Environment{},
@@ -77,7 +79,7 @@ func NewFilteredEnvironmentInformer(client versioned.Interface, resyncPeriod tim
 }
 
 func (f *environmentInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredEnvironmentInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredEnvironmentInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
 func (f *environmentInformer) Informer() cache.SharedIndexInformer {

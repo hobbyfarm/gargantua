@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
@@ -15,8 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
-	"net/http"
-	"strconv"
 )
 
 const (
@@ -63,6 +65,7 @@ func (c CourseServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/course/{id}", c.GetCourse).Methods("GET")
 	r.HandleFunc("/a/course/{id}", c.UpdateFunc).Methods("PUT")
 	r.HandleFunc("/a/course/{id}", c.DeleteFunc).Methods("DELETE")
+	r.HandleFunc("/a/course/previewDynamicScenarios", c.previewDynamicScenarios).Methods("POST")
 }
 
 func (c CourseServer) getPreparedCourseById(id string) (PreparedCourse, error) {
@@ -84,7 +87,7 @@ func (c CourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tempCourses, err := c.hfClientSet.HobbyfarmV1().Courses().List(c.ctx, metav1.ListOptions{})
+	tempCourses, err := c.hfClientSet.HobbyfarmV1().Courses(util.GetReleaseNamespace()).List(c.ctx, metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("error listing courses: %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing courses")
@@ -166,6 +169,17 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	categories := r.PostFormValue("categories")
+	categoriesSlice := make([]string, 0)
+	if categories != "" {
+		err = json.Unmarshal([]byte(categories), &categoriesSlice)
+		if err != nil {
+			glog.Errorf("error while unmarshalling categories %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
 	rawVirtualMachines := r.PostFormValue("virtualmachines")
 	virtualmachines := []map[string]string{} // must be declared this way so as to JSON marshal into [] instead of null
 	if rawVirtualMachines != "" {
@@ -186,6 +200,14 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 	pauseDuration := r.PostFormValue("pause_duration")
 
+	keepVMRaw := r.PostFormValue("keep_vm")
+	keepVM, err := strconv.ParseBool(keepVMRaw)
+	if err != nil {
+		glog.Errorf("error while parsing bool: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+		return
+	}
+
 	course := &hfv1.Course{}
 
 	generatedName := util.GenerateResourceName("c", name, 10)
@@ -197,6 +219,7 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	course.Spec.Description = description
 	course.Spec.VirtualMachines = virtualmachines
 	course.Spec.Scenarios = scenarioSlice
+	course.Spec.Categories = categoriesSlice
 	if keepaliveDuration != "" {
 		course.Spec.KeepAliveDuration = keepaliveDuration
 	}
@@ -204,8 +227,9 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	if pauseDuration != "" {
 		course.Spec.PauseDuration = pauseDuration
 	}
+	course.Spec.KeepVM = keepVM
 
-	course, err = c.hfClientSet.HobbyfarmV1().Courses().Create(c.ctx, course, metav1.CreateOptions{})
+	course, err = c.hfClientSet.HobbyfarmV1().Courses(util.GetReleaseNamespace()).Create(c.ctx, course, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating course %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating course")
@@ -233,7 +257,7 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		course, err := c.hfClientSet.HobbyfarmV1().Courses().Get(c.ctx, id, metav1.GetOptions{})
+		course, err := c.hfClientSet.HobbyfarmV1().Courses(util.GetReleaseNamespace()).Get(c.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			util.ReturnHTTPMessage(w, r, 400, "badrequest", "no id found")
@@ -244,10 +268,12 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		name := r.PostFormValue("name")
 		description := r.PostFormValue("description")
 		scenarios := r.PostFormValue("scenarios")
+		categories := r.PostFormValue("categories")
 		virtualMachinesRaw := r.PostFormValue("virtualmachines")
 		keepaliveDuration := r.PostFormValue("keepalive_duration")
 		pauseDuration := r.PostFormValue("pause_duration")
 		pauseableRaw := r.PostFormValue("pauseable")
+		keepVMRaw := r.PostFormValue("keep_vm")
 
 		if name != "" {
 			course.Spec.Name = name
@@ -267,6 +293,17 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			}
 
 			course.Spec.Scenarios = scenarioSlice
+		}
+
+		if categories != "" {
+			categoriesSlice := make([]string, 0)
+			err = json.Unmarshal([]byte(categories), &categoriesSlice)
+			if err != nil {
+				glog.Errorf("error while unmarshalling categories %v", err)
+				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+				return fmt.Errorf("bad")
+			}
+			course.Spec.Categories = categoriesSlice
 		}
 
 		if virtualMachinesRaw != "" {
@@ -300,7 +337,18 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			course.Spec.Pauseable = pauseable
 		}
 
-		_, updateErr := c.hfClientSet.HobbyfarmV1().Courses().Update(c.ctx, course, metav1.UpdateOptions{})
+		if keepVMRaw != "" {
+			keepVM, err := strconv.ParseBool(keepVMRaw)
+			if err != nil {
+				glog.Errorf("error while parsing bool: %v", err)
+				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+				return fmt.Errorf("bad")
+			}
+
+			course.Spec.KeepVM = keepVM
+		}
+
+		_, updateErr := c.hfClientSet.HobbyfarmV1().Courses(util.GetReleaseNamespace()).Update(c.ctx, course, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -333,7 +381,7 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	// 1. when there are no active scheduled events using the course
 	// 2. when there are no sessions using the course
 
-	seList, err := c.hfClientSet.HobbyfarmV1().ScheduledEvents().List(c.ctx, metav1.ListOptions{})
+	seList, err := c.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).List(c.ctx, metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("error retrieving scheduledevent list: %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting course")
@@ -342,7 +390,7 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 
 	seInUse := filterScheduledEvents(id, seList)
 
-	sessList, err := c.hfClientSet.HobbyfarmV1().Sessions().List(c.ctx, metav1.ListOptions{})
+	sessList, err := c.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(c.ctx, metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("error retrieving session list: %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting course")
@@ -376,7 +424,7 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = c.hfClientSet.HobbyfarmV1().Courses().Delete(c.ctx, id, metav1.DeleteOptions{})
+	err = c.hfClientSet.HobbyfarmV1().Courses(util.GetReleaseNamespace()).Delete(c.ctx, id, metav1.DeleteOptions{})
 	if err != nil {
 		glog.Errorf("error deleting course: %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting course")
@@ -412,6 +460,8 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 		if err != nil {
 			glog.Errorf("error retrieving course %v", err)
 		} else {
+			course.Spec.Scenarios = c.AppendDynamicScenariosByCategories(course.Spec.Scenarios, course.Spec.Categories)
+
 			pCourse := PreparedCourse{course.Name, course.Spec}
 			courses = append(courses, pCourse)
 		}
@@ -422,6 +472,68 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 		glog.Error(err)
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedCourses)
+}
+
+func (c CourseServer) previewDynamicScenarios(w http.ResponseWriter, r *http.Request) {
+	_, err := c.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to preview dynamic scenarios")
+		return
+	}
+
+	categories := r.PostFormValue("categories")
+	categoriesSlice := make([]string, 0)
+	if categories != "" {
+		err = json.Unmarshal([]byte(categories), &categoriesSlice)
+		if err != nil {
+			glog.Errorf("error while unmarshalling categories %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	scenarios := []string{}
+
+	scenarios = c.AppendDynamicScenariosByCategories(scenarios, categoriesSlice)
+
+	encodedScenarios, err := json.Marshal(scenarios)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedScenarios)
+}
+
+func (c CourseServer) AppendDynamicScenariosByCategories(scenariosList []string, categories []string) []string {
+	categorySelector := metav1.ListOptions{}
+	for _, categoryQuery := range categories {
+		categorySelectors := []string{}
+		categoryQueryParts := strings.Split(categoryQuery, "&")
+		for _, categoryQueryPart := range categoryQueryParts {
+			operator := "in"
+			if strings.HasPrefix(categoryQueryPart, "!") {
+				operator = "notin"
+				categoryQueryPart = categoryQueryPart[1:]
+			}
+			categorySelectors = append(categorySelectors, fmt.Sprintf("category-%s %s (true)", categoryQueryPart, operator))
+		}
+		categorySelectorString := strings.Join(categorySelectors, ",")
+		glog.Errorf("query scenarios by query: %s", categorySelectorString)
+		categorySelector = metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("%s", categorySelectorString),
+		}
+		scenarios, err := c.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).List(c.ctx, categorySelector)
+
+		if err != nil {
+			glog.Errorf("error while retrieving scenarios %v", err)
+			continue
+		}
+		for _, scenario := range scenarios.Items {
+			scenariosList = append(scenariosList, scenario.Spec.Id)
+		}
+	}
+
+	scenariosList = util.UniqueStringSlice(scenariosList)
+	return scenariosList
 }
 
 func (c CourseServer) GetCourseById(id string) (hfv1.Course, error) {

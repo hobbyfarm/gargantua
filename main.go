@@ -41,6 +41,8 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/vmclaimserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
 	"github.com/hobbyfarm/gargantua/pkg/vmserver"
+	"github.com/hobbyfarm/gargantua/pkg/util"
+	"github.com/hobbyfarm/gargantua/pkg/progressserver"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -98,7 +100,8 @@ func main() {
 		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 
-	hfInformerFactory := hfInformers.NewSharedInformerFactory(hfClient, time.Second*30)
+	namespace := util.GetReleaseNamespace()
+	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 
 	authClient, err := authclient.NewAuthClient(hfClient, hfInformerFactory)
 	if err != nil {
@@ -180,6 +183,11 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	progressServer, err := progressserver.NewProgressServer(authClient, hfClient, ctx)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
 	if shellServer {
 		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
@@ -195,6 +203,7 @@ func main() {
 		scheduledEventServer.SetupRoutes(r)
 		userServer.SetupRoutes(r)
 		vmTemplateServer.SetupRoutes(r)
+		progressServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})

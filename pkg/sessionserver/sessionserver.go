@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+	"os"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -27,7 +28,7 @@ const (
 	newSSTimeout        = "5m"
 	keepaliveSSTimeout  = "5m"
 	pauseSSTimeout      = "2h"
-	vmcSessionLabel     = "hobbyfarm.io/session"
+	SessionLabel     	= "hobbyfarm.io/session"
 	UserSessionLabel    = "hobbyfarm.io/user"
 	AccessCodeLabel     = "accesscode.hobbyfarm.io"
 	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
@@ -102,7 +103,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 
 	// we should validate the user can use this access code
 	// let's figure out the restricted bind value
-	accessCodeObj, err := sss.hfClientSet.HobbyfarmV1().AccessCodes().Get(sss.ctx, accessCode, metav1.GetOptions{})
+	accessCodeObj, err := sss.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Get(sss.ctx, accessCode, metav1.GetOptions{})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "could not retrieve access code")
 		return
@@ -138,9 +139,10 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// now we should check for existing sessions
-
-	sessions, err := sss.hfClientSet.HobbyfarmV1().Sessions().List(sss.ctx, metav1.ListOptions{})
+	// now we should check for existing sessions for the user
+	sessions, err := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(sss.ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", UserSessionLabel, user.Spec.Id),
+	})
 
 	if err != nil {
 		glog.Error(err)
@@ -165,15 +167,20 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 				v.Spec.ScenarioId = scenarioid
 
 				retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					result, getErr := sss.hfClientSet.HobbyfarmV1().Sessions().Get(sss.ctx, v.Name, metav1.GetOptions{})
+					result, getErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(sss.ctx, v.Name, metav1.GetOptions{})
 					if getErr != nil {
 						return fmt.Errorf("error retrieving latest version of session %s: %v", v.Name, getErr)
 					}
 
 					result.Spec.ScenarioId = scenarioid
 
-					_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions().Update(sss.ctx, result, metav1.UpdateOptions{})
+					_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(sss.ctx, result, metav1.UpdateOptions{})
 					glog.V(4).Infof("updated session for new scenario")
+
+					//finish old progress & create new progress for the new scenario
+					sss.FinishProgress(result.Spec.Id, user.Spec.Id)
+					sss.CreateProgress(result.Spec.Id, accessCodeObj.Labels[ScheduledEventLabel] ,scenario.Spec.Id, course.Spec.Id, user.Spec.Id, len(scenario.Spec.Steps))
+
 
 					return updateErr
 				})
@@ -204,8 +211,10 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	session.Spec.CourseId = course.Spec.Id
 	session.Spec.ScenarioId = scenario.Spec.Id
 	session.Spec.UserId = user.Spec.Id
+	session.Spec.KeepCourseVM = course.Spec.KeepVM
 	labels := make(map[string]string)
-	labels[AccessCodeLabel] = accessCode // map accesscode to session
+	labels[AccessCodeLabel] = accessCode    // map accesscode to session
+	labels[UserSessionLabel] = user.Spec.Id // map user to session
 	session.Labels = labels
 	var vms []map[string]string
 	if course.Spec.VirtualMachines != nil {
@@ -221,30 +230,44 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	schedEvent, err := sss.hfClientSet.HobbyfarmV1().ScheduledEvents().Get(sss.ctx, owners[0].Name, metav1.GetOptions{})
+	schedEvent, err := sss.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(sss.ctx, owners[0].Name, metav1.GetOptions{})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find scheduledEvent")
 		return
 	}
 
 	var bindMode string
+	var baseName string
 	if schedEvent.Spec.OnDemand {
 		bindMode = "dynamic"
+		bndp := os.Getenv("HF_BASENAME_DYNAMIC_PREFIX")
+		if bndp == "" {
+			baseName = "vmc"
+		} else {
+			baseName = bndp
+		}
 	} else {
 		bindMode = "static"
+		bnsp := os.Getenv("HF_BASENAME_SCHEDULED_PREFIX")
+		if bnsp == "" {
+			baseName = "scheduled"
+		} else {
+			baseName = bnsp
+		}
 	}
 
 	session.Spec.VmClaimSet = make([]string, len(vms))
 	for index, vmset := range vms {
 		virtualMachineClaim := hfv1.VirtualMachineClaim{}
-		vmcId := util.GenerateResourceName("vmc", util.RandStringRunes(10), 10)
+		vmcId := util.GenerateResourceName(baseName, util.RandStringRunes(10), 10)
 		labels := make(map[string]string)
-		labels[vmcSessionLabel] = session.Name  // map vmc to session
+		labels[SessionLabel] = session.Name  // map vmc to session
 		labels[UserSessionLabel] = user.Spec.Id // map session to user in a way that is searchable
 		labels[AccessCodeLabel] = session.Labels[AccessCodeLabel]
 		labels[ScheduledEventLabel] = schedEvent.Name
 		virtualMachineClaim.Labels = labels
 		virtualMachineClaim.Spec.Id = vmcId
+		virtualMachineClaim.Spec.BaseName = vmcId
 		virtualMachineClaim.Name = vmcId
 		virtualMachineClaim.Spec.VirtualMachines = make(map[string]hfv1.VirtualMachineClaimVM)
 		for vmName, vmTemplateName := range vmset {
@@ -265,7 +288,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 			virtualMachineClaim.Spec.RestrictedBind = false
 		}
 
-		createdVmClaim, err := sss.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Create(sss.ctx, &virtualMachineClaim, metav1.CreateOptions{})
+		createdVmClaim, err := sss.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Create(sss.ctx, &virtualMachineClaim, metav1.CreateOptions{})
 		if err != nil {
 			glog.Errorf("error creating vm claim %v", err)
 			util.ReturnHTTPMessage(w, r, 500, "error", "something happened")
@@ -291,7 +314,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	session.Status.Active = true
 	session.Status.Finished = false
 
-	createdSession, err := sss.hfClientSet.HobbyfarmV1().Sessions().Create(sss.ctx, &session, metav1.CreateOptions{})
+	createdSession, err := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Create(sss.ctx, &session, metav1.CreateOptions{})
 
 	if err != nil {
 		glog.Errorf("error creating session %v", err)
@@ -300,6 +323,9 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	}
 
 	glog.V(2).Infof("created session ID %s", createdSession.Spec.Id)
+
+	sss.CreateProgress(createdSession.Spec.Id, accessCodeObj.Labels[ScheduledEventLabel] ,scenario.Spec.Id, course.Spec.Id, user.Spec.Id, len(scenario.Spec.Steps))
+
 	encodedSS, err := json.Marshal(createdSession.Spec)
 	if err != nil {
 		glog.Error(err)
@@ -307,6 +333,77 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	util.ReturnHTTPContent(w, r, 201, "created", encodedSS)
 	return
 }
+
+func (sss SessionServer) CreateProgress(sessionId string, scheduledEventId string, scenarioId string, courseId string, userId string, totalSteps int) {
+	random := util.RandStringRunes(16)
+	now := time.Now()
+
+	progressName := util.GenerateResourceName("progress", random, 16)
+	progress := hfv1.Progress{}
+
+	progress.Name = progressName
+	progress.Spec.Id = progressName
+	progress.Spec.Course = courseId
+	progress.Spec.Scenario = scenarioId
+	progress.Spec.UserId = userId
+	progress.Spec.Started = now.Format(time.UnixDate)
+	progress.Spec.LastUpdate = now.Format(time.UnixDate)
+	progress.Spec.Finished = "false"
+	progress.Spec.TotalStep = totalSteps
+	progress.Spec.MaxStep = 0
+	progress.Spec.CurrentStep = 0
+
+	steps := []hfv1.ProgressStep{}
+	step := hfv1.ProgressStep{Step: 0, Timestamp: now.Format(time.UnixDate)}
+	steps = append(steps, step)
+	progress.Spec.Steps = steps
+
+	labels := make(map[string]string)
+	labels[SessionLabel] = sessionId // map to session
+	labels[ScheduledEventLabel] = scheduledEventId // map to scheduledevent
+	labels[UserSessionLabel] = userId // map to scheduledevent
+	labels["finished"] = "false" // default is in progress, finished = false
+	progress.Labels = labels
+
+	createdProgress, err := sss.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Create(sss.ctx, &progress, metav1.CreateOptions{})
+
+	if err != nil {
+		glog.Errorf("error creating progress %v", err)
+		return
+	}
+
+	glog.V(2).Infof("created progress with ID %s", createdProgress.Spec.Id)
+}
+
+func (sss SessionServer) FinishProgress(sessionId string, userId string) {
+	now := time.Now()
+
+	progress, err := sss.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(sss.ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", SessionLabel, sessionId, UserSessionLabel, userId)})
+
+	if err != nil {
+		glog.Errorf("error while retrieving progress %v", err)
+		return
+	}
+
+	for _, p := range progress.Items {
+		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			p.Labels["finished"] = "true"
+			p.Spec.LastUpdate = now.Format(time.UnixDate)
+			p.Spec.Finished = "true"
+	
+			_, updateErr := sss.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Update(sss.ctx, &p, metav1.UpdateOptions{})
+			glog.V(4).Infof("updated progress with ID %s", p.Spec.Id)
+	
+			return updateErr
+		})
+		if retryErr != nil {
+			glog.Errorf("error finishing progress %v", err)
+			return
+		}
+	}
+}
+
 
 func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := sss.auth.AuthN(w, r)
@@ -323,7 +420,7 @@ func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Requ
 	}
 
 	ss, err := sss.GetSessionById(sessionId)
-	if ss.Spec.UserId != user.Spec.Id {
+	if ss.Spec.UserId != user.Spec.Id && !user.Spec.Admin {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no session found that matches this user")
 		return
 	}
@@ -331,7 +428,7 @@ func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Requ
 	now := time.Now().Format(time.UnixDate)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := sss.hfClientSet.HobbyfarmV1().Sessions().Get(sss.ctx, sessionId, metav1.GetOptions{})
+		result, getErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(sss.ctx, sessionId, metav1.GetOptions{})
 		if getErr != nil {
 			return fmt.Errorf("error retrieving latest version of session %s: %v", sessionId, getErr)
 		}
@@ -340,14 +437,14 @@ func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Requ
 		result.Status.Active = false
 		result.Status.Finished = false
 
-		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions().Update(sss.ctx, result, metav1.UpdateOptions{})
+		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(sss.ctx, result, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for environment")
 
 		return updateErr
 	})
 
 	if retryErr != nil {
-		glog.Errorf("error creating session %v", err)
+		glog.Errorf("error deleting session %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "something happened")
 		return
 	}
@@ -435,14 +532,14 @@ func (sss SessionServer) KeepAliveSessionFunc(w http.ResponseWriter, r *http.Req
 	expiration := now.Add(duration).Format(time.UnixDate)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := sss.hfClientSet.HobbyfarmV1().Sessions().Get(sss.ctx, sessionId, metav1.GetOptions{})
+		result, getErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(sss.ctx, sessionId, metav1.GetOptions{})
 		if getErr != nil {
 			return fmt.Errorf("error retrieving latest version of session %s: %v", sessionId, getErr)
 		}
 
 		result.Status.ExpirationTime = expiration
 
-		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions().Update(sss.ctx, result, metav1.UpdateOptions{})
+		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(sss.ctx, result, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated expiration time for session")
 
 		return updateErr
@@ -520,7 +617,7 @@ func (sss SessionServer) PauseSessionFunc(w http.ResponseWriter, r *http.Request
 	pauseExpiration := now.Add(duration).Format(time.UnixDate)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := sss.hfClientSet.HobbyfarmV1().Sessions().Get(sss.ctx, sessionId, metav1.GetOptions{})
+		result, getErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(sss.ctx, sessionId, metav1.GetOptions{})
 		if getErr != nil {
 			return fmt.Errorf("error retrieving latest version of session %s: %v", sessionId, getErr)
 		}
@@ -528,7 +625,7 @@ func (sss SessionServer) PauseSessionFunc(w http.ResponseWriter, r *http.Request
 		result.Status.PausedTime = pauseExpiration
 		result.Status.Paused = true
 
-		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions().Update(sss.ctx, result, metav1.UpdateOptions{})
+		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(sss.ctx, result, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for course session")
 
 		return updateErr
@@ -600,7 +697,7 @@ func (sss SessionServer) ResumeSessionFunc(w http.ResponseWriter, r *http.Reques
 	newExpiration := now.Add(duration).Format(time.UnixDate)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := sss.hfClientSet.HobbyfarmV1().Sessions().Get(sss.ctx, sessionId, metav1.GetOptions{})
+		result, getErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(sss.ctx, sessionId, metav1.GetOptions{})
 		if getErr != nil {
 			return fmt.Errorf("error retrieving latest version of session %s: %v", sessionId, getErr)
 		}
@@ -609,7 +706,7 @@ func (sss SessionServer) ResumeSessionFunc(w http.ResponseWriter, r *http.Reques
 		result.Status.ExpirationTime = newExpiration
 		result.Status.Paused = false
 
-		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions().Update(sss.ctx, result, metav1.UpdateOptions{})
+		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(sss.ctx, result, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for session")
 
 		return updateErr

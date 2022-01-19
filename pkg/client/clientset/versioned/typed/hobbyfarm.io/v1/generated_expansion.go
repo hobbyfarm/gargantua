@@ -28,6 +28,8 @@ type DynamicBindRequestExpansion interface{}
 
 type EnvironmentExpansion interface{}
 
+type ProgressExpansion interface{}
+
 type ScenarioExpansion interface{}
 
 type ScheduledEventExpansion interface{}
