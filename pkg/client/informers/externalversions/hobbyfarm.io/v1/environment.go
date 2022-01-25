@@ -32,7 +32,6 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-
 // EnvironmentInformer provides access to a shared informer and lister for
 // Environments.
 type EnvironmentInformer interface {
@@ -41,9 +40,9 @@ type EnvironmentInformer interface {
 }
 
 type environmentInformer struct {
-	factory internalinterfaces.SharedInformerFactory
+	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
-	namespace string
+	namespace        string
 }
 
 // NewEnvironmentInformer constructs a new informer for Environment type.

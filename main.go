@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
+
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"os"
 
 	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmtemplateserver"
@@ -32,17 +33,17 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/pkg/courseserver"
 	"github.com/hobbyfarm/gargantua/pkg/environmentserver"
+	"github.com/hobbyfarm/gargantua/pkg/progressserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
 	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/shell"
 	"github.com/hobbyfarm/gargantua/pkg/signals"
 	"github.com/hobbyfarm/gargantua/pkg/userserver"
+	"github.com/hobbyfarm/gargantua/pkg/util"
 	"github.com/hobbyfarm/gargantua/pkg/vmclaimserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
 	"github.com/hobbyfarm/gargantua/pkg/vmserver"
-	"github.com/hobbyfarm/gargantua/pkg/util"
-	"github.com/hobbyfarm/gargantua/pkg/progressserver"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -231,7 +232,7 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	wg.Add(1)
+	wg.Add(2)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -244,35 +245,43 @@ func main() {
 		glog.Fatal(http.ListenAndServe(":"+port, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
 	}()
 
-	lock, err := getLock(cfg)
-	if err != nil {
-		glog.Fatal(err)
+	go func() {
+		defer wg.Done()
+		hfInformerFactory.Start(stopCh)
+	}()
+
+	if !disableControllers {
+		lock, err := getLock("controller-manager", cfg)
+		if err != nil {
+			glog.Fatal(err)
+		}
+		leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
+			Lock:            lock,
+			ReleaseOnCancel: true,
+			LeaseDuration:   30 * time.Second,
+			RenewDeadline:   15 * time.Second,
+			RetryPeriod:     2 * time.Second,
+			Callbacks: leaderelection.LeaderCallbacks{
+				OnStartedLeading: func(c context.Context) {
+					err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, ctx, stopCh)
+					if err != nil {
+						glog.Fatal(err)
+					}
+				},
+				OnStoppedLeading: func() {
+					glog.Info("waiting to be elected leader")
+				},
+				OnNewLeader: func(current_id string) {
+					if current_id == lock.Identity() {
+						glog.Info("currently the leader")
+						return
+					}
+					glog.Infof("current leader is %s", current_id)
+				},
+			},
+		})
 	}
-	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
-		Lock:            lock,
-		ReleaseOnCancel: true,
-		LeaseDuration:   30 * time.Second,
-		RenewDeadline:   15 * time.Second,
-		RetryPeriod:     2 * time.Second,
-		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: func(c context.Context) {
-				err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, ctx, stopCh)
-				if err != nil {
-					glog.Fatal(err)
-				}
-			},
-			OnStoppedLeading: func() {
-				glog.Info("waiting to be elected leader")
-			},
-			OnNewLeader: func(current_id string) {
-				if current_id == lock.Identity() {
-					glog.Info("currently the leader")
-					return
-				}
-				glog.Infof("current leader is %s", current_id)
-			},
-		},
-	})
+
 	wg.Wait()
 }
 
@@ -330,8 +339,6 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 		return dynamicBindController.Run(stopCh)
 	})
 
-	hfInformerFactory.Start(stopCh)
-
 	if err = g.Wait(); err != nil {
 		glog.Errorf("error starting up the controllers: %v", err)
 		return err
@@ -340,7 +347,7 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	return nil
 }
 
-func getLock(cfg *rest.Config) (resourcelock.Interface, error) {
+func getLock(lockName string, cfg *rest.Config) (resourcelock.Interface, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
@@ -350,5 +357,5 @@ func getLock(cfg *rest.Config) (resourcelock.Interface, error) {
 	if ns == "" {
 		ns = "hobbyfarm"
 	}
-	return resourcelock.NewFromKubeconfig(resourcelock.ConfigMapsLeasesResourceLock, ns, "gargantua-leader", resourcelock.ResourceLockConfig{Identity: hostname}, cfg, 15*time.Second)
+	return resourcelock.NewFromKubeconfig(resourcelock.ConfigMapsLeasesResourceLock, ns, lockName, resourcelock.ResourceLockConfig{Identity: hostname}, cfg, 15*time.Second)
 }

@@ -19,8 +19,8 @@ import (
 
 const (
 	SessionExpireTime = time.Hour * 3
-	SessionLabel     	= "hobbyfarm.io/session"
-	UserSessionLabel    = "hobbyfarm.io/user"
+	SessionLabel      = "hobbyfarm.io/session"
+	UserSessionLabel  = "hobbyfarm.io/user"
 )
 
 type SessionController struct {
@@ -317,10 +317,10 @@ func (s *SessionController) FinishProgress(sessionId string, userId string) {
 			p.Labels["finished"] = "true"
 			p.Spec.LastUpdate = now.Format(time.UnixDate)
 			p.Spec.Finished = "true"
-	
+
 			_, updateErr := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Update(s.ctx, &p, metav1.UpdateOptions{})
 			glog.V(4).Infof("updated progress with ID %s", p.Spec.Id)
-	
+
 			return updateErr
 		})
 		if retryErr != nil {

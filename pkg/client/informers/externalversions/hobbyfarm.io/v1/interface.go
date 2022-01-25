@@ -22,43 +22,41 @@ import (
 	internalinterfaces "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions/internalinterfaces"
 )
 
-
 // Interface provides access to all the informers in this group version.
 type Interface interface {
 	// AccessCodes returns a AccessCodeInformer.
-		AccessCodes() AccessCodeInformer
+	AccessCodes() AccessCodeInformer
 	// Courses returns a CourseInformer.
-		Courses() CourseInformer
+	Courses() CourseInformer
 	// DynamicBindConfigurations returns a DynamicBindConfigurationInformer.
-		DynamicBindConfigurations() DynamicBindConfigurationInformer
+	DynamicBindConfigurations() DynamicBindConfigurationInformer
 	// DynamicBindRequests returns a DynamicBindRequestInformer.
-		DynamicBindRequests() DynamicBindRequestInformer
+	DynamicBindRequests() DynamicBindRequestInformer
 	// Environments returns a EnvironmentInformer.
-		Environments() EnvironmentInformer
+	Environments() EnvironmentInformer
 	// Progresses returns a ProgressInformer.
-		Progresses() ProgressInformer
+	Progresses() ProgressInformer
 	// Scenarios returns a ScenarioInformer.
-		Scenarios() ScenarioInformer
+	Scenarios() ScenarioInformer
 	// ScheduledEvents returns a ScheduledEventInformer.
-		ScheduledEvents() ScheduledEventInformer
+	ScheduledEvents() ScheduledEventInformer
 	// Sessions returns a SessionInformer.
-		Sessions() SessionInformer
+	Sessions() SessionInformer
 	// Users returns a UserInformer.
-		Users() UserInformer
+	Users() UserInformer
 	// VirtualMachines returns a VirtualMachineInformer.
-		VirtualMachines() VirtualMachineInformer
+	VirtualMachines() VirtualMachineInformer
 	// VirtualMachineClaims returns a VirtualMachineClaimInformer.
-		VirtualMachineClaims() VirtualMachineClaimInformer
+	VirtualMachineClaims() VirtualMachineClaimInformer
 	// VirtualMachineSets returns a VirtualMachineSetInformer.
-		VirtualMachineSets() VirtualMachineSetInformer
+	VirtualMachineSets() VirtualMachineSetInformer
 	// VirtualMachineTemplates returns a VirtualMachineTemplateInformer.
-		VirtualMachineTemplates() VirtualMachineTemplateInformer
-	
+	VirtualMachineTemplates() VirtualMachineTemplateInformer
 }
 
 type version struct {
-	factory internalinterfaces.SharedInformerFactory
-	namespace string
+	factory          internalinterfaces.SharedInformerFactory
+	namespace        string
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 }
 
