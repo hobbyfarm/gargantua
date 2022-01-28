@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 	"os"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -77,6 +77,8 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	glog.V(4).Infof("all values in the form: %v", r.PostForm)
+	
 	var id string
 	courseid := r.PostFormValue("course")
 	scenarioid := r.PostFormValue("scenario")
