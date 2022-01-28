@@ -17,7 +17,6 @@ const (
 )
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type VirtualMachine struct {
@@ -59,7 +58,6 @@ type VirtualMachineStatus struct {
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type VirtualMachineClaim struct {
@@ -103,7 +101,6 @@ type VirtualMachineClaimVM struct {
 
 // +genclient
 // +genclient:noStatus
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type VirtualMachineTemplate struct {
@@ -131,7 +128,6 @@ type VirtualMachineTemplateSpec struct {
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type Environment struct {
@@ -180,7 +176,6 @@ type CMSStruct struct {
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type VirtualMachineSet struct {
@@ -221,7 +216,6 @@ type VirtualMachineSetList struct {
 
 // +genclient
 // +genclient:noStatus
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type Course struct {
@@ -253,7 +247,6 @@ type CourseSpec struct {
 
 // +genclient
 // +genclient:noStatus
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type Scenario struct {
@@ -289,7 +282,6 @@ type ScenarioStep struct {
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type Session struct {
@@ -328,7 +320,43 @@ type SessionStatus struct {
 
 // +genclient
 // +genclient:noStatus
-// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type Progress struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              ProgressSpec   `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ProgressList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Progress `json:"items"`
+}
+
+type ProgressSpec struct {
+	Id					string `json:"id"`
+	CurrentStep         int   `json:"current_step"`
+	MaxStep 			int   `json:"max_step"`
+	TotalStep 			int   `json:"total_step"`
+	Course   			string `json:"course"`
+	Scenario   			string `json:"scenario"`
+	UserId     			string `json:"user"`
+	Started 			string `json:"started"`
+	LastUpdate 			string `json:"last_update"`
+	Finished 			string `json:"finished"`
+	Steps				[]ProgressStep `json:"steps"`
+}
+
+type ProgressStep struct {
+	Step				int `json:"step"`
+	Timestamp 			string `json:"timestamp"`
+}
+
+// +genclient
+// +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // AccessCode is used for defining access code for scheduled events
 
@@ -355,11 +383,11 @@ type AccessCodeSpec struct {
 	VirtualMachineSets  []string `json:"vmsets"`
 	RestrictedBind      bool     `json:"restricted_bind"`
 	RestrictedBindValue string   `json:"restricted_bind_value"`
+	Printable           bool     `json:"printable"`
 }
 
 // +genclient
 // +genclient:noStatus
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type User struct {
@@ -386,7 +414,6 @@ type UserSpec struct {
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type ScheduledEvent struct {
@@ -415,6 +442,7 @@ type ScheduledEventSpec struct {
 	AccessCode              string                    `json:"access_code"`
 	RestrictedBind          bool                      `json:"restricted_bind"` // if restricted_bind is true, we need to make the scenario sessions when they get created only bind to vmsets that are created by this scheduledevent
 	RestrictedBindValue     string                    `json:"restricted_bind_value"`
+	Printable               bool                      `json:"printable"`
 	Scenarios               []string                  `json:"scenarios"`
 	Courses                 []string                  `json:"courses"`
 }
@@ -430,7 +458,6 @@ type ScheduledEventStatus struct {
 
 // +genclient
 // +genclient:noStatus
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type DynamicBindConfiguration struct {
@@ -463,7 +490,6 @@ type DynamicBindConfigurationSpec struct {
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type DynamicBindRequest struct {

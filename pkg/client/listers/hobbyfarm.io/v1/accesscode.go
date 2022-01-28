@@ -31,9 +31,8 @@ type AccessCodeLister interface {
 	// List lists all AccessCodes in the indexer.
 	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.AccessCode, err error)
-	// Get retrieves the AccessCode from the index for a given name.
-	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.AccessCode, error)
+	// AccessCodes returns an object that can list and get AccessCodes.
+	AccessCodes(namespace string) AccessCodeNamespaceLister
 	AccessCodeListerExpansion
 }
 
@@ -55,9 +54,41 @@ func (s *accessCodeLister) List(selector labels.Selector) (ret []*v1.AccessCode,
 	return ret, err
 }
 
-// Get retrieves the AccessCode from the index for a given name.
-func (s *accessCodeLister) Get(name string) (*v1.AccessCode, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// AccessCodes returns an object that can list and get AccessCodes.
+func (s *accessCodeLister) AccessCodes(namespace string) AccessCodeNamespaceLister {
+	return accessCodeNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// AccessCodeNamespaceLister helps list and get AccessCodes.
+// All objects returned here must be treated as read-only.
+type AccessCodeNamespaceLister interface {
+	// List lists all AccessCodes in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
+	List(selector labels.Selector) (ret []*v1.AccessCode, err error)
+	// Get retrieves the AccessCode from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*v1.AccessCode, error)
+	AccessCodeNamespaceListerExpansion
+}
+
+// accessCodeNamespaceLister implements the AccessCodeNamespaceLister
+// interface.
+type accessCodeNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all AccessCodes in the indexer for a given namespace.
+func (s accessCodeNamespaceLister) List(selector labels.Selector) (ret []*v1.AccessCode, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.AccessCode))
+	})
+	return ret, err
+}
+
+// Get retrieves the AccessCode from the indexer for a given namespace and name.
+func (s accessCodeNamespaceLister) Get(name string) (*v1.AccessCode, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}

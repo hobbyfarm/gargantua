@@ -86,7 +86,7 @@ func (a AuthServer) getUserByEmail(email string) (hfv1.User, error) {
 		return hfv1.User{}, fmt.Errorf("email passed in was empty")
 	}
 
-	users, err := a.hfClientSet.HobbyfarmV1().Users().List(a.ctx, metav1.ListOptions{})
+	users, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).List(a.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		return hfv1.User{}, fmt.Errorf("error while retrieving user list")
@@ -145,7 +145,7 @@ func (a AuthServer) NewUser(email string, password string) (string, error) {
 
 	newUser.Spec.Password = string(passwordHash)
 
-	_, err = a.hfClientSet.HobbyfarmV1().Users().Create(a.ctx, &newUser, metav1.CreateOptions{})
+	_, err = a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Create(a.ctx, &newUser, metav1.CreateOptions{})
 
 	if err != nil {
 		return "", fmt.Errorf("error creating user")
@@ -211,7 +211,7 @@ func (a AuthServer) ListAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	latestUser, err := a.hfClientSet.HobbyfarmV1().Users().Get(a.ctx, user.Name, metav1.GetOptions{})
+	latestUser, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, user.Name, metav1.GetOptions{})
 
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", fmt.Sprintf("error retrieving user %s", user.Name))
@@ -234,7 +234,7 @@ func (a AuthServer) RetreiveSettingsFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	latestUser, err := a.hfClientSet.HobbyfarmV1().Users().Get(a.ctx, user.Name, metav1.GetOptions{})
+	latestUser, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, user.Name, metav1.GetOptions{})
 
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", fmt.Sprintf("error retrieving user %s", user.Name))
@@ -307,7 +307,7 @@ func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 	accessCode = strings.ToLower(accessCode)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(a.ctx, userId, metav1.GetOptions{})
+		user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
 
 		if err != nil {
 			return fmt.Errorf("error retrieving user")
@@ -325,7 +325,7 @@ func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 
 		user.Spec.AccessCodes = append(user.Spec.AccessCodes, accessCode)
 
-		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(a.ctx, user, metav1.UpdateOptions{})
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -344,7 +344,7 @@ func (a AuthServer) RemoveAccessCode(userId string, accessCode string) error {
 	accessCode = strings.ToLower(accessCode)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(a.ctx, userId, metav1.GetOptions{})
+		user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
 
 		if err != nil {
 			return fmt.Errorf("error retrieving user %s", userId)
@@ -374,7 +374,7 @@ func (a AuthServer) RemoveAccessCode(userId string, accessCode string) error {
 
 		user.Spec.AccessCodes = newAccessCodes
 
-		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(a.ctx, user, metav1.UpdateOptions{})
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -390,7 +390,7 @@ func (a AuthServer) ChangePassword(userId string, oldPassword string, newPasswor
 		return fmt.Errorf("bad parameters passed, %s", userId)
 	}
 
-	user, err := a.hfClientSet.HobbyfarmV1().Users().Get(a.ctx, userId, metav1.GetOptions{})
+	user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("error retrieving user: %v", err)
 		return fmt.Errorf("error retrieving user")
@@ -409,7 +409,7 @@ func (a AuthServer) ChangePassword(userId string, oldPassword string, newPasswor
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(a.ctx, userId, metav1.GetOptions{})
+		user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
 
 		if err != nil {
 			return fmt.Errorf("error retrieving user")
@@ -417,7 +417,7 @@ func (a AuthServer) ChangePassword(userId string, oldPassword string, newPasswor
 
 		user.Spec.Password = string(passwordHash)
 
-		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(a.ctx, user, metav1.UpdateOptions{})
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -434,7 +434,7 @@ func (a AuthServer) UpdateSettings(userId string, newSettings map[string]string)
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(a.ctx, userId, metav1.GetOptions{})
+		user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
 
 		if err != nil {
 			return fmt.Errorf("error retrieving user")
@@ -442,7 +442,7 @@ func (a AuthServer) UpdateSettings(userId string, newSettings map[string]string)
 
 		user.Spec.Settings = newSettings
 
-		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(a.ctx, user, metav1.UpdateOptions{})
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 

@@ -22,39 +22,43 @@ import (
 	internalinterfaces "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions/internalinterfaces"
 )
 
+
 // Interface provides access to all the informers in this group version.
 type Interface interface {
 	// AccessCodes returns a AccessCodeInformer.
-	AccessCodes() AccessCodeInformer
+		AccessCodes() AccessCodeInformer
 	// Courses returns a CourseInformer.
-	Courses() CourseInformer
+		Courses() CourseInformer
 	// DynamicBindConfigurations returns a DynamicBindConfigurationInformer.
-	DynamicBindConfigurations() DynamicBindConfigurationInformer
+		DynamicBindConfigurations() DynamicBindConfigurationInformer
 	// DynamicBindRequests returns a DynamicBindRequestInformer.
-	DynamicBindRequests() DynamicBindRequestInformer
+		DynamicBindRequests() DynamicBindRequestInformer
 	// Environments returns a EnvironmentInformer.
-	Environments() EnvironmentInformer
+		Environments() EnvironmentInformer
+	// Progresses returns a ProgressInformer.
+		Progresses() ProgressInformer
 	// Scenarios returns a ScenarioInformer.
-	Scenarios() ScenarioInformer
+		Scenarios() ScenarioInformer
 	// ScheduledEvents returns a ScheduledEventInformer.
-	ScheduledEvents() ScheduledEventInformer
+		ScheduledEvents() ScheduledEventInformer
 	// Sessions returns a SessionInformer.
-	Sessions() SessionInformer
+		Sessions() SessionInformer
 	// Users returns a UserInformer.
-	Users() UserInformer
+		Users() UserInformer
 	// VirtualMachines returns a VirtualMachineInformer.
-	VirtualMachines() VirtualMachineInformer
+		VirtualMachines() VirtualMachineInformer
 	// VirtualMachineClaims returns a VirtualMachineClaimInformer.
-	VirtualMachineClaims() VirtualMachineClaimInformer
+		VirtualMachineClaims() VirtualMachineClaimInformer
 	// VirtualMachineSets returns a VirtualMachineSetInformer.
-	VirtualMachineSets() VirtualMachineSetInformer
+		VirtualMachineSets() VirtualMachineSetInformer
 	// VirtualMachineTemplates returns a VirtualMachineTemplateInformer.
-	VirtualMachineTemplates() VirtualMachineTemplateInformer
+		VirtualMachineTemplates() VirtualMachineTemplateInformer
+	
 }
 
 type version struct {
-	factory          internalinterfaces.SharedInformerFactory
-	namespace        string
+	factory internalinterfaces.SharedInformerFactory
+	namespace string
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 }
 
@@ -65,65 +69,70 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 
 // AccessCodes returns a AccessCodeInformer.
 func (v *version) AccessCodes() AccessCodeInformer {
-	return &accessCodeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &accessCodeInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Courses returns a CourseInformer.
 func (v *version) Courses() CourseInformer {
-	return &courseInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &courseInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // DynamicBindConfigurations returns a DynamicBindConfigurationInformer.
 func (v *version) DynamicBindConfigurations() DynamicBindConfigurationInformer {
-	return &dynamicBindConfigurationInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &dynamicBindConfigurationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // DynamicBindRequests returns a DynamicBindRequestInformer.
 func (v *version) DynamicBindRequests() DynamicBindRequestInformer {
-	return &dynamicBindRequestInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &dynamicBindRequestInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Environments returns a EnvironmentInformer.
 func (v *version) Environments() EnvironmentInformer {
-	return &environmentInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &environmentInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// Progresses returns a ProgressInformer.
+func (v *version) Progresses() ProgressInformer {
+	return &progressInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Scenarios returns a ScenarioInformer.
 func (v *version) Scenarios() ScenarioInformer {
-	return &scenarioInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &scenarioInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // ScheduledEvents returns a ScheduledEventInformer.
 func (v *version) ScheduledEvents() ScheduledEventInformer {
-	return &scheduledEventInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &scheduledEventInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Sessions returns a SessionInformer.
 func (v *version) Sessions() SessionInformer {
-	return &sessionInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &sessionInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Users returns a UserInformer.
 func (v *version) Users() UserInformer {
-	return &userInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &userInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // VirtualMachines returns a VirtualMachineInformer.
 func (v *version) VirtualMachines() VirtualMachineInformer {
-	return &virtualMachineInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &virtualMachineInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // VirtualMachineClaims returns a VirtualMachineClaimInformer.
 func (v *version) VirtualMachineClaims() VirtualMachineClaimInformer {
-	return &virtualMachineClaimInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &virtualMachineClaimInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // VirtualMachineSets returns a VirtualMachineSetInformer.
 func (v *version) VirtualMachineSets() VirtualMachineSetInformer {
-	return &virtualMachineSetInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &virtualMachineSetInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // VirtualMachineTemplates returns a VirtualMachineTemplateInformer.
 func (v *version) VirtualMachineTemplates() VirtualMachineTemplateInformer {
-	return &virtualMachineTemplateInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &virtualMachineTemplateInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

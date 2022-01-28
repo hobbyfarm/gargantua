@@ -30,34 +30,37 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
+
 // ScenariosGetter has a method to return a ScenarioInterface.
 // A group's client should implement this interface.
 type ScenariosGetter interface {
-	Scenarios() ScenarioInterface
+	Scenarios(namespace string) ScenarioInterface
 }
 
 // ScenarioInterface has methods to work with Scenario resources.
 type ScenarioInterface interface {
-	Create(ctx context.Context, scenario *v1.Scenario, opts metav1.CreateOptions) (*v1.Scenario, error)
-	Update(ctx context.Context, scenario *v1.Scenario, opts metav1.UpdateOptions) (*v1.Scenario, error)
-	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Scenario, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1.ScenarioList, error)
-	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Scenario, err error)
+Create(ctx context.Context, scenario *v1.Scenario, opts metav1.CreateOptions) (*v1.Scenario, error)
+Update(ctx context.Context, scenario *v1.Scenario, opts metav1.UpdateOptions) (*v1.Scenario, error)
+Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Scenario, error)
+List(ctx context.Context, opts metav1.ListOptions) (*v1.ScenarioList, error)
+Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Scenario, err error)
 	ScenarioExpansion
 }
 
 // scenarios implements ScenarioInterface
 type scenarios struct {
 	client rest.Interface
+	ns     string
 }
 
 // newScenarios returns a Scenarios
-func newScenarios(c *HobbyfarmV1Client) *scenarios {
+func newScenarios(c *HobbyfarmV1Client, namespace string) *scenarios {
 	return &scenarios{
 		client: c.RESTClient(),
+		ns:     namespace,
 	}
 }
 
@@ -65,6 +68,7 @@ func newScenarios(c *HobbyfarmV1Client) *scenarios {
 func (c *scenarios) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Scenario, err error) {
 	result = &v1.Scenario{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("scenarios").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -76,11 +80,12 @@ func (c *scenarios) Get(ctx context.Context, name string, options metav1.GetOpti
 // List takes label and field selectors, and returns the list of Scenarios that match those selectors.
 func (c *scenarios) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ScenarioList, err error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
+	if opts.TimeoutSeconds != nil{
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.ScenarioList{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("scenarios").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -92,11 +97,12 @@ func (c *scenarios) List(ctx context.Context, opts metav1.ListOptions) (result *
 // Watch returns a watch.Interface that watches the requested scenarios.
 func (c *scenarios) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
+	if opts.TimeoutSeconds != nil{
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Namespace(c.ns).
 		Resource("scenarios").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -107,6 +113,7 @@ func (c *scenarios) Watch(ctx context.Context, opts metav1.ListOptions) (watch.I
 func (c *scenarios) Create(ctx context.Context, scenario *v1.Scenario, opts metav1.CreateOptions) (result *v1.Scenario, err error) {
 	result = &v1.Scenario{}
 	err = c.client.Post().
+		Namespace(c.ns).
 		Resource("scenarios").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(scenario).
@@ -119,6 +126,7 @@ func (c *scenarios) Create(ctx context.Context, scenario *v1.Scenario, opts meta
 func (c *scenarios) Update(ctx context.Context, scenario *v1.Scenario, opts metav1.UpdateOptions) (result *v1.Scenario, err error) {
 	result = &v1.Scenario{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("scenarios").
 		Name(scenario.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -131,6 +139,7 @@ func (c *scenarios) Update(ctx context.Context, scenario *v1.Scenario, opts meta
 // Delete takes name of the scenario and deletes it. Returns an error if one occurs.
 func (c *scenarios) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("scenarios").
 		Name(name).
 		Body(&opts).
@@ -141,10 +150,11 @@ func (c *scenarios) Delete(ctx context.Context, name string, opts metav1.DeleteO
 // DeleteCollection deletes a collection of objects.
 func (c *scenarios) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
+	if listOpts.TimeoutSeconds != nil{
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("scenarios").
 		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -157,6 +167,7 @@ func (c *scenarios) DeleteCollection(ctx context.Context, opts metav1.DeleteOpti
 func (c *scenarios) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Scenario, err error) {
 	result = &v1.Scenario{}
 	err = c.client.Patch(pt).
+		Namespace(c.ns).
 		Resource("scenarios").
 		Name(name).
 		SubResource(subresources...).

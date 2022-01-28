@@ -31,9 +31,8 @@ type ScenarioLister interface {
 	// List lists all Scenarios in the indexer.
 	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.Scenario, err error)
-	// Get retrieves the Scenario from the index for a given name.
-	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.Scenario, error)
+	// Scenarios returns an object that can list and get Scenarios.
+	Scenarios(namespace string) ScenarioNamespaceLister
 	ScenarioListerExpansion
 }
 
@@ -55,9 +54,41 @@ func (s *scenarioLister) List(selector labels.Selector) (ret []*v1.Scenario, err
 	return ret, err
 }
 
-// Get retrieves the Scenario from the index for a given name.
-func (s *scenarioLister) Get(name string) (*v1.Scenario, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// Scenarios returns an object that can list and get Scenarios.
+func (s *scenarioLister) Scenarios(namespace string) ScenarioNamespaceLister {
+	return scenarioNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// ScenarioNamespaceLister helps list and get Scenarios.
+// All objects returned here must be treated as read-only.
+type ScenarioNamespaceLister interface {
+	// List lists all Scenarios in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
+	List(selector labels.Selector) (ret []*v1.Scenario, err error)
+	// Get retrieves the Scenario from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*v1.Scenario, error)
+	ScenarioNamespaceListerExpansion
+}
+
+// scenarioNamespaceLister implements the ScenarioNamespaceLister
+// interface.
+type scenarioNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all Scenarios in the indexer for a given namespace.
+func (s scenarioNamespaceLister) List(selector labels.Selector) (ret []*v1.Scenario, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.Scenario))
+	})
+	return ret, err
+}
+
+// Get retrieves the Scenario from the indexer for a given namespace and name.
+func (s scenarioNamespaceLister) Get(name string) (*v1.Scenario, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}

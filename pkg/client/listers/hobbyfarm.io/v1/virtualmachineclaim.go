@@ -31,9 +31,8 @@ type VirtualMachineClaimLister interface {
 	// List lists all VirtualMachineClaims in the indexer.
 	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.VirtualMachineClaim, err error)
-	// Get retrieves the VirtualMachineClaim from the index for a given name.
-	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.VirtualMachineClaim, error)
+	// VirtualMachineClaims returns an object that can list and get VirtualMachineClaims.
+	VirtualMachineClaims(namespace string) VirtualMachineClaimNamespaceLister
 	VirtualMachineClaimListerExpansion
 }
 
@@ -55,9 +54,41 @@ func (s *virtualMachineClaimLister) List(selector labels.Selector) (ret []*v1.Vi
 	return ret, err
 }
 
-// Get retrieves the VirtualMachineClaim from the index for a given name.
-func (s *virtualMachineClaimLister) Get(name string) (*v1.VirtualMachineClaim, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// VirtualMachineClaims returns an object that can list and get VirtualMachineClaims.
+func (s *virtualMachineClaimLister) VirtualMachineClaims(namespace string) VirtualMachineClaimNamespaceLister {
+	return virtualMachineClaimNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// VirtualMachineClaimNamespaceLister helps list and get VirtualMachineClaims.
+// All objects returned here must be treated as read-only.
+type VirtualMachineClaimNamespaceLister interface {
+	// List lists all VirtualMachineClaims in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
+	List(selector labels.Selector) (ret []*v1.VirtualMachineClaim, err error)
+	// Get retrieves the VirtualMachineClaim from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*v1.VirtualMachineClaim, error)
+	VirtualMachineClaimNamespaceListerExpansion
+}
+
+// virtualMachineClaimNamespaceLister implements the VirtualMachineClaimNamespaceLister
+// interface.
+type virtualMachineClaimNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all VirtualMachineClaims in the indexer for a given namespace.
+func (s virtualMachineClaimNamespaceLister) List(selector labels.Selector) (ret []*v1.VirtualMachineClaim, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.VirtualMachineClaim))
+	})
+	return ret, err
+}
+
+// Get retrieves the VirtualMachineClaim from the indexer for a given namespace and name.
+func (s virtualMachineClaimNamespaceLister) Get(name string) (*v1.VirtualMachineClaim, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}

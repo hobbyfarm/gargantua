@@ -31,9 +31,8 @@ type CourseLister interface {
 	// List lists all Courses in the indexer.
 	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.Course, err error)
-	// Get retrieves the Course from the index for a given name.
-	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.Course, error)
+	// Courses returns an object that can list and get Courses.
+	Courses(namespace string) CourseNamespaceLister
 	CourseListerExpansion
 }
 
@@ -55,9 +54,41 @@ func (s *courseLister) List(selector labels.Selector) (ret []*v1.Course, err err
 	return ret, err
 }
 
-// Get retrieves the Course from the index for a given name.
-func (s *courseLister) Get(name string) (*v1.Course, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// Courses returns an object that can list and get Courses.
+func (s *courseLister) Courses(namespace string) CourseNamespaceLister {
+	return courseNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// CourseNamespaceLister helps list and get Courses.
+// All objects returned here must be treated as read-only.
+type CourseNamespaceLister interface {
+	// List lists all Courses in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
+	List(selector labels.Selector) (ret []*v1.Course, err error)
+	// Get retrieves the Course from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*v1.Course, error)
+	CourseNamespaceListerExpansion
+}
+
+// courseNamespaceLister implements the CourseNamespaceLister
+// interface.
+type courseNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all Courses in the indexer for a given namespace.
+func (s courseNamespaceLister) List(selector labels.Selector) (ret []*v1.Course, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.Course))
+	})
+	return ret, err
+}
+
+// Get retrieves the Course from the indexer for a given namespace and name.
+func (s courseNamespaceLister) Get(name string) (*v1.Course, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
