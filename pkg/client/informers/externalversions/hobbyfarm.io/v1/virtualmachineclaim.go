@@ -32,7 +32,6 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-
 // VirtualMachineClaimInformer provides access to a shared informer and lister for
 // VirtualMachineClaims.
 type VirtualMachineClaimInformer interface {
@@ -41,9 +40,9 @@ type VirtualMachineClaimInformer interface {
 }
 
 type virtualMachineClaimInformer struct {
-	factory internalinterfaces.SharedInformerFactory
+	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
-	namespace string
+	namespace        string
 }
 
 // NewVirtualMachineClaimInformer constructs a new informer for VirtualMachineClaim type.

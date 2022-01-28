@@ -30,7 +30,6 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-
 // UsersGetter has a method to return a UserInterface.
 // A group's client should implement this interface.
 type UsersGetter interface {
@@ -39,14 +38,14 @@ type UsersGetter interface {
 
 // UserInterface has methods to work with User resources.
 type UserInterface interface {
-Create(ctx context.Context, user *v1.User, opts metav1.CreateOptions) (*v1.User, error)
-Update(ctx context.Context, user *v1.User, opts metav1.UpdateOptions) (*v1.User, error)
-Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.User, error)
-List(ctx context.Context, opts metav1.ListOptions) (*v1.UserList, error)
-Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.User, err error)
+	Create(ctx context.Context, user *v1.User, opts metav1.CreateOptions) (*v1.User, error)
+	Update(ctx context.Context, user *v1.User, opts metav1.UpdateOptions) (*v1.User, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.User, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.UserList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.User, err error)
 	UserExpansion
 }
 
@@ -80,7 +79,7 @@ func (c *users) Get(ctx context.Context, name string, options metav1.GetOptions)
 // List takes label and field selectors, and returns the list of Users that match those selectors.
 func (c *users) List(ctx context.Context, opts metav1.ListOptions) (result *v1.UserList, err error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.UserList{}
@@ -97,7 +96,7 @@ func (c *users) List(ctx context.Context, opts metav1.ListOptions) (result *v1.U
 // Watch returns a watch.Interface that watches the requested users.
 func (c *users) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
@@ -150,7 +149,7 @@ func (c *users) Delete(ctx context.Context, name string, opts metav1.DeleteOptio
 // DeleteCollection deletes a collection of objects.
 func (c *users) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil{
+	if listOpts.TimeoutSeconds != nil {
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().

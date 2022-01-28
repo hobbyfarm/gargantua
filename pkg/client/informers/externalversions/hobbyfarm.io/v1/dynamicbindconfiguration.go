@@ -32,7 +32,6 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-
 // DynamicBindConfigurationInformer provides access to a shared informer and lister for
 // DynamicBindConfigurations.
 type DynamicBindConfigurationInformer interface {
@@ -41,9 +40,9 @@ type DynamicBindConfigurationInformer interface {
 }
 
 type dynamicBindConfigurationInformer struct {
-	factory internalinterfaces.SharedInformerFactory
+	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
-	namespace string
+	namespace        string
 }
 
 // NewDynamicBindConfigurationInformer constructs a new informer for DynamicBindConfiguration type.

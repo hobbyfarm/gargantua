@@ -32,7 +32,6 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-
 // ScheduledEventInformer provides access to a shared informer and lister for
 // ScheduledEvents.
 type ScheduledEventInformer interface {
@@ -41,9 +40,9 @@ type ScheduledEventInformer interface {
 }
 
 type scheduledEventInformer struct {
-	factory internalinterfaces.SharedInformerFactory
+	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
-	namespace string
+	namespace        string
 }
 
 // NewScheduledEventInformer constructs a new informer for ScheduledEvent type.

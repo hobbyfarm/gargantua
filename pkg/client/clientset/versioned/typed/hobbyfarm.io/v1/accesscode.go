@@ -79,7 +79,7 @@ func (c *accessCodes) Get(ctx context.Context, name string, options metav1.GetOp
 // List takes label and field selectors, and returns the list of AccessCodes that match those selectors.
 func (c *accessCodes) List(ctx context.Context, opts metav1.ListOptions) (result *v1.AccessCodeList, err error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.AccessCodeList{}
@@ -96,7 +96,7 @@ func (c *accessCodes) List(ctx context.Context, opts metav1.ListOptions) (result
 // Watch returns a watch.Interface that watches the requested accessCodes.
 func (c *accessCodes) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
@@ -149,7 +149,7 @@ func (c *accessCodes) Delete(ctx context.Context, name string, opts metav1.Delet
 // DeleteCollection deletes a collection of objects.
 func (c *accessCodes) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil{
+	if listOpts.TimeoutSeconds != nil {
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().

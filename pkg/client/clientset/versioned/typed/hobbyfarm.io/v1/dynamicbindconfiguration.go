@@ -38,14 +38,14 @@ type DynamicBindConfigurationsGetter interface {
 
 // DynamicBindConfigurationInterface has methods to work with DynamicBindConfiguration resources.
 type DynamicBindConfigurationInterface interface {
-Create(ctx context.Context, dynamicBindConfiguration *v1.DynamicBindConfiguration, opts metav1.CreateOptions) (*v1.DynamicBindConfiguration, error)
-Update(ctx context.Context, dynamicBindConfiguration *v1.DynamicBindConfiguration, opts metav1.UpdateOptions) (*v1.DynamicBindConfiguration, error)
-Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.DynamicBindConfiguration, error)
-List(ctx context.Context, opts metav1.ListOptions) (*v1.DynamicBindConfigurationList, error)
-Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.DynamicBindConfiguration, err error)
+	Create(ctx context.Context, dynamicBindConfiguration *v1.DynamicBindConfiguration, opts metav1.CreateOptions) (*v1.DynamicBindConfiguration, error)
+	Update(ctx context.Context, dynamicBindConfiguration *v1.DynamicBindConfiguration, opts metav1.UpdateOptions) (*v1.DynamicBindConfiguration, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.DynamicBindConfiguration, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.DynamicBindConfigurationList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.DynamicBindConfiguration, err error)
 	DynamicBindConfigurationExpansion
 }
 
@@ -79,7 +79,7 @@ func (c *dynamicBindConfigurations) Get(ctx context.Context, name string, option
 // List takes label and field selectors, and returns the list of DynamicBindConfigurations that match those selectors.
 func (c *dynamicBindConfigurations) List(ctx context.Context, opts metav1.ListOptions) (result *v1.DynamicBindConfigurationList, err error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.DynamicBindConfigurationList{}
@@ -96,7 +96,7 @@ func (c *dynamicBindConfigurations) List(ctx context.Context, opts metav1.ListOp
 // Watch returns a watch.Interface that watches the requested dynamicBindConfigurations.
 func (c *dynamicBindConfigurations) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
@@ -149,7 +149,7 @@ func (c *dynamicBindConfigurations) Delete(ctx context.Context, name string, opt
 // DeleteCollection deletes a collection of objects.
 func (c *dynamicBindConfigurations) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil{
+	if listOpts.TimeoutSeconds != nil {
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().

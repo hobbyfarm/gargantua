@@ -32,7 +32,6 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-
 // SessionInformer provides access to a shared informer and lister for
 // Sessions.
 type SessionInformer interface {
@@ -41,9 +40,9 @@ type SessionInformer interface {
 }
 
 type sessionInformer struct {
-	factory internalinterfaces.SharedInformerFactory
+	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
-	namespace string
+	namespace        string
 }
 
 // NewSessionInformer constructs a new informer for Session type.

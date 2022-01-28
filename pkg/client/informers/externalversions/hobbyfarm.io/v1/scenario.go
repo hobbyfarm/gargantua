@@ -32,7 +32,6 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-
 // ScenarioInformer provides access to a shared informer and lister for
 // Scenarios.
 type ScenarioInformer interface {
@@ -41,9 +40,9 @@ type ScenarioInformer interface {
 }
 
 type scenarioInformer struct {
-	factory internalinterfaces.SharedInformerFactory
+	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
-	namespace string
+	namespace        string
 }
 
 // NewScenarioInformer constructs a new informer for Scenario type.

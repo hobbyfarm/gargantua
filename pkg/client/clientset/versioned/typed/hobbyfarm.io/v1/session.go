@@ -30,7 +30,6 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-
 // SessionsGetter has a method to return a SessionInterface.
 // A group's client should implement this interface.
 type SessionsGetter interface {
@@ -39,15 +38,15 @@ type SessionsGetter interface {
 
 // SessionInterface has methods to work with Session resources.
 type SessionInterface interface {
-Create(ctx context.Context, session *v1.Session, opts metav1.CreateOptions) (*v1.Session, error)
-Update(ctx context.Context, session *v1.Session, opts metav1.UpdateOptions) (*v1.Session, error)
-UpdateStatus(ctx context.Context, session *v1.Session, opts metav1.UpdateOptions) (*v1.Session, error)
-Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Session, error)
-List(ctx context.Context, opts metav1.ListOptions) (*v1.SessionList, error)
-Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Session, err error)
+	Create(ctx context.Context, session *v1.Session, opts metav1.CreateOptions) (*v1.Session, error)
+	Update(ctx context.Context, session *v1.Session, opts metav1.UpdateOptions) (*v1.Session, error)
+	UpdateStatus(ctx context.Context, session *v1.Session, opts metav1.UpdateOptions) (*v1.Session, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Session, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.SessionList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Session, err error)
 	SessionExpansion
 }
 
@@ -81,7 +80,7 @@ func (c *sessions) Get(ctx context.Context, name string, options metav1.GetOptio
 // List takes label and field selectors, and returns the list of Sessions that match those selectors.
 func (c *sessions) List(ctx context.Context, opts metav1.ListOptions) (result *v1.SessionList, err error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.SessionList{}
@@ -98,7 +97,7 @@ func (c *sessions) List(ctx context.Context, opts metav1.ListOptions) (result *v
 // Watch returns a watch.Interface that watches the requested sessions.
 func (c *sessions) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
@@ -167,7 +166,7 @@ func (c *sessions) Delete(ctx context.Context, name string, opts metav1.DeleteOp
 // DeleteCollection deletes a collection of objects.
 func (c *sessions) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil{
+	if listOpts.TimeoutSeconds != nil {
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
