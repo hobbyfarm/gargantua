@@ -38,15 +38,15 @@ type DynamicBindRequestsGetter interface {
 
 // DynamicBindRequestInterface has methods to work with DynamicBindRequest resources.
 type DynamicBindRequestInterface interface {
-Create(ctx context.Context, dynamicBindRequest *v1.DynamicBindRequest, opts metav1.CreateOptions) (*v1.DynamicBindRequest, error)
-Update(ctx context.Context, dynamicBindRequest *v1.DynamicBindRequest, opts metav1.UpdateOptions) (*v1.DynamicBindRequest, error)
-UpdateStatus(ctx context.Context, dynamicBindRequest *v1.DynamicBindRequest, opts metav1.UpdateOptions) (*v1.DynamicBindRequest, error)
-Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.DynamicBindRequest, error)
-List(ctx context.Context, opts metav1.ListOptions) (*v1.DynamicBindRequestList, error)
-Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.DynamicBindRequest, err error)
+	Create(ctx context.Context, dynamicBindRequest *v1.DynamicBindRequest, opts metav1.CreateOptions) (*v1.DynamicBindRequest, error)
+	Update(ctx context.Context, dynamicBindRequest *v1.DynamicBindRequest, opts metav1.UpdateOptions) (*v1.DynamicBindRequest, error)
+	UpdateStatus(ctx context.Context, dynamicBindRequest *v1.DynamicBindRequest, opts metav1.UpdateOptions) (*v1.DynamicBindRequest, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.DynamicBindRequest, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.DynamicBindRequestList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.DynamicBindRequest, err error)
 	DynamicBindRequestExpansion
 }
 
@@ -80,7 +80,7 @@ func (c *dynamicBindRequests) Get(ctx context.Context, name string, options meta
 // List takes label and field selectors, and returns the list of DynamicBindRequests that match those selectors.
 func (c *dynamicBindRequests) List(ctx context.Context, opts metav1.ListOptions) (result *v1.DynamicBindRequestList, err error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.DynamicBindRequestList{}
@@ -97,7 +97,7 @@ func (c *dynamicBindRequests) List(ctx context.Context, opts metav1.ListOptions)
 // Watch returns a watch.Interface that watches the requested dynamicBindRequests.
 func (c *dynamicBindRequests) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
@@ -166,7 +166,7 @@ func (c *dynamicBindRequests) Delete(ctx context.Context, name string, opts meta
 // DeleteCollection deletes a collection of objects.
 func (c *dynamicBindRequests) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil{
+	if listOpts.TimeoutSeconds != nil {
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().

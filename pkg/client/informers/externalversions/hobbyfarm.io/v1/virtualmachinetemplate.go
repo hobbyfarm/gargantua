@@ -32,7 +32,6 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-
 // VirtualMachineTemplateInformer provides access to a shared informer and lister for
 // VirtualMachineTemplates.
 type VirtualMachineTemplateInformer interface {
@@ -41,9 +40,9 @@ type VirtualMachineTemplateInformer interface {
 }
 
 type virtualMachineTemplateInformer struct {
-	factory internalinterfaces.SharedInformerFactory
+	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
-	namespace string
+	namespace        string
 }
 
 // NewVirtualMachineTemplateInformer constructs a new informer for VirtualMachineTemplate type.

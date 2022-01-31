@@ -22,10 +22,10 @@ import (
 	"k8s.io/client-go/util/retry"
 
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
-	"os"
 
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 )
@@ -532,7 +532,7 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 	return max, nil
 }
 
-func GetReleaseNamespace()(string){
+func GetReleaseNamespace() string {
 	provisionNS := "hobbyfarm"
 	ns := os.Getenv("HF_NAMESPACE")
 	if ns != "" {

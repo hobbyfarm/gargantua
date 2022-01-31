@@ -32,7 +32,6 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-
 // UserInformer provides access to a shared informer and lister for
 // Users.
 type UserInformer interface {
@@ -41,9 +40,9 @@ type UserInformer interface {
 }
 
 type userInformer struct {
-	factory internalinterfaces.SharedInformerFactory
+	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
-	namespace string
+	namespace        string
 }
 
 // NewUserInformer constructs a new informer for User type.

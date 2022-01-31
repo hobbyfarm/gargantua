@@ -30,7 +30,6 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-
 // ScenariosGetter has a method to return a ScenarioInterface.
 // A group's client should implement this interface.
 type ScenariosGetter interface {
@@ -39,14 +38,14 @@ type ScenariosGetter interface {
 
 // ScenarioInterface has methods to work with Scenario resources.
 type ScenarioInterface interface {
-Create(ctx context.Context, scenario *v1.Scenario, opts metav1.CreateOptions) (*v1.Scenario, error)
-Update(ctx context.Context, scenario *v1.Scenario, opts metav1.UpdateOptions) (*v1.Scenario, error)
-Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Scenario, error)
-List(ctx context.Context, opts metav1.ListOptions) (*v1.ScenarioList, error)
-Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Scenario, err error)
+	Create(ctx context.Context, scenario *v1.Scenario, opts metav1.CreateOptions) (*v1.Scenario, error)
+	Update(ctx context.Context, scenario *v1.Scenario, opts metav1.UpdateOptions) (*v1.Scenario, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Scenario, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.ScenarioList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Scenario, err error)
 	ScenarioExpansion
 }
 
@@ -80,7 +79,7 @@ func (c *scenarios) Get(ctx context.Context, name string, options metav1.GetOpti
 // List takes label and field selectors, and returns the list of Scenarios that match those selectors.
 func (c *scenarios) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ScenarioList, err error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.ScenarioList{}
@@ -97,7 +96,7 @@ func (c *scenarios) List(ctx context.Context, opts metav1.ListOptions) (result *
 // Watch returns a watch.Interface that watches the requested scenarios.
 func (c *scenarios) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
@@ -150,7 +149,7 @@ func (c *scenarios) Delete(ctx context.Context, name string, opts metav1.DeleteO
 // DeleteCollection deletes a collection of objects.
 func (c *scenarios) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil{
+	if listOpts.TimeoutSeconds != nil {
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().

@@ -146,7 +146,7 @@ func (a AuthClient) ValidateJWT(tokenString string) (hfv1.User, error) {
 			var err error
 			user, err = a.getUserByEmail(fmt.Sprint(claims["email"]))
 			if err != nil {
-				glog.Errorf("could not find user that matched token %s", fmt.Sprint(claims["email"]))
+				glog.Errorf("could not find user that matched email %s", fmt.Sprint(claims["email"]))
 				return hfv1.User{}, fmt.Errorf("could not find user that matched token %s", fmt.Sprint(claims["email"]))
 			}
 		}

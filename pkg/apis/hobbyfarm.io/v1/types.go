@@ -82,7 +82,7 @@ type VirtualMachineClaimSpec struct {
 	RestrictedBindValue string                           `json:"restricted_bind_value"`
 	VirtualMachines     map[string]VirtualMachineClaimVM `json:"vm"`
 	DynamicCapable      bool                             `json:"dynamic_bind_capable"`
-	BaseName            string			        		 `json:"base_name"`
+	BaseName            string                           `json:"base_name"`
 }
 
 type VirtualMachineClaimStatus struct {
@@ -325,7 +325,7 @@ type SessionStatus struct {
 type Progress struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              ProgressSpec   `json:"spec"`
+	Spec              ProgressSpec `json:"spec"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -337,22 +337,22 @@ type ProgressList struct {
 }
 
 type ProgressSpec struct {
-	Id					string `json:"id"`
-	CurrentStep         int   `json:"current_step"`
-	MaxStep 			int   `json:"max_step"`
-	TotalStep 			int   `json:"total_step"`
-	Course   			string `json:"course"`
-	Scenario   			string `json:"scenario"`
-	UserId     			string `json:"user"`
-	Started 			string `json:"started"`
-	LastUpdate 			string `json:"last_update"`
-	Finished 			string `json:"finished"`
-	Steps				[]ProgressStep `json:"steps"`
+	Id          string         `json:"id"`
+	CurrentStep int            `json:"current_step"`
+	MaxStep     int            `json:"max_step"`
+	TotalStep   int            `json:"total_step"`
+	Course      string         `json:"course"`
+	Scenario    string         `json:"scenario"`
+	UserId      string         `json:"user"`
+	Started     string         `json:"started"`
+	LastUpdate  string         `json:"last_update"`
+	Finished    string         `json:"finished"`
+	Steps       []ProgressStep `json:"steps"`
 }
 
 type ProgressStep struct {
-	Step				int `json:"step"`
-	Timestamp 			string `json:"timestamp"`
+	Step      int    `json:"step"`
+	Timestamp string `json:"timestamp"`
 }
 
 // +genclient

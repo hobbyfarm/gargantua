@@ -32,7 +32,6 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-
 // CourseInformer provides access to a shared informer and lister for
 // Courses.
 type CourseInformer interface {
@@ -41,9 +40,9 @@ type CourseInformer interface {
 }
 
 type courseInformer struct {
-	factory internalinterfaces.SharedInformerFactory
+	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
-	namespace string
+	namespace        string
 }
 
 // NewCourseInformer constructs a new informer for Course type.

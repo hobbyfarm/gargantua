@@ -38,14 +38,14 @@ type CoursesGetter interface {
 
 // CourseInterface has methods to work with Course resources.
 type CourseInterface interface {
-Create(ctx context.Context, course *v1.Course, opts metav1.CreateOptions) (*v1.Course, error)
-Update(ctx context.Context, course *v1.Course, opts metav1.UpdateOptions) (*v1.Course, error)
-Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Course, error)
-List(ctx context.Context, opts metav1.ListOptions) (*v1.CourseList, error)
-Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Course, err error)
+	Create(ctx context.Context, course *v1.Course, opts metav1.CreateOptions) (*v1.Course, error)
+	Update(ctx context.Context, course *v1.Course, opts metav1.UpdateOptions) (*v1.Course, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Course, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.CourseList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Course, err error)
 	CourseExpansion
 }
 
@@ -79,7 +79,7 @@ func (c *courses) Get(ctx context.Context, name string, options metav1.GetOption
 // List takes label and field selectors, and returns the list of Courses that match those selectors.
 func (c *courses) List(ctx context.Context, opts metav1.ListOptions) (result *v1.CourseList, err error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.CourseList{}
@@ -96,7 +96,7 @@ func (c *courses) List(ctx context.Context, opts metav1.ListOptions) (result *v1
 // Watch returns a watch.Interface that watches the requested courses.
 func (c *courses) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
@@ -149,7 +149,7 @@ func (c *courses) Delete(ctx context.Context, name string, opts metav1.DeleteOpt
 // DeleteCollection deletes a collection of objects.
 func (c *courses) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil{
+	if listOpts.TimeoutSeconds != nil {
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
