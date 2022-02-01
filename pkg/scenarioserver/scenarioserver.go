@@ -19,6 +19,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -35,6 +36,7 @@ type ScenarioServer struct {
 	acClient        *accesscode.AccessCodeClient
 	scenarioIndexer cache.Indexer
 	ctx             context.Context
+	courseClient    *courseclient.CourseClient
 }
 
 type PreparedScenarioStep struct {
@@ -66,11 +68,12 @@ type AdminPreparedScenario struct {
 	hfv1.ScenarioSpec
 }
 
-func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*ScenarioServer, error) {
+func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context, courseClient *courseclient.CourseClient) (*ScenarioServer, error) {
 	scenario := ScenarioServer{}
 
 	scenario.hfClientSet = hfClientset
 	scenario.acClient = acClient
+	scenario.courseClient = courseClient
 	scenario.auth = authClient
 	inf := hfInformerFactory.Hobbyfarm().V1().Scenarios().Informer()
 	indexers := map[string]cache.IndexFunc{idIndex: idIndexer}
@@ -151,24 +154,59 @@ func (s ScenarioServer) getPreparedScenarioStepById(id string, step int) (Prepar
 	return PreparedScenarioStep{}, fmt.Errorf("error while retrieving scenario step, most likely doesn't exist in index")
 }
 
-func (s ScenarioServer) getPreparedScenarioById(id string) (PreparedScenario, error) {
+func (s ScenarioServer) getPreparedScenarioById(id string, user hfv1.User) (PreparedPrintableScenario, error) {
 	scenario, err := s.GetScenarioById(id)
 
 	if err != nil {
-		return PreparedScenario{}, fmt.Errorf("error while retrieving scenario %v", err)
+		return PreparedPrintableScenario{}, fmt.Errorf("error while retrieving scenario %v", err)
 	}
 
-	preparedScenario, err := s.prepareScenario(scenario)
+	var printableScenarioIds []string
+	var courseIds []string
+	for _, acString := range user.Spec.AccessCodes {
+		ac, err := s.acClient.GetAccessCode(acString, false)
+		if err != nil {
+			glog.Errorf("error retrieving access code: %s %v", acString, err)
+		} else {
+			tempScenarioIds, err := s.acClient.GetScenarioIds(acString)
+			if err != nil {
+				glog.Errorf("error retrieving scenario ids for access code: %s %v", acString, err)
+			} else if ac.Spec.Printable {
+				printableScenarioIds = append(printableScenarioIds, tempScenarioIds...)
+			}
+			tempCourseIds, err := s.acClient.GetCourseIds(acString)
+			if err != nil {
+				glog.Errorf("error retrieving course ids for access code: %s %v", ac, err)
+			} else {
+				courseIds = append(courseIds, tempCourseIds...)
+			}
+		}
+	}
+	courseIds = util.UniqueStringSlice(courseIds)
+
+	for _, courseId := range courseIds {
+		course, err := s.courseClient.GetCourseById(courseId)
+		if err != nil {
+			glog.Errorf("error retrieving course %v", err)
+		} else {
+			printableScenarioIds = append(printableScenarioIds, s.courseClient.AppendDynamicScenariosByCategories(course.Spec.Scenarios, course.Spec.Categories)...)
+		}
+	}
+
+	printableScenarioIds = util.UniqueStringSlice(printableScenarioIds)
+	printable := util.StringInSlice(scenario.Name, printableScenarioIds)
+
+	preparedScenario, err := s.preparePrintableScenario(scenario, printable)
 
 	if err != nil {
-		return PreparedScenario{}, fmt.Errorf("error while preparing scenario %v", err)
+		return PreparedPrintableScenario{}, fmt.Errorf("error while preparing scenario %v", err)
 	}
 
 	return preparedScenario, nil
 }
 
 func (s ScenarioServer) GetScenarioFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthN(w, r)
+	user, err := s.auth.AuthN(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get scenarios")
 		return
@@ -176,7 +214,7 @@ func (s ScenarioServer) GetScenarioFunc(w http.ResponseWriter, r *http.Request) 
 
 	vars := mux.Vars(r)
 
-	scenario, err := s.getPreparedScenarioById(vars["scenario_id"])
+	scenario, err := s.getPreparedScenarioById(vars["scenario_id"], user)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf("scenario %s not found", vars["scenario_id"]))
 		return
