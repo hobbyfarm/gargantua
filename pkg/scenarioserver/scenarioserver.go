@@ -110,12 +110,6 @@ func (s ScenarioServer) preparePrintableScenario(scenario hfv1.Scenario, printab
 	ps.VirtualMachines = scenario.Spec.VirtualMachines
 	ps.Pauseable = scenario.Spec.Pauseable
 	ps.Printable = printable
-
-	var steps []PreparedScenarioStep
-	for _, step := range scenario.Spec.Steps {
-		steps = append(steps, PreparedScenarioStep{step.Title, step.Content})
-	}
-
 	ps.StepCount = len(scenario.Spec.Steps)
 
 	return ps, nil
