@@ -44,15 +44,6 @@ type PreparedScenarioStep struct {
 	Content string `json:"content"`
 }
 
-type PreparedScenario struct {
-	Id              string              `json:"id"`
-	Name            string              `json:"name"`
-	Description     string              `json:"description"`
-	StepCount       int                 `json:"stepcount"`
-	VirtualMachines []map[string]string `json:"virtualmachines"`
-	Pauseable       bool                `json:"pauseable"`
-}
-
 type PreparedPrintableScenario struct {
 	Id              string              `json:"id"`
 	Name            string              `json:"name"`
