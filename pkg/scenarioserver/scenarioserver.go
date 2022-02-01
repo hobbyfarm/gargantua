@@ -101,25 +101,6 @@ func (s ScenarioServer) SetupRoutes(r *mux.Router) {
 	glog.V(2).Infof("set up route")
 }
 
-func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario) (PreparedScenario, error) {
-	ps := PreparedScenario{}
-
-	ps.Name = scenario.Spec.Name
-	ps.Id = scenario.Spec.Id
-	ps.Description = scenario.Spec.Description
-	ps.VirtualMachines = scenario.Spec.VirtualMachines
-	ps.Pauseable = scenario.Spec.Pauseable
-
-	var steps []PreparedScenarioStep
-	for _, step := range scenario.Spec.Steps {
-		steps = append(steps, PreparedScenarioStep{step.Title, step.Content})
-	}
-
-	ps.StepCount = len(scenario.Spec.Steps)
-
-	return ps, nil
-}
-
 func (s ScenarioServer) preparePrintableScenario(scenario hfv1.Scenario, printable bool) (PreparedPrintableScenario, error) {
 	ps := PreparedPrintableScenario{}
 
