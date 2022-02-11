@@ -56,7 +56,7 @@ func NewIndex(kind string, informerFactory informers.SharedInformerFactory) (*In
 	i.clusterRoleBindingIndexer = crbInformer.GetIndexer()
 
 	i.roleIndexer = informerFactory.Rbac().V1().Roles().Informer().GetIndexer()
-	i.clusterRoleIndexer = informerFactory.Rbac().V1().ClusterRoleBindings().Informer().GetIndexer()
+	i.clusterRoleIndexer = informerFactory.Rbac().V1().ClusterRoles().Informer().GetIndexer()
 
 	return i, nil
 }

@@ -1,7 +1,6 @@
 package rbac
 
 import (
-	"crypto/sha1"
 	"fmt"
 	rbacv1 "k8s.io/api/rbac/v1"
 )
@@ -15,13 +14,15 @@ import (
 
 type AccessSet struct {
 	Subject string `json:"subject"`
+
+	// key is /namespace/apigroup/resource/verbs
 	Access map[string]bool `json:"access"`
 }
 
 func (i *Index) GetAccessSet(subj string) (*AccessSet, error) {
 	var as = &AccessSet{
 		Subject: subj,
-		Access: map[string]bool{},
+		Access:  map[string]bool{},
 	}
 
 	// get the rolebindings for the subject
@@ -54,7 +55,6 @@ func (i *Index) GetAccessSet(subj string) (*AccessSet, error) {
 		i.addToAccessSet(as, "", rules)
 	}
 
-
 	return as, nil
 }
 
@@ -66,14 +66,11 @@ func (i *Index) addToAccessSet(accessSet *AccessSet, namespace string, rules []r
 			for _, resource := range rule.Resources {
 				// for each resource in the rule
 				for _, verb := range rule.Verbs {
-					// for each verb in the rule
-					// add this combo to the access set
-					// build a hash key for it first
-					h := sha1.New()
-					h.Write([]byte(apiGroup+namespace+resource+verb))
-					val := h.Sum(nil)
-
-					accessSet.Access[fmt.Sprintf("%x", val)] = true
+					if namespace == "" {
+						namespace = All
+					}
+					key := fmt.Sprintf("/%s/%s/%s/%s", namespace, apiGroup, resource, verb)
+					accessSet.Access[key] = true
 				}
 			}
 		}
@@ -85,7 +82,7 @@ get policy rules associated with roleRef.
 if roleRef is for a Role object, namespace is used to look up the object
 
 policyrules are listing of policies a role provides, e.g. apiGroups: *, resources: *, verbs: get,put
- */
+*/
 func (i *Index) getRules(namespace string, roleRef rbacv1.RoleRef) ([]rbacv1.PolicyRule, error) {
 	switch roleRef.Kind {
 	case "ClusterRole":
@@ -100,7 +97,7 @@ func (i *Index) getRules(namespace string, roleRef rbacv1.RoleRef) ([]rbacv1.Pol
 		return obj.(*rbacv1.ClusterRole).Rules, nil
 	case "Role":
 		obj, exists, err := i.roleIndexer.GetByKey(namespace + "/" + roleRef.Name)
-		if err !=  nil {
+		if err != nil {
 			return nil, err
 		}
 		if !exists {
@@ -114,7 +111,7 @@ func (i *Index) getRules(namespace string, roleRef rbacv1.RoleRef) ([]rbacv1.Pol
 }
 
 func (i *Index) getRoleBindings(subj string) ([]*rbacv1.RoleBinding, error) {
-	obj, err := i.roleBindingIndexer.ByIndex(rbIndex + "-" + i.kind, subj)
+	obj, err := i.roleBindingIndexer.ByIndex(rbIndex+"-"+i.kind, subj)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +129,7 @@ func (i *Index) getRoleBindings(subj string) ([]*rbacv1.RoleBinding, error) {
 }
 
 func (i *Index) getClusterRoleBindings(subj string) ([]*rbacv1.ClusterRoleBinding, error) {
-	obj, err := i.clusterRoleBindingIndexer.ByIndex(rbIndex + "-" + i.kind, subj)
+	obj, err := i.clusterRoleBindingIndexer.ByIndex(rbIndex+"-"+i.kind, subj)
 	if err != nil {
 		return nil, err
 	}
