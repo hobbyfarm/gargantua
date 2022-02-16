@@ -59,6 +59,13 @@ func (i *Index) GetAccessSet(subj string) (*AccessSet, error) {
 }
 
 func (i *Index) addToAccessSet(accessSet *AccessSet, namespace string, rules []rbacv1.PolicyRule) {
+	// we only care about rules that are global, or apply to our namespace
+	// any others can be discarded
+	// this simplifies the frontend from having to worry about what namespace HF is installed into
+	if namespace != "" && namespace != i.namespace {
+		return // this ruleset does not apply to us
+		// it is neither global nor in our installed namespace
+	}
 	for _, rule := range rules {
 		// for each rule
 		for _, apiGroup := range rule.APIGroups {
@@ -66,10 +73,7 @@ func (i *Index) addToAccessSet(accessSet *AccessSet, namespace string, rules []r
 			for _, resource := range rule.Resources {
 				// for each resource in the rule
 				for _, verb := range rule.Verbs {
-					if namespace == "" {
-						namespace = All
-					}
-					key := fmt.Sprintf("/%s/%s/%s/%s", namespace, apiGroup, resource, verb)
+					key := fmt.Sprintf("/%s/%s/%s", apiGroup, resource, verb)
 					accessSet.Access[key] = true
 				}
 			}

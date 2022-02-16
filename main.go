@@ -126,7 +126,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	rbacServer, err := rbac.NewRbacServer(authClient, kubeInformerFactory)
+	rbacServer, err := rbac.NewRbacServer(namespace, authClient, kubeInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}

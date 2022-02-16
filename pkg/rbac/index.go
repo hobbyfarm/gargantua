@@ -22,6 +22,8 @@ var (
 type Index struct {
 	kind string
 
+	namespace string
+
 	roleBindingIndexer cache.Indexer
 	clusterRoleBindingIndexer cache.Indexer
 
@@ -29,9 +31,10 @@ type Index struct {
 	clusterRoleIndexer cache.Indexer
 }
 
-func NewIndex(kind string, informerFactory informers.SharedInformerFactory) (*Index, error) {
+func NewIndex(kind string, namespace string, informerFactory informers.SharedInformerFactory) (*Index, error) {
 	i := &Index{
 		kind: kind,
+		namespace: namespace,
 	}
 
 	// build an informer for each of rolebinding and clusterrolebinding

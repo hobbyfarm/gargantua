@@ -22,13 +22,13 @@ type RbacServer struct {
 	groupIndex *Index
 }
 
-func NewRbacServer(auth *authclient.AuthClient, kubeInformerFactory informers.SharedInformerFactory) (*RbacServer, error) {
-	userIndex, err := NewIndex("User", kubeInformerFactory)
+func NewRbacServer(namespace string, auth *authclient.AuthClient, kubeInformerFactory informers.SharedInformerFactory) (*RbacServer, error) {
+	userIndex, err := NewIndex("User", namespace, kubeInformerFactory)
 	if err != nil {
 		return nil, err
 	}
 
-	groupIndex, err := NewIndex("Group", kubeInformerFactory)
+	groupIndex, err := NewIndex("Group", namespace, kubeInformerFactory)
 	if err != nil {
 		return nil, err
 	}
