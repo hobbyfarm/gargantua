@@ -12,11 +12,32 @@ import (
 // so what would be basically O(n^3) is really just 2 lookups per level.
 // two verbs, two groups, two resources. (e.g. * & get, * & hobbyfarm.io, * & ScheduledEvent)
 
+type Grant struct {
+	ApiGroup string
+	Resource string
+	Verb string
+}
+
 type AccessSet struct {
 	Subject string `json:"subject"`
 
-	// key is /namespace/apigroup/resource/verbs
+	// key is /apigroup/resource/verb
 	Access map[string]bool `json:"access"`
+}
+
+func (as *AccessSet) Grants(grant Grant) bool {
+	// key is /apigroup/resource/verb
+	for _, a := range []string{grant.ApiGroup, All} {
+		for _, r := range []string{grant.Resource, All} {
+			for _, v := range []string{grant.Verb, All} {
+				if as.Access[fmt.Sprintf("/%s/%s/%s", a, r, v)] {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
 }
 
 func (i *Index) GetAccessSet(subj string) (*AccessSet, error) {

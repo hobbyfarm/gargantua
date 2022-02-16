@@ -39,6 +39,15 @@ func (rs RbacServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/rbac/access", rs.GetAccessSet).Methods(http.MethodGet)
 }
 
+func (rs *RbacServer) Grants(user string, grant Grant) (bool, error) {
+	as, err := rs.userIndex.GetAccessSet(user)
+	if err != nil {
+		return false, err
+	}
+
+	return as.Grants(grant), nil
+}
+
 func (rs *RbacServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
 	user, err := rs.auth.AuthN(w, r)
 	if err != nil {

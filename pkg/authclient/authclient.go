@@ -7,6 +7,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"k8s.io/client-go/tools/cache"
 	"net/http"
 	"strings"
@@ -19,9 +20,10 @@ const (
 type AuthClient struct {
 	hfClientSet hfClientset.Interface
 	userIndexer cache.Indexer
+	rbacServer rbac.RbacServer
 }
 
-func NewAuthClient(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*AuthClient, error) {
+func NewAuthClient(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, rbacServer rbac.RbacServer) (*AuthClient, error) {
 	a := AuthClient{}
 	a.hfClientSet = hfClientSet
 	inf := hfInformerFactory.Hobbyfarm().V1().Users().Informer()
@@ -98,6 +100,24 @@ func (a AuthClient) performAuth(token string, admin bool) (hfv1.User, error) {
 		}
 	}
 	//util.ReturnHTTPMessage(w, r, 200, "success", "test successful. valid token")
+	return user, nil
+}
+
+func (a *AuthClient) AuthGrant(grant rbac.Grant, w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
+	user, err := a.AuthN(w, r)
+	if err != nil {
+		return user, err
+	}
+
+	granted, err := a.rbacServer.Grants(user.Spec.Email, grant)
+	if err != nil {
+		return hfv1.User{}, err
+	}
+
+	if !granted {
+		return hfv1.User{}, fmt.Errorf("permission denied")
+	}
+
 	return user, nil
 }
 
