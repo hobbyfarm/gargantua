@@ -11,6 +11,7 @@ const (
 	rbIndex = "rbac.hobbyfarm.io/rb-index"
 	RbacGroup = "rbac.authorization.k8s.io"
 	All = "*"
+	APIGroup = "hobbyfarm.io"
 )
 
 var (

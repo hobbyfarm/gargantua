@@ -10,6 +10,15 @@ import (
 	"net/http"
 )
 
+const (
+	VerbList = "list"
+	VerbGet = "get"
+	VerbCreate = "create"
+	VerbUpdate = "update"
+	VerbDelete = "delete"
+	VerbWatch = "watch"
+)
+
 type RbacServer struct {
 	auth *authclient.AuthClient
 
@@ -39,13 +48,13 @@ func (rs RbacServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/rbac/access", rs.GetAccessSet).Methods(http.MethodGet)
 }
 
-func (rs *RbacServer) Grants(user string, grant Grant) (bool, error) {
+func (rs *RbacServer) Grants(user string, request Request) (bool, error) {
 	as, err := rs.userIndex.GetAccessSet(user)
 	if err != nil {
 		return false, err
 	}
 
-	return as.Grants(grant), nil
+	return as.Grants(request), nil
 }
 
 func (rs *RbacServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
