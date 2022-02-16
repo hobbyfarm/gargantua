@@ -10,11 +10,6 @@ import (
 	"net/http"
 )
 
-const (
-	rbacapigroup = "rbac.authorization.k8s.io"
-	all = "*"
-)
-
 type RbacServer struct {
 	auth *authclient.AuthClient
 
