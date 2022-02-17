@@ -6,6 +6,7 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
+	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"net/http"
 	"strconv"
 	"strings"
@@ -21,6 +22,10 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
+)
+
+const (
+	resourcePlural = "scheduledevents"
 )
 
 type ScheduledEventServer struct {
@@ -72,7 +77,8 @@ type PreparedScheduledEvent struct {
 }
 
 func (s ScheduledEventServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthNAdmin(w, r)
+	_, err := s.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbGet), w, r)
+
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get scheduledEvent")
 		return
@@ -107,7 +113,7 @@ func (s ScheduledEventServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthNAdmin(w, r)
+	_, err := s.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbList), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get scheduledevents")
 		return
@@ -136,7 +142,8 @@ func (s ScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := s.auth.AuthNAdmin(w, r)
+	user, err := s.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbCreate), w, r)
+
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create scheduledevents")
 		return
@@ -297,7 +304,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 }
 
 func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := s.auth.AuthNAdmin(w, r)
+	user, err := s.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbUpdate), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scheduledevents")
 		return
@@ -473,7 +480,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 }
 
 func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := s.auth.AuthNAdmin(w, r)
+	user, err := s.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbDelete), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete scheduledevents")
 		return

@@ -6,6 +6,7 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
+	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"net/http"
 	"strings"
 	"time"
@@ -18,6 +19,10 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
+)
+
+const (
+	resourcePlural = "virtualmachinetemplates"
 )
 
 type VirtualMachineTemplateServer struct {
@@ -66,7 +71,7 @@ type PreparedVMTemplate struct {
 }
 
 func (v VirtualMachineTemplateServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := v.auth.AuthNAdmin(w, r)
+	_, err := v.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbGet), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm template")
 		return
@@ -101,7 +106,7 @@ func (v VirtualMachineTemplateServer) GetFunc(w http.ResponseWriter, r *http.Req
 }
 
 func (v VirtualMachineTemplateServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := v.auth.AuthNAdmin(w, r)
+	_, err := v.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbList), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list vmts")
 		return
@@ -131,7 +136,7 @@ func (v VirtualMachineTemplateServer) ListFunc(w http.ResponseWriter, r *http.Re
 }
 
 func (v VirtualMachineTemplateServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := v.auth.AuthNAdmin(w, r)
+	user, err := v.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbCreate), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create vmt")
 		return
@@ -202,7 +207,7 @@ func (v VirtualMachineTemplateServer) CreateFunc(w http.ResponseWriter, r *http.
 }
 
 func (v VirtualMachineTemplateServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := v.auth.AuthNAdmin(w, r)
+	user, err := v.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbUpdate), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update vmt")
 		return
@@ -278,7 +283,7 @@ func (v VirtualMachineTemplateServer) DeleteFunc(w http.ResponseWriter, r *http.
 	// - virtualmachines
 	// - virtualmachineclaims
 	// - virtualmachinesets
-	user, err := v.auth.AuthNAdmin(w, r)
+	user, err := v.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbDelete), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete vmt")
 		return

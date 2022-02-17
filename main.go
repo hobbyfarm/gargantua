@@ -121,17 +121,17 @@ func main() {
 
 	rbacControllerFactory := wranglerRbac.NewFactoryFromConfigOrDie(cfg)
 
-	authClient, err := authclient.NewAuthClient(hfClient, hfInformerFactory)
+	rbacServer, err := rbac.NewRbacServer(namespace, kubeInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	rbacServer, err := rbac.NewRbacServer(namespace, authClient, kubeInformerFactory)
+	authClient, err := authclient.NewAuthClient(hfClient, hfInformerFactory, rbacServer)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	authServer, err := authserver.NewAuthServer(authClient, hfClient, ctx)
+	authServer, err := authserver.NewAuthServer(authClient, hfClient, ctx, rbacServer)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -227,7 +227,6 @@ func main() {
 		userServer.SetupRoutes(r)
 		vmTemplateServer.SetupRoutes(r)
 		progressServer.SetupRoutes(r)
-		rbacServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})

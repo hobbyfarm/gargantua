@@ -83,7 +83,7 @@ func (c CourseServer) getPreparedCourseById(id string) (PreparedCourse, error) {
 }
 
 func (c CourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := c.auth.AuthGrant(rbac.HobbyfarmRequest{Resource: resourcePlural, Verb: rbac.VerbList}, w, r)
+	_, err := c.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbList), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list courses")
 		return
@@ -114,7 +114,7 @@ func (c CourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) GetCourse(w http.ResponseWriter, r *http.Request) {
-	_, err := c.auth.AuthGrant(rbac.HobbyfarmRequest{Resource: resourcePlural, Verb: rbac.VerbGet}, w, r)
+	_, err := c.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbGet), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to courses")
 		return
@@ -139,7 +139,7 @@ func (c CourseServer) GetCourse(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := c.auth.AuthGrant(rbac.HobbyfarmRequest{Resource: resourcePlural, Verb: rbac.VerbCreate}, w, r)
+	_, err := c.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbCreate), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create courses")
 		return
@@ -244,7 +244,7 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := c.auth.AuthGrant(rbac.HobbyfarmRequest{Resource: resourcePlural, Verb: rbac.VerbUpdate}, w, r)
+	_, err := c.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbUpdate), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scenarios")
 		return
@@ -365,7 +365,7 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := c.auth.AuthGrant(rbac.HobbyfarmRequest{Resource: resourcePlural, Verb: rbac.VerbDelete}, w, r)
+	_, err := c.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbDelete), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to toDelete scenarios")
 		return
@@ -477,7 +477,7 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 }
 
 func (c CourseServer) previewDynamicScenarios(w http.ResponseWriter, r *http.Request) {
-	_, err := c.auth.AuthGrant(rbac.HobbyfarmRequest{Resource: "scenarios", Verb: rbac.VerbList}, w, r)
+	_, err := c.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission("scenarios", rbac.VerbList), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to preview dynamic scenarios")
 		return
