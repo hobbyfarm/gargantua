@@ -121,7 +121,7 @@ func main() {
 
 	rbacControllerFactory := wranglerRbac.NewFactoryFromConfigOrDie(cfg)
 
-	rbacServer, err := rbac.NewRbacServer(namespace, kubeInformerFactory)
+	rbacServer, err := rbac.NewRbacClient(namespace, kubeInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}

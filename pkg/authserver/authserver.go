@@ -30,12 +30,12 @@ const (
 
 type AuthServer struct {
 	auth        *authclient.AuthClient
-	rbac *rbac.Server
+	rbac *rbac.Client
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
 
-func NewAuthServer(authClient *authclient.AuthClient, hfClientSet hfClientset.Interface, ctx context.Context, rbac *rbac.Server) (AuthServer, error) {
+func NewAuthServer(authClient *authclient.AuthClient, hfClientSet hfClientset.Interface, ctx context.Context, rbac *rbac.Client) (AuthServer, error) {
 	a := AuthServer{}
 	a.auth = authClient
 	a.hfClientSet = hfClientSet

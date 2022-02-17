@@ -20,10 +20,10 @@ const (
 type AuthClient struct {
 	hfClientSet hfClientset.Interface
 	userIndexer cache.Indexer
-	rbacServer *rbac.Server
+	rbacServer *rbac.Client
 }
 
-func NewAuthClient(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, rbacServer *rbac.Server) (*AuthClient, error) {
+func NewAuthClient(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, rbacServer *rbac.Client) (*AuthClient, error) {
 	a := AuthClient{}
 	a.hfClientSet = hfClientSet
 	inf := hfInformerFactory.Hobbyfarm().V1().Users().Informer()

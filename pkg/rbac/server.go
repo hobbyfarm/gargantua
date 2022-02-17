@@ -13,12 +13,12 @@ const (
 	VerbWatch = "watch"
 )
 
-type Server struct {
+type Client struct {
 	userIndex *Index
 	groupIndex *Index
 }
 
-func NewRbacServer(namespace string, kubeInformerFactory informers.SharedInformerFactory) (*Server, error) {
+func NewRbacClient(namespace string, kubeInformerFactory informers.SharedInformerFactory) (*Client, error) {
 	userIndex, err := NewIndex("User", namespace, kubeInformerFactory)
 	if err != nil {
 		return nil, err
@@ -29,13 +29,13 @@ func NewRbacServer(namespace string, kubeInformerFactory informers.SharedInforme
 		return nil, err
 	}
 
-	return &Server{
+	return &Client{
 		userIndex: userIndex,
 		groupIndex: groupIndex,
 	}, nil
 }
 
-func (rs *Server) Grants(user string, permission Permission) (bool, error) {
+func (rs *Client) Grants(user string, permission Permission) (bool, error) {
 	as, err := rs.userIndex.GetAccessSet(user)
 	if err != nil {
 		return false, err
@@ -44,7 +44,7 @@ func (rs *Server) Grants(user string, permission Permission) (bool, error) {
 	return as.Grants(permission), nil
 }
 
-func (rs *Server) GetAccessSet(user string) (*AccessSet, error) {
+func (rs *Client) GetAccessSet(user string) (*AccessSet, error) {
 	return rs.userIndex.GetAccessSet(user)
 }
 
