@@ -1,13 +1,7 @@
 package rbac
 
 import (
-	"encoding/json"
-	"github.com/golang/glog"
-	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	"github.com/hobbyfarm/gargantua/pkg/util"
 	"k8s.io/client-go/informers"
-	"net/http"
 )
 
 const (
@@ -19,14 +13,12 @@ const (
 	VerbWatch = "watch"
 )
 
-type RbacServer struct {
-	auth *authclient.AuthClient
-
+type Server struct {
 	userIndex *Index
 	groupIndex *Index
 }
 
-func NewRbacServer(namespace string, auth *authclient.AuthClient, kubeInformerFactory informers.SharedInformerFactory) (*RbacServer, error) {
+func NewRbacServer(namespace string, kubeInformerFactory informers.SharedInformerFactory) (*Server, error) {
 	userIndex, err := NewIndex("User", namespace, kubeInformerFactory)
 	if err != nil {
 		return nil, err
@@ -37,48 +29,22 @@ func NewRbacServer(namespace string, auth *authclient.AuthClient, kubeInformerFa
 		return nil, err
 	}
 
-	return &RbacServer{
-		auth: auth,
+	return &Server{
 		userIndex: userIndex,
 		groupIndex: groupIndex,
 	}, nil
 }
 
-func (rs RbacServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/rbac/access", rs.GetAccessSet).Methods(http.MethodGet)
-}
-
-func (rs *RbacServer) Grants(user string, request Request) (bool, error) {
+func (rs *Server) Grants(user string, permission Permission) (bool, error) {
 	as, err := rs.userIndex.GetAccessSet(user)
 	if err != nil {
 		return false, err
 	}
 
-	return as.Grants(request), nil
+	return as.Grants(permission), nil
 }
 
-func (rs *RbacServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
-	user, err := rs.auth.AuthN(w, r)
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, http.StatusUnauthorized, "unauthorized", "unauthorized")
-		return
-	}
-
-	// need to get the user's access set and publish to front end
-	as, err := rs.userIndex.GetAccessSet(user.Spec.Email)
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error fetching access set")
-		glog.Error(err)
-		return
-	}
-
-	encodedAS, err := json.Marshal(as)
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error encoding access set")
-		glog.Error(err)
-		return
-	}
-
-	util.ReturnHTTPContent(w, r, http.StatusOK, "access_set", encodedAS)
+func (rs *Server) GetAccessSet(user string) (*AccessSet, error) {
+	return rs.userIndex.GetAccessSet(user)
 }
 

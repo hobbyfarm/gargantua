@@ -20,16 +20,17 @@ const (
 type AuthClient struct {
 	hfClientSet hfClientset.Interface
 	userIndexer cache.Indexer
-	rbacServer rbac.RbacServer
+	rbacServer *rbac.Server
 }
 
-func NewAuthClient(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, rbacServer rbac.RbacServer) (*AuthClient, error) {
+func NewAuthClient(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, rbacServer *rbac.Server) (*AuthClient, error) {
 	a := AuthClient{}
 	a.hfClientSet = hfClientSet
 	inf := hfInformerFactory.Hobbyfarm().V1().Users().Informer()
 	indexers := map[string]cache.IndexFunc{emailIndex: emailIndexer}
 	inf.AddIndexers(indexers)
 	a.userIndexer = inf.GetIndexer()
+	a.rbacServer = rbacServer
 	return &a, nil
 }
 
@@ -103,22 +104,41 @@ func (a AuthClient) performAuth(token string, admin bool) (hfv1.User, error) {
 	return user, nil
 }
 
-func (a *AuthClient) AuthGrant(grant rbac.Grant, w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
+func (a *AuthClient) AuthGrant(request *rbac.Request, w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
 	user, err := a.AuthN(w, r)
 	if err != nil {
 		return user, err
 	}
 
-	granted, err := a.rbacServer.Grants(user.Spec.Email, grant)
-	if err != nil {
-		return hfv1.User{}, err
+	if request.GetOperator() == rbac.OperatorAnd {
+		// operator AND, all need to match
+		for _, p := range request.GetPermissions() {
+			g, err := a.rbacServer.Grants(user.Spec.Email, p)
+			if err != nil {
+				return hfv1.User{}, err
+			}
+
+			if !g {
+				return hfv1.User{}, fmt.Errorf("permission denied")
+			}
+		}
+		// if we get here, AND has succeeded
+		return user, nil
+	} else {
+		// operator OR, only one needs to match
+		for _, p := range request.GetPermissions() {
+			g, err := a.rbacServer.Grants(user.Spec.Email, p)
+			if err != nil {
+				return hfv1.User{}, err
+			}
+
+			if g {
+				return user, nil
+			}
+		}
 	}
 
-	if !granted {
-		return hfv1.User{}, fmt.Errorf("permission denied")
-	}
-
-	return user, nil
+	return hfv1.User{}, fmt.Errorf("permission denied")
 }
 
 func (a AuthClient) AuthN(w http.ResponseWriter, r *http.Request) (hfv1.User, error) {

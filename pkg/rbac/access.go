@@ -20,11 +20,11 @@ type AccessSet struct {
 	Access map[string]bool `json:"access"`
 }
 
-func (as *AccessSet) Grants(request Request) bool {
+func (as *AccessSet) Grants(perm Permission) bool {
 	// key is /apigroup/resource/verb
-	for _, a := range []string{request.GetAPIGroup(), All} {
-		for _, r := range []string{request.GetResource(), All} {
-			for _, v := range []string{request.GetVerb(), All} {
+	for _, a := range []string{perm.GetAPIGroup(), All} {
+		for _, r := range []string{perm.GetResource(), All} {
+			for _, v := range []string{perm.GetVerb(), All} {
 				if as.Access[fmt.Sprintf("/%s/%s/%s", a, r, v)] {
 					return true
 				}
