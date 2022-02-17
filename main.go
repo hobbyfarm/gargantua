@@ -44,6 +44,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/vmclaimserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
 	"github.com/hobbyfarm/gargantua/pkg/vmserver"
+	"github.com/hobbyfarm/gargantua/pkg/vmsetserver"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -144,7 +145,12 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	vmServer, err := vmserver.NewVMServer(authClient, hfClient, hfInformerFactory)
+	vmServer, err := vmserver.NewVMServer(authClient, hfClient, hfInformerFactory, ctx)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	vmSetServer, err := vmsetserver.NewVMSetServer(authClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -198,6 +204,7 @@ func main() {
 		courseServer.SetupRoutes(r)
 		scenarioServer.SetupRoutes(r)
 		vmServer.SetupRoutes(r)
+		vmSetServer.SetupRoutes(r)
 		//shellProxy.SetupRoutes(r)
 		vmClaimServer.SetupRoutes(r)
 		environmentServer.SetupRoutes(r)

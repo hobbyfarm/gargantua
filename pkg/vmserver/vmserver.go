@@ -1,6 +1,7 @@
 package vmserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
@@ -9,6 +10,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"k8s.io/client-go/tools/cache"
 	"net/http"
@@ -21,15 +23,21 @@ const (
 type VMServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet hfClientset.Interface
-
+	ctx 		context.Context
 	vmIndexer cache.Indexer
 }
 
-func NewVMServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*VMServer, error) {
+type PreparedVirtualMachine struct {
+	hfv1.VirtualMachineSpec
+	hfv1.VirtualMachineStatus
+}
+
+func NewVMServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMServer, error) {
 	vms := VMServer{}
 
 	vms.hfClientSet = hfClientset
 	vms.auth = authClient
+	vms.ctx = ctx
 
 	inf := hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer()
 	indexers := map[string]cache.IndexFunc{idIndex: vmIdIndexer}
@@ -37,6 +45,12 @@ func NewVMServer(authClient *authclient.AuthClient, hfClientset hfClientset.Inte
 	vms.vmIndexer = inf.GetIndexer()
 
 	return &vms, nil
+}
+
+func (vms VMServer) SetupRoutes(r *mux.Router) {
+	r.HandleFunc("/vm/{vm_id}", vms.GetVMFunc).Methods("GET")
+	r.HandleFunc("/a/vm", vms.GetVMListFunc).Methods("GET")
+	glog.V(2).Infof("set up routes")
 }
 
 func (vms VMServer) GetVirtualMachineById(id string) (hfv1.VirtualMachine, error) {
@@ -66,15 +80,7 @@ func (vms VMServer) GetVirtualMachineById(id string) (hfv1.VirtualMachine, error
 
 }
 
-func (vms VMServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/vm/{vm_id}", vms.GetVMFunc).Methods("GET")
-	glog.V(2).Infof("set up routes")
-}
 
-type PreparedVirtualMachine struct {
-	hfv1.VirtualMachineSpec
-	hfv1.VirtualMachineStatus
-}
 
 func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := vms.auth.AuthN(w, r)
@@ -114,6 +120,34 @@ func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPContent(w, r, 200, "success", encodedVM)
 
 	glog.V(2).Infof("retrieved vm %s", vm.Spec.Id)
+}
+
+func (vms VMServer) GetVMListFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := vms.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list vms")
+		return
+	}
+
+	vmList, err := vms.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(vms.ctx, metav1.ListOptions{})
+
+	if err != nil {
+		glog.Errorf("error while retrieving vms %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "error retreiving vms")
+		return
+	}
+
+	preparedVMs := []PreparedVirtualMachine{}
+	for _, vm := range vmList.Items {
+		pVM := PreparedVirtualMachine{vm.Spec, vm.Status}
+		preparedVMs = append(preparedVMs, pVM)
+	}
+
+	encodedVMs, err := json.Marshal(preparedVMs)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedVMs)
 }
 
 func vmIdIndexer(obj interface{}) ([]string, error) {
