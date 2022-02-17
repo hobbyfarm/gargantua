@@ -9,7 +9,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
@@ -65,7 +65,7 @@ func (s ProgressServer) SetupRoutes(r *mux.Router) {
 		- id : The scheduled event id
 */
 func (s ProgressServer) ListByScheduledEventFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbList), w, r)
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
@@ -110,7 +110,7 @@ func (s ProgressServer) ListForUserFunc(w http.ResponseWriter, r *http.Request) 
 		- id : The user id
 */
 func (s ProgressServer) ListByUserFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbList), w, r)
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
@@ -131,7 +131,7 @@ func (s ProgressServer) ListByUserFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ProgressServer) CountByScheduledEvent(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbList), w, r)
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return

@@ -7,7 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"net/http"
 	"sort"
 	"strconv"
@@ -191,7 +191,7 @@ func (s ScenarioServer) GetScenarioFunc(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s ScenarioServer) AdminGetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbGet), w, r)
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get Scenario")
 		return
@@ -321,7 +321,7 @@ func (s ScenarioServer) ListByCategoryFunc(w http.ResponseWriter, r *http.Reques
 }
 
 func (s ScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request, category string) {
-	_, err := s.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbList), w, r)
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios")
 		return
@@ -359,7 +359,7 @@ func (s ScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request, categor
 }
 
 func (s ScenarioServer) ListCategories(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbList), w, r)
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list categories")
 		return
@@ -394,7 +394,7 @@ func (s ScenarioServer) ListCategories(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ScenarioServer) AdminPrintFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbGet), w, r)
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get Scenario")
 		return
@@ -532,7 +532,7 @@ func (s ScenarioServer) PrintFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbCreate), w, r)
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbCreate), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create scenarios")
 		return
@@ -639,7 +639,7 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbUpdate), w, r)
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scenarios")
 		return

@@ -7,7 +7,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"k8s.io/client-go/tools/cache"
 	"net/http"
 	"strings"
@@ -20,10 +20,10 @@ const (
 type AuthClient struct {
 	hfClientSet hfClientset.Interface
 	userIndexer cache.Indexer
-	rbacServer *rbac.Client
+	rbacServer *rbacclient.Client
 }
 
-func NewAuthClient(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, rbacServer *rbac.Client) (*AuthClient, error) {
+func NewAuthClient(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, rbacServer *rbacclient.Client) (*AuthClient, error) {
 	a := AuthClient{}
 	a.hfClientSet = hfClientSet
 	inf := hfInformerFactory.Hobbyfarm().V1().Users().Informer()
@@ -104,13 +104,13 @@ func (a AuthClient) performAuth(token string, admin bool) (hfv1.User, error) {
 	return user, nil
 }
 
-func (a *AuthClient) AuthGrant(request *rbac.Request, w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
+func (a *AuthClient) AuthGrant(request *rbacclient.Request, w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
 	user, err := a.AuthN(w, r)
 	if err != nil {
 		return user, err
 	}
 
-	if request.GetOperator() == rbac.OperatorAnd {
+	if request.GetOperator() == rbacclient.OperatorAnd {
 		// operator AND, all need to match
 		for _, p := range request.GetPermissions() {
 			g, err := a.rbacServer.Grants(user.Spec.Email, p)

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"net/http"
 	"strings"
 
@@ -71,7 +71,7 @@ type PreparedUser struct {
 }
 
 func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := u.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbGet), w, r)
+	_, err := u.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get User")
 		return
@@ -106,7 +106,7 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := u.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbList), w, r)
+	_, err := u.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list users")
 		return
@@ -135,7 +135,7 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := u.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbUpdate), w, r)
+	_, err := u.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update users")
 		return
@@ -207,7 +207,7 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	// 1. must not have an active session
 	// that's about it.
 
-	_, err := u.auth.AuthGrant(rbac.RbacRequest().HobbyfarmPermission(resourcePlural, rbac.VerbDelete), w, r)
+	_, err := u.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbDelete), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update users")
 		return

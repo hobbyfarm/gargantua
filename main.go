@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/crd"
 	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"k8s.io/client-go/informers"
@@ -121,7 +122,7 @@ func main() {
 
 	rbacControllerFactory := wranglerRbac.NewFactoryFromConfigOrDie(cfg)
 
-	rbacServer, err := rbac.NewRbacClient(namespace, kubeInformerFactory)
+	rbacServer, err := rbacclient.NewRbacClient(namespace, kubeInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}

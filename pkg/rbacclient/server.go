@@ -1,4 +1,4 @@
-package rbac
+package rbacclient
 
 import (
 	"k8s.io/client-go/informers"

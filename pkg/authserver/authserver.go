@@ -6,7 +6,7 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"net/http"
 	"strings"
 	"time"
@@ -30,12 +30,12 @@ const (
 
 type AuthServer struct {
 	auth        *authclient.AuthClient
-	rbac *rbac.Client
+	rbac *rbacclient.Client
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
 
-func NewAuthServer(authClient *authclient.AuthClient, hfClientSet hfClientset.Interface, ctx context.Context, rbac *rbac.Client) (AuthServer, error) {
+func NewAuthServer(authClient *authclient.AuthClient, hfClientSet hfClientset.Interface, ctx context.Context, rbac *rbacclient.Client) (AuthServer, error) {
 	a := AuthServer{}
 	a.auth = authClient
 	a.hfClientSet = hfClientSet
