@@ -18,6 +18,7 @@ import (
 
 const (
 	idIndex = "vms.hobbyfarm.io/id-index"
+	ScheduledEventLabel  = "hobbyfarm.io/scheduledevent"
 )
 
 type VMServer struct {
@@ -49,7 +50,8 @@ func NewVMServer(authClient *authclient.AuthClient, hfClientset hfClientset.Inte
 
 func (vms VMServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/vm/{vm_id}", vms.GetVMFunc).Methods("GET")
-	r.HandleFunc("/a/vm", vms.GetVMListFunc).Methods("GET")
+	r.HandleFunc("/a/vm", vms.GetAllVMListFunc).Methods("GET")
+	r.HandleFunc("/a/vm/{se}", vms.GetVMListByScheduledEventFunc).Methods("GET")
 	glog.V(2).Infof("set up routes")
 }
 
@@ -122,14 +124,14 @@ func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infof("retrieved vm %s", vm.Spec.Id)
 }
 
-func (vms VMServer) GetVMListFunc(w http.ResponseWriter, r *http.Request) {
+func (vms VMServer) GetVMListFunc(w http.ResponseWriter, r *http.Request, listOptions metav1.ListOptions) {
 	_, err := vms.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list vms")
 		return
 	}
 
-	vmList, err := vms.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(vms.ctx, metav1.ListOptions{})
+	vmList, err := vms.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(vms.ctx, listOptions)
 
 	if err != nil {
 		glog.Errorf("error while retrieving vms %v", err)
@@ -148,6 +150,25 @@ func (vms VMServer) GetVMListFunc(w http.ResponseWriter, r *http.Request) {
 		glog.Error(err)
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedVMs)
+}
+
+func (vms VMServer) GetVMListByScheduledEventFunc(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	id := vars["id"]
+
+	if len(id) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no scheduledEvent id passed in")
+		return
+	}
+
+	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, id)}
+
+	vms.GetVMListFunc(w,r, lo)
+}
+
+func (vms VMServer) GetAllVMListFunc(w http.ResponseWriter, r *http.Request) {
+	vms.GetVMListFunc(w,r, metav1.ListOptions{})
 }
 
 func vmIdIndexer(obj interface{}) ([]string, error) {

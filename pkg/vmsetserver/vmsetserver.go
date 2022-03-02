@@ -2,6 +2,7 @@ package vmsetserver
 
 import (
 	"context"
+	"fmt"
 	"encoding/json"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -17,6 +18,7 @@ import (
 
 const (
 	idIndex = "vms.hobbyfarm.io/id-index"
+	ScheduledEventLabel  = "hobbyfarm.io/scheduledevent"
 )
 
 type VMSetServer struct {
@@ -47,18 +49,38 @@ func NewVMSetServer(authClient *authclient.AuthClient, hfClientset hfClientset.I
 }
 
 func (vms VMSetServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/a/vmset", vms.GetVMSetListFunc).Methods("GET")
+	r.HandleFunc("/a/vmset/{se}", vms.GetVMSetListByScheduledEventFunc).Methods("GET")
+	r.HandleFunc("/a/vmset", vms.GetAllVMSetListFunc).Methods("GET")
 	glog.V(2).Infof("set up routes")
 }
 
-func (vms VMSetServer) GetVMSetListFunc(w http.ResponseWriter, r *http.Request) {
+func (vms VMSetServer) GetVMSetListByScheduledEventFunc(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	id := vars["id"]
+
+	if len(id) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no scheduledEvent id passed in")
+		return
+	}
+
+	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, id)}
+
+	vms.GetVMSetListFunc(w,r,lo)
+}
+
+func (vms VMSetServer) GetAllVMSetListFunc(w http.ResponseWriter, r *http.Request) {
+	vms.GetVMSetListFunc(w,r, metav1.ListOptions{})
+}
+
+func (vms VMSetServer) GetVMSetListFunc(w http.ResponseWriter, r *http.Request, listOptions metav1.ListOptions) {
 	_, err := vms.auth.AuthNAdmin(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list vmsets")
 		return
 	}
 
-	vmSetList, err := vms.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).List(vms.ctx, metav1.ListOptions{})
+	vmSetList, err := vms.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).List(vms.ctx, listOptions)
 
 	if err != nil {
 		glog.Errorf("error while retrieving vmsets %v", err)
