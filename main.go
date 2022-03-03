@@ -232,7 +232,7 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	wg.Add(2)
+	wg.Add(1)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -243,11 +243,6 @@ func main() {
 	go func() {
 		defer wg.Done()
 		glog.Fatal(http.ListenAndServe(":"+port, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
-	}()
-
-	go func() {
-		defer wg.Done()
-		hfInformerFactory.Start(stopCh)
 	}()
 
 	if !disableControllers {
@@ -269,9 +264,13 @@ func main() {
 					}
 				},
 				OnStoppedLeading: func() {
+					// Need to start informer factory since even when not leader to ensure api layer
+					// keeps working.
+					hfInformerFactory.Start(stopCh)
 					glog.Info("waiting to be elected leader")
 				},
 				OnNewLeader: func(current_id string) {
+					hfInformerFactory.Start(stopCh)
 					if current_id == lock.Identity() {
 						glog.Info("currently the leader")
 						return
@@ -338,6 +337,8 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	g.Go(func() error {
 		return dynamicBindController.Run(stopCh)
 	})
+
+	hfInformerFactory.Start(stopCh)
 
 	if err = g.Wait(); err != nil {
 		glog.Errorf("error starting up the controllers: %v", err)
