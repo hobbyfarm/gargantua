@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/hobbyfarm/gargantua/pkg/crd"
 	"os"
 
 	"golang.org/x/sync/errgroup"
@@ -60,6 +61,7 @@ var (
 	localKubeconfig    string
 	disableControllers bool
 	shellServer        bool
+	installCRD         bool
 )
 
 func init() {
@@ -67,6 +69,7 @@ func init() {
 	flag.StringVar(&localMasterUrl, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.BoolVar(&disableControllers, "disablecontrollers", false, "Disable the controllers")
 	flag.BoolVar(&shellServer, "shellserver", false, "Be a shell server")
+	flag.BoolVar(&installCRD, "installcrd", false, "Install new version of CRD")
 }
 
 func main() {
@@ -85,6 +88,14 @@ func main() {
 		cfg, err = clientcmd.BuildConfigFromFlags(localMasterUrl, localKubeconfig)
 		if err != nil {
 			glog.Fatalf("Error building kubeconfig: %s", err.Error())
+		}
+	}
+
+	// self manage crds
+	if installCRD {
+		err = crd.Create(ctx, cfg)
+		if err != nil {
+			glog.Fatalf("Error installing crds: %s", err.Error())
 		}
 	}
 
