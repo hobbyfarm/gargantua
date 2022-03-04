@@ -32,7 +32,6 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-
 // AccessCodeInformer provides access to a shared informer and lister for
 // AccessCodes.
 type AccessCodeInformer interface {
@@ -41,9 +40,9 @@ type AccessCodeInformer interface {
 }
 
 type accessCodeInformer struct {
-	factory internalinterfaces.SharedInformerFactory
+	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
-	namespace string
+	namespace        string
 }
 
 // NewAccessCodeInformer constructs a new informer for AccessCode type.

@@ -30,7 +30,6 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-
 // VirtualMachineClaimsGetter has a method to return a VirtualMachineClaimInterface.
 // A group's client should implement this interface.
 type VirtualMachineClaimsGetter interface {
@@ -39,15 +38,15 @@ type VirtualMachineClaimsGetter interface {
 
 // VirtualMachineClaimInterface has methods to work with VirtualMachineClaim resources.
 type VirtualMachineClaimInterface interface {
-Create(ctx context.Context, virtualMachineClaim *v1.VirtualMachineClaim, opts metav1.CreateOptions) (*v1.VirtualMachineClaim, error)
-Update(ctx context.Context, virtualMachineClaim *v1.VirtualMachineClaim, opts metav1.UpdateOptions) (*v1.VirtualMachineClaim, error)
-UpdateStatus(ctx context.Context, virtualMachineClaim *v1.VirtualMachineClaim, opts metav1.UpdateOptions) (*v1.VirtualMachineClaim, error)
-Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.VirtualMachineClaim, error)
-List(ctx context.Context, opts metav1.ListOptions) (*v1.VirtualMachineClaimList, error)
-Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.VirtualMachineClaim, err error)
+	Create(ctx context.Context, virtualMachineClaim *v1.VirtualMachineClaim, opts metav1.CreateOptions) (*v1.VirtualMachineClaim, error)
+	Update(ctx context.Context, virtualMachineClaim *v1.VirtualMachineClaim, opts metav1.UpdateOptions) (*v1.VirtualMachineClaim, error)
+	UpdateStatus(ctx context.Context, virtualMachineClaim *v1.VirtualMachineClaim, opts metav1.UpdateOptions) (*v1.VirtualMachineClaim, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.VirtualMachineClaim, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.VirtualMachineClaimList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.VirtualMachineClaim, err error)
 	VirtualMachineClaimExpansion
 }
 
@@ -81,7 +80,7 @@ func (c *virtualMachineClaims) Get(ctx context.Context, name string, options met
 // List takes label and field selectors, and returns the list of VirtualMachineClaims that match those selectors.
 func (c *virtualMachineClaims) List(ctx context.Context, opts metav1.ListOptions) (result *v1.VirtualMachineClaimList, err error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.VirtualMachineClaimList{}
@@ -98,7 +97,7 @@ func (c *virtualMachineClaims) List(ctx context.Context, opts metav1.ListOptions
 // Watch returns a watch.Interface that watches the requested virtualMachineClaims.
 func (c *virtualMachineClaims) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
-	if opts.TimeoutSeconds != nil{
+	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
@@ -167,7 +166,7 @@ func (c *virtualMachineClaims) Delete(ctx context.Context, name string, opts met
 // DeleteCollection deletes a collection of objects.
 func (c *virtualMachineClaims) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil{
+	if listOpts.TimeoutSeconds != nil {
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
