@@ -44,7 +44,7 @@ type PreparedScenarioStep struct {
 	Content string `json:"content"`
 }
 
-type PreparedPrintableScenario struct {
+type PreparedScenario struct {
 	Id              string              `json:"id"`
 	Name            string              `json:"name"`
 	Description     string              `json:"description"`
@@ -92,8 +92,8 @@ func (s ScenarioServer) SetupRoutes(r *mux.Router) {
 	glog.V(2).Infof("set up route")
 }
 
-func (s ScenarioServer) preparePrintableScenario(scenario hfv1.Scenario, printable bool) (PreparedPrintableScenario, error) {
-	ps := PreparedPrintableScenario{}
+func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario, printable bool) (PreparedScenario, error) {
+	ps := PreparedScenario{}
 
 	ps.Name = scenario.Spec.Name
 	ps.Id = scenario.Spec.Id
@@ -120,11 +120,11 @@ func (s ScenarioServer) getPreparedScenarioStepById(id string, step int) (Prepar
 	return PreparedScenarioStep{}, fmt.Errorf("error while retrieving scenario step, most likely doesn't exist in index")
 }
 
-func (s ScenarioServer) getPreparedScenarioById(id string, user hfv1.User) (PreparedPrintableScenario, error) {
+func (s ScenarioServer) getPreparedScenarioById(id string, user hfv1.User) (PreparedScenario, error) {
 	scenario, err := s.GetScenarioById(id)
 
 	if err != nil {
-		return PreparedPrintableScenario{}, fmt.Errorf("error while retrieving scenario %v", err)
+		return PreparedScenario{}, fmt.Errorf("error while retrieving scenario %v", err)
 	}
 
 	var printableScenarioIds []string
@@ -162,10 +162,10 @@ func (s ScenarioServer) getPreparedScenarioById(id string, user hfv1.User) (Prep
 	printableScenarioIds = util.UniqueStringSlice(printableScenarioIds)
 	printable := util.StringInSlice(scenario.Name, printableScenarioIds)
 
-	preparedScenario, err := s.preparePrintableScenario(scenario, printable)
+	preparedScenario, err := s.prepareScenario(scenario, printable)
 
 	if err != nil {
-		return PreparedPrintableScenario{}, fmt.Errorf("error while preparing scenario %v", err)
+		return PreparedScenario{}, fmt.Errorf("error while preparing scenario %v", err)
 	}
 
 	return preparedScenario, nil
@@ -282,14 +282,14 @@ func (s ScenarioServer) ListScenarioForAccessCodes(w http.ResponseWriter, r *htt
 	}
 	scenarioIds = util.UniqueStringSlice(append(scenarioIds, printableScenarioIds...))
 
-	var scenarios []PreparedPrintableScenario
+	var scenarios []PreparedScenario
 	for _, scenarioId := range scenarioIds {
 		tempPrintable := util.StringInSlice(scenarioId, printableScenarioIds)
 		scenario, err := s.GetScenarioById(scenarioId)
 		if err != nil {
 			glog.Errorf("error retrieving scenario %v", err)
 		} else {
-			pScenario, err := s.preparePrintableScenario(scenario, tempPrintable)
+			pScenario, err := s.prepareScenario(scenario, tempPrintable)
 			if err != nil {
 				glog.Errorf("error preparing scenario %v", err)
 			} else {
