@@ -128,7 +128,7 @@ func (s ScenarioServer) getPreparedScenarioById(id string, user hfv1.User) (Prep
 	}
 
 	var printableScenarioIds []string
-	var courseIds []string
+	var printableCourseIds []string
 	for _, acString := range user.Spec.AccessCodes {
 		ac, err := s.acClient.GetAccessCode(acString, false)
 		if err != nil {
@@ -143,14 +143,14 @@ func (s ScenarioServer) getPreparedScenarioById(id string, user hfv1.User) (Prep
 			tempCourseIds, err := s.acClient.GetCourseIds(acString)
 			if err != nil {
 				glog.Errorf("error retrieving course ids for access code: %s %v", ac, err)
-			} else {
-				courseIds = append(courseIds, tempCourseIds...)
+			} else if ac.Spec.Printable {
+				printableCourseIds = append(printableCourseIds, tempCourseIds...)
 			}
 		}
 	}
-	courseIds = util.UniqueStringSlice(courseIds)
+	printableCourseIds = util.UniqueStringSlice(printableCourseIds)
 
-	for _, courseId := range courseIds {
+	for _, courseId := range printableCourseIds {
 		course, err := s.courseClient.GetCourseById(courseId)
 		if err != nil {
 			glog.Errorf("error retrieving course %v", err)
