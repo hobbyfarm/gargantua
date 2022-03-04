@@ -320,7 +320,7 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 							},
 							Labels: map[string]string{
 								"environment":    env.Name,
-								"scheduledevent": se.Name,
+								ScheduledEventLabel: se.Name,
 								fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", templateName): "true",
 							},
 						},
@@ -593,6 +593,15 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 
 	if endTime.Before(now) && se.Status.Finished {
 		// scheduled event is finished and nothing to do
+	}
+
+	// The ScheduledEvent is set to OnDemand but still has VMSets
+	if (se.Spec.OnDemand && len(se.Status.VirtualMachineSets) > 0){
+		vmSets := []string{}
+		se.Status.VirtualMachineSets = vmSets
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, se, metav1.UpdateOptions{})
+		s.deleteVMSetsFromScheduledEvent(se)
+		return updateErr
 	}
 
 	return nil
