@@ -475,20 +475,7 @@ func (s ScenarioServer) PrintFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var printableScenarioIds []string
-	for _, acString := range user.Spec.AccessCodes {
-		ac, err := s.acClient.GetAccessCode(acString, false)
-		if err != nil {
-			glog.Errorf("error retrieving access code: %s %v", acString, err)
-		} else if ac.Spec.Printable {
-			tempScenarioIds, err := s.acClient.GetScenarioIds(acString)
-			if err != nil {
-				glog.Errorf("error retrieving scenario ids for access code: %s %v", acString, err)
-			} else {
-				printableScenarioIds = append(printableScenarioIds, tempScenarioIds...)
-			}
-		}
-	}
+	printableScenarioIds := s.getPrintableScenarioIds(user.Spec.AccessCodes)
 
 	if !util.StringInSlice(id, printableScenarioIds) {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get this Scenario")
