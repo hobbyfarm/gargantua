@@ -120,16 +120,10 @@ func (s ScenarioServer) getPreparedScenarioStepById(id string, step int) (Prepar
 	return PreparedScenarioStep{}, fmt.Errorf("error while retrieving scenario step, most likely doesn't exist in index")
 }
 
-func (s ScenarioServer) getPreparedScenarioById(id string, user hfv1.User) (PreparedScenario, error) {
-	scenario, err := s.GetScenarioById(id)
-
-	if err != nil {
-		return PreparedScenario{}, fmt.Errorf("error while retrieving scenario %v", err)
-	}
-
+func (s ScenarioServer) getPrintableScenarioIds(accessCodes []string) []string {
 	var printableScenarioIds []string
 	var printableCourseIds []string
-	for _, acString := range user.Spec.AccessCodes {
+	for _, acString := range accessCodes {
 		ac, err := s.acClient.GetAccessCode(acString, false)
 		if err != nil {
 			glog.Errorf("error retrieving access code: %s %v", acString, err)
@@ -160,6 +154,17 @@ func (s ScenarioServer) getPreparedScenarioById(id string, user hfv1.User) (Prep
 	}
 
 	printableScenarioIds = util.UniqueStringSlice(printableScenarioIds)
+	return printableScenarioIds
+}
+
+func (s ScenarioServer) getPreparedScenarioById(id string, accessCodes []string) (PreparedScenario, error) {
+	scenario, err := s.GetScenarioById(id)
+
+	if err != nil {
+		return PreparedScenario{}, fmt.Errorf("error while retrieving scenario %v", err)
+	}
+
+	printableScenarioIds := s.getPrintableScenarioIds(accessCodes)
 	printable := util.StringInSlice(scenario.Name, printableScenarioIds)
 
 	preparedScenario, err := s.prepareScenario(scenario, printable)
@@ -180,7 +185,7 @@ func (s ScenarioServer) GetScenarioFunc(w http.ResponseWriter, r *http.Request) 
 
 	vars := mux.Vars(r)
 
-	scenario, err := s.getPreparedScenarioById(vars["scenario_id"], user)
+	scenario, err := s.getPreparedScenarioById(vars["scenario_id"], user.Spec.AccessCodes)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf("scenario %s not found", vars["scenario_id"]))
 		return
