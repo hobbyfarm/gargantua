@@ -510,7 +510,7 @@ func (s ScenarioServer) PrintFunc(w http.ResponseWriter, r *http.Request) {
 			glog.Errorf("Error decoding title of scenario: %s step %d: %v", scenario.Name, i, err)
 		}
 
-		content = content + fmt.Sprintf("## Step %d: %s\n", i+1, string(title))
+		content = content + fmt.Sprintf("\n## Step %d: %s\n", i+1, string(title))
 
 		stepContent, err := base64.StdEncoding.DecodeString(s.Content)
 		if err != nil {
