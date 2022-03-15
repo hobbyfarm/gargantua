@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/pkg/rbacserver"
 	"github.com/hobbyfarm/gargantua/pkg/crd"
 	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"k8s.io/client-go/informers"
@@ -122,17 +123,19 @@ func main() {
 
 	rbacControllerFactory := wranglerRbac.NewFactoryFromConfigOrDie(cfg)
 
-	rbacServer, err := rbacclient.NewRbacClient(namespace, kubeInformerFactory)
+	rbacClient, err := rbacclient.NewRbacClient(namespace, kubeInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	authClient, err := authclient.NewAuthClient(hfClient, hfInformerFactory, rbacServer)
+	authClient, err := authclient.NewAuthClient(hfClient, hfInformerFactory, rbacClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	authServer, err := authserver.NewAuthServer(authClient, hfClient, ctx, rbacServer)
+	rbacServer := rbacserver.NewRbacServer(kubeClient, authClient)
+
+	authServer, err := authserver.NewAuthServer(authClient, hfClient, ctx, rbacClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -228,6 +231,7 @@ func main() {
 		userServer.SetupRoutes(r)
 		vmTemplateServer.SetupRoutes(r)
 		progressServer.SetupRoutes(r)
+		rbacServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
