@@ -117,7 +117,7 @@ func (c *FakeDynamicBindRequests) UpdateStatus(ctx context.Context, dynamicBindR
 // Delete takes name of the dynamicBindRequest and deletes it. Returns an error if one occurs.
 func (c *FakeDynamicBindRequests) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(dynamicbindrequestsResource, c.ns, name), &hobbyfarmiov1.DynamicBindRequest{})
+		Invokes(testing.NewDeleteActionWithOptions(dynamicbindrequestsResource, c.ns, name, opts), &hobbyfarmiov1.DynamicBindRequest{})
 
 	return err
 }

@@ -3,10 +3,13 @@ package integration
 import (
 	"context"
 	"github.com/hobbyfarm/gargantua/pkg/bootstrap"
+	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	_ "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/scheme"
+	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/crd"
 	"github.com/hobbyfarm/gargantua/pkg/signals"
 	"github.com/hobbyfarm/gargantua/tests/framework/cluster"
+	"github.com/hobbyfarm/gargantua/tests/framework/controllers"
 	"github.com/hobbyfarm/gargantua/tests/framework/setup"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -27,9 +30,12 @@ var (
 )
 
 const (
-	timeout      = time.Second * 10
-	duration     = time.Second * 10
-	setupTimeout = 1200
+	timeout         = time.Second * 10
+	duration        = time.Second * 10
+	setupTimeout    = 1200
+	defaultTimeout  = 60
+	defaultInterval = 5
+	DefaultPort     = 8080
 )
 
 func TestAPI(t *testing.T) {
@@ -41,6 +47,10 @@ func TestAPI(t *testing.T) {
 var _ = BeforeSuite(func(done Done) {
 	defer close(done)
 	var err error
+	var hfInformer hfInformers.SharedInformerFactory
+	var hfClient *hfClientset.Clientset
+	var vmcontroller *controllers.VMController
+
 	By("starting test cluster")
 	ctx, cancel = context.WithCancel(context.TODO())
 	c, err := cluster.Setup(ctx)
@@ -78,7 +88,7 @@ var _ = BeforeSuite(func(done Done) {
 		return ready
 	}, 30*time.Second, 5*time.Second).Should(BeTrue())
 
-	logrus.Info("Setting up hobbyfarm namespace")
+	logrus.Infof("Setting up %s namespace", setup.DefaultNamespace)
 	Eventually(func() error {
 		_, err = k8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
@@ -96,12 +106,25 @@ var _ = BeforeSuite(func(done Done) {
 	stopCh := signals.SetupSignalHandler()
 
 	go func() {
-		defer GinkgoRecover()
-		g := bootstrap.NewServer(config, false, false, false, 8080, setup.DefaultNamespace)
-
+		g := bootstrap.NewServer(config, false, false, false, DefaultPort, setup.DefaultNamespace)
 		g.Start(context.Background(), stopCh)
 	}()
 
+	logrus.Info("did we get here!!!!")
+	Eventually(func() error {
+		hfClient, err = hfClientset.NewForConfig(config)
+		if err != nil {
+			return err
+		}
+		hfInformer = hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*5)
+		vmcontroller, err = controllers.NewVMController(hfClient, hfInformer, context.TODO())
+		return err
+	}).ShouldNot(HaveOccurred())
+
+	hfInformer.Start(stopCh)
+	go func() {
+		vmcontroller.Run(stopCh)
+	}()
 }, setupTimeout)
 
 var _ = AfterSuite(func(done Done) {

@@ -5,9 +5,7 @@ import (
 	hobbyfarmv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/rancher/wrangler/pkg/yaml"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
@@ -56,7 +54,8 @@ spec:
   ws_endpoint: ws.localhost
 `
 
-var defaultEnvironment = []byte(`
+var (
+	defaultEnvironment = []byte(`
 apiVersion: hobbyfarm.io/v1
 kind: Environment
 metadata:
@@ -96,60 +95,128 @@ spec:
   ws_endpoint: ws.localhost
 `)
 
+	vmTemplate = []byte(`
+apiVersion: hobbyfarm.io/v1
+kind: VirtualMachineTemplate
+metadata:
+  name: sles-15-sp2
+spec:
+  id: sles-15-sp2
+  image: sles-15-sp2
+  name: sles-15-sp2
+  resources:
+    cpu: 2
+    memory: 4096
+    storage: 30`)
+
+	scenario = []byte(`
+apiVersion: hobbyfarm.io/v1
+kind: Scenario
+metadata:
+  name: test-scenario
+spec:
+  categories: []
+  description: R2V0dGluZyBzdGFydGVkIHdpdGggTmV1dmVjdG9y
+  id: test-scenario
+  keepalive_duration: 10m
+  name: ZGVtbwo=
+  pause_duration: 1h
+  pauseable: false
+  steps:
+  - content: c3RlcCAxCg==
+    title: c3RlcCAxCg==
+  tags: []
+  virtualmachines:
+  - neuvector: sles-15-sp2`)
+)
+
 // SetupCommonObjects will leverage Wrangler apply to seed the gargantua test environment
-func SetupCommonObjects(ctx context.Context, config *rest.Config) error {
+func SetupCommonObjects(ctx context.Context, config *rest.Config, suffix string) error {
 
-	k, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return err
-	}
-
-	// create a CM as a parent. Deleting this will trigger GC of other resources
-	_, err = k.CoreV1().ConfigMaps(DefaultNamespace).Create(ctx, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ParentCM,
-			Namespace: DefaultNamespace,
-		},
-	}, metav1.CreateOptions{})
-
-	if err != nil {
-		return err
-	}
+	labels := make(map[string]string)
+	labels["suffix"] = suffix
 
 	hf, err := hfClientset.NewForConfig(config)
 	if err != nil {
 		return err
 	}
+
+	// setup VMTemplate
+	vmt := &hobbyfarmv1.VirtualMachineTemplate{}
+	err = yaml.Unmarshal(vmTemplate, vmt)
+	if err != nil {
+		return err
+	}
+
+	vmt.Name = vmt.Name + "-" + suffix
+	vmt.Labels = labels
+	_, err = hf.HobbyfarmV1().VirtualMachineTemplates(DefaultNamespace).Create(ctx, vmt, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+
+	// setup environment
 	e := &hobbyfarmv1.Environment{}
 	err = yaml.Unmarshal(defaultEnvironment, e)
 	if err != nil {
 		return err
 	}
 
+	e.Name = e.Name + "-" + suffix
+	e.Labels = labels
+	e.Spec.CountCapacity[vmt.Name] = 5
+	templateMap := e.Spec.TemplateMapping["sles-15-sp2"]
+	e.Spec.TemplateMapping["sles-15-sp2-"+suffix] = templateMap
 	_, err = hf.HobbyfarmV1().Environments(DefaultNamespace).Create(ctx, e, metav1.CreateOptions{})
-
-	/*a, err := apply.NewForConfig(config)
 	if err != nil {
 		return err
 	}
 
-	runtimeList, err := yaml.ToObjects(strings.NewReader(commonItems))
+	// setup Scenario
+	s := &hobbyfarmv1.Scenario{}
+	err = yaml.Unmarshal(scenario, s)
 	if err != nil {
 		return err
 	}
 
-	err = a.WithOwner(cm).WithDefaultNamespace(DefaultNamespace).ApplyObjects(runtimeList...)*/
+	s.Name = s.Name + "-" + suffix
+	s.Labels = labels
+	s.Spec.Id = s.Spec.Id + "-" + suffix
+	_, err = hf.HobbyfarmV1().Scenarios(DefaultNamespace).Create(ctx, s, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
 
-	return err
-
+	return nil
 }
 
 // CleanupCommonObjects will cleanup all the created objects
-func CleanupCommonObjects(ctx context.Context, config *rest.Config) error {
+func CleanupCommonObjects(ctx context.Context, config *rest.Config, suffix string) error {
 
-	k, err := kubernetes.NewForConfig(config)
+	listOptions := metav1.ListOptions{LabelSelector: "suffix=" + suffix}
+
+	hf, err := hfClientset.NewForConfig(config)
 	if err != nil {
 		return err
 	}
-	return k.CoreV1().ConfigMaps(DefaultNamespace).Delete(ctx, ParentCM, metav1.DeleteOptions{})
+
+	// cleanup all environments
+	err = hf.HobbyfarmV1().Environments(DefaultNamespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOptions)
+	if err != nil {
+		return err
+	}
+
+	// cleanup all VMTemplates
+	err = hf.HobbyfarmV1().VirtualMachineTemplates(DefaultNamespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOptions)
+	if err != nil {
+		return err
+	}
+
+	// cleanup all Scenarios
+	err = hf.HobbyfarmV1().Scenarios(DefaultNamespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOptions)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -1,5 +1,5 @@
 ##### sdk image #####
-FROM golang:1.16 AS sdk
+FROM golang:1.17 AS sdk
 
 WORKDIR /go/src/github.com/hobbyfarm/gargantua
 COPY . .
@@ -9,8 +9,7 @@ ENV CGO_ENABLED=0
 
 RUN go get -d -v ./...
 RUN sh generate-client.sh
-RUN go install -v ./...
-
+RUN go build -o /go/bin/gargantua .
 #RUN ls -lart && go build -o /go/bin/gargantua main.go
 ###### release image #####
 FROM alpine:latest

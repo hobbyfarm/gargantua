@@ -105,7 +105,7 @@ func (c *FakeDynamicBindConfigurations) Update(ctx context.Context, dynamicBindC
 // Delete takes name of the dynamicBindConfiguration and deletes it. Returns an error if one occurs.
 func (c *FakeDynamicBindConfigurations) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(dynamicbindconfigurationsResource, c.ns, name), &hobbyfarmiov1.DynamicBindConfiguration{})
+		Invokes(testing.NewDeleteActionWithOptions(dynamicbindconfigurationsResource, c.ns, name, opts), &hobbyfarmiov1.DynamicBindConfiguration{})
 
 	return err
 }

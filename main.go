@@ -6,9 +6,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/hobbyfarm/gargantua/pkg/bootstrap"
 	"github.com/hobbyfarm/gargantua/pkg/signals"
+	"github.com/hobbyfarm/gargantua/pkg/util"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"os"
 )
 
 var (
@@ -49,11 +49,7 @@ func main() {
 		}
 	}
 
-	ns := os.Getenv("NAMESPACE")
-	if ns == "" {
-		ns = DefaultNamespace
-	}
-
-	s := bootstrap.NewServer(cfg, disableControllers, shellServer, installCRD, port, ns)
+	// default release namespace is gargantua. To override set env variable HF_NAMESPACE
+	s := bootstrap.NewServer(cfg, disableControllers, shellServer, installCRD, port, util.GetReleaseNamespace())
 	s.Start(ctx, stopCh)
 }
