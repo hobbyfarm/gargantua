@@ -19,6 +19,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	"time"
 
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -32,149 +33,163 @@ import (
 // VirtualMachineClaimsGetter has a method to return a VirtualMachineClaimInterface.
 // A group's client should implement this interface.
 type VirtualMachineClaimsGetter interface {
-	VirtualMachineClaims() VirtualMachineClaimInterface
+	VirtualMachineClaims(namespace string) VirtualMachineClaimInterface
 }
 
 // VirtualMachineClaimInterface has methods to work with VirtualMachineClaim resources.
 type VirtualMachineClaimInterface interface {
-	Create(*v1.VirtualMachineClaim) (*v1.VirtualMachineClaim, error)
-	Update(*v1.VirtualMachineClaim) (*v1.VirtualMachineClaim, error)
-	UpdateStatus(*v1.VirtualMachineClaim) (*v1.VirtualMachineClaim, error)
-	Delete(name string, options *metav1.DeleteOptions) error
-	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
-	Get(name string, options metav1.GetOptions) (*v1.VirtualMachineClaim, error)
-	List(opts metav1.ListOptions) (*v1.VirtualMachineClaimList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.VirtualMachineClaim, err error)
+	Create(ctx context.Context, virtualMachineClaim *v1.VirtualMachineClaim, opts metav1.CreateOptions) (*v1.VirtualMachineClaim, error)
+	Update(ctx context.Context, virtualMachineClaim *v1.VirtualMachineClaim, opts metav1.UpdateOptions) (*v1.VirtualMachineClaim, error)
+	UpdateStatus(ctx context.Context, virtualMachineClaim *v1.VirtualMachineClaim, opts metav1.UpdateOptions) (*v1.VirtualMachineClaim, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.VirtualMachineClaim, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.VirtualMachineClaimList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.VirtualMachineClaim, err error)
 	VirtualMachineClaimExpansion
 }
 
 // virtualMachineClaims implements VirtualMachineClaimInterface
 type virtualMachineClaims struct {
 	client rest.Interface
+	ns     string
 }
 
 // newVirtualMachineClaims returns a VirtualMachineClaims
-func newVirtualMachineClaims(c *HobbyfarmV1Client) *virtualMachineClaims {
+func newVirtualMachineClaims(c *HobbyfarmV1Client, namespace string) *virtualMachineClaims {
 	return &virtualMachineClaims{
 		client: c.RESTClient(),
+		ns:     namespace,
 	}
 }
 
 // Get takes name of the virtualMachineClaim, and returns the corresponding virtualMachineClaim object, and an error if there is any.
-func (c *virtualMachineClaims) Get(name string, options metav1.GetOptions) (result *v1.VirtualMachineClaim, err error) {
+func (c *virtualMachineClaims) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.VirtualMachineClaim, err error) {
 	result = &v1.VirtualMachineClaim{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("virtualmachineclaims").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // List takes label and field selectors, and returns the list of VirtualMachineClaims that match those selectors.
-func (c *virtualMachineClaims) List(opts metav1.ListOptions) (result *v1.VirtualMachineClaimList, err error) {
+func (c *virtualMachineClaims) List(ctx context.Context, opts metav1.ListOptions) (result *v1.VirtualMachineClaimList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.VirtualMachineClaimList{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("virtualmachineclaims").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Watch returns a watch.Interface that watches the requested virtualMachineClaims.
-func (c *virtualMachineClaims) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *virtualMachineClaims) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Namespace(c.ns).
 		Resource("virtualmachineclaims").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(ctx)
 }
 
 // Create takes the representation of a virtualMachineClaim and creates it.  Returns the server's representation of the virtualMachineClaim, and an error, if there is any.
-func (c *virtualMachineClaims) Create(virtualMachineClaim *v1.VirtualMachineClaim) (result *v1.VirtualMachineClaim, err error) {
+func (c *virtualMachineClaims) Create(ctx context.Context, virtualMachineClaim *v1.VirtualMachineClaim, opts metav1.CreateOptions) (result *v1.VirtualMachineClaim, err error) {
 	result = &v1.VirtualMachineClaim{}
 	err = c.client.Post().
+		Namespace(c.ns).
 		Resource("virtualmachineclaims").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(virtualMachineClaim).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Update takes the representation of a virtualMachineClaim and updates it. Returns the server's representation of the virtualMachineClaim, and an error, if there is any.
-func (c *virtualMachineClaims) Update(virtualMachineClaim *v1.VirtualMachineClaim) (result *v1.VirtualMachineClaim, err error) {
+func (c *virtualMachineClaims) Update(ctx context.Context, virtualMachineClaim *v1.VirtualMachineClaim, opts metav1.UpdateOptions) (result *v1.VirtualMachineClaim, err error) {
 	result = &v1.VirtualMachineClaim{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("virtualmachineclaims").
 		Name(virtualMachineClaim.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(virtualMachineClaim).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-
-func (c *virtualMachineClaims) UpdateStatus(virtualMachineClaim *v1.VirtualMachineClaim) (result *v1.VirtualMachineClaim, err error) {
+func (c *virtualMachineClaims) UpdateStatus(ctx context.Context, virtualMachineClaim *v1.VirtualMachineClaim, opts metav1.UpdateOptions) (result *v1.VirtualMachineClaim, err error) {
 	result = &v1.VirtualMachineClaim{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("virtualmachineclaims").
 		Name(virtualMachineClaim.Name).
 		SubResource("status").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(virtualMachineClaim).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Delete takes name of the virtualMachineClaim and deletes it. Returns an error if one occurs.
-func (c *virtualMachineClaims) Delete(name string, options *metav1.DeleteOptions) error {
+func (c *virtualMachineClaims) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("virtualmachineclaims").
 		Name(name).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *virtualMachineClaims) DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
+func (c *virtualMachineClaims) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOptions.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	if listOpts.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("virtualmachineclaims").
-		VersionedParams(&listOptions, scheme.ParameterCodec).
+		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // Patch applies the patch and returns the patched virtualMachineClaim.
-func (c *virtualMachineClaims) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.VirtualMachineClaim, err error) {
+func (c *virtualMachineClaims) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.VirtualMachineClaim, err error) {
 	result = &v1.VirtualMachineClaim{}
 	err = c.client.Patch(pt).
+		Namespace(c.ns).
 		Resource("virtualmachineclaims").
-		SubResource(subresources...).
 		Name(name).
+		SubResource(subresources...).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(data).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }

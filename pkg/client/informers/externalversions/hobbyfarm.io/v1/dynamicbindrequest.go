@@ -19,6 +19,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	time "time"
 
 	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -41,32 +42,33 @@ type DynamicBindRequestInformer interface {
 type dynamicBindRequestInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
+	namespace        string
 }
 
 // NewDynamicBindRequestInformer constructs a new informer for DynamicBindRequest type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewDynamicBindRequestInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredDynamicBindRequestInformer(client, resyncPeriod, indexers, nil)
+func NewDynamicBindRequestInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredDynamicBindRequestInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
 // NewFilteredDynamicBindRequestInformer constructs a new informer for DynamicBindRequest type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredDynamicBindRequestInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredDynamicBindRequestInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().DynamicBindRequests().List(options)
+				return client.HobbyfarmV1().DynamicBindRequests(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().DynamicBindRequests().Watch(options)
+				return client.HobbyfarmV1().DynamicBindRequests(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&hobbyfarmiov1.DynamicBindRequest{},
@@ -76,7 +78,7 @@ func NewFilteredDynamicBindRequestInformer(client versioned.Interface, resyncPer
 }
 
 func (f *dynamicBindRequestInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredDynamicBindRequestInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredDynamicBindRequestInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
 func (f *dynamicBindRequestInformer) Informer() cache.SharedIndexInformer {

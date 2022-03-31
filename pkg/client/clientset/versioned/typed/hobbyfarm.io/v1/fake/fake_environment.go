@@ -19,6 +19,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -31,6 +33,7 @@ import (
 // FakeEnvironments implements EnvironmentInterface
 type FakeEnvironments struct {
 	Fake *FakeHobbyfarmV1
+	ns   string
 }
 
 var environmentsResource = schema.GroupVersionResource{Group: "hobbyfarm.io", Version: "v1", Resource: "environments"}
@@ -38,9 +41,10 @@ var environmentsResource = schema.GroupVersionResource{Group: "hobbyfarm.io", Ve
 var environmentsKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version: "v1", Kind: "Environment"}
 
 // Get takes name of the environment, and returns the corresponding environment object, and an error if there is any.
-func (c *FakeEnvironments) Get(name string, options v1.GetOptions) (result *hobbyfarmiov1.Environment, err error) {
+func (c *FakeEnvironments) Get(ctx context.Context, name string, options v1.GetOptions) (result *hobbyfarmiov1.Environment, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(environmentsResource, name), &hobbyfarmiov1.Environment{})
+		Invokes(testing.NewGetAction(environmentsResource, c.ns, name), &hobbyfarmiov1.Environment{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -48,9 +52,10 @@ func (c *FakeEnvironments) Get(name string, options v1.GetOptions) (result *hobb
 }
 
 // List takes label and field selectors, and returns the list of Environments that match those selectors.
-func (c *FakeEnvironments) List(opts v1.ListOptions) (result *hobbyfarmiov1.EnvironmentList, err error) {
+func (c *FakeEnvironments) List(ctx context.Context, opts v1.ListOptions) (result *hobbyfarmiov1.EnvironmentList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(environmentsResource, environmentsKind, opts), &hobbyfarmiov1.EnvironmentList{})
+		Invokes(testing.NewListAction(environmentsResource, environmentsKind, c.ns, opts), &hobbyfarmiov1.EnvironmentList{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -69,15 +74,17 @@ func (c *FakeEnvironments) List(opts v1.ListOptions) (result *hobbyfarmiov1.Envi
 }
 
 // Watch returns a watch.Interface that watches the requested environments.
-func (c *FakeEnvironments) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeEnvironments) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(environmentsResource, opts))
+		InvokesWatch(testing.NewWatchAction(environmentsResource, c.ns, opts))
+
 }
 
 // Create takes the representation of a environment and creates it.  Returns the server's representation of the environment, and an error, if there is any.
-func (c *FakeEnvironments) Create(environment *hobbyfarmiov1.Environment) (result *hobbyfarmiov1.Environment, err error) {
+func (c *FakeEnvironments) Create(ctx context.Context, environment *hobbyfarmiov1.Environment, opts v1.CreateOptions) (result *hobbyfarmiov1.Environment, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(environmentsResource, environment), &hobbyfarmiov1.Environment{})
+		Invokes(testing.NewCreateAction(environmentsResource, c.ns, environment), &hobbyfarmiov1.Environment{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -85,9 +92,10 @@ func (c *FakeEnvironments) Create(environment *hobbyfarmiov1.Environment) (resul
 }
 
 // Update takes the representation of a environment and updates it. Returns the server's representation of the environment, and an error, if there is any.
-func (c *FakeEnvironments) Update(environment *hobbyfarmiov1.Environment) (result *hobbyfarmiov1.Environment, err error) {
+func (c *FakeEnvironments) Update(ctx context.Context, environment *hobbyfarmiov1.Environment, opts v1.UpdateOptions) (result *hobbyfarmiov1.Environment, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(environmentsResource, environment), &hobbyfarmiov1.Environment{})
+		Invokes(testing.NewUpdateAction(environmentsResource, c.ns, environment), &hobbyfarmiov1.Environment{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -96,9 +104,10 @@ func (c *FakeEnvironments) Update(environment *hobbyfarmiov1.Environment) (resul
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeEnvironments) UpdateStatus(environment *hobbyfarmiov1.Environment) (*hobbyfarmiov1.Environment, error) {
+func (c *FakeEnvironments) UpdateStatus(ctx context.Context, environment *hobbyfarmiov1.Environment, opts v1.UpdateOptions) (*hobbyfarmiov1.Environment, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceAction(environmentsResource, "status", environment), &hobbyfarmiov1.Environment{})
+		Invokes(testing.NewUpdateSubresourceAction(environmentsResource, "status", c.ns, environment), &hobbyfarmiov1.Environment{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -106,24 +115,26 @@ func (c *FakeEnvironments) UpdateStatus(environment *hobbyfarmiov1.Environment) 
 }
 
 // Delete takes name of the environment and deletes it. Returns an error if one occurs.
-func (c *FakeEnvironments) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeEnvironments) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(environmentsResource, name), &hobbyfarmiov1.Environment{})
+		Invokes(testing.NewDeleteAction(environmentsResource, c.ns, name), &hobbyfarmiov1.Environment{})
+
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeEnvironments) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(environmentsResource, listOptions)
+func (c *FakeEnvironments) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(environmentsResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &hobbyfarmiov1.EnvironmentList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched environment.
-func (c *FakeEnvironments) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *hobbyfarmiov1.Environment, err error) {
+func (c *FakeEnvironments) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *hobbyfarmiov1.Environment, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(environmentsResource, name, pt, data, subresources...), &hobbyfarmiov1.Environment{})
+		Invokes(testing.NewPatchSubresourceAction(environmentsResource, c.ns, name, pt, data, subresources...), &hobbyfarmiov1.Environment{})
+
 	if obj == nil {
 		return nil, err
 	}

@@ -26,11 +26,13 @@ import (
 )
 
 // EnvironmentLister helps list Environments.
+// All objects returned here must be treated as read-only.
 type EnvironmentLister interface {
 	// List lists all Environments in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.Environment, err error)
-	// Get retrieves the Environment from the index for a given name.
-	Get(name string) (*v1.Environment, error)
+	// Environments returns an object that can list and get Environments.
+	Environments(namespace string) EnvironmentNamespaceLister
 	EnvironmentListerExpansion
 }
 
@@ -52,9 +54,41 @@ func (s *environmentLister) List(selector labels.Selector) (ret []*v1.Environmen
 	return ret, err
 }
 
-// Get retrieves the Environment from the index for a given name.
-func (s *environmentLister) Get(name string) (*v1.Environment, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// Environments returns an object that can list and get Environments.
+func (s *environmentLister) Environments(namespace string) EnvironmentNamespaceLister {
+	return environmentNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// EnvironmentNamespaceLister helps list and get Environments.
+// All objects returned here must be treated as read-only.
+type EnvironmentNamespaceLister interface {
+	// List lists all Environments in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
+	List(selector labels.Selector) (ret []*v1.Environment, err error)
+	// Get retrieves the Environment from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*v1.Environment, error)
+	EnvironmentNamespaceListerExpansion
+}
+
+// environmentNamespaceLister implements the EnvironmentNamespaceLister
+// interface.
+type environmentNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all Environments in the indexer for a given namespace.
+func (s environmentNamespaceLister) List(selector labels.Selector) (ret []*v1.Environment, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.Environment))
+	})
+	return ret, err
+}
+
+// Get retrieves the Environment from the indexer for a given namespace and name.
+func (s environmentNamespaceLister) Get(name string) (*v1.Environment, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}

@@ -26,11 +26,13 @@ import (
 )
 
 // VirtualMachineTemplateLister helps list VirtualMachineTemplates.
+// All objects returned here must be treated as read-only.
 type VirtualMachineTemplateLister interface {
 	// List lists all VirtualMachineTemplates in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.VirtualMachineTemplate, err error)
-	// Get retrieves the VirtualMachineTemplate from the index for a given name.
-	Get(name string) (*v1.VirtualMachineTemplate, error)
+	// VirtualMachineTemplates returns an object that can list and get VirtualMachineTemplates.
+	VirtualMachineTemplates(namespace string) VirtualMachineTemplateNamespaceLister
 	VirtualMachineTemplateListerExpansion
 }
 
@@ -52,9 +54,41 @@ func (s *virtualMachineTemplateLister) List(selector labels.Selector) (ret []*v1
 	return ret, err
 }
 
-// Get retrieves the VirtualMachineTemplate from the index for a given name.
-func (s *virtualMachineTemplateLister) Get(name string) (*v1.VirtualMachineTemplate, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// VirtualMachineTemplates returns an object that can list and get VirtualMachineTemplates.
+func (s *virtualMachineTemplateLister) VirtualMachineTemplates(namespace string) VirtualMachineTemplateNamespaceLister {
+	return virtualMachineTemplateNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// VirtualMachineTemplateNamespaceLister helps list and get VirtualMachineTemplates.
+// All objects returned here must be treated as read-only.
+type VirtualMachineTemplateNamespaceLister interface {
+	// List lists all VirtualMachineTemplates in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
+	List(selector labels.Selector) (ret []*v1.VirtualMachineTemplate, err error)
+	// Get retrieves the VirtualMachineTemplate from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*v1.VirtualMachineTemplate, error)
+	VirtualMachineTemplateNamespaceListerExpansion
+}
+
+// virtualMachineTemplateNamespaceLister implements the VirtualMachineTemplateNamespaceLister
+// interface.
+type virtualMachineTemplateNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all VirtualMachineTemplates in the indexer for a given namespace.
+func (s virtualMachineTemplateNamespaceLister) List(selector labels.Selector) (ret []*v1.VirtualMachineTemplate, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.VirtualMachineTemplate))
+	})
+	return ret, err
+}
+
+// Get retrieves the VirtualMachineTemplate from the indexer for a given namespace and name.
+func (s virtualMachineTemplateNamespaceLister) Get(name string) (*v1.VirtualMachineTemplate, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}

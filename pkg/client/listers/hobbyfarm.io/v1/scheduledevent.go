@@ -26,11 +26,13 @@ import (
 )
 
 // ScheduledEventLister helps list ScheduledEvents.
+// All objects returned here must be treated as read-only.
 type ScheduledEventLister interface {
 	// List lists all ScheduledEvents in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.ScheduledEvent, err error)
-	// Get retrieves the ScheduledEvent from the index for a given name.
-	Get(name string) (*v1.ScheduledEvent, error)
+	// ScheduledEvents returns an object that can list and get ScheduledEvents.
+	ScheduledEvents(namespace string) ScheduledEventNamespaceLister
 	ScheduledEventListerExpansion
 }
 
@@ -52,9 +54,41 @@ func (s *scheduledEventLister) List(selector labels.Selector) (ret []*v1.Schedul
 	return ret, err
 }
 
-// Get retrieves the ScheduledEvent from the index for a given name.
-func (s *scheduledEventLister) Get(name string) (*v1.ScheduledEvent, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// ScheduledEvents returns an object that can list and get ScheduledEvents.
+func (s *scheduledEventLister) ScheduledEvents(namespace string) ScheduledEventNamespaceLister {
+	return scheduledEventNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// ScheduledEventNamespaceLister helps list and get ScheduledEvents.
+// All objects returned here must be treated as read-only.
+type ScheduledEventNamespaceLister interface {
+	// List lists all ScheduledEvents in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
+	List(selector labels.Selector) (ret []*v1.ScheduledEvent, err error)
+	// Get retrieves the ScheduledEvent from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*v1.ScheduledEvent, error)
+	ScheduledEventNamespaceListerExpansion
+}
+
+// scheduledEventNamespaceLister implements the ScheduledEventNamespaceLister
+// interface.
+type scheduledEventNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all ScheduledEvents in the indexer for a given namespace.
+func (s scheduledEventNamespaceLister) List(selector labels.Selector) (ret []*v1.ScheduledEvent, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.ScheduledEvent))
+	})
+	return ret, err
+}
+
+// Get retrieves the ScheduledEvent from the indexer for a given namespace and name.
+func (s scheduledEventNamespaceLister) Get(name string) (*v1.ScheduledEvent, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}

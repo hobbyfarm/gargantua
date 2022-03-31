@@ -1,6 +1,7 @@
 package dynamicbindcontroller
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -27,9 +28,10 @@ type DynamicBindController struct {
 	dynamicBindRequestLister hfListers.DynamicBindRequestLister
 
 	dynamicBindRequestsSynced cache.InformerSynced
+	ctx                       context.Context
 }
 
-func NewDynamicBindController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*DynamicBindController, error) {
+func NewDynamicBindController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*DynamicBindController, error) {
 	dynamicBindController := DynamicBindController{}
 	dynamicBindController.hfClientSet = hfClientSet
 
@@ -46,6 +48,7 @@ func NewDynamicBindController(hfClientSet hfClientset.Interface, hfInformerFacto
 		},
 		DeleteFunc: dynamicBindController.enqueueDynamicBindRequest,
 	}, time.Minute*30)
+	dynamicBindController.ctx = ctx
 
 	return &dynamicBindController, nil
 }
@@ -101,7 +104,7 @@ func (d *DynamicBindController) processNextDynamicBindRequest() bool {
 			return nil
 		}
 
-		dynamicBindRequest, err := d.hfClientSet.HobbyfarmV1().DynamicBindRequests().Get(objName, metav1.GetOptions{})
+		dynamicBindRequest, err := d.hfClientSet.HobbyfarmV1().DynamicBindRequests(util.GetReleaseNamespace()).Get(d.ctx, objName, metav1.GetOptions{})
 		if err != nil {
 			glog.Errorf("error while retrieving dynamic bind request %s, likely deleted %v", objName, err)
 			d.dynamicBindRequestWorkqueue.Forget(obj)
@@ -137,10 +140,11 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 
 	d.updateDynamicBindRequestStatus(dynamicBindRequest.Status.CurrentAttempts+1, false, false, "", make(map[string]string), dynamicBindRequest.Spec.Id)
 
-	vmClaim, err := d.hfClientSet.HobbyfarmV1().VirtualMachineClaims().Get(dynamicBindRequest.Spec.VirtualMachineClaim, metav1.GetOptions{})
+	vmClaim, err := d.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Get(d.ctx, dynamicBindRequest.Spec.VirtualMachineClaim, metav1.GetOptions{})
 
 	if err != nil {
 		glog.Errorf("error retrieving corresponding virtual machine claim %s for dynamic bind request %s", dynamicBindRequest.Spec.VirtualMachineClaim, dynamicBindRequest.Spec.Id)
+		return err
 	}
 
 	var dbcSelector metav1.ListOptions
@@ -154,10 +158,11 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 		}
 	}
 
-	dynamicBindConfigurations, err := d.hfClientSet.HobbyfarmV1().DynamicBindConfigurations().List(dbcSelector)
+	dynamicBindConfigurations, err := d.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()).List(d.ctx, dbcSelector)
 
 	if err != nil {
 		glog.Errorf("Error while retrieving dynamic bind configurations, %v", err)
+		return err
 	}
 
 	var chosenDynamicBindConfiguration *hfv1.DynamicBindConfiguration
@@ -167,7 +172,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 	dbcChosen = false
 	provision = true
 	for _, dynamicBindConfiguration := range dynamicBindConfigurations.Items {
-		environment, err := d.hfClientSet.HobbyfarmV1().Environments().Get(dynamicBindConfiguration.Spec.Environment, metav1.GetOptions{})
+		environment, err := d.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Get(d.ctx, dynamicBindConfiguration.Spec.Environment, metav1.GetOptions{})
 
 		if provisionMethod, ok := environment.Annotations["hobbyfarm.io/provisioner"]; ok {
 			if provisionMethod == "external" {
@@ -176,7 +181,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 		}
 		if err != nil {
 			glog.Errorf("Error while retrieving environment %v", err)
-			return nil
+			return err
 		}
 
 		if !environment.Spec.BurstCapable {
@@ -199,15 +204,15 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 		}
 
 		if environment.Spec.CapacityMode == hfv1.CapacityModeRaw {
-			currentVMs, err := d.hfClientSet.HobbyfarmV1().VirtualMachines().List(metav1.ListOptions{
+			currentVMs, err := d.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(d.ctx, metav1.ListOptions{
 				LabelSelector: fmt.Sprintf("dynamic=true,environment=%s", environment.Name),
 			})
 			if err != nil {
 				glog.V(4).Infof("error retrieving current vm list, assuming environment empty")
 			}
 
-			availableCapacity := util.AvailableRawCapacity(d.hfClientSet, environment.Spec.BurstCapacity, currentVMs.Items)
-			availableVMCount := util.MaxVMCountsRaw(d.hfClientSet, needed, *availableCapacity)
+			availableCapacity := util.AvailableRawCapacity(d.hfClientSet, environment.Spec.BurstCapacity, currentVMs.Items, d.ctx)
+			availableVMCount := util.MaxVMCountsRaw(d.hfClientSet, needed, *availableCapacity, d.ctx)
 
 			if availableVMCount <= 0 {
 				suitable = false
@@ -217,7 +222,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 			for vmTemplate, vmsNeeded := range needed {
 				// first, let's see if the environment itself has capacity
 
-				currentVMs, err := d.hfClientSet.HobbyfarmV1().VirtualMachines().List(metav1.ListOptions{
+				currentVMs, err := d.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(d.ctx, metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("dynamic=true,environment=%s,template=%s", environment.Name, vmTemplate),
 				})
 				if err != nil {
@@ -231,7 +236,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 					break
 				}
 
-				currentVMs, err = d.hfClientSet.HobbyfarmV1().VirtualMachines().List(metav1.ListOptions{
+				currentVMs, err = d.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(d.ctx, metav1.ListOptions{
 					LabelSelector: fmt.Sprintf("dynamic=true,dynamicbindconfig=%s,environment=%s,template=%s", dynamicBindConfiguration.Spec.Id, environment.Name, vmTemplate),
 				})
 				if err != nil {
@@ -335,7 +340,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 			} else {
 				vm.ObjectMeta.Labels["restrictedbind"] = "false"
 			}
-			vm, err := d.hfClientSet.HobbyfarmV1().VirtualMachines().Create(vm)
+			vm, err := d.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Create(d.ctx, vm, metav1.CreateOptions{})
 			if err != nil {
 				glog.Error(err)
 			}
@@ -359,7 +364,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 func (d *DynamicBindController) updateDynamicBindRequestStatus(dynamicBindAttempts int, expired bool, fulfilled bool, dynamicBindConfigurationId string, virtualMachineIds map[string]string, dynamicBindRequestId string) error {
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := d.hfClientSet.HobbyfarmV1().DynamicBindRequests().Get(dynamicBindRequestId, metav1.GetOptions{})
+		result, getErr := d.hfClientSet.HobbyfarmV1().DynamicBindRequests(util.GetReleaseNamespace()).Get(d.ctx, dynamicBindRequestId, metav1.GetOptions{})
 		if getErr != nil {
 			return fmt.Errorf("error retrieving latest version of DynamicBindRequest %s: %v", dynamicBindRequestId, getErr)
 		}
@@ -370,7 +375,7 @@ func (d *DynamicBindController) updateDynamicBindRequestStatus(dynamicBindAttemp
 		result.Status.DynamicBindConfigurationId = dynamicBindConfigurationId
 		result.Status.VirtualMachineIds = virtualMachineIds
 
-		_, updateErr := d.hfClientSet.HobbyfarmV1().DynamicBindRequests().Update(result)
+		_, updateErr := d.hfClientSet.HobbyfarmV1().DynamicBindRequests(util.GetReleaseNamespace()).Update(d.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}

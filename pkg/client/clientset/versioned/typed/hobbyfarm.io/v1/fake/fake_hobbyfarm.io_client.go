@@ -28,56 +28,60 @@ type FakeHobbyfarmV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeHobbyfarmV1) AccessCodes() v1.AccessCodeInterface {
-	return &FakeAccessCodes{c}
+func (c *FakeHobbyfarmV1) AccessCodes(namespace string) v1.AccessCodeInterface {
+	return &FakeAccessCodes{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) Courses() v1.CourseInterface {
-	return &FakeCourses{c}
+func (c *FakeHobbyfarmV1) Courses(namespace string) v1.CourseInterface {
+	return &FakeCourses{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) DynamicBindConfigurations() v1.DynamicBindConfigurationInterface {
-	return &FakeDynamicBindConfigurations{c}
+func (c *FakeHobbyfarmV1) DynamicBindConfigurations(namespace string) v1.DynamicBindConfigurationInterface {
+	return &FakeDynamicBindConfigurations{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) DynamicBindRequests() v1.DynamicBindRequestInterface {
-	return &FakeDynamicBindRequests{c}
+func (c *FakeHobbyfarmV1) DynamicBindRequests(namespace string) v1.DynamicBindRequestInterface {
+	return &FakeDynamicBindRequests{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) Environments() v1.EnvironmentInterface {
-	return &FakeEnvironments{c}
+func (c *FakeHobbyfarmV1) Environments(namespace string) v1.EnvironmentInterface {
+	return &FakeEnvironments{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) Scenarios() v1.ScenarioInterface {
-	return &FakeScenarios{c}
+func (c *FakeHobbyfarmV1) Progresses(namespace string) v1.ProgressInterface {
+	return &FakeProgresses{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) ScheduledEvents() v1.ScheduledEventInterface {
-	return &FakeScheduledEvents{c}
+func (c *FakeHobbyfarmV1) Scenarios(namespace string) v1.ScenarioInterface {
+	return &FakeScenarios{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) Sessions() v1.SessionInterface {
-	return &FakeSessions{c}
+func (c *FakeHobbyfarmV1) ScheduledEvents(namespace string) v1.ScheduledEventInterface {
+	return &FakeScheduledEvents{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) Users() v1.UserInterface {
-	return &FakeUsers{c}
+func (c *FakeHobbyfarmV1) Sessions(namespace string) v1.SessionInterface {
+	return &FakeSessions{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) VirtualMachines() v1.VirtualMachineInterface {
-	return &FakeVirtualMachines{c}
+func (c *FakeHobbyfarmV1) Users(namespace string) v1.UserInterface {
+	return &FakeUsers{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) VirtualMachineClaims() v1.VirtualMachineClaimInterface {
-	return &FakeVirtualMachineClaims{c}
+func (c *FakeHobbyfarmV1) VirtualMachines(namespace string) v1.VirtualMachineInterface {
+	return &FakeVirtualMachines{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) VirtualMachineSets() v1.VirtualMachineSetInterface {
-	return &FakeVirtualMachineSets{c}
+func (c *FakeHobbyfarmV1) VirtualMachineClaims(namespace string) v1.VirtualMachineClaimInterface {
+	return &FakeVirtualMachineClaims{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) VirtualMachineTemplates() v1.VirtualMachineTemplateInterface {
-	return &FakeVirtualMachineTemplates{c}
+func (c *FakeHobbyfarmV1) VirtualMachineSets(namespace string) v1.VirtualMachineSetInterface {
+	return &FakeVirtualMachineSets{c, namespace}
+}
+
+func (c *FakeHobbyfarmV1) VirtualMachineTemplates(namespace string) v1.VirtualMachineTemplateInterface {
+	return &FakeVirtualMachineTemplates{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

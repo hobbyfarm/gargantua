@@ -1,12 +1,14 @@
 package environment
 
 import (
+	"context"
 	"fmt"
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -30,13 +32,15 @@ type EnvironmentController struct {
 
 	vmSynced  cache.InformerSynced
 	envSynced cache.InformerSynced
+
+	ctx context.Context
 }
 
 const (
 	vmEnvironmentIndex = "vm.vmclaim.controllers.hobbyfarm.io/environment-index"
 )
 
-func NewEnvironmentController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*EnvironmentController, error) {
+func NewEnvironmentController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*EnvironmentController, error) {
 	envController := EnvironmentController{}
 	envController.hfClientSet = hfClientSet
 	envController.vmSynced = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced
@@ -64,6 +68,8 @@ func NewEnvironmentController(hfClientSet hfClientset.Interface, hfInformerFacto
 		},
 		DeleteFunc: envController.enqueueEnv,
 	}, time.Second*30)
+
+	envController.ctx = ctx
 
 	return &envController, nil
 }
@@ -126,7 +132,7 @@ func (e *EnvironmentController) handleVM(obj interface{}) {
 			return
 		}
 
-		env, err := e.envLister.Get(ownerRef.Name)
+		env, err := e.envLister.Environments(util.GetReleaseNamespace()).Get(ownerRef.Name)
 		if err != nil {
 			klog.V(4).Infof("ignoring orphaned object '%s' of foo '%s'", object.GetSelfLink(), ownerRef.Name)
 			return
@@ -176,7 +182,7 @@ func (e *EnvironmentController) processNextEnvironment() bool {
 func (e *EnvironmentController) reconcileEnvironment(environmentId string) error {
 	glog.V(4).Infof("reconciling environment %s", environmentId)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := e.hfClientSet.HobbyfarmV1().Environments().Get(environmentId, metav1.GetOptions{})
+		result, getErr := e.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Get(e.ctx, environmentId, metav1.GetOptions{})
 		if getErr != nil {
 			return fmt.Errorf("error retrieving latest version of Environment %s: %v", environmentId, getErr)
 		}
@@ -226,7 +232,7 @@ func (e *EnvironmentController) reconcileEnvironment(environmentId string) error
 
 		result.Status.AvailableCount = available
 
-		_, updateErr := e.hfClientSet.HobbyfarmV1().Environments().Update(result)
+		_, updateErr := e.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Update(e.ctx, result, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for environment")
 
 		return updateErr

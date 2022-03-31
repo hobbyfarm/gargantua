@@ -19,6 +19,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	time "time"
 
 	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -41,32 +42,33 @@ type VirtualMachineClaimInformer interface {
 type virtualMachineClaimInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
+	namespace        string
 }
 
 // NewVirtualMachineClaimInformer constructs a new informer for VirtualMachineClaim type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewVirtualMachineClaimInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredVirtualMachineClaimInformer(client, resyncPeriod, indexers, nil)
+func NewVirtualMachineClaimInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredVirtualMachineClaimInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
 // NewFilteredVirtualMachineClaimInformer constructs a new informer for VirtualMachineClaim type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredVirtualMachineClaimInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredVirtualMachineClaimInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().VirtualMachineClaims().List(options)
+				return client.HobbyfarmV1().VirtualMachineClaims(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.HobbyfarmV1().VirtualMachineClaims().Watch(options)
+				return client.HobbyfarmV1().VirtualMachineClaims(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&hobbyfarmiov1.VirtualMachineClaim{},
@@ -76,7 +78,7 @@ func NewFilteredVirtualMachineClaimInformer(client versioned.Interface, resyncPe
 }
 
 func (f *virtualMachineClaimInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredVirtualMachineClaimInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredVirtualMachineClaimInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
 func (f *virtualMachineClaimInformer) Informer() cache.SharedIndexInformer {

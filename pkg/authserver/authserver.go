@@ -1,10 +1,15 @@
 package authserver
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -16,9 +21,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
-	"net/http"
-	"strings"
-	"time"
 )
 
 const (
@@ -28,12 +30,14 @@ const (
 type AuthServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet hfClientset.Interface
+	ctx         context.Context
 }
 
-func NewAuthServer(authClient *authclient.AuthClient, hfClientSet hfClientset.Interface) (AuthServer, error) {
+func NewAuthServer(authClient *authclient.AuthClient, hfClientSet hfClientset.Interface, ctx context.Context) (AuthServer, error) {
 	a := AuthServer{}
 	a.auth = authClient
 	a.hfClientSet = hfClientSet
+	a.ctx = ctx
 	return a, nil
 }
 
@@ -43,6 +47,8 @@ func (a AuthServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/auth/accesscode", a.AddAccessCodeFunc).Methods("POST")
 	r.HandleFunc("/auth/accesscode/{access_code}", a.RemoveAccessCodeFunc).Methods("DELETE")
 	r.HandleFunc("/auth/changepassword", a.ChangePasswordFunc).Methods("POST")
+	r.HandleFunc("/auth/settings", a.RetreiveSettingsFunc).Methods("GET")
+	r.HandleFunc("/auth/settings", a.UpdateSettingsFunc).Methods("POST")
 	r.HandleFunc("/auth/authenticate", a.AuthNFunc).Methods("POST")
 	glog.V(2).Infof("set up route")
 }
@@ -80,7 +86,7 @@ func (a AuthServer) getUserByEmail(email string) (hfv1.User, error) {
 		return hfv1.User{}, fmt.Errorf("email passed in was empty")
 	}
 
-	users, err := a.hfClientSet.HobbyfarmV1().Users().List(metav1.ListOptions{})
+	users, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).List(a.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		return hfv1.User{}, fmt.Errorf("error while retrieving user list")
@@ -127,6 +133,11 @@ func (a AuthServer) NewUser(email string, password string) (string, error) {
 	newUser.Spec.Id = id
 	newUser.Spec.Email = email
 
+	settings := make(map[string]string)
+	settings["terminal_theme"] = "default"
+
+	newUser.Spec.Settings = settings
+
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", fmt.Errorf("error while hashing password for email %s", email)
@@ -134,7 +145,7 @@ func (a AuthServer) NewUser(email string, password string) (string, error) {
 
 	newUser.Spec.Password = string(passwordHash)
 
-	_, err = a.hfClientSet.HobbyfarmV1().Users().Create(&newUser)
+	_, err = a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Create(a.ctx, &newUser, metav1.CreateOptions{})
 
 	if err != nil {
 		return "", fmt.Errorf("error creating user")
@@ -146,7 +157,7 @@ func (a AuthServer) NewUser(email string, password string) (string, error) {
 func (a AuthServer) ChangePasswordFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := a.auth.AuthN(w, r)
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get accesscode")
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to change password")
 		return
 	}
 
@@ -167,6 +178,32 @@ func (a AuthServer) ChangePasswordFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infof("changed password for user %s", user.Spec.Email)
 }
 
+func (a AuthServer) UpdateSettingsFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := a.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update settings")
+		return
+	}
+
+	r.ParseForm()
+
+	newSettings := make(map[string]string)
+	for key, _ := range r.Form {
+		newSettings[key] = r.FormValue(key) //Ignore when multiple values were set for one argument. Just take the first one
+	}
+
+	err = a.UpdateSettings(user.Spec.Id, newSettings)
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", fmt.Sprintf("error updating settings for user %s", user.Name))
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "success", fmt.Sprintf("settings updated"))
+
+	glog.V(2).Infof("settings updated for user %s", user.Spec.Email)
+}
+
 func (a AuthServer) ListAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := a.auth.AuthN(w, r)
 	if err != nil {
@@ -174,7 +211,7 @@ func (a AuthServer) ListAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	latestUser, err := a.hfClientSet.HobbyfarmV1().Users().Get(user.Name, metav1.GetOptions{})
+	latestUser, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, user.Name, metav1.GetOptions{})
 
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", fmt.Sprintf("error retrieving user %s", user.Name))
@@ -188,6 +225,30 @@ func (a AuthServer) ListAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPContent(w, r, 200, "success", encodedACList)
 
 	glog.V(2).Infof("retrieved accesscode list for user %s", user.Spec.Email)
+}
+
+func (a AuthServer) RetreiveSettingsFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := a.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get settings")
+		return
+	}
+
+	latestUser, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, user.Name, metav1.GetOptions{})
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", fmt.Sprintf("error retrieving user %s", user.Name))
+		return
+	}
+
+	encodedSettings, err := json.Marshal(latestUser.Spec.Settings)
+
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedSettings)
+
+	glog.V(2).Infof("retrieved settings list for user %s", user.Spec.Email)
 }
 
 func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
@@ -246,7 +307,7 @@ func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 	accessCode = strings.ToLower(accessCode)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(userId, metav1.GetOptions{})
+		user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
 
 		if err != nil {
 			return fmt.Errorf("error retrieving user")
@@ -264,7 +325,7 @@ func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 
 		user.Spec.AccessCodes = append(user.Spec.AccessCodes, accessCode)
 
-		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(user)
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -283,7 +344,7 @@ func (a AuthServer) RemoveAccessCode(userId string, accessCode string) error {
 	accessCode = strings.ToLower(accessCode)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(userId, metav1.GetOptions{})
+		user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
 
 		if err != nil {
 			return fmt.Errorf("error retrieving user %s", userId)
@@ -313,7 +374,7 @@ func (a AuthServer) RemoveAccessCode(userId string, accessCode string) error {
 
 		user.Spec.AccessCodes = newAccessCodes
 
-		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(user)
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -329,7 +390,7 @@ func (a AuthServer) ChangePassword(userId string, oldPassword string, newPasswor
 		return fmt.Errorf("bad parameters passed, %s", userId)
 	}
 
-	user, err := a.hfClientSet.HobbyfarmV1().Users().Get(userId, metav1.GetOptions{})
+	user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("error retrieving user: %v", err)
 		return fmt.Errorf("error retrieving user")
@@ -348,7 +409,7 @@ func (a AuthServer) ChangePassword(userId string, oldPassword string, newPasswor
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := a.hfClientSet.HobbyfarmV1().Users().Get(userId, metav1.GetOptions{})
+		user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
 
 		if err != nil {
 			return fmt.Errorf("error retrieving user")
@@ -356,7 +417,32 @@ func (a AuthServer) ChangePassword(userId string, oldPassword string, newPasswor
 
 		user.Spec.Password = string(passwordHash)
 
-		_, updateErr := a.hfClientSet.HobbyfarmV1().Users().Update(user)
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
+		return updateErr
+	})
+
+	if retryErr != nil {
+		return retryErr
+	}
+
+	return nil
+}
+
+func (a AuthServer) UpdateSettings(userId string, newSettings map[string]string) error {
+	if len(userId) == 0 {
+		return fmt.Errorf("bad parameters passed, %s", userId)
+	}
+
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
+
+		if err != nil {
+			return fmt.Errorf("error retrieving user")
+		}
+
+		user.Spec.Settings = newSettings
+
+		_, updateErr := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 

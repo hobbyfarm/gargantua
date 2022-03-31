@@ -26,11 +26,13 @@ import (
 )
 
 // DynamicBindConfigurationLister helps list DynamicBindConfigurations.
+// All objects returned here must be treated as read-only.
 type DynamicBindConfigurationLister interface {
 	// List lists all DynamicBindConfigurations in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.DynamicBindConfiguration, err error)
-	// Get retrieves the DynamicBindConfiguration from the index for a given name.
-	Get(name string) (*v1.DynamicBindConfiguration, error)
+	// DynamicBindConfigurations returns an object that can list and get DynamicBindConfigurations.
+	DynamicBindConfigurations(namespace string) DynamicBindConfigurationNamespaceLister
 	DynamicBindConfigurationListerExpansion
 }
 
@@ -52,9 +54,41 @@ func (s *dynamicBindConfigurationLister) List(selector labels.Selector) (ret []*
 	return ret, err
 }
 
-// Get retrieves the DynamicBindConfiguration from the index for a given name.
-func (s *dynamicBindConfigurationLister) Get(name string) (*v1.DynamicBindConfiguration, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// DynamicBindConfigurations returns an object that can list and get DynamicBindConfigurations.
+func (s *dynamicBindConfigurationLister) DynamicBindConfigurations(namespace string) DynamicBindConfigurationNamespaceLister {
+	return dynamicBindConfigurationNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// DynamicBindConfigurationNamespaceLister helps list and get DynamicBindConfigurations.
+// All objects returned here must be treated as read-only.
+type DynamicBindConfigurationNamespaceLister interface {
+	// List lists all DynamicBindConfigurations in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
+	List(selector labels.Selector) (ret []*v1.DynamicBindConfiguration, err error)
+	// Get retrieves the DynamicBindConfiguration from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*v1.DynamicBindConfiguration, error)
+	DynamicBindConfigurationNamespaceListerExpansion
+}
+
+// dynamicBindConfigurationNamespaceLister implements the DynamicBindConfigurationNamespaceLister
+// interface.
+type dynamicBindConfigurationNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all DynamicBindConfigurations in the indexer for a given namespace.
+func (s dynamicBindConfigurationNamespaceLister) List(selector labels.Selector) (ret []*v1.DynamicBindConfiguration, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1.DynamicBindConfiguration))
+	})
+	return ret, err
+}
+
+// Get retrieves the DynamicBindConfiguration from the indexer for a given namespace and name.
+func (s dynamicBindConfigurationNamespaceLister) Get(name string) (*v1.DynamicBindConfiguration, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}

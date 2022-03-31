@@ -19,6 +19,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -31,6 +33,7 @@ import (
 // FakeDynamicBindConfigurations implements DynamicBindConfigurationInterface
 type FakeDynamicBindConfigurations struct {
 	Fake *FakeHobbyfarmV1
+	ns   string
 }
 
 var dynamicbindconfigurationsResource = schema.GroupVersionResource{Group: "hobbyfarm.io", Version: "v1", Resource: "dynamicbindconfigurations"}
@@ -38,9 +41,10 @@ var dynamicbindconfigurationsResource = schema.GroupVersionResource{Group: "hobb
 var dynamicbindconfigurationsKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version: "v1", Kind: "DynamicBindConfiguration"}
 
 // Get takes name of the dynamicBindConfiguration, and returns the corresponding dynamicBindConfiguration object, and an error if there is any.
-func (c *FakeDynamicBindConfigurations) Get(name string, options v1.GetOptions) (result *hobbyfarmiov1.DynamicBindConfiguration, err error) {
+func (c *FakeDynamicBindConfigurations) Get(ctx context.Context, name string, options v1.GetOptions) (result *hobbyfarmiov1.DynamicBindConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(dynamicbindconfigurationsResource, name), &hobbyfarmiov1.DynamicBindConfiguration{})
+		Invokes(testing.NewGetAction(dynamicbindconfigurationsResource, c.ns, name), &hobbyfarmiov1.DynamicBindConfiguration{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -48,9 +52,10 @@ func (c *FakeDynamicBindConfigurations) Get(name string, options v1.GetOptions) 
 }
 
 // List takes label and field selectors, and returns the list of DynamicBindConfigurations that match those selectors.
-func (c *FakeDynamicBindConfigurations) List(opts v1.ListOptions) (result *hobbyfarmiov1.DynamicBindConfigurationList, err error) {
+func (c *FakeDynamicBindConfigurations) List(ctx context.Context, opts v1.ListOptions) (result *hobbyfarmiov1.DynamicBindConfigurationList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(dynamicbindconfigurationsResource, dynamicbindconfigurationsKind, opts), &hobbyfarmiov1.DynamicBindConfigurationList{})
+		Invokes(testing.NewListAction(dynamicbindconfigurationsResource, dynamicbindconfigurationsKind, c.ns, opts), &hobbyfarmiov1.DynamicBindConfigurationList{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -69,15 +74,17 @@ func (c *FakeDynamicBindConfigurations) List(opts v1.ListOptions) (result *hobby
 }
 
 // Watch returns a watch.Interface that watches the requested dynamicBindConfigurations.
-func (c *FakeDynamicBindConfigurations) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeDynamicBindConfigurations) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(dynamicbindconfigurationsResource, opts))
+		InvokesWatch(testing.NewWatchAction(dynamicbindconfigurationsResource, c.ns, opts))
+
 }
 
 // Create takes the representation of a dynamicBindConfiguration and creates it.  Returns the server's representation of the dynamicBindConfiguration, and an error, if there is any.
-func (c *FakeDynamicBindConfigurations) Create(dynamicBindConfiguration *hobbyfarmiov1.DynamicBindConfiguration) (result *hobbyfarmiov1.DynamicBindConfiguration, err error) {
+func (c *FakeDynamicBindConfigurations) Create(ctx context.Context, dynamicBindConfiguration *hobbyfarmiov1.DynamicBindConfiguration, opts v1.CreateOptions) (result *hobbyfarmiov1.DynamicBindConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(dynamicbindconfigurationsResource, dynamicBindConfiguration), &hobbyfarmiov1.DynamicBindConfiguration{})
+		Invokes(testing.NewCreateAction(dynamicbindconfigurationsResource, c.ns, dynamicBindConfiguration), &hobbyfarmiov1.DynamicBindConfiguration{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -85,9 +92,10 @@ func (c *FakeDynamicBindConfigurations) Create(dynamicBindConfiguration *hobbyfa
 }
 
 // Update takes the representation of a dynamicBindConfiguration and updates it. Returns the server's representation of the dynamicBindConfiguration, and an error, if there is any.
-func (c *FakeDynamicBindConfigurations) Update(dynamicBindConfiguration *hobbyfarmiov1.DynamicBindConfiguration) (result *hobbyfarmiov1.DynamicBindConfiguration, err error) {
+func (c *FakeDynamicBindConfigurations) Update(ctx context.Context, dynamicBindConfiguration *hobbyfarmiov1.DynamicBindConfiguration, opts v1.UpdateOptions) (result *hobbyfarmiov1.DynamicBindConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(dynamicbindconfigurationsResource, dynamicBindConfiguration), &hobbyfarmiov1.DynamicBindConfiguration{})
+		Invokes(testing.NewUpdateAction(dynamicbindconfigurationsResource, c.ns, dynamicBindConfiguration), &hobbyfarmiov1.DynamicBindConfiguration{})
+
 	if obj == nil {
 		return nil, err
 	}
@@ -95,24 +103,26 @@ func (c *FakeDynamicBindConfigurations) Update(dynamicBindConfiguration *hobbyfa
 }
 
 // Delete takes name of the dynamicBindConfiguration and deletes it. Returns an error if one occurs.
-func (c *FakeDynamicBindConfigurations) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeDynamicBindConfigurations) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(dynamicbindconfigurationsResource, name), &hobbyfarmiov1.DynamicBindConfiguration{})
+		Invokes(testing.NewDeleteAction(dynamicbindconfigurationsResource, c.ns, name), &hobbyfarmiov1.DynamicBindConfiguration{})
+
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeDynamicBindConfigurations) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(dynamicbindconfigurationsResource, listOptions)
+func (c *FakeDynamicBindConfigurations) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(dynamicbindconfigurationsResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &hobbyfarmiov1.DynamicBindConfigurationList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched dynamicBindConfiguration.
-func (c *FakeDynamicBindConfigurations) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *hobbyfarmiov1.DynamicBindConfiguration, err error) {
+func (c *FakeDynamicBindConfigurations) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *hobbyfarmiov1.DynamicBindConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(dynamicbindconfigurationsResource, name, pt, data, subresources...), &hobbyfarmiov1.DynamicBindConfiguration{})
+		Invokes(testing.NewPatchSubresourceAction(dynamicbindconfigurationsResource, c.ns, name, pt, data, subresources...), &hobbyfarmiov1.DynamicBindConfiguration{})
+
 	if obj == nil {
 		return nil, err
 	}

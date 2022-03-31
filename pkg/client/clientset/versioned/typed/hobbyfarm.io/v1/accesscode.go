@@ -19,6 +19,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	"time"
 
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -32,133 +33,146 @@ import (
 // AccessCodesGetter has a method to return a AccessCodeInterface.
 // A group's client should implement this interface.
 type AccessCodesGetter interface {
-	AccessCodes() AccessCodeInterface
+	AccessCodes(namespace string) AccessCodeInterface
 }
 
 // AccessCodeInterface has methods to work with AccessCode resources.
 type AccessCodeInterface interface {
-	Create(*v1.AccessCode) (*v1.AccessCode, error)
-	Update(*v1.AccessCode) (*v1.AccessCode, error)
-	Delete(name string, options *metav1.DeleteOptions) error
-	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
-	Get(name string, options metav1.GetOptions) (*v1.AccessCode, error)
-	List(opts metav1.ListOptions) (*v1.AccessCodeList, error)
-	Watch(opts metav1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.AccessCode, err error)
+	Create(ctx context.Context, accessCode *v1.AccessCode, opts metav1.CreateOptions) (*v1.AccessCode, error)
+	Update(ctx context.Context, accessCode *v1.AccessCode, opts metav1.UpdateOptions) (*v1.AccessCode, error)
+	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
+	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.AccessCode, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.AccessCodeList, error)
+	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.AccessCode, err error)
 	AccessCodeExpansion
 }
 
 // accessCodes implements AccessCodeInterface
 type accessCodes struct {
 	client rest.Interface
+	ns     string
 }
 
 // newAccessCodes returns a AccessCodes
-func newAccessCodes(c *HobbyfarmV1Client) *accessCodes {
+func newAccessCodes(c *HobbyfarmV1Client, namespace string) *accessCodes {
 	return &accessCodes{
 		client: c.RESTClient(),
+		ns:     namespace,
 	}
 }
 
 // Get takes name of the accessCode, and returns the corresponding accessCode object, and an error if there is any.
-func (c *accessCodes) Get(name string, options metav1.GetOptions) (result *v1.AccessCode, err error) {
+func (c *accessCodes) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.AccessCode, err error) {
 	result = &v1.AccessCode{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("accesscodes").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // List takes label and field selectors, and returns the list of AccessCodes that match those selectors.
-func (c *accessCodes) List(opts metav1.ListOptions) (result *v1.AccessCodeList, err error) {
+func (c *accessCodes) List(ctx context.Context, opts metav1.ListOptions) (result *v1.AccessCodeList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &v1.AccessCodeList{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("accesscodes").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Watch returns a watch.Interface that watches the requested accessCodes.
-func (c *accessCodes) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+func (c *accessCodes) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Namespace(c.ns).
 		Resource("accesscodes").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch()
+		Watch(ctx)
 }
 
 // Create takes the representation of a accessCode and creates it.  Returns the server's representation of the accessCode, and an error, if there is any.
-func (c *accessCodes) Create(accessCode *v1.AccessCode) (result *v1.AccessCode, err error) {
+func (c *accessCodes) Create(ctx context.Context, accessCode *v1.AccessCode, opts metav1.CreateOptions) (result *v1.AccessCode, err error) {
 	result = &v1.AccessCode{}
 	err = c.client.Post().
+		Namespace(c.ns).
 		Resource("accesscodes").
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(accessCode).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Update takes the representation of a accessCode and updates it. Returns the server's representation of the accessCode, and an error, if there is any.
-func (c *accessCodes) Update(accessCode *v1.AccessCode) (result *v1.AccessCode, err error) {
+func (c *accessCodes) Update(ctx context.Context, accessCode *v1.AccessCode, opts metav1.UpdateOptions) (result *v1.AccessCode, err error) {
 	result = &v1.AccessCode{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("accesscodes").
 		Name(accessCode.Name).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(accessCode).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
 
 // Delete takes name of the accessCode and deletes it. Returns an error if one occurs.
-func (c *accessCodes) Delete(name string, options *metav1.DeleteOptions) error {
+func (c *accessCodes) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("accesscodes").
 		Name(name).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *accessCodes) DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
+func (c *accessCodes) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOptions.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
+	if listOpts.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("accesscodes").
-		VersionedParams(&listOptions, scheme.ParameterCodec).
+		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Body(options).
-		Do().
+		Body(&opts).
+		Do(ctx).
 		Error()
 }
 
 // Patch applies the patch and returns the patched accessCode.
-func (c *accessCodes) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.AccessCode, err error) {
+func (c *accessCodes) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.AccessCode, err error) {
 	result = &v1.AccessCode{}
 	err = c.client.Patch(pt).
+		Namespace(c.ns).
 		Resource("accesscodes").
-		SubResource(subresources...).
 		Name(name).
+		SubResource(subresources...).
+		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(data).
-		Do().
+		Do(ctx).
 		Into(result)
 	return
 }
