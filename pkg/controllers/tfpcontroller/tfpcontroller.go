@@ -271,8 +271,6 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				glog.Errorf("error creating configmap %s: %v", cm.Name, err)
 			}
 
-			
-
 			keypair := &k8sv1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: strings.Join([]string{vm.Name + "-secret", r}, "-"),
