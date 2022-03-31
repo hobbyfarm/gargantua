@@ -292,7 +292,6 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 					VirtualMachineTemplateId: vmX.Template,
 					SecretName:               "",
 					Protocol:                 "ssh", //default protocol is ssh
-					IsWindows:                false,
 					VirtualMachineClaimId:    dynamicBindRequest.Spec.VirtualMachineClaim,
 					UserId:                   vmClaim.Spec.UserId,
 					Provision:                provision,
@@ -318,11 +317,6 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 			sshUser, exists := chosenEnvironment.Spec.TemplateMapping[vmX.Template]["ssh_username"]
 			if exists {
 				vm.Spec.SshUsername = sshUser
-			}
-
-			_, exists = chosenEnvironment.Spec.TemplateMapping[vmX.Template]["is_windows"]
-			if exists {
-				vm.Spec.IsWindows = exists
 			}
 
 			// extra label to indicate external provisioning so tfpcontroller ignores this request //

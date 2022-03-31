@@ -333,7 +333,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 			Spec: hfv1.VirtualMachineSpec{
 				Id:                       genName,
 				VirtualMachineTemplateId: vmDetails.Template,
-				KeyPair:                  "",
+				SecretName:                  "",
 				VirtualMachineClaimId:    vmc.Name,
 				UserId:                   vmc.Spec.UserId,
 				Provision:                true,

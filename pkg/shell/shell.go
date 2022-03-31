@@ -1,8 +1,6 @@
 package shell
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"context"
 	"io"
@@ -116,8 +114,7 @@ func (sp ShellProxy) ConnectGuacFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	md5HashInBytes := md5.Sum(secret.Data["private_key"])
-	password := hex.EncodeToString(md5HashInBytes[:])
+	password := string(secret.Data["password"])
 
 	username := vm.Spec.SshUsername
 	if len(username) < 1 {

@@ -302,7 +302,6 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 					VirtualMachineTemplateId: vmt.Spec.Id,
 					SecretName:               "",
 					Protocol:                 "ssh",
-					IsWindows:                false,
 					VirtualMachineClaimId:    "",
 					UserId:                   "",
 					Provision:                provision,
@@ -327,10 +326,6 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			protocol, exists := env.Spec.TemplateMapping[vmt.Name]["protocol"]
 			if exists {
 				vm.Spec.Protocol = protocol
-			}
-			_, exists = env.Spec.TemplateMapping[vmt.Name]["is_windows"]
-			if exists {
-				vm.Spec.IsWindows = exists
 			}
 			if vmset.Spec.RestrictedBind {
 				vm.ObjectMeta.Labels["restrictedbind"] = "true"

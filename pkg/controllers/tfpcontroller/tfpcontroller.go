@@ -1,12 +1,7 @@
 package tfpcontroller
 
 import (
-<<<<<<< HEAD
-	"crypto/md5"
-	"encoding/hex"
-=======
 	"context"
->>>>>>> master
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -237,28 +232,22 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				config[k] = v
 			}
 
-			isWindowsMachine := false
-			_, ok := envTemplateInfo["is_windows"]
-			if ok {
-				isWindowsMachine = true
-			}
-
 			config["name"] = vm.Name
 			config["public_key"] = pubKey
 			config["cpu"] = strconv.Itoa(vmt.Spec.Resources.CPU)
 			config["memory"] = strconv.Itoa(vmt.Spec.Resources.Memory)
 			config["disk"] = strconv.Itoa(vmt.Spec.Resources.Storage)
-			if isWindowsMachine {
-				md5HashInBytes := md5.Sum([]byte(privKey))
-				config["admin_pass"] = hex.EncodeToString(md5HashInBytes[:]) //use the md5 hash of the priv. key as the admin password
-				config["admin_username"] = "Administrator"
-			}
 			image, exists := envTemplateInfo["image"]
 			if !exists {
 				glog.Errorf("image does not exist in env template")
 				return fmt.Errorf("image did not exist"), true
 			}
 			config["image"] = image
+
+			password, exists := envTemplateInfo["password"]
+			if !exists {
+				password = ""
+			}
 
 			r := fmt.Sprintf("%08x", rand.Uint32())
 			cm := &k8sv1.ConfigMap{
@@ -282,6 +271,8 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				glog.Errorf("error creating configmap %s: %v", cm.Name, err)
 			}
 
+			
+
 			keypair := &k8sv1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: strings.Join([]string{vm.Name + "-secret", r}, "-"),
@@ -297,6 +288,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				Data: map[string][]byte{
 					"private_key": []byte(privKey),
 					"public_key":  []byte(pubKey),
+					"password"  :  []byte(password),
 				},
 			}
 
