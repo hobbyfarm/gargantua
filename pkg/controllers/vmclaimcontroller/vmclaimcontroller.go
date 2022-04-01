@@ -334,6 +334,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 				Id:                       genName,
 				VirtualMachineTemplateId: vmDetails.Template,
 				SecretName:               "",
+				Protocol: 				  "ssh",  //default protocol is ssh
 				VirtualMachineClaimId:    vmc.Name,
 				UserId:                   vmc.Spec.UserId,
 				Provision:                true,
