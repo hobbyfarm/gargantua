@@ -25,6 +25,43 @@ type PreparedSubject struct {
 	Name string `json:"name"`
 }
 
+func (s Server) ListRoleBindingsForUser(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().Permission(k8sRbacGroup, roleBindingResourcePlural, rbacclient.VerbList), w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list rolebindings")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	user := vars["user"]
+
+	bindings, err := s.rbac.GetHobbyfarmRoleBindings(user)
+	if err != nil {
+		glog.Errorf("error getting hobbyfarm rolebindings for user %s: %v", user, err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "internal error")
+		return
+	}
+
+	var preparedRoleBindings = make([]PreparedRoleBinding, 0)
+	for _, b := range bindings {
+		if _, ok := b.Labels[rbacManagedLabel]; !ok {
+			continue // we aren't managing this role, don't return it
+		}
+		prb := s.prepareRoleBinding(*b)
+		preparedRoleBindings = append(preparedRoleBindings, prb)
+	}
+
+	data, err := json.Marshal(preparedRoleBindings)
+	if err != nil {
+		glog.Errorf("error while marshalling json for rolebindings: %v", err)
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
+		return
+	}
+
+	util.ReturnHTTPContent(w, r, http.StatusOK, "content", data)
+}
+
 func (s Server) ListRoleBindings(w http.ResponseWriter, r *http.Request) {
 	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().Permission(k8sRbacGroup, roleBindingResourcePlural, rbacclient.VerbList), w, r)
 	if err != nil {
@@ -109,6 +146,8 @@ func (s Server) CreateRoleBinding(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	roleBinding.Labels[rbacManagedLabel] = "true"
+
 	roleBinding, err = s.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).Create(r.Context(), roleBinding, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating rolebinding in kubernetes: %v", err)
@@ -172,7 +211,7 @@ func (s Server) DeleteRoleBinding(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).Delete(r.Context(), roleBinding.Namespace, metav1.DeleteOptions{})
+	err = s.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).Delete(r.Context(), roleBinding.Name, metav1.DeleteOptions{})
 	if err != nil {
 		glog.Errorf("error deleting rolebinding in kubernetes: %v", err)
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")

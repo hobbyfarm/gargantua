@@ -133,7 +133,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	rbacServer := rbacserver.NewRbacServer(kubeClient, authClient)
+	rbacServer := rbacserver.NewRbacServer(kubeClient, authClient, rbacClient)
 
 	authServer, err := authserver.NewAuthServer(authClient, hfClient, ctx, rbacClient)
 	if err != nil {

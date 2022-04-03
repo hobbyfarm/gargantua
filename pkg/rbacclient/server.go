@@ -1,6 +1,7 @@
 package rbacclient
 
 import (
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/client-go/informers"
 )
 
@@ -46,5 +47,9 @@ func (rs *Client) Grants(user string, permission Permission) (bool, error) {
 
 func (rs *Client) GetAccessSet(user string) (*AccessSet, error) {
 	return rs.userIndex.GetAccessSet(user)
+}
+
+func (rs *Client) GetHobbyfarmRoleBindings(user string) ([]*rbacv1.RoleBinding, error) {
+	return rs.userIndex.getRoleBindings(user)
 }
 
