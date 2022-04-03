@@ -365,9 +365,6 @@ func getLock(lockName string, cfg *rest.Config) (resourcelock.Interface, error) 
 		return nil, err
 	}
 
-	ns := os.Getenv("NAMESPACE")
-	if ns == "" {
-		ns = "hobbyfarm"
-	}
+	ns := util.GetReleaseNamespace()
 	return resourcelock.NewFromKubeconfig(resourcelock.ConfigMapsLeasesResourceLock, ns, lockName, resourcelock.ResourceLockConfig{Identity: hostname}, cfg, 15*time.Second)
 }
