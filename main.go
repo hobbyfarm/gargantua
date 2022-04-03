@@ -3,10 +3,9 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/hobbyfarm/gargantua/pkg/crd"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/rbacserver"
-	"github.com/hobbyfarm/gargantua/pkg/crd"
-	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"k8s.io/client-go/informers"
 	"os"
 
