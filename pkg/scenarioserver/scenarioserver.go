@@ -127,20 +127,33 @@ func (s ScenarioServer) getPrintableScenarioIds(accessCodes []string) []string {
 		ac, err := s.acClient.GetAccessCode(acString, false)
 		if err != nil {
 			glog.Errorf("error retrieving access code: %s %v", acString, err)
-		} else {
-			tempScenarioIds, err := s.acClient.GetScenarioIds(acString)
-			if err != nil {
-				glog.Errorf("error retrieving scenario ids for access code: %s %v", acString, err)
-			} else if ac.Spec.Printable {
-				printableScenarioIds = append(printableScenarioIds, tempScenarioIds...)
-			}
-			tempCourseIds, err := s.acClient.GetCourseIds(acString)
-			if err != nil {
-				glog.Errorf("error retrieving course ids for access code: %s %v", ac, err)
-			} else if ac.Spec.Printable {
-				printableCourseIds = append(printableCourseIds, tempCourseIds...)
-			}
+			continue
 		}
+		if !ac.Spec.Printable {
+			continue
+		}
+
+		tempScenarioIds, err1 := s.acClient.GetScenarioIds(acString)
+		tempCourseIds, err2 := s.acClient.GetCourseIds(acString)
+
+		if err1 != nil && err2 != nil {
+			glog.Errorf("error retrieving scenario ids for access code: %s %v", acString, err)
+			glog.Errorf("error retrieving course ids for access code: %s %v", ac, err)
+			continue
+		}
+		if err1 != nil {
+			glog.Errorf("error retrieving scenario ids for access code: %s %v", acString, err)
+			printableCourseIds = append(printableCourseIds, tempCourseIds...)
+			continue
+		}
+		if err2 != nil {
+			glog.Errorf("error retrieving course ids for access code: %s %v", ac, err)
+			printableScenarioIds = append(printableScenarioIds, tempScenarioIds...)
+			continue
+		}
+
+		printableScenarioIds = append(printableScenarioIds, tempScenarioIds...)
+		printableCourseIds = append(printableCourseIds, tempCourseIds...)
 	}
 	printableCourseIds = util.UniqueStringSlice(printableCourseIds)
 
@@ -148,9 +161,9 @@ func (s ScenarioServer) getPrintableScenarioIds(accessCodes []string) []string {
 		course, err := s.courseClient.GetCourseById(courseId)
 		if err != nil {
 			glog.Errorf("error retrieving course %v", err)
-		} else {
-			printableScenarioIds = append(printableScenarioIds, s.courseClient.AppendDynamicScenariosByCategories(course.Spec.Scenarios, course.Spec.Categories)...)
+			continue
 		}
+		printableScenarioIds = append(printableScenarioIds, s.courseClient.AppendDynamicScenariosByCategories(course.Spec.Scenarios, course.Spec.Categories)...)
 	}
 
 	printableScenarioIds = util.UniqueStringSlice(printableScenarioIds)
@@ -274,16 +287,18 @@ func (s ScenarioServer) ListScenarioForAccessCodes(w http.ResponseWriter, r *htt
 		ac, err := s.acClient.GetAccessCode(acString, false)
 		if err != nil {
 			glog.Errorf("error retrieving access code: %s %v", acString, err)
-		} else {
-			tempScenarioIds, err := s.acClient.GetScenarioIds(acString)
-			if err != nil {
-				glog.Errorf("error retrieving scenario ids for access code: %s %v", acString, err)
-			} else if ac.Spec.Printable {
-				printableScenarioIds = append(printableScenarioIds, tempScenarioIds...)
-			} else {
-				scenarioIds = append(scenarioIds, tempScenarioIds...)
-			}
+			continue
 		}
+		tempScenarioIds, err := s.acClient.GetScenarioIds(acString)
+		if err != nil {
+			glog.Errorf("error retrieving scenario ids for access code: %s %v", acString, err)
+			continue
+		}
+		if ac.Spec.Printable {
+			printableScenarioIds = append(printableScenarioIds, tempScenarioIds...)
+			continue
+		}
+		scenarioIds = append(scenarioIds, tempScenarioIds...)
 	}
 	scenarioIds = util.UniqueStringSlice(append(scenarioIds, printableScenarioIds...))
 
@@ -293,14 +308,14 @@ func (s ScenarioServer) ListScenarioForAccessCodes(w http.ResponseWriter, r *htt
 		scenario, err := s.GetScenarioById(scenarioId)
 		if err != nil {
 			glog.Errorf("error retrieving scenario %v", err)
-		} else {
-			pScenario, err := s.prepareScenario(scenario, tempPrintable)
-			if err != nil {
-				glog.Errorf("error preparing scenario %v", err)
-			} else {
-				scenarios = append(scenarios, pScenario)
-			}
+			continue
 		}
+		pScenario, err := s.prepareScenario(scenario, tempPrintable)
+		if err != nil {
+			glog.Errorf("error preparing scenario %v", err)
+			continue
+		}
+		scenarios = append(scenarios, pScenario)
 	}
 
 	encodedScenarios, err := json.Marshal(scenarios)
