@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/hobbyfarm/gargantua/pkg/crd"
 	"os"
 
 	"golang.org/x/sync/errgroup"
@@ -61,6 +62,7 @@ var (
 	localKubeconfig    string
 	disableControllers bool
 	shellServer        bool
+	installCRD         bool
 )
 
 func init() {
@@ -68,6 +70,7 @@ func init() {
 	flag.StringVar(&localMasterUrl, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.BoolVar(&disableControllers, "disablecontrollers", false, "Disable the controllers")
 	flag.BoolVar(&shellServer, "shellserver", false, "Be a shell server")
+	flag.BoolVar(&installCRD, "installcrd", false, "Install new version of CRD")
 }
 
 func main() {
@@ -86,6 +89,14 @@ func main() {
 		cfg, err = clientcmd.BuildConfigFromFlags(localMasterUrl, localKubeconfig)
 		if err != nil {
 			glog.Fatalf("Error building kubeconfig: %s", err.Error())
+		}
+	}
+
+	// self manage crds
+	if installCRD {
+		err = crd.Create(ctx, cfg)
+		if err != nil {
+			glog.Fatalf("Error installing crds: %s", err.Error())
 		}
 	}
 
@@ -239,7 +250,7 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	wg.Add(2)
+	wg.Add(1)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -250,11 +261,6 @@ func main() {
 	go func() {
 		defer wg.Done()
 		glog.Fatal(http.ListenAndServe(":"+port, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
-	}()
-
-	go func() {
-		defer wg.Done()
-		hfInformerFactory.Start(stopCh)
 	}()
 
 	if !disableControllers {
@@ -276,9 +282,13 @@ func main() {
 					}
 				},
 				OnStoppedLeading: func() {
+					// Need to start informer factory since even when not leader to ensure api layer
+					// keeps working.
+					hfInformerFactory.Start(stopCh)
 					glog.Info("waiting to be elected leader")
 				},
 				OnNewLeader: func(current_id string) {
+					hfInformerFactory.Start(stopCh)
 					if current_id == lock.Identity() {
 						glog.Info("currently the leader")
 						return
@@ -287,6 +297,9 @@ func main() {
 				},
 			},
 		})
+	} else {
+		// default fire up hfInformer as this is still needed by the shell server
+		hfInformerFactory.Start(stopCh)
 	}
 
 	wg.Wait()
@@ -346,6 +359,8 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 		return dynamicBindController.Run(stopCh)
 	})
 
+	hfInformerFactory.Start(stopCh)
+
 	if err = g.Wait(); err != nil {
 		glog.Errorf("error starting up the controllers: %v", err)
 		return err
@@ -360,9 +375,6 @@ func getLock(lockName string, cfg *rest.Config) (resourcelock.Interface, error) 
 		return nil, err
 	}
 
-	ns := os.Getenv("NAMESPACE")
-	if ns == "" {
-		ns = "hobbyfarm"
-	}
+	ns := util.GetReleaseNamespace()
 	return resourcelock.NewFromKubeconfig(resourcelock.ConfigMapsLeasesResourceLock, ns, lockName, resourcelock.ResourceLockConfig{Identity: hostname}, cfg, 15*time.Second)
 }

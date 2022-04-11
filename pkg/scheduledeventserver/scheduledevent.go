@@ -410,6 +410,13 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 				util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid value for on_demand")
 				return err
 			}
+			if onDemand && !scheduledEvent.Spec.OnDemand {
+				glog.Errorf("ScheduledEvent %s changed to onDemand, deleting corresponding VMSets.", scheduledEvent.Name)
+				err = s.deleteVMSetsFromScheduledEvent(scheduledEvent)
+				if err != nil {
+					glog.Errorf("Deleting vmset failed: %v", err)
+				}
+			}
 		}
 		scheduledEvent.Spec.OnDemand = onDemand
 
