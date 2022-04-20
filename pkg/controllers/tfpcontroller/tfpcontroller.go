@@ -224,10 +224,18 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				return fmt.Errorf("environment template info does not exist for this template %s", vmt.Name), true
 			}
 			config := make(map[string]string)
+
+			// First copy VMT Details (default)
+			for k, v := range vmt.Spec.CountMap {
+				config[k] = v
+			}
+
+			// Override with environment specifics
 			for k, v := range envSpecificConfigFromEnv {
 				config[k] = v
 			}
 
+			// Override with specific from vms on this environment
 			for k, v := range envTemplateInfo {
 				config[k] = v
 			}
@@ -237,12 +245,11 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			config["cpu"] = strconv.Itoa(vmt.Spec.Resources.CPU)
 			config["memory"] = strconv.Itoa(vmt.Spec.Resources.Memory)
 			config["disk"] = strconv.Itoa(vmt.Spec.Resources.Storage)
-			image, exists := envTemplateInfo["image"]
-			if !exists {
-				glog.Errorf("image does not exist in env template")
-				return fmt.Errorf("image did not exist"), true
+
+			if config["image"] != "" {
+				glog.Errorf("image does not exist in env template mapping, nor in vmt")
+				return fmt.Errorf("image does not exist in env template mapping, nor in vmt %s", vmt.Name), true
 			}
-			config["image"] = image
 
 			r := fmt.Sprintf("%08x", rand.Uint32())
 			cm := &k8sv1.ConfigMap{
