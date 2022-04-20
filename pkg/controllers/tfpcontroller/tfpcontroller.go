@@ -224,18 +224,19 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				return fmt.Errorf("environment template info does not exist for this template %s", vmt.Name), true
 			}
 			config := make(map[string]string)
+			config["image"] = vmt.Spec.Image
 
 			// First copy VMT Details (default)
 			for k, v := range vmt.Spec.CountMap {
 				config[k] = v
 			}
 
-			// Override with environment specifics
+			// Override with general environment specifics
 			for k, v := range envSpecificConfigFromEnv {
 				config[k] = v
 			}
 
-			// Override with specific from vms on this environment
+			// Override with specific from VM on this environment
 			for k, v := range envTemplateInfo {
 				config[k] = v
 			}
