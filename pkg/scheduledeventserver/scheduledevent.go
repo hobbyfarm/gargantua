@@ -247,11 +247,8 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 	}
 
 	scheduledEvent := &hfv1.ScheduledEvent{}
-
-	hasher := sha256.New()
-	hasher.Write([]byte(name))
-	sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:10]
-	scheduledEvent.Name = "se-" + strings.ToLower(sha)
+	random := util.RandStringRunes(16)
+	scheduledEvent.Name = "se-" + util.GenerateResourceName("se", random, 10)
 
 	scheduledEvent.Spec.Name = name
 	scheduledEvent.Spec.Description = description
