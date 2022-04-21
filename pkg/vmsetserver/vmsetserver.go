@@ -2,33 +2,35 @@ package vmsetserver
 
 import (
 	"context"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"net/http"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"github.com/hobbyfarm/gargantua/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
-	"net/http"
 )
 
 const (
-	idIndex = "vms.hobbyfarm.io/id-index"
-	ScheduledEventLabel  = "hobbyfarm.io/scheduledevent"
+	idIndex             = "vms.hobbyfarm.io/id-index"
+	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
 )
 
 type VMSetServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet hfClientset.Interface
-	ctx 		context.Context
-	vmIndexer cache.Indexer
+	ctx         context.Context
+	vmIndexer   cache.Indexer
 }
 
 type PreparedVirtualMachineSet struct {
+	Id string `json:"id"`
 	hfv1.VirtualMachineSetSpec
 	hfv1.VirtualMachineSetStatus
 }
@@ -49,7 +51,7 @@ func NewVMSetServer(authClient *authclient.AuthClient, hfClientset hfClientset.I
 }
 
 func (vms VMSetServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/a/vmset/{se}", vms.GetVMSetListByScheduledEventFunc).Methods("GET")
+	r.HandleFunc("/a/vmset/{se_id}", vms.GetVMSetListByScheduledEventFunc).Methods("GET")
 	r.HandleFunc("/a/vmset", vms.GetAllVMSetListFunc).Methods("GET")
 	glog.V(2).Infof("set up routes")
 }
@@ -57,7 +59,7 @@ func (vms VMSetServer) SetupRoutes(r *mux.Router) {
 func (vms VMSetServer) GetVMSetListByScheduledEventFunc(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	id := vars["id"]
+	id := vars["se_id"]
 
 	if len(id) == 0 {
 		util.ReturnHTTPMessage(w, r, 500, "error", "no scheduledEvent id passed in")
@@ -66,11 +68,11 @@ func (vms VMSetServer) GetVMSetListByScheduledEventFunc(w http.ResponseWriter, r
 
 	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, id)}
 
-	vms.GetVMSetListFunc(w,r,lo)
+	vms.GetVMSetListFunc(w, r, lo)
 }
 
 func (vms VMSetServer) GetAllVMSetListFunc(w http.ResponseWriter, r *http.Request) {
-	vms.GetVMSetListFunc(w,r, metav1.ListOptions{})
+	vms.GetVMSetListFunc(w, r, metav1.ListOptions{})
 }
 
 func (vms VMSetServer) GetVMSetListFunc(w http.ResponseWriter, r *http.Request, listOptions metav1.ListOptions) {
@@ -90,7 +92,7 @@ func (vms VMSetServer) GetVMSetListFunc(w http.ResponseWriter, r *http.Request, 
 
 	preparedVMSets := []PreparedVirtualMachineSet{}
 	for _, vmSet := range vmSetList.Items {
-		pVMSet := PreparedVirtualMachineSet{vmSet.Spec, vmSet.Status}
+		pVMSet := PreparedVirtualMachineSet{vmSet.Name, vmSet.Spec, vmSet.Status}
 		preparedVMSets = append(preparedVMSets, pVMSet)
 	}
 

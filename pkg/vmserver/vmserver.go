@@ -4,28 +4,29 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"github.com/hobbyfarm/gargantua/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
-	"net/http"
 )
 
 const (
-	idIndex = "vms.hobbyfarm.io/id-index"
-	ScheduledEventLabel  = "hobbyfarm.io/scheduledevent"
+	idIndex             = "vms.hobbyfarm.io/id-index"
+	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
 )
 
 type VMServer struct {
 	auth        *authclient.AuthClient
 	hfClientSet hfClientset.Interface
-	ctx 		context.Context
-	vmIndexer cache.Indexer
+	ctx         context.Context
+	vmIndexer   cache.Indexer
 }
 
 type PreparedVirtualMachine struct {
@@ -51,7 +52,7 @@ func NewVMServer(authClient *authclient.AuthClient, hfClientset hfClientset.Inte
 func (vms VMServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/vm/{vm_id}", vms.GetVMFunc).Methods("GET")
 	r.HandleFunc("/a/vm", vms.GetAllVMListFunc).Methods("GET")
-	r.HandleFunc("/a/vm/{se}", vms.GetVMListByScheduledEventFunc).Methods("GET")
+	r.HandleFunc("/a/vm/{se_id}", vms.GetVMListByScheduledEventFunc).Methods("GET")
 	glog.V(2).Infof("set up routes")
 }
 
@@ -81,8 +82,6 @@ func (vms VMServer) GetVirtualMachineById(id string) (hfv1.VirtualMachine, error
 	return *result, nil
 
 }
-
-
 
 func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := vms.auth.AuthN(w, r)
@@ -155,7 +154,7 @@ func (vms VMServer) GetVMListFunc(w http.ResponseWriter, r *http.Request, listOp
 func (vms VMServer) GetVMListByScheduledEventFunc(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	id := vars["id"]
+	id := vars["se_id"]
 
 	if len(id) == 0 {
 		util.ReturnHTTPMessage(w, r, 500, "error", "no scheduledEvent id passed in")
@@ -164,11 +163,11 @@ func (vms VMServer) GetVMListByScheduledEventFunc(w http.ResponseWriter, r *http
 
 	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, id)}
 
-	vms.GetVMListFunc(w,r, lo)
+	vms.GetVMListFunc(w, r, lo)
 }
 
 func (vms VMServer) GetAllVMListFunc(w http.ResponseWriter, r *http.Request) {
-	vms.GetVMListFunc(w,r, metav1.ListOptions{})
+	vms.GetVMListFunc(w, r, metav1.ListOptions{})
 }
 
 func vmIdIndexer(obj interface{}) ([]string, error) {
