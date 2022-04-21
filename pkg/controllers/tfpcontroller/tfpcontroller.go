@@ -211,6 +211,13 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				glog.Errorf("error getting env %v", err)
 				return err, true
 			}
+
+			_, exists := env.Spec.TemplateMapping[vmt.Name]
+			if !exists {
+				glog.Errorf("error pulling environment template info %v", err)
+				return fmt.Errorf("Error during RFP: environment %s does not support vmt %s.", env.Name, vmt.Name), true
+			}
+
 			// let's provision the vm
 			pubKey, privKey, err := util.GenKeyPair()
 			if err != nil {
