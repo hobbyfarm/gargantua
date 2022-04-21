@@ -540,3 +540,31 @@ func GetReleaseNamespace() string {
 	}
 	return provisionNS
 }
+
+func GetVMConfig(env *hfv1.Environment, vmt *hfv1.VirtualMachineTemplate) map[string]string {
+	envSpecificConfigFromEnv := env.Spec.EnvironmentSpecifics
+	envTemplateInfo, exists := env.Spec.TemplateMapping[vmt.Name]
+	
+	config := make(map[string]string)
+	config["image"] = vmt.Spec.Image
+
+	// First copy VMT Details (default)
+	for k, v := range vmt.Spec.CountMap {
+		config[k] = v
+	}
+
+	// Override with general environment specifics
+	for k, v := range envSpecificConfigFromEnv {
+		config[k] = v
+	}
+
+	//This environment has specifics for this vmt
+	if exists {
+			// Override with specific from VM on this environment
+		for k, v := range envTemplateInfo {
+			config[k] = v
+		}
+	}
+
+	return config
+}

@@ -217,29 +217,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				glog.Errorf("error generating keypair %v", err)
 				return err, true
 			}
-			envSpecificConfigFromEnv := env.Spec.EnvironmentSpecifics
-			envTemplateInfo, exists := env.Spec.TemplateMapping[vmt.Name]
-			if !exists {
-				glog.Errorf("error pulling environment template info %v", err)
-				return fmt.Errorf("environment template info does not exist for this template %s", vmt.Name), true
-			}
-			config := make(map[string]string)
-			config["image"] = vmt.Spec.Image
-
-			// First copy VMT Details (default)
-			for k, v := range vmt.Spec.CountMap {
-				config[k] = v
-			}
-
-			// Override with general environment specifics
-			for k, v := range envSpecificConfigFromEnv {
-				config[k] = v
-			}
-
-			// Override with specific from VM on this environment
-			for k, v := range envTemplateInfo {
-				config[k] = v
-			}
+			config := util.GetVMConfig(env,vmt)
 
 			config["name"] = vm.Name
 			config["public_key"] = pubKey
@@ -247,7 +225,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			config["memory"] = strconv.Itoa(vmt.Spec.Resources.Memory)
 			config["disk"] = strconv.Itoa(vmt.Spec.Resources.Storage)
 
-			if config["image"] != "" {
+			if config["image"] == "" {
 				glog.Errorf("image does not exist in env template mapping, nor in vmt")
 				return fmt.Errorf("image does not exist in env template mapping, nor in vmt %s", vmt.Name), true
 			}
@@ -298,25 +276,21 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				glog.Errorf("error creating secret %s: %v", keypair.Name, err)
 			}
 
-			moduleName, exists := envTemplateInfo["module"]
+			moduleName, exists := config["module"]
 			if !exists {
-				moduleName, exists = config["module"]
-				if !exists {
-					glog.Errorf("module name does not exist")
-				}
+				glog.Errorf("module name does not exist")
 			}
 
 			if moduleName == "" {
 				return fmt.Errorf("module name does not exist"), true
 			}
 
-			executorImage, exists := envTemplateInfo["executor_image"]
+
+			executorImage, exists := config["executor_image"]
 			if !exists {
-				executorImage, exists = config["executor_image"]
-				if !exists {
-					glog.Errorf("executor image does not exist")
-				}
+				glog.Errorf("executor image does not exist")
 			}
+			
 			if executorImage == "" {
 				return fmt.Errorf("executorimage does not exist"), true
 			}
@@ -336,12 +310,9 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				},
 			}
 
-			credentialsSecret, exists := envTemplateInfo["cred_secret"]
+			credentialsSecret, exists := config["cred_secret"]
 			if !exists {
-				credentialsSecret, exists = config["cred_secret"]
-				if !exists {
-					glog.Errorf("cred secret does not exist in env template")
-				}
+				glog.Errorf("cred secret does not exist in env template")
 			}
 			if credentialsSecret != "" {
 				tfs.Spec.Variables.SecretNames = []string{credentialsSecret}

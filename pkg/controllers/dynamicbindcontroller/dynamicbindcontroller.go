@@ -23,6 +23,8 @@ import (
 
 type DynamicBindController struct {
 	hfClientSet                 hfClientset.Interface
+	vmtLister 	  hfListers.VirtualMachineTemplateLister
+
 	dynamicBindRequestWorkqueue workqueue.RateLimitingInterface
 
 	dynamicBindRequestLister hfListers.DynamicBindRequestLister
@@ -34,6 +36,7 @@ type DynamicBindController struct {
 func NewDynamicBindController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*DynamicBindController, error) {
 	dynamicBindController := DynamicBindController{}
 	dynamicBindController.hfClientSet = hfClientSet
+	dynamicBindController.vmtLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Lister()
 
 	dynamicBindController.dynamicBindRequestsSynced = hfInformerFactory.Hobbyfarm().V1().DynamicBindRequests().Informer().HasSynced
 
@@ -308,7 +311,15 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 				},
 			}
 
-			sshUser, exists := chosenEnvironment.Spec.TemplateMapping[vmX.Template]["ssh_username"]
+			vmt, err := d.vmtLister.VirtualMachineTemplates(util.GetReleaseNamespace()).Get(vmX.Template)
+			if err != nil {
+				glog.Errorf("error getting vmt %v", err)
+				return err
+			}
+
+			config := util.GetVMConfig(chosenEnvironment,vmt)
+
+			sshUser, exists := config["ssh_username"]
 			if exists {
 				vm.Spec.SshUsername = sshUser
 			}
@@ -328,11 +339,11 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 			} else {
 				vm.ObjectMeta.Labels["restrictedbind"] = "false"
 			}
-			vm, err := d.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Create(d.ctx, vm, metav1.CreateOptions{})
+			newVm, err := d.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Create(d.ctx, vm, metav1.CreateOptions{})
 			if err != nil {
 				glog.Error(err)
 			}
-			virtualMachines[vmClaimVMName] = vm.Name
+			virtualMachines[vmClaimVMName] = newVm.Name
 		}
 
 		d.updateDynamicBindRequestStatus(dynamicBindRequest.Spec.Attempts, false, true, chosenDynamicBindConfiguration.Spec.Id, virtualMachines, dynamicBindRequest.Spec.Id)

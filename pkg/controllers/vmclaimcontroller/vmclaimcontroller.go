@@ -34,6 +34,7 @@ type VMClaimController struct {
 
 	vmLister      hfListers.VirtualMachineLister
 	vmClaimLister hfListers.VirtualMachineClaimLister
+	vmtLister 	  hfListers.VirtualMachineTemplateLister
 
 	vmClaimWorkqueue workqueue.Interface
 
@@ -50,6 +51,7 @@ func NewVMClaimController(hfClientSet hfClientset.Interface, hfInformerFactory h
 
 	vmClaimController.vmLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Lister()
 	vmClaimController.vmClaimLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Lister()
+	vmClaimController.vmtLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Lister()
 
 	vmClaimController.vmClaimWorkqueue = workqueue.New()
 	vmClaimController.vmWorkqueue = workqueue.New()
@@ -354,7 +356,16 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 			Template:         vmDetails.Template,
 			VirtualMachineId: genName,
 		}
-		sshUser, exists := env.Spec.TemplateMapping[vmDetails.Template]["ssh_username"]
+
+		vmt, err := v.vmtLister.VirtualMachineTemplates(util.GetReleaseNamespace()).Get(vmDetails.Template)
+		if err != nil {
+			glog.Errorf("error getting vmt %v", err)
+			return err
+		}
+
+		config := util.GetVMConfig(env,vmt)
+
+		sshUser, exists := config["ssh_username"]
 		if exists {
 			vm.Spec.SshUsername = sshUser
 		}

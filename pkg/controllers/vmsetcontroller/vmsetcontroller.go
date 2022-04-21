@@ -318,7 +318,10 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 				},
 			}
 
-			sshUser, exists := env.Spec.TemplateMapping[vmt.Name]["ssh_username"]
+
+			config := util.GetVMConfig(env,vmt)
+
+			sshUser, exists := config["ssh_username"]
 			if exists {
 				vm.Spec.SshUsername = sshUser
 			}
