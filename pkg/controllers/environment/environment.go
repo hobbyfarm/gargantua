@@ -19,6 +19,8 @@ import (
 	"time"
 )
 
+// TODO: This is unused, can we delete this?
+
 type EnvironmentController struct {
 	hfClientSet  hfClientset.Interface
 	envWorkqueue workqueue.RateLimitingInterface

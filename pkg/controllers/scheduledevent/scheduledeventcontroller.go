@@ -286,7 +286,7 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 		_, neededCapacity := calculateNeededCapacity(env, vmtMap, templates)
 
 		if env.Spec.CapacityMode == hfv1.CapacityModeRaw {
-			if env.Spec.Capacity.CPU < (+neededCapacity.CPU) {
+			if env.Spec.Capacity.CPU < (usedCapacity.CPU + neededCapacity.CPU) {
 				glog.Errorf("we are overprovisioning this environment %s by CPU, capacity is %d but need %d", envName, env.Spec.Capacity.CPU, usedCapacity.CPU+neededCapacity.CPU)
 			}
 			if env.Spec.Capacity.Memory < (usedCapacity.Memory + neededCapacity.Memory) {
@@ -296,7 +296,8 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 				glog.Errorf("we are overprovisioning this environment %s by Storage, capacity is %d but need %d", envName, env.Spec.Capacity.Storage, usedCapacity.Storage+neededCapacity.Storage)
 			}
 		} else if env.Spec.CapacityMode == hfv1.CapacityModeCount {
-			// todo: actually check for capacity usage
+			// TODO: actually check for capacity usage
+
 		}
 
 		// create the virtualmachinesets now
@@ -380,14 +381,6 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 		}
 
 		bcc := map[string]int{}
-
-		//for t, c := range vmtMap {
-		//	if c == 0 || c == -1 {
-		//		bcc[t] = 10
-		//	} else {
-		//		bcc[t] = c
-		//	}
-		//}
 
 		for t, c := range vmtMap {
 			if se.Spec.OnDemand {

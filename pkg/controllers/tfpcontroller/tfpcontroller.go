@@ -232,9 +232,19 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			config["memory"] = strconv.Itoa(vmt.Spec.Resources.Memory)
 			config["disk"] = strconv.Itoa(vmt.Spec.Resources.Storage)
 
-			if config["image"] == "" {
-				glog.Errorf("image does not exist in env template mapping, nor in vmt")
-				return fmt.Errorf("image does not exist in env template mapping, nor in vmt %s", vmt.Name), true
+			image, exists := config["image"]
+			if !exists ||  image == "" {
+				return fmt.Errorf("image does not exist or is empty in vm config for vmt %s", vmt.Name), true
+			}
+
+			moduleName, exists := config["module"]
+			if !exists ||  moduleName == "" {
+				return fmt.Errorf("module name does not exist or is empty in vm config for vmt %s", vmt.Name), true
+			}
+
+			executorImage, exists := config["executor_image"]
+			if !exists || executorImage == "" {
+				return fmt.Errorf("executorimage does not exist or is empty in vm config for vmt %s", vmt.Name), true
 			}
 
 			r := fmt.Sprintf("%08x", rand.Uint32())
@@ -283,25 +293,6 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				glog.Errorf("error creating secret %s: %v", keypair.Name, err)
 			}
 
-			moduleName, exists := config["module"]
-			if !exists {
-				glog.Errorf("module name does not exist")
-			}
-
-			if moduleName == "" {
-				return fmt.Errorf("module name does not exist"), true
-			}
-
-
-			executorImage, exists := config["executor_image"]
-			if !exists {
-				glog.Errorf("executor image does not exist")
-			}
-			
-			if executorImage == "" {
-				return fmt.Errorf("executorimage does not exist"), true
-			}
-
 			tfs := &tfv1.State{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: strings.Join([]string{vm.Name + "-tfs", r}, "-"),
@@ -348,7 +339,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 
 				toUpdate, updateErr := t.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(t.ctx, toUpdate, metav1.UpdateOptions{})
 				if err := util.VerifyVM(t.vmLister, toUpdate); err != nil {
-					glog.Errorf("error while verifying machine!!! %s", toUpdate.Name)
+					glog.Errorf("error while verifying machine %s", toUpdate.Name)
 				}
 				return updateErr
 			})
