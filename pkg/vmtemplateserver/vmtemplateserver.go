@@ -150,12 +150,12 @@ func (v VirtualMachineTemplateServer) CreateFunc(w http.ResponseWriter, r *http.
 	}
 
 	resourcesRaw := r.PostFormValue("resources") // no validation, resources not required
-	countMapRaw := r.PostFormValue("count_map")  // no validation, count_map not required
+	configMapRaw := r.PostFormValue("config_map")  // no validation, count_map not required
 
 	vmTemplate := &hfv1.VirtualMachineTemplate{Spec: hfv1.VirtualMachineTemplateSpec{}}
 
 	resources := hfv1.CMSStruct{}
-	countMap := map[string]string{}
+	configMap := map[string]string{}
 	if resourcesRaw != "" {
 		// attempt to decode if resources passed in
 		err := json.Unmarshal([]byte(resourcesRaw), &resources)
@@ -168,16 +168,16 @@ func (v VirtualMachineTemplateServer) CreateFunc(w http.ResponseWriter, r *http.
 		vmTemplate.Spec.Resources = resources
 	}
 
-	if countMapRaw != "" {
+	if configMapRaw != "" {
 		// attempt to decode if count_map passed in
-		err := json.Unmarshal([]byte(countMapRaw), &countMap)
+		err := json.Unmarshal([]byte(configMapRaw), &configMap)
 		if err != nil {
 			glog.Errorf("error while unmarshalling count_map: %v", err)
 			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing count_map")
 			return
 		}
 		// no error, assign to vmtemplate
-		vmTemplate.Spec.CountMap = countMap
+		vmTemplate.Spec.ConfigMap = configMap
 	}
 
 	hasher := sha256.New()
@@ -229,7 +229,7 @@ func (v VirtualMachineTemplateServer) UpdateFunc(w http.ResponseWriter, r *http.
 		name := r.PostFormValue("name")
 		image := r.PostFormValue("image")
 		resourcesRaw := r.PostFormValue("resources")
-		countMapRaw := r.PostFormValue("count_map")
+		configMapRaw := r.PostFormValue("config_map")
 
 		if name != "" {
 			vmTemplate.Spec.Name = name
@@ -249,14 +249,14 @@ func (v VirtualMachineTemplateServer) UpdateFunc(w http.ResponseWriter, r *http.
 			vmTemplate.Spec.Resources = cms
 		}
 
-		if countMapRaw != "" {
-			countMap := map[string]string{}
-			err := json.Unmarshal([]byte(countMapRaw), &countMap)
+		if configMapRaw != "" {
+			configMap := map[string]string{}
+			err := json.Unmarshal([]byte(configMapRaw), &configMap)
 			if err != nil {
 				glog.Error(err)
 				return fmt.Errorf("bad")
 			}
-			vmTemplate.Spec.CountMap = countMap
+			vmTemplate.Spec.ConfigMap = configMap
 		}
 
 		_, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Update(v.ctx, vmTemplate, metav1.UpdateOptions{})

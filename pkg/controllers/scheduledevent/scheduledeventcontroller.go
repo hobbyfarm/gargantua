@@ -282,10 +282,10 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 		}
 
 		_, usedCapacity := calculateUsedCapacity(env, vmsList, templates)
-
-		_, neededCapacity := calculateNeededCapacity(env, vmtMap, templates)
-
+		
 		if env.Spec.CapacityMode == hfv1.CapacityModeRaw {
+			neededCapacity := calculateNeededCapacity(env, vmtMap, templates)
+
 			if env.Spec.Capacity.CPU < (usedCapacity.CPU + neededCapacity.CPU) {
 				glog.Errorf("we are overprovisioning this environment %s by CPU, capacity is %d but need %d", envName, env.Spec.Capacity.CPU, usedCapacity.CPU+neededCapacity.CPU)
 			}
@@ -298,6 +298,8 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 		} else if env.Spec.CapacityMode == hfv1.CapacityModeCount {
 			// TODO: actually check for capacity usage
 
+			// vmtMap has all the neededCapacity for this environment.
+			// used capacity is calculated by calculateUsedCapacity()
 		}
 
 		// create the virtualmachinesets now
@@ -611,11 +613,7 @@ func calculateUsedCapacity(env *hfv1.Environment, vmsList *hfv1.VirtualMachineSe
 					used.Memory = used.Memory + (t.Spec.Resources.Memory * vms.Spec.Count)
 					used.Storage = used.Storage + (t.Spec.Resources.Storage * vms.Spec.Count)
 				} else if env.Spec.CapacityMode == hfv1.CapacityModeCount {
-					if countKey, ok := t.Spec.CountMap[env.Spec.Provider]; ok {
-						usedCount[countKey] = usedCount[countKey] + vms.Spec.Count
-					} else {
-						glog.Errorf("count key was not found for virtual machine template %s for provider %s", t.Name, env.Spec.Provider)
-					}
+					usedCount[t.Name] = usedCount[t.Name] + vms.Spec.Count
 				}
 			}
 		}
@@ -624,27 +622,18 @@ func calculateUsedCapacity(env *hfv1.Environment, vmsList *hfv1.VirtualMachineSe
 	return usedCount, used
 }
 
-func calculateNeededCapacity(env *hfv1.Environment, vmtMap map[string]int, templates *hfv1.VirtualMachineTemplateList) (map[string]int, hfv1.CMSStruct) {
+func calculateNeededCapacity(env *hfv1.Environment, vmtMap map[string]int, templates *hfv1.VirtualMachineTemplateList) hfv1.CMSStruct {
 	needed := hfv1.CMSStruct{}
 
-	neededCount := map[string]int{}
 	for templateName, count := range vmtMap {
 		for _, t := range templates.Items {
 			if t.Name == templateName {
-				if env.Spec.CapacityMode == hfv1.CapacityModeRaw {
-					needed.CPU = needed.CPU + (t.Spec.Resources.CPU * count)
-					needed.Memory = needed.Memory + (t.Spec.Resources.Memory * count)
-					needed.Storage = needed.Storage + (t.Spec.Resources.Storage * count)
-				} else if env.Spec.CapacityMode == hfv1.CapacityModeCount {
-					if countKey, ok := t.Spec.CountMap[env.Spec.Provider]; ok {
-						neededCount[countKey] = neededCount[countKey] + count
-					} else {
-						glog.Errorf("count key was not found for virtual machine template %s for provider %s", t.Name, env.Spec.Provider)
-					}
-				}
+				needed.CPU = needed.CPU + (t.Spec.Resources.CPU * count)
+				needed.Memory = needed.Memory + (t.Spec.Resources.Memory * count)
+				needed.Storage = needed.Storage + (t.Spec.Resources.Storage * count)
 			}
 		}
 	}
 
-	return neededCount, needed
+	return needed
 }

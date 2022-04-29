@@ -549,7 +549,7 @@ func GetVMConfig(env *hfv1.Environment, vmt *hfv1.VirtualMachineTemplate) map[st
 	config["image"] = vmt.Spec.Image
 
 	// First copy VMT Details (default)
-	for k, v := range vmt.Spec.CountMap {
+	for k, v := range vmt.Spec.ConfigMap {
 		config[k] = v
 	}
 
