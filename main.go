@@ -140,7 +140,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	scenarioServer, err := scenarioserver.NewScenarioServer(authClient, acClient, hfClient, hfInformerFactory, ctx)
+	scenarioServer, err := scenarioserver.NewScenarioServer(authClient, acClient, hfClient, hfInformerFactory, ctx, courseClient)
 	if err != nil {
 		glog.Fatal(err)
 	}

@@ -26,3 +26,8 @@ func (cc CourseClient) GetCourseById(id string) (hfv1.Course, error) {
 
 	return cResult, nil
 }
+
+func (cc CourseClient) AppendDynamicScenariosByCategories(scenariosList []string, categories []string) []string {
+
+	return cc.cServer.AppendDynamicScenariosByCategories(scenariosList, categories)
+}
