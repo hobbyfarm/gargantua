@@ -241,8 +241,8 @@ func (b *boot) Start(ctx context.Context, stopCh <-chan struct{}) {
 		leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
 			Lock:            lock,
 			ReleaseOnCancel: true,
-			LeaseDuration:   10 * time.Second,
-			RenewDeadline:   5 * time.Second,
+			LeaseDuration:   60 * time.Second,
+			RenewDeadline:   10 * time.Second,
 			RetryPeriod:     2 * time.Second,
 			Callbacks: leaderelection.LeaderCallbacks{
 				OnStartedLeading: func(c context.Context) {

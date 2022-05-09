@@ -105,7 +105,7 @@ func (c *FakeProgresses) Update(ctx context.Context, progress *hobbyfarmiov1.Pro
 // Delete takes name of the progress and deletes it. Returns an error if one occurs.
 func (c *FakeProgresses) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(progressesResource, c.ns, name), &hobbyfarmiov1.Progress{})
+		Invokes(testing.NewDeleteActionWithOptions(progressesResource, c.ns, name, opts), &hobbyfarmiov1.Progress{})
 
 	return err
 }

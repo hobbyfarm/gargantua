@@ -125,6 +125,7 @@ func List() []crd.CRD {
 				WithColumn("Expired", ".status.expired").
 				WithColumn("Fulfilled", ".status.fulfilled")
 		}),
+		hobbyfarmCRD(&hobbyfarmv1.Progress{}, nil),
 		terraformControllerCRD(&terraformv1.Module{}, func(c crd.CRD) crd.CRD {
 			return c.
 				WithColumn("CheckTime", ".status.time")

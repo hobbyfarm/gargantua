@@ -322,6 +322,7 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 								"environment":    env.Name,
 								"scheduledevent": se.Name,
 								fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", templateName): "true",
+								ScheduledEventLabel: se.Name,
 							},
 						},
 						Spec: hfv1.VirtualMachineSetSpec{
@@ -433,9 +434,11 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 			dbc.ObjectMeta.Labels["restrictedbind"] = "false"
 		}
 
+		glog.V(9).Infof("create dbc %s for scheduled event %s", dbc.Name, se.Name)
 		_, err = s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()).Create(s.ctx, dbc, metav1.CreateOptions{})
 		if err != nil {
-			glog.Errorf("error creating dynamic bind configuration %v", err)
+			fmt.Errorf("error creating dynamic bind configuration %v", err)
+			return err
 		}
 	}
 
@@ -480,6 +483,7 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 	ac, err := s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Create(s.ctx, ac, metav1.CreateOptions{})
 	if err != nil {
 		glog.Error(err)
+		return err
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -492,8 +496,9 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 
 		seToUpdate.Status.Provisioned = true
 		seToUpdate.Status.VirtualMachineSets = vmSets
-		seToUpdate.Status.Ready = false
+		seToUpdate.Status.Ready = true
 		seToUpdate.Status.Finished = false
+		seToUpdate.Status.Active = true
 
 		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, seToUpdate, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for scheduled event")
