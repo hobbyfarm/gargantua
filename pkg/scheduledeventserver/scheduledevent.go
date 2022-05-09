@@ -2,8 +2,6 @@ package scheduledeventserver
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/base32"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -247,11 +245,8 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 	}
 
 	scheduledEvent := &hfv1.ScheduledEvent{}
-
-	hasher := sha256.New()
-	hasher.Write([]byte(name))
-	sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:10]
-	scheduledEvent.Name = "se-" + strings.ToLower(sha)
+	random := util.RandStringRunes(16)
+	scheduledEvent.Name = "se-" + util.GenerateResourceName("se", random, 10)
 
 	scheduledEvent.Spec.Name = name
 	scheduledEvent.Spec.Description = description
@@ -282,7 +277,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		scheduledEvent.Spec.RestrictedBind = false
 	} else {
 		scheduledEvent.Spec.RestrictedBind = true
-		scheduledEvent.Spec.RestrictedBindValue = "se-" + strings.ToLower(sha)
+		scheduledEvent.Spec.RestrictedBindValue = scheduledEvent.Name
 	}
 
 	scheduledEvent, err = s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Create(s.ctx, scheduledEvent, metav1.CreateOptions{})
