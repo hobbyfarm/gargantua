@@ -294,7 +294,6 @@ func main() {
 		// default fire up hfInformer as this is still needed by the shell server
 		hfInformerFactory.Start(stopCh)
 	}
-
 	wg.Wait()
 }
 

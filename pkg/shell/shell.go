@@ -1,11 +1,15 @@
 package shell
 
 import (
+	"fmt"
 	"context"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -31,16 +35,22 @@ type ShellProxy struct {
 var sshDev = ""
 var sshDevHost = ""
 var sshDevPort = ""
+var guacHost = ""
+var guacPort = ""
 var defaultSshUsername = "ubuntu"
 
 // SIGWINCH is the regex to match window change (resize) codes
 var SIGWINCH *regexp.Regexp
 var sess *ssh.Session
 
+var DefaultDialer = websocket.DefaultDialer
+
 func init() {
 	sshDev = os.Getenv("SSH_DEV")
 	sshDevHost = os.Getenv("SSH_DEV_HOST")
 	sshDevPort = os.Getenv("SSH_DEV_PORT")
+	guacHost = os.Getenv("GUAC_SERVICE_HOST") //Get the Guac Host. This is set by kubernetes
+	guacPort = os.Getenv("GUAC_SERVICE_PORT") //Get the Guac Port. This is set by kubernetes
 	SIGWINCH = regexp.MustCompile(`.*\[8;(.*);(.*)t`)
 }
 
@@ -57,11 +67,191 @@ func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.Virtual
 }
 
 func (sp ShellProxy) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/shell/{vm_id}/connect", sp.ConnectFunc)
+	r.HandleFunc("/shell/{vm_id}/connect", sp.ConnectSSHFunc)
+	r.HandleFunc("/guacShell/{vm_id}/connect", sp.ConnectGuacFunc)
 	glog.V(2).Infof("set up routes")
 }
 
-func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
+/*
+* This is used for all connections made via the guacamole client
+* Currently supported protocols are: rdp, vnc, telnet, ssh
+ */
+func (sp ShellProxy) ConnectGuacFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := sp.auth.AuthWS(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	vmId := vars["vm_id"]
+	if len(vmId) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no vm id passed in")
+		return
+	}
+
+	vm, err := sp.vmClient.GetVirtualMachineById(vmId)
+
+	if err != nil {
+		glog.Errorf("did not find the right virtual machine ID")
+		util.ReturnHTTPMessage(w, r, 500, "error", "no vm found")
+		return
+	}
+
+	if vm.Spec.UserId != user.Spec.Id {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "you do not have access to shell")
+		return
+	}
+
+	glog.Infof("Going to upgrade guac connection now... %s", vm.Spec.Id)
+
+	// ok first get the secret for the vm
+	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?
+	if err != nil {
+		glog.Errorf("did not find secret for virtual machine")
+		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
+		return
+	}
+
+	password := string(secret.Data["password"])
+
+	username := vm.Spec.SshUsername
+	if len(username) < 1 {
+		username = defaultSshUsername
+	}
+
+	// get the host and port
+	host := vm.Status.PublicIP
+	protocol := strings.ToLower(vm.Spec.Protocol)
+	port := mapProtocolToPort()[protocol]
+
+	optimalHeight := r.URL.Query().Get("height")
+	optimalWidth := r.URL.Query().Get("width")
+
+	//
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+
+	// todo - HACK
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
+
+	// GoogleChrome needs the Sec-Websocket-Protocol Header be set to the requested protocol
+	ws_protocol := r.Header.Get("Sec-Websocket-Protocol")
+	conn, err := upgrader.Upgrade(w, r, http.Header{
+		"Sec-Websocket-Protocol": {ws_protocol},
+	}) // upgrade to websocket
+
+	if err != nil {
+		glog.Errorf("error upgrading: %s", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "error upgrading to websocket")
+		return
+	}
+	defer conn.Close()
+
+	backendURL := fmt.Sprintf("ws://%s:%s/websocket-tunnel", guacHost, guacPort)
+	requestHeader := http.Header{}
+
+	//Use url.query, as this provides a query.Encode() method.
+	u, _ := url.Parse("http://example.com") //just to get u.Query()
+	q := u.Query()
+	q.Set("scheme", protocol)
+	q.Set("hostname", host)
+	q.Set("port", strconv.Itoa(port))
+	q.Set("ignore-cert", "true")
+	q.Set("username", username)
+	q.Set("password", password)
+	q.Set("width", optimalWidth)
+	q.Set("height", optimalHeight)
+	q.Set("security", "")
+
+	backendURL += "?" + q.Encode()
+	//Replace to keep the password out of the logs! Replacing "password=<password>" instead of only "<password>", for cases where the password is short and/or is contained in other parameters
+	glog.V(6).Infof("Build query " + strings.Replace(backendURL, "password="+password, "password=XXX_PASSWORD_XXX", 1))
+
+	connBackend, resp, err := DefaultDialer.Dial(backendURL, requestHeader)
+	if err != nil {
+		glog.Errorf("websocketproxy: couldn't dial to remote backend url %s", err)
+		if resp != nil {
+			// If the WebSocket handshake fails, ErrBadHandshake is returned
+			// along with a non-nil *http.Response so that callers can handle
+			// redirects, authentication, etcetera.
+			if err := copyResponse(w, resp); err != nil {
+				glog.Errorf("websocketproxy: couldn't write response after failed remote backend handshake: %s", err)
+			}
+		} else {
+			http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
+		}
+		return
+	}
+	defer connBackend.Close()
+
+	errClient := make(chan error, 1)
+	errBackend := make(chan error, 1)
+	replicateWebsocketConn := func(dst, src *websocket.Conn, errc chan error) {
+		for {
+			msgType, msg, err := src.ReadMessage()
+			if err != nil {
+				m := websocket.FormatCloseMessage(websocket.CloseNormalClosure, fmt.Sprintf("%v", err))
+				if e, ok := err.(*websocket.CloseError); ok {
+					if e.Code != websocket.CloseNoStatusReceived {
+						m = websocket.FormatCloseMessage(e.Code, e.Text)
+					}
+				}
+				errc <- err
+				dst.WriteMessage(websocket.CloseMessage, m)
+				break
+			}
+			err = dst.WriteMessage(msgType, msg)
+			if err != nil {
+				errc <- err
+				break
+			}
+		}
+	}
+
+	go replicateWebsocketConn(conn, connBackend, errClient)
+	go replicateWebsocketConn(connBackend, conn, errBackend)
+
+	var message string
+	select {
+	case err = <-errClient:
+		message = "websocketproxy: Error when copying from backend to client: %v"
+	case err = <-errBackend:
+		message = "websocketproxy: Error when copying from client to backend: %v"
+
+	}
+	if e, ok := err.(*websocket.CloseError); !ok || e.Code == websocket.CloseAbnormalClosure {
+		glog.Errorf(message, err)
+	}
+
+}
+
+func copyHeader(dst, src http.Header) {
+	for k, vv := range src {
+		for _, v := range vv {
+			dst.Add(k, v)
+		}
+	}
+}
+
+func copyResponse(rw http.ResponseWriter, resp *http.Response) error {
+	copyHeader(rw.Header(), resp.Header)
+	rw.WriteHeader(resp.StatusCode)
+	defer resp.Body.Close()
+
+	_, err := io.Copy(rw, resp.Body)
+	return err
+}
+
+/*
+* This is mainly used for SSH Connections to VMs
+ */
+func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := sp.auth.AuthWS(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
@@ -92,7 +282,7 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 	glog.Infof("Going to upgrade connection now... %s", vm.Spec.Id)
 
 	// ok first get the secret for the vm
-	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.KeyPair, v1.GetOptions{}) // idk?
+	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?
 	if err != nil {
 		glog.Errorf("did not find secret for virtual machine")
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
@@ -201,6 +391,15 @@ func (sp ShellProxy) ConnectFunc(w http.ResponseWriter, r *http.Request) {
 	//sess.Wait()
 	//
 	//defer sess.Close()
+}
+
+func mapProtocolToPort() map[string]int {
+	m := make(map[string]int)
+	m["rdp"] = 3389
+	m["vnc"] = 5900
+	m["telnet"] = 23
+	m["ssh"] = 22
+	return m
 }
 
 func ResizePty(h int, w int) {

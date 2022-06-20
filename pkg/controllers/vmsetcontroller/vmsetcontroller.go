@@ -300,7 +300,8 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 				Spec: hfv1.VirtualMachineSpec{
 					Id:                       vmName,
 					VirtualMachineTemplateId: vmt.Spec.Id,
-					KeyPair:                  "",
+					SecretName:               "",
+					Protocol:                 "ssh",
 					VirtualMachineClaimId:    "",
 					UserId:                   "",
 					Provision:                provision,
@@ -321,6 +322,10 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			sshUser, exists := env.Spec.TemplateMapping[vmt.Name]["ssh_username"]
 			if exists {
 				vm.Spec.SshUsername = sshUser
+			}
+			protocol, exists := env.Spec.TemplateMapping[vmt.Name]["protocol"]
+			if exists {
+				vm.Spec.Protocol = protocol
 			}
 			if vmset.Spec.RestrictedBind {
 				vm.ObjectMeta.Labels["restrictedbind"] = "true"

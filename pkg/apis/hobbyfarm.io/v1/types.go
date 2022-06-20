@@ -38,7 +38,8 @@ type VirtualMachineSpec struct {
 	Id                       string `json:"id"`
 	VirtualMachineTemplateId string `json:"vm_template_id"`
 	SshUsername              string `json:"ssh_username"`
-	KeyPair                  string `json:"keypair_name"` // this refers to the secret name for the keypair
+	Protocol                 string `json:"protocol"`
+	SecretName               string `json:"secret_name"` // this refers to the secret name for the keypair
 	VirtualMachineClaimId    string `json:"vm_claim_id"`
 	UserId                   string `json:"user"`
 	Provision                bool   `json:"provision"`
