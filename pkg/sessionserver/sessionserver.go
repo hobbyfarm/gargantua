@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"net/http"
 	"os"
 	"time"
@@ -32,6 +33,7 @@ const (
 	UserSessionLabel    = "hobbyfarm.io/user"
 	AccessCodeLabel     = "accesscode.hobbyfarm.io"
 	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
+	resourcePlural      = "sessions"
 )
 
 type SessionServer struct {
@@ -418,9 +420,13 @@ func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Requ
 	}
 
 	ss, err := sss.GetSessionById(sessionId)
-	if ss.Spec.UserId != user.Spec.Id && !user.Spec.Admin {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no session found that matches this user")
-		return
+	if ss.Spec.UserId != user.Spec.Id {
+		// check if the user has access to write sessions
+		_, err := sss.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
+		if err != nil {
+			util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to update session")
+			return
+		}
 	}
 
 	now := time.Now().Format(time.UnixDate)

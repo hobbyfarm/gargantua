@@ -6,6 +6,7 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"net/http"
 	"strings"
 	"time"
@@ -29,15 +30,17 @@ const (
 
 type AuthServer struct {
 	auth        *authclient.AuthClient
+	rbac *rbacclient.Client
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
 
-func NewAuthServer(authClient *authclient.AuthClient, hfClientSet hfClientset.Interface, ctx context.Context) (AuthServer, error) {
+func NewAuthServer(authClient *authclient.AuthClient, hfClientSet hfClientset.Interface, ctx context.Context, rbac *rbacclient.Client) (AuthServer, error) {
 	a := AuthServer{}
 	a.auth = authClient
 	a.hfClientSet = hfClientSet
 	a.ctx = ctx
+	a.rbac = rbac
 	return a, nil
 }
 
@@ -50,6 +53,7 @@ func (a AuthServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/auth/settings", a.RetreiveSettingsFunc).Methods("GET")
 	r.HandleFunc("/auth/settings", a.UpdateSettingsFunc).Methods("POST")
 	r.HandleFunc("/auth/authenticate", a.AuthNFunc).Methods("POST")
+	r.HandleFunc("/auth/access", a.GetAccessSet).Methods("GET")
 	glog.V(2).Infof("set up route")
 }
 
@@ -577,4 +581,29 @@ func (a AuthServer) ValidateJWT(tokenString string) (hfv1.User, error) {
 	}
 	glog.Errorf("error while validating user")
 	return hfv1.User{}, fmt.Errorf("error while validating user")
+}
+
+func (a *AuthServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
+	user, err := a.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, http.StatusUnauthorized, "unauthorized", "unauthorized")
+		return
+	}
+
+	// need to get the user's access set and publish to front end
+	as, err := a.rbac.GetAccessSet(user.Spec.Email)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error fetching access set")
+		glog.Error(err)
+		return
+	}
+
+	encodedAS, err := json.Marshal(as)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error encoding access set")
+		glog.Error(err)
+		return
+	}
+
+	util.ReturnHTTPContent(w, r, http.StatusOK, "access_set", encodedAS)
 }

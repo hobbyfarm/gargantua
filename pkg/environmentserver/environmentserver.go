@@ -11,6 +11,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
@@ -18,6 +19,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+)
+
+const (
+	resourcePlural = "environments"
 )
 
 type EnvironmentServer struct {
@@ -69,7 +74,7 @@ type PreparedEnvironment struct {
 }
 
 func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthNAdmin(w, r)
+	_, err := e.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get environment")
 		return
@@ -104,7 +109,7 @@ func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthNAdmin(w, r)
+	_, err := e.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list environments")
 		return
@@ -134,7 +139,7 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthNAdmin(w, r)
+	_, err := e.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbCreate), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create environments")
 		return
@@ -259,7 +264,7 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthNAdmin(w, r)
+	_, err := e.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update environment")
 		return
@@ -374,7 +379,7 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e EnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthNAdmin(w, r)
+	_, err := e.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get environment")
 		return
