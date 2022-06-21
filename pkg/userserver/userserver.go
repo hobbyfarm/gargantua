@@ -4,20 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
-	"net/http"
-	"strings"
-
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"golang.org/x/crypto/bcrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
+	"net/http"
 )
 
 const (
@@ -157,7 +155,6 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		email := r.PostFormValue("email")
 		password := r.PostFormValue("password")
 		accesscodes := r.PostFormValue("accesscodes")
-		admin := r.PostFormValue("admin")
 
 		if email != "" {
 			user.Spec.Email = email
@@ -179,14 +176,6 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("bad")
 			}
 			user.Spec.AccessCodes = acUnmarshaled
-		}
-
-		if admin != "" {
-			if strings.ToLower(admin) == "true" {
-				user.Spec.Admin = true
-			} else {
-				user.Spec.Admin = false
-			}
 		}
 
 		_, updateErr := u.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(u.ctx, user, metav1.UpdateOptions{})

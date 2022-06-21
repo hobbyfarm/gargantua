@@ -20,7 +20,7 @@ const (
 type AuthClient struct {
 	hfClientSet hfClientset.Interface
 	userIndexer cache.Indexer
-	rbacServer *rbacclient.Client
+	rbacServer  *rbacclient.Client
 }
 
 func NewAuthClient(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, rbacServer *rbacclient.Client) (*AuthClient, error) {
@@ -75,12 +75,12 @@ func (a AuthClient) AuthWS(w http.ResponseWriter, r *http.Request) (hfv1.User, e
 		return hfv1.User{}, fmt.Errorf("authentication failed")
 	}
 
-	return a.performAuth(token, false)
+	return a.performAuth(token)
 }
 
 // if admin is true then check if user is an admin
 
-func (a AuthClient) performAuth(token string, admin bool) (hfv1.User, error) {
+func (a AuthClient) performAuth(token string) (hfv1.User, error) {
 	//glog.V(2).Infof("token passed in was: %s", token)
 
 	user, err := a.ValidateJWT(token)
@@ -92,15 +92,6 @@ func (a AuthClient) performAuth(token string, admin bool) (hfv1.User, error) {
 	}
 
 	glog.V(2).Infof("validated user %s!", user.Spec.Email)
-	if admin {
-		if user.Spec.Admin {
-			return user, nil
-		} else {
-			glog.Errorf("AUDIT: User %s attempted to access an admin protected resource.", user.Spec.Email)
-			return hfv1.User{}, fmt.Errorf("authentication failed")
-		}
-	}
-	//util.ReturnHTTPMessage(w, r, 200, "success", "test successful. valid token")
 	return user, nil
 }
 
@@ -155,24 +146,7 @@ func (a AuthClient) AuthN(w http.ResponseWriter, r *http.Request) (hfv1.User, er
 	splitToken := strings.Split(token, "Bearer")
 	finalToken = strings.TrimSpace(splitToken[1])
 
-	return a.performAuth(finalToken, false)
-}
-
-func (a AuthClient) AuthNAdmin(w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
-	token := r.Header.Get("Authorization")
-
-	if len(token) == 0 {
-		glog.Errorf("no bearer token passed")
-		//util.ReturnHTTPMessage(w, r, 403, "forbidden", "no token passed")
-		return hfv1.User{}, fmt.Errorf("authentication failed")
-	}
-
-	var finalToken string
-
-	splitToken := strings.Split(token, "Bearer")
-	finalToken = strings.TrimSpace(splitToken[1])
-
-	return a.performAuth(finalToken, true)
+	return a.performAuth(finalToken)
 }
 
 func (a AuthClient) ValidateJWT(tokenString string) (hfv1.User, error) {
