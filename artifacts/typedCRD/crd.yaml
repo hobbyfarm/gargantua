@@ -650,6 +650,8 @@ spec:
               expiration:
                 nullable: true
                 type: string
+              printable:
+                type: boolean
               restricted_bind:
                 type: boolean
               restricted_bind_value:
@@ -698,8 +700,6 @@ spec:
                   type: string
                 nullable: true
                 type: array
-              admin:
-                type: boolean
               email:
                 nullable: true
                 type: string
@@ -772,6 +772,8 @@ spec:
                 nullable: true
                 type: string
               on_demand:
+                type: boolean
+              printable:
                 type: boolean
               required_vms:
                 additionalProperties:
