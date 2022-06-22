@@ -247,7 +247,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				return fmt.Errorf("executorimage does not exist or is empty in vm config for vmt %s", vmt.Name), true
 			}
 
-			password, exists := envTemplateInfo["password"]
+			password, exists := config["password"]
 			if !exists {
 				password = ""
 			}
