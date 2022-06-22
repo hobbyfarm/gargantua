@@ -7,6 +7,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"k8s.io/client-go/tools/cache"
 	"net/http"
 	"strings"
@@ -19,15 +20,17 @@ const (
 type AuthClient struct {
 	hfClientSet hfClientset.Interface
 	userIndexer cache.Indexer
+	rbacServer  *rbacclient.Client
 }
 
-func NewAuthClient(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*AuthClient, error) {
+func NewAuthClient(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, rbacServer *rbacclient.Client) (*AuthClient, error) {
 	a := AuthClient{}
 	a.hfClientSet = hfClientSet
 	inf := hfInformerFactory.Hobbyfarm().V1().Users().Informer()
 	indexers := map[string]cache.IndexFunc{emailIndex: emailIndexer}
 	inf.AddIndexers(indexers)
 	a.userIndexer = inf.GetIndexer()
+	a.rbacServer = rbacServer
 	return &a, nil
 }
 
@@ -72,12 +75,12 @@ func (a AuthClient) AuthWS(w http.ResponseWriter, r *http.Request) (hfv1.User, e
 		return hfv1.User{}, fmt.Errorf("authentication failed")
 	}
 
-	return a.performAuth(token, false)
+	return a.performAuth(token)
 }
 
 // if admin is true then check if user is an admin
 
-func (a AuthClient) performAuth(token string, admin bool) (hfv1.User, error) {
+func (a AuthClient) performAuth(token string) (hfv1.User, error) {
 	//glog.V(2).Infof("token passed in was: %s", token)
 
 	user, err := a.ValidateJWT(token)
@@ -89,16 +92,44 @@ func (a AuthClient) performAuth(token string, admin bool) (hfv1.User, error) {
 	}
 
 	glog.V(2).Infof("validated user %s!", user.Spec.Email)
-	if admin {
-		if user.Spec.Admin {
-			return user, nil
-		} else {
-			glog.Errorf("AUDIT: User %s attempted to access an admin protected resource.", user.Spec.Email)
-			return hfv1.User{}, fmt.Errorf("authentication failed")
+	return user, nil
+}
+
+func (a *AuthClient) AuthGrant(request *rbacclient.Request, w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
+	user, err := a.AuthN(w, r)
+	if err != nil {
+		return user, err
+	}
+
+	if request.GetOperator() == rbacclient.OperatorAnd {
+		// operator AND, all need to match
+		for _, p := range request.GetPermissions() {
+			g, err := a.rbacServer.Grants(user.Spec.Email, p)
+			if err != nil {
+				return hfv1.User{}, err
+			}
+
+			if !g {
+				return hfv1.User{}, fmt.Errorf("permission denied")
+			}
+		}
+		// if we get here, AND has succeeded
+		return user, nil
+	} else {
+		// operator OR, only one needs to match
+		for _, p := range request.GetPermissions() {
+			g, err := a.rbacServer.Grants(user.Spec.Email, p)
+			if err != nil {
+				return hfv1.User{}, err
+			}
+
+			if g {
+				return user, nil
+			}
 		}
 	}
-	//util.ReturnHTTPMessage(w, r, 200, "success", "test successful. valid token")
-	return user, nil
+
+	return hfv1.User{}, fmt.Errorf("permission denied")
 }
 
 func (a AuthClient) AuthN(w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
@@ -115,24 +146,7 @@ func (a AuthClient) AuthN(w http.ResponseWriter, r *http.Request) (hfv1.User, er
 	splitToken := strings.Split(token, "Bearer")
 	finalToken = strings.TrimSpace(splitToken[1])
 
-	return a.performAuth(finalToken, false)
-}
-
-func (a AuthClient) AuthNAdmin(w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
-	token := r.Header.Get("Authorization")
-
-	if len(token) == 0 {
-		glog.Errorf("no bearer token passed")
-		//util.ReturnHTTPMessage(w, r, 403, "forbidden", "no token passed")
-		return hfv1.User{}, fmt.Errorf("authentication failed")
-	}
-
-	var finalToken string
-
-	splitToken := strings.Split(token, "Bearer")
-	finalToken = strings.TrimSpace(splitToken[1])
-
-	return a.performAuth(finalToken, true)
+	return a.performAuth(finalToken)
 }
 
 func (a AuthClient) ValidateJWT(tokenString string) (hfv1.User, error) {
