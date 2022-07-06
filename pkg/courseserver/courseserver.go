@@ -62,7 +62,7 @@ func (c CourseServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/course/{course_id}", c.GetCourse).Methods("GET")
 	r.HandleFunc("/a/course/list", c.ListFunc).Methods("GET")
 	r.HandleFunc("/a/course/new", c.CreateFunc).Methods("POST")
-	r.HandleFunc("/a/course/{id}", c.GetCourse).Methods("GET")
+	r.HandleFunc("/a/course/{course_id}", c.GetCourse).Methods("GET")
 	r.HandleFunc("/a/course/{id}", c.UpdateFunc).Methods("PUT")
 	r.HandleFunc("/a/course/{id}", c.DeleteFunc).Methods("DELETE")
 	r.HandleFunc("/a/course/previewDynamicScenarios", c.previewDynamicScenarios).Methods("POST")
