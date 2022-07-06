@@ -51,8 +51,9 @@ func NewVMServer(authClient *authclient.AuthClient, hfClientset hfClientset.Inte
 
 func (vms VMServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/vm/{vm_id}", vms.GetVMFunc).Methods("GET")
-	r.HandleFunc("/a/vm", vms.GetAllVMListFunc).Methods("GET")
-	r.HandleFunc("/a/vm/{se_id}", vms.GetVMListByScheduledEventFunc).Methods("GET")
+	r.HandleFunc("/a/vm/list", vms.GetAllVMListFunc).Methods("GET")
+	r.HandleFunc("/a/vm/scheduledevent/{se_id}", vms.GetVMListByScheduledEventFunc).Methods("GET")
+	r.HandleFunc("/a/vm/count", vms.CountByScheduledEvent).Methods("GET")
 	glog.V(2).Infof("set up routes")
 }
 
@@ -164,6 +165,37 @@ func (vms VMServer) GetVMListByScheduledEventFunc(w http.ResponseWriter, r *http
 	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, id)}
 
 	vms.GetVMListFunc(w, r, lo)
+}
+
+func (vms VMServer) CountByScheduledEvent(w http.ResponseWriter, r *http.Request) {
+	_, err := vms.auth.AuthNAdmin(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list virtualmachines")
+		return
+	}
+
+	virtualmachines, err := vms.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(vms.ctx, metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("error while retrieving virtualmachine %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "no virtualmachine found")
+		return
+	}
+
+	countMap := map[string]int{}
+	for _, vm := range virtualmachines.Items {
+		se := vm.Labels[ScheduledEventLabel]
+		if _, ok := countMap[se]; ok {
+			countMap[se] = countMap[se] + 1
+		} else {
+			countMap[se] = 1
+		}
+	}
+
+	encodedMap, err := json.Marshal(countMap)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedMap)
 }
 
 func (vms VMServer) GetAllVMListFunc(w http.ResponseWriter, r *http.Request) {
