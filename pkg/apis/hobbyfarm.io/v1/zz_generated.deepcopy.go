@@ -1478,8 +1478,8 @@ func (in *VirtualMachineTemplateList) DeepCopyObject() runtime.Object {
 func (in *VirtualMachineTemplateSpec) DeepCopyInto(out *VirtualMachineTemplateSpec) {
 	*out = *in
 	out.Resources = in.Resources
-	if in.CountMap != nil {
-		in, out := &in.CountMap, &out.CountMap
+	if in.ConfigMap != nil {
+		in, out := &in.ConfigMap, &out.ConfigMap
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val

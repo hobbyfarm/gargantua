@@ -125,7 +125,7 @@ type VirtualMachineTemplateSpec struct {
 	Name      string            `json:"name"`  // 2x4, etc.
 	Image     string            `json:"image"` // ubuntu-18.04
 	Resources CMSStruct         `json:"resources"`
-	CountMap  map[string]string `json:"count_map"`
+	ConfigMap  map[string]string `json:"config_map"`
 }
 
 // +genclient
