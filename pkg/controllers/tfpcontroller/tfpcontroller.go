@@ -244,6 +244,11 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			}
 			config["image"] = image
 
+			password, exists := envTemplateInfo["password"]
+			if !exists {
+				password = ""
+			}
+
 			r := fmt.Sprintf("%08x", rand.Uint32())
 			cm := &k8sv1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
@@ -281,6 +286,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				Data: map[string][]byte{
 					"private_key": []byte(privKey),
 					"public_key":  []byte(pubKey),
+					"password"  :  []byte(password),
 				},
 			}
 
@@ -354,7 +360,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 						glog.Errorf("unknown error encountered when setting terminating %v", err)
 					}
 				}
-				toUpdate.Spec.KeyPair = keypair.Name
+				toUpdate.Spec.SecretName = keypair.Name
 				toUpdate.Status.Status = hfv1.VmStatusProvisioned
 				toUpdate.Status.TFState = tfs.Name
 				toUpdate.Labels["ready"] = "false"

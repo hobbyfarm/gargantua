@@ -333,7 +333,8 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 			Spec: hfv1.VirtualMachineSpec{
 				Id:                       genName,
 				VirtualMachineTemplateId: vmDetails.Template,
-				KeyPair:                  "",
+				SecretName:               "",
+				Protocol: 				  "ssh",  //default protocol is ssh
 				VirtualMachineClaimId:    vmc.Name,
 				UserId:                   vmc.Spec.UserId,
 				Provision:                true,
@@ -354,6 +355,12 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 			Template:         vmDetails.Template,
 			VirtualMachineId: genName,
 		}
+
+		protocol, exists := env.Spec.TemplateMapping[vmDetails.Template]["protocol"]
+		if exists {
+			vm.Spec.Protocol = protocol
+		}
+
 		sshUser, exists := env.Spec.TemplateMapping[vmDetails.Template]["ssh_username"]
 		if exists {
 			vm.Spec.SshUsername = sshUser

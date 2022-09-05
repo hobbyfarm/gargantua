@@ -4,19 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"strings"
-
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"golang.org/x/crypto/bcrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
+	"net/http"
+)
+
+const (
+	resourcePlural = "users"
 )
 
 type UserServer struct {
@@ -66,7 +69,7 @@ type PreparedUser struct {
 }
 
 func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := u.auth.AuthNAdmin(w, r)
+	_, err := u.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get User")
 		return
@@ -101,7 +104,7 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := u.auth.AuthNAdmin(w, r)
+	_, err := u.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list users")
 		return
@@ -130,7 +133,7 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := u.auth.AuthNAdmin(w, r)
+	_, err := u.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update users")
 		return
@@ -152,7 +155,6 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		email := r.PostFormValue("email")
 		password := r.PostFormValue("password")
 		accesscodes := r.PostFormValue("accesscodes")
-		admin := r.PostFormValue("admin")
 
 		if email != "" {
 			user.Spec.Email = email
@@ -176,14 +178,6 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			user.Spec.AccessCodes = acUnmarshaled
 		}
 
-		if admin != "" {
-			if strings.ToLower(admin) == "true" {
-				user.Spec.Admin = true
-			} else {
-				user.Spec.Admin = false
-			}
-		}
-
 		_, updateErr := u.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(u.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
@@ -202,7 +196,7 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	// 1. must not have an active session
 	// that's about it.
 
-	_, err := u.auth.AuthNAdmin(w, r)
+	_, err := u.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbDelete), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update users")
 		return

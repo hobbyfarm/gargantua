@@ -4,6 +4,9 @@ import (
 	"context"
 	"flag"
 	"github.com/hobbyfarm/gargantua/pkg/crd"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/pkg/rbacserver"
+	"k8s.io/client-go/informers"
 	"os"
 
 	"golang.org/x/sync/errgroup"
@@ -46,6 +49,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
 	"github.com/hobbyfarm/gargantua/pkg/vmserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmsetserver"
+	wranglerRbac "github.com/rancher/wrangler/pkg/generated/controllers/rbac"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -115,13 +119,23 @@ func main() {
 
 	namespace := util.GetReleaseNamespace()
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
+	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second*30)
 
-	authClient, err := authclient.NewAuthClient(hfClient, hfInformerFactory)
+	rbacControllerFactory := wranglerRbac.NewFactoryFromConfigOrDie(cfg)
+
+	rbacClient, err := rbacclient.NewRbacClient(namespace, kubeInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	authServer, err := authserver.NewAuthServer(authClient, hfClient, ctx)
+	authClient, err := authclient.NewAuthClient(hfClient, hfInformerFactory, rbacClient)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	rbacServer := rbacserver.NewRbacServer(kubeClient, authClient, rbacClient)
+
+	authServer, err := authserver.NewAuthServer(authClient, hfClient, ctx, rbacClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -141,7 +155,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	scenarioServer, err := scenarioserver.NewScenarioServer(authClient, acClient, hfClient, hfInformerFactory, ctx)
+	scenarioServer, err := scenarioserver.NewScenarioServer(authClient, acClient, hfClient, hfInformerFactory, ctx, courseClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -223,6 +237,7 @@ func main() {
 		userServer.SetupRoutes(r)
 		vmTemplateServer.SetupRoutes(r)
 		progressServer.SetupRoutes(r)
+		rbacServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
@@ -276,7 +291,7 @@ func main() {
 			RetryPeriod:     2 * time.Second,
 			Callbacks: leaderelection.LeaderCallbacks{
 				OnStartedLeading: func(c context.Context) {
-					err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, ctx, stopCh)
+					err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, kubeInformerFactory, rbacControllerFactory, ctx, stopCh)
 					if err != nil {
 						glog.Fatal(err)
 					}
@@ -301,12 +316,13 @@ func main() {
 		// default fire up hfInformer as this is still needed by the shell server
 		hfInformerFactory.Start(stopCh)
 	}
-
 	wg.Wait()
 }
 
 func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientset.Clientset,
-	hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context, stopCh <-chan struct{}) error {
+	hfInformerFactory hfInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, rbacControllerFactory *wranglerRbac.Factory,
+	ctx context.Context, stopCh <-chan struct{}) error {
+
 	g, gctx := errgroup.WithContext(ctx)
 	glog.V(2).Infof("Starting controllers")
 	sessionController, err := session.NewSessionController(hfClient, hfInformerFactory, gctx)
@@ -329,7 +345,6 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	if err != nil {
 		return err
 	}
-
 	dynamicBindController, err := dynamicbindcontroller.NewDynamicBindController(hfClient, hfInformerFactory, gctx)
 	if err != nil {
 		return err
@@ -359,7 +374,12 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 		return dynamicBindController.Run(stopCh)
 	})
 
+	g.Go(func() error {
+		return rbacControllerFactory.Start(ctx, 1)
+	})
+
 	hfInformerFactory.Start(stopCh)
+	kubeInformerFactory.Start(stopCh)
 
 	if err = g.Wait(); err != nil {
 		glog.Errorf("error starting up the controllers: %v", err)

@@ -290,7 +290,8 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 				Spec: hfv1.VirtualMachineSpec{
 					Id:                       vmName,
 					VirtualMachineTemplateId: vmX.Template,
-					KeyPair:                  "",
+					SecretName:               "",
+					Protocol:                 "ssh", //default protocol is ssh
 					VirtualMachineClaimId:    dynamicBindRequest.Spec.VirtualMachineClaim,
 					UserId:                   vmClaim.Spec.UserId,
 					Provision:                provision,
@@ -306,6 +307,11 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 					EnvironmentId: chosenEnvironment.Name,
 					Hostname:      "",
 				},
+			}
+
+			protocol, exists := chosenEnvironment.Spec.TemplateMapping[vmX.Template]["protocol"]
+			if exists {
+				vm.Spec.Protocol = protocol
 			}
 
 			sshUser, exists := chosenEnvironment.Spec.TemplateMapping[vmX.Template]["ssh_username"]
