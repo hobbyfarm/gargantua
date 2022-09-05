@@ -12,6 +12,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -20,6 +21,7 @@ import (
 const (
 	idIndex             = "vms.hobbyfarm.io/id-index"
 	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
+	resourcePlural		= "virtualmachinesets"
 )
 
 type VMSetServer struct {
@@ -76,7 +78,7 @@ func (vms VMSetServer) GetAllVMSetListFunc(w http.ResponseWriter, r *http.Reques
 }
 
 func (vms VMSetServer) GetVMSetListFunc(w http.ResponseWriter, r *http.Request, listOptions metav1.ListOptions) {
-	_, err := vms.auth.AuthNAdmin(w, r)
+	_, err := vms.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list vmsets")
 		return
