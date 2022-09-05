@@ -271,12 +271,6 @@ func main() {
 		glog.Fatal(http.ListenAndServe(":"+port, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
 	}()
 
-	go func() {
-		defer wg.Done()
-		hfInformerFactory.Start(stopCh)
-		kubeInformerFactory.Start(stopCh)
-	}()
-
 	if !disableControllers {
 		lock, err := getLock("controller-manager", cfg)
 		if err != nil {
@@ -290,7 +284,7 @@ func main() {
 			RetryPeriod:     2 * time.Second,
 			Callbacks: leaderelection.LeaderCallbacks{
 				OnStartedLeading: func(c context.Context) {
-					err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, rbacControllerFactory, ctx, stopCh)
+					err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, kubeInformerFactory, rbacControllerFactory, ctx, stopCh)
 					if err != nil {
 						glog.Fatal(err)
 					}
@@ -319,7 +313,7 @@ func main() {
 }
 
 func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientset.Clientset,
-	hfInformerFactory hfInformers.SharedInformerFactory, rbacControllerFactory *wranglerRbac.Factory,
+	hfInformerFactory hfInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, rbacControllerFactory *wranglerRbac.Factory,
 	ctx context.Context, stopCh <-chan struct{}) error {
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -376,6 +370,9 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	g.Go(func() error {
 		return rbacControllerFactory.Start(ctx, 1)
 	})
+
+	hfInformerFactory.Start(stopCh)
+	kubeInformerFactory.Start(stopCh)
 
 	if err = g.Wait(); err != nil {
 		glog.Errorf("error starting up the controllers: %v", err)
