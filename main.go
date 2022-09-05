@@ -118,7 +118,7 @@ func main() {
 
 	namespace := util.GetReleaseNamespace()
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
-	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30)
+	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second*30)
 
 	rbacControllerFactory := wranglerRbac.NewFactoryFromConfigOrDie(cfg)
 
