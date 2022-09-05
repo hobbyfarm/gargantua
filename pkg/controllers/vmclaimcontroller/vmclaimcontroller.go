@@ -34,6 +34,7 @@ type VMClaimController struct {
 
 	vmLister      hfListers.VirtualMachineLister
 	vmClaimLister hfListers.VirtualMachineClaimLister
+	vmtLister 	  hfListers.VirtualMachineTemplateLister
 
 	vmClaimWorkqueue workqueue.Interface
 
@@ -50,6 +51,7 @@ func NewVMClaimController(hfClientSet hfClientset.Interface, hfInformerFactory h
 
 	vmClaimController.vmLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Lister()
 	vmClaimController.vmClaimLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Lister()
+	vmClaimController.vmtLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineTemplates().Lister()
 
 	vmClaimController.vmClaimWorkqueue = workqueue.New()
 	vmClaimController.vmWorkqueue = workqueue.New()
@@ -356,12 +358,20 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 			VirtualMachineId: genName,
 		}
 
-		protocol, exists := env.Spec.TemplateMapping[vmDetails.Template]["protocol"]
-		if exists {
-			vm.Spec.Protocol = protocol
+		vmt, err := v.vmtLister.VirtualMachineTemplates(util.GetReleaseNamespace()).Get(vmDetails.Template)
+		if err != nil {
+			glog.Errorf("error getting vmt %v", err)
+			return err
 		}
 
-		sshUser, exists := env.Spec.TemplateMapping[vmDetails.Template]["ssh_username"]
+		config := util.GetVMConfig(env,vmt)
+     
+    protocol, exists := config["protocol"]
+    if exists {
+		  vm.Spec.Protocol = protocol
+		}
+		
+    sshUser, exists := config["ssh_username"]
 		if exists {
 			vm.Spec.SshUsername = sshUser
 		}
@@ -494,6 +504,39 @@ func (v *VMClaimController) findVirtualMachines(vmc *hfv1.VirtualMachineClaim) (
 	return nil
 }
 
+func  (v *VMClaimController) assignVM(vmClaimId string, user string, vmId string) (string, error) {
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Get(v.ctx, vmId, metav1.GetOptions{})
+		if getErr != nil {
+			return fmt.Errorf("error retrieving latest version of Virtual Machine %s: %v", vmId, getErr)
+		}
+
+		result.Status.Allocated = true
+		result.Spec.VirtualMachineClaimId = vmClaimId
+		result.Spec.UserId = user
+
+		result.Labels["bound"] = "true"
+
+		vm, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(v.ctx, result, metav1.UpdateOptions{})
+		if updateErr != nil {
+			return updateErr
+		}
+		glog.V(4).Infof("updated result for virtual machine")
+
+		verifyErr := util.VerifyVM(v.vmLister, vm)
+
+		if verifyErr != nil {
+			return verifyErr
+		}
+		return nil
+	})
+	if retryErr != nil {
+		return "", fmt.Errorf("error updating Virtual Machine: %s, %v", vmId, retryErr)
+	}
+
+	return vmId, nil
+}
+
 func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, template string, environmentId string, restrictedBind bool, restrictedBindValue string) (string, error) {
 
 	vmLabels := labels.Set{
@@ -522,40 +565,21 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, temp
 			// we can assign this vm
 			assigned = true
 			vmId = vm.Spec.Id
-
-			retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Get(v.ctx, vmId, metav1.GetOptions{})
-				if getErr != nil {
-					return fmt.Errorf("error retrieving latest version of Virtual Machine %s: %v", vmId, getErr)
-				}
-
-				result.Status.Allocated = true
-				result.Spec.VirtualMachineClaimId = vmClaimId
-				result.Spec.UserId = user
-
-				result.Labels["bound"] = "true"
-
-				vm, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(v.ctx, result, metav1.UpdateOptions{})
-				if updateErr != nil {
-					return updateErr
-				}
-				glog.V(4).Infof("updated result for virtual machine")
-
-				verifyErr := util.VerifyVM(v.vmLister, vm)
-
-				if verifyErr != nil {
-					return verifyErr
-				}
-				return nil
-			})
-			if retryErr != nil {
-				return "", fmt.Errorf("error updating Virtual Machine: %s, %v", vmId, retryErr)
+		
+			// Prefer running machines
+			if( vm.Status.Status == hfv1.VmStatusRunning){
+				break
 			}
-			break
 		}
 	}
 
 	if assigned {
+		vmId, err = v.assignVM(vmClaimId, user, vmId)
+
+		if err != nil {
+			return "", err
+		}
+
 		return vmId, nil
 	}
 
