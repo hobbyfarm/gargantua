@@ -367,6 +367,11 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		provisionedCount++
 	}
 
+	if(provisionedCount < vmset.Spec.Count){
+		glog.V(4).Infof("requeing VMset as there are not enough VMs ready")
+		v.enqueueVMSet(vmset)
+	}
+
 	err = v.updateVMSetCount(vmset.Name, activeCount, provisionedCount)
 
 	return err
