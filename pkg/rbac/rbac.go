@@ -19,10 +19,33 @@ const(
 
 func List() []Role{
 	return []Role{
-		newRole("testRole", func(r Role) Role {
+		// RBAC Admin can edit roles and rolebindings rbac.authorization.k8s.io
+		newRole("rbac-admin", func(r Role) Role {
 			return r.
-				addRule([] string {"hobbyfarm.io"}, [] string {"*"}, [] string {"roles", "rolebindings"}).
-			  	addRule([] string {"hobbyfarm.io"}, [] string {"*"}, [] string {"users", "virtualmachinesets"})
+				addRule([] string {"hobbyfarm.io"}, [] string {"list", "get"}, [] string {"users"}).
+				addRule([] string {"rbac.authorization.k8s.io"}, [] string {"*"}, [] string {"roles", "rolebindings"})
+		}),
+		// Content Creator can create and edit scenarios and courses
+		newRole("content-creator", func(r Role) Role {
+			return r.
+				addRule([] string {"hobbyfarm.io"}, [] string {"*"}, [] string {"scenarios", "courses"}).
+			  	addRule([] string {"hobbyfarm.io"}, [] string {"list" , "get"}, [] string {"virtualmachinetemplates"})
+		}),
+		// ScheduledEvent Creator can create and edit scheduled events
+		newRole("scheduledevent-creator", func(r Role) Role {
+			return r.
+				addRule([] string {"hobbyfarm.io"}, [] string {"*"}, [] string {"scheduledevents", "accesscodes"}).
+			  	addRule([] string {"hobbyfarm.io"}, [] string {"list" , "get"}, [] string {"scenarios, courses, environments, virtualmachinetemplates, virtualmachinesets, users"}).
+				addRule([] string {"hobbyfarm.io"}, [] string {"list" , "get", "watch"}, [] string {"progresses, virtualmachines, sessions"})
+		}),
+		// User Manager can update and delete users
+		newRole("user-manager", func(r Role) Role {
+			return r.
+				addRule([] string {"hobbyfarm.io"}, [] string {"*"}, [] string {"users"})
+		}),
+		// Read Only on users
+		newRole("readonly-users", func(r Role) Role {
+			return r.addRule([] string {"hobbyfarm.io"}, [] string {"list", "get"}, [] string {"users"})
 		}),
 	}
 }

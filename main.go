@@ -104,6 +104,7 @@ func main() {
 		if err != nil {
 			glog.Fatalf("Error installing crds: %s", err.Error())
 		}
+		glog.V(9).Infof("Successfully installed CRDs")
 	}
 
 	// self manage default rbac roles
@@ -112,7 +113,7 @@ func main() {
 		if err != nil {
 			glog.Fatalf("Error installing RBAC roles: %s", err.Error())
 		}
-		glog.V(2).Infof("Successfully installed RBAC Roles")
+		glog.V(9).Infof("Successfully installed RBAC Roles")
 	}
 
 	cfg.QPS = ClientGoQPS
