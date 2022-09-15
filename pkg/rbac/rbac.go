@@ -20,6 +20,12 @@ const(
 func List() []Role{
 	return []Role{
 		// RBAC Admin can edit roles and rolebindings rbac.authorization.k8s.io
+		newRole("hf-admin", func(r Role) Role {
+			return r.
+				addRule([] string {"hobbyfarm.io"}, [] string {"*"}, [] string {"*"}).
+				addRule([] string {"rbac.authorization.k8s.io"}, [] string {"*"}, [] string {"*"})
+		}),
+		// RBAC Admin can edit roles and rolebindings rbac.authorization.k8s.io
 		newRole("rbac-admin", func(r Role) Role {
 			return r.
 				addRule([] string {"hobbyfarm.io"}, [] string {"list", "get"}, [] string {"users"}).
