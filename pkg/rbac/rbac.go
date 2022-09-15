@@ -37,14 +37,14 @@ func List() []Role{
 				addRule([] string {"hobbyfarm.io"}, [] string {"*"}, [] string {"scheduledevents", "accesscodes"}).
 			  	addRule([] string {"hobbyfarm.io"}, [] string {"list" , "get"}, [] string {"scenarios", "courses", "environments", "virtualmachinetemplates", "virtualmachinesets", "users"}).
 				addRule([] string {"hobbyfarm.io"}, [] string {"list" , "get", "watch"}, [] string {"progresses", "virtualmachines", "sessions"}).
-				addRule([] string {"hobbyfarm.io"}, [] string {"update" , "delete"}, [] string {"sessions"})
+				addRule([] string {"hobbyfarm.io"}, [] string {"update" , "delete", "list", "get"}, [] string {"sessions"})
 		}),
 		// ScheduledEvent Proctor is allowed to view scheduled events + dashboards
 		newRole("scheduledevent-proctor", func(r Role) Role {
 			return r.
 			  	addRule([] string {"hobbyfarm.io"}, [] string {"list" , "get"}, [] string {"scheduledevent","accesscodes", "scenarios", "courses", "environments", "virtualmachinetemplates", "virtualmachinesets", "users"}).
-				addRule([] string {"hobbyfarm.io"}, [] string {"list" , "get", "watch"}, [] string {"progresses", "virtualmachines", "sessions"}).
-				addRule([] string {"hobbyfarm.io"}, [] string {"update" , "delete"}, [] string {"sessions"})
+				addRule([] string {"hobbyfarm.io"}, [] string {"list" , "get", "watch"}, [] string {"progresses", "virtualmachines"}).
+				addRule([] string {"hobbyfarm.io"}, [] string {"update" , "delete", "list", "get"}, [] string {"sessions"})
 		}),
 		// User Manager can update and delete users
 		newRole("user-manager", func(r Role) Role {
