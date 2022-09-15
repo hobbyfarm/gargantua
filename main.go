@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"github.com/hobbyfarm/gargantua/pkg/crd"
+	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/rbacserver"
 	"k8s.io/client-go/informers"
@@ -66,6 +67,7 @@ var (
 	disableControllers bool
 	shellServer        bool
 	installCRD         bool
+	installRBACRoles   bool
 )
 
 func init() {
@@ -74,6 +76,7 @@ func init() {
 	flag.BoolVar(&disableControllers, "disablecontrollers", false, "Disable the controllers")
 	flag.BoolVar(&shellServer, "shellserver", false, "Be a shell server")
 	flag.BoolVar(&installCRD, "installcrd", false, "Install new version of CRD")
+	flag.BoolVar(&installRBACRoles, "installrbacroles", false, "Install default RBAC Roles")
 }
 
 func main() {
@@ -101,6 +104,15 @@ func main() {
 		if err != nil {
 			glog.Fatalf("Error installing crds: %s", err.Error())
 		}
+	}
+
+	// self manage default rbac roles
+	if installRBACRoles {
+		err = rbac.Create(ctx, cfg)
+		if err != nil {
+			glog.Fatalf("Error installing RBAC roles: %s", err.Error())
+		}
+		glog.V(2).Infof("Successfully installed RBAC Roles")
 	}
 
 	cfg.QPS = ClientGoQPS
