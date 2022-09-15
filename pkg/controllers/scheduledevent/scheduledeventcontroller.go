@@ -306,7 +306,13 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 
 		for templateName, count := range vmtMap {
 			if count > 0 && !se.Spec.OnDemand { // only setup vmsets if >0 VMs are requested, and they aren't ondemand
-				if len(se.Status.VirtualMachineSets) == 0 {
+
+				//1. Find existing VMset that match this SE and the current environment
+				existingVMSets, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
+					LabelSelector: fmt.Sprintf("%s=%s,environment=%s,virtualmachinetemplate.hobbyfarm.io/%s=true", ScheduledEventLabel, se.Name, envName, templateName),
+				})
+
+				if err != nil || len(existingVMSets.Items) == 0 { // create new vmset if no existing one was found
 					vmsRand := fmt.Sprintf("%s-%08x", baseNameScheduledPrefix, rand.Uint32())
 					vmsName := strings.Join([]string{"se", se.Name, "vms", vmsRand}, "-")
 					vmSets = append(vmSets, vmsName)
@@ -345,25 +351,19 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 						glog.Error(err)
 						return err
 					}
-				} else {
-					vmSetName := se.Status.VirtualMachineSets[0]
-					vmSetOrg, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Get(s.ctx, vmSetName, metav1.GetOptions{})
-					if err != nil {
-						glog.Error(err)
-						return err
-					}
+				} else { // update existing vmset
+					existingVMSet := existingVMSets.Items[0]
+					vmSets = append(vmSets, existingVMSet.Name)
 
-					vmSetOrg.Labels["environment"] = env.Name
-					vmSetOrg.Spec.Count = count
-					vmSetOrg.Spec.Environment = envName
-					vmSetOrg.Spec.VMTemplate = templateName
+					existingVMSet.Labels["environment"] = env.Name
+					existingVMSet.Spec.Count = count
 					if se.Spec.RestrictedBind {
-						vmSetOrg.Spec.RestrictedBind = true
+						existingVMSet.Spec.RestrictedBind = true
 
 					} else {
-						vmSetOrg.Spec.RestrictedBind = false
+						existingVMSet.Spec.RestrictedBind = false
 					}
-					_, err = s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Update(s.ctx, vmSetOrg, metav1.UpdateOptions{})
+					_, err = s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Update(s.ctx, &existingVMSet, metav1.UpdateOptions{})
 					if err != nil {
 						glog.Errorf("error updating vmset config %s", err.Error())
 						return err
@@ -514,7 +514,7 @@ func (s ScheduledEventController) verifyScheduledEvent(se *hfv1.ScheduledEvent) 
 	}
 
 	for _, vms := range vmsList.Items {
-		if vms.Status.ProvisionedCount != vms.Spec.Count {
+		if vms.Status.ProvisionedCount < vms.Spec.Count {
 			return fmt.Errorf("scheduled event is not ready yet")
 		}
 	}
