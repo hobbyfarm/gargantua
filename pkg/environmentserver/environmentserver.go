@@ -74,9 +74,10 @@ type PreparedEnvironment struct {
 }
 
 type PreparedListEnvironment struct {
-	Name string 		`json:"name"`
-	DisplayName string 	`json:"display_name"`
-	Provider string 	`json:"provider"`
+	Name string 									`json:"name"`
+	DisplayName string 								`json:"display_name"`
+	Provider string 								`json:"provider"`
+	TemplateMapping  map[string]map[string]string 	`json:"template_mapping"`
 }
 
 func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +133,11 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	preparedEnvironments := []PreparedListEnvironment{} // must be declared this way so as to JSON marshal into [] instead of null
 
 	for _, e := range environments.Items {
-		preparedEnvironments = append(preparedEnvironments, PreparedListEnvironment{e.Name, e.Spec.DisplayName, e.Spec.Provider})
+		keys := make(map[string]map[string]string)
+    	for k, _ := range e.Spec.TemplateMapping {
+        	keys[k] = map[string]string{}
+    	}
+		preparedEnvironments = append(preparedEnvironments, PreparedListEnvironment{e.Name, e.Spec.DisplayName, e.Spec.Provider, keys})
 	}
 
 	encodedEnvironments, err := json.Marshal(preparedEnvironments)
