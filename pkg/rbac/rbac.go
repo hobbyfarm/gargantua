@@ -48,7 +48,7 @@ func List() []Role{
 		// ScheduledEvent Proctor is allowed to view scheduled events + dashboards
 		newRole("scheduledevent-proctor", func(r Role) Role {
 			return r.
-			  	addRule([] string {"hobbyfarm.io"}, [] string {"list" , "get"}, [] string {"scheduledevent","accesscodes", "scenarios", "courses", "environments", "virtualmachinetemplates", "virtualmachinesets", "users"}).
+			  	addRule([] string {"hobbyfarm.io"}, [] string {"list" , "get"}, [] string {"scheduledevents","accesscodes", "scenarios", "courses", "environments", "virtualmachinetemplates", "virtualmachinesets", "users"}).
 				addRule([] string {"hobbyfarm.io"}, [] string {"list" , "get", "watch"}, [] string {"progresses", "virtualmachines"}).
 				addRule([] string {"hobbyfarm.io"}, [] string {"update" , "delete", "list", "get"}, [] string {"sessions"})
 		}),
