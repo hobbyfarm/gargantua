@@ -40,7 +40,6 @@ var guacHost = ""
 var guacPort = ""
 
 const (
-	resourcePlural      = "virtualmachines"
 	defaultSshUsername = "ubuntu"
 )
 
