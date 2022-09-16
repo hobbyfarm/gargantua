@@ -73,6 +73,12 @@ type PreparedEnvironment struct {
 	hfv1.EnvironmentStatus
 }
 
+type PreparedListEnvironment struct {
+	Name string 		`json:"name"`
+	DisplayName string 	`json:"display_name"`
+	Provider string 	`json:"provider"`
+}
+
 func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 	_, err := e.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
 	if err != nil {
@@ -123,10 +129,10 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preparedEnvironments := []PreparedEnvironment{} // must be declared this way so as to JSON marshal into [] instead of null
+	preparedEnvironments := []PreparedListEnvironment{} // must be declared this way so as to JSON marshal into [] instead of null
 
 	for _, e := range environments.Items {
-		preparedEnvironments = append(preparedEnvironments, PreparedEnvironment{e.Name, e.Spec, e.Status})
+		preparedEnvironments = append(preparedEnvironments, PreparedListEnvironment{e.Name, e.Spec.DisplayName, e.Spec.Provider})
 	}
 
 	encodedEnvironments, err := json.Marshal(preparedEnvironments)
