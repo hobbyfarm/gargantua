@@ -70,7 +70,7 @@ type PreparedVMTemplate struct {
 	hfv1.VirtualMachineTemplateSpec
 }
 
-type PreparedVMListTemplate struct {
+type PreparedVMTemplateList struct {
 	ID string 		`json:"id"`
 	Name string 	`json:"name"`
 	Image string 	`json:"image"`
@@ -126,10 +126,10 @@ func (v VirtualMachineTemplateServer) ListFunc(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	preparedVirtualMachineTemplates := []PreparedVMListTemplate{}
+	preparedVirtualMachineTemplates := []PreparedVMTemplateList{}
 
 	for _, vmt := range vmts.Items {
-		preparedVirtualMachineTemplates = append(preparedVirtualMachineTemplates, PreparedVMListTemplate{vmt.Name, vmt.Spec.Name, vmt.Spec.Image})
+		preparedVirtualMachineTemplates = append(preparedVirtualMachineTemplates, PreparedVMTemplateList{vmt.Name, vmt.Spec.Name, vmt.Spec.Image})
 	}
 
 	encodedVirtualMachineTemplates, err := json.Marshal(preparedVirtualMachineTemplates)
