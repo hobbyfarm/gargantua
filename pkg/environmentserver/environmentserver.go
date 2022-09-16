@@ -385,7 +385,11 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e EnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
+	_, err := e.auth.AuthGrant(
+		rbacclient.RbacRequest().
+			HobbyfarmPermission(resourcePlural, rbacclient.VerbList).
+			HobbyfarmPermission("virtualmachinetemplates", rbacclient.VerbList),
+		 w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get environment")
 		return
