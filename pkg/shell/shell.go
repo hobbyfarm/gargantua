@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
@@ -37,7 +38,11 @@ var sshDevHost = ""
 var sshDevPort = ""
 var guacHost = ""
 var guacPort = ""
-var defaultSshUsername = "ubuntu"
+
+const (
+	resourcePlural      = "virtualmachines"
+	defaultSshUsername = "ubuntu"
+)
 
 // SIGWINCH is the regex to match window change (resize) codes
 var SIGWINCH *regexp.Regexp
@@ -275,8 +280,18 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if vm.Spec.UserId != user.Spec.Id {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "you do not have access to shell")
-		return
+		// check if the user has access to access user sessions
+		// TODO: add permission like 'virtualmachine/shell' similar to 'pod/exec'
+		_, err := sp.auth.AuthGrant(
+			rbacclient.RbacRequest().
+				HobbyfarmPermission("users", rbacclient.VerbGet).
+				HobbyfarmPermission("sessions", rbacclient.VerbGet).
+				HobbyfarmPermission("virtualmachines", rbacclient.VerbGet),
+			w, r)
+		if err != nil {
+			util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to connect to ssh shell session")
+			return
+		}
 	}
 
 	glog.Infof("Going to upgrade connection now... %s", vm.Spec.Id)
