@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/util"
@@ -15,7 +16,8 @@ import (
 )
 
 const (
-	idIndex = "vmcs.hobbyfarm.io/id-index"
+	idIndex 			= "vmcs.hobbyfarm.io/id-index"
+	resourcePlural      = "virtualmachineclaims"
 )
 
 type VMClaimServer struct {
@@ -101,8 +103,11 @@ func (vmcs VMClaimServer) GetVMClaimFunc(w http.ResponseWriter, r *http.Request)
 	}
 
 	if vmc.Spec.UserId != user.Spec.Id {
-		glog.Errorf("user forbidden from accessing vmc id %s", vmc.Spec.Id)
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "forbidden")
+		_, err := vmcs.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
+		if err != nil {
+			util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to get vmclaim")
+			return
+		}
 	}
 
 	preparedVMC := PreparedVirtualMachineClaim{vmc.Spec, vmc.Status}
