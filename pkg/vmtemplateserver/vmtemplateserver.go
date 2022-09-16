@@ -70,6 +70,12 @@ type PreparedVMTemplate struct {
 	hfv1.VirtualMachineTemplateSpec
 }
 
+type PreparedVMListTemplate struct {
+	ID string 		`json:"id"`
+	Name string 	`json:"name"`
+	Image string 	`json:"image"`
+}
+
 func (v VirtualMachineTemplateServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 	_, err := v.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
 	if err != nil {
@@ -120,10 +126,10 @@ func (v VirtualMachineTemplateServer) ListFunc(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	preparedVirtualMachineTemplates := []PreparedVMTemplate{}
+	preparedVirtualMachineTemplates := []PreparedVMListTemplate{}
 
 	for _, vmt := range vmts.Items {
-		preparedVirtualMachineTemplates = append(preparedVirtualMachineTemplates, PreparedVMTemplate{vmt.Spec})
+		preparedVirtualMachineTemplates = append(preparedVirtualMachineTemplates, PreparedVMListTemplate{vmt.Name, vmt.Spec.Name, vmt.Spec.Image})
 	}
 
 	encodedVirtualMachineTemplates, err := json.Marshal(preparedVirtualMachineTemplates)
