@@ -103,7 +103,7 @@ func (vmcs VMClaimServer) GetVMClaimFunc(w http.ResponseWriter, r *http.Request)
 	}
 
 	if vmc.Spec.UserId != user.Spec.Id {
-		_, err := vmcs.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
+		_, err := vmcs.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
 		if err != nil {
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to get vmclaim")
 			return

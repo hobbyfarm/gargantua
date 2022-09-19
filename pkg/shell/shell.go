@@ -288,6 +288,7 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 				HobbyfarmPermission("virtualmachines", rbacclient.VerbGet),
 			w, r)
 		if err != nil {
+			glog.Infof("Error doing authGrantWS %s", err)
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to connect to ssh shell session")
 			return
 		}
