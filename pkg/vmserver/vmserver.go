@@ -106,7 +106,7 @@ func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		glog.Errorf("did not find the right virtual machine ID")
-		util.ReturnHTTPMessage(w, r, 500, "error", "no vm found")
+		util.ReturnHTTPMessage(w, r, http.StatusNotFound, "error", "no vm found")
 		return
 	}
 

@@ -97,8 +97,8 @@ func (vmcs VMClaimServer) GetVMClaimFunc(w http.ResponseWriter, r *http.Request)
 	vmc, err := vmcs.GetVirtualMachineClaimById(vmId)
 
 	if err != nil {
-		glog.Errorf("did not find the right virtual machine ID")
-		util.ReturnHTTPMessage(w, r, 500, "error", "no vm found")
+		glog.Errorf("did not find the right virtual machine claim ID")
+		util.ReturnHTTPMessage(w, r, http.StatusNotFound, "error", "no vm found")
 		return
 	}
 

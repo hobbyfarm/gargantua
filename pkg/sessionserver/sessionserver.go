@@ -743,6 +743,12 @@ func (sss SessionServer) GetSessionFunc(w http.ResponseWriter, r *http.Request) 
 
 	ss, err := sss.GetSessionById(sessionId)
 
+	if err != nil {
+		glog.Errorf("did not find a coressponding session with the given ID")
+		util.ReturnHTTPMessage(w, r, http.StatusNotFound, "error", "no session found")
+		return
+	}
+
 	if ss.Spec.UserId != user.Spec.Id {
 		_, err := sss.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission("sessions", rbacclient.VerbGet), w, r)
 		if err != nil {
