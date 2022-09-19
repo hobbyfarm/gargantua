@@ -262,7 +262,7 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		course, err := c.hfClientSet.HobbyfarmV1().Courses(util.GetReleaseNamespace()).Get(c.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
-			util.ReturnHTTPMessage(w, r, 400, "badrequest", "no id found")
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "badrequest", "no course found with given ID")
 			return fmt.Errorf("bad")
 		}
 		// name, description, scenarios, virtualmachines, keepaliveduration, pauseduration, pauseable
