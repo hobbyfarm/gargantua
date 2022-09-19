@@ -281,7 +281,7 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 	if vm.Spec.UserId != user.Spec.Id {
 		// check if the user has access to access user sessions
 		// TODO: add permission like 'virtualmachine/shell' similar to 'pod/exec'
-		_, err := sp.auth.AuthGrant(
+		_, err := sp.auth.AuthGrantWS(
 			rbacclient.RbacRequest().
 				HobbyfarmPermission("users", rbacclient.VerbGet).
 				HobbyfarmPermission("sessions", rbacclient.VerbGet).
