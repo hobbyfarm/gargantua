@@ -119,7 +119,7 @@ func main() {
 
 	namespace := util.GetReleaseNamespace()
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
-	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, time.Second*30)
+	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, informers.WithNamespace(namespace))
 
 	rbacControllerFactory := wranglerRbac.NewFactoryFromConfigOrDie(cfg)
 
@@ -315,6 +315,7 @@ func main() {
 	} else {
 		// default fire up hfInformer as this is still needed by the shell server
 		hfInformerFactory.Start(stopCh)
+		kubeInformerFactory.Start(stopCh)
 	}
 	wg.Wait()
 }

@@ -111,8 +111,12 @@ func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if vm.Spec.UserId != user.Spec.Id {
-		glog.Errorf("user forbidden from accessing vm id %s", vm.Spec.Id)
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "forbidden")
+		_, err := vms.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
+		if err != nil {
+			glog.Errorf("user forbidden from accessing vm id %s", vm.Spec.Id)
+			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
+			return
+		}
 	}
 
 	preparedVM := PreparedVirtualMachine{vm.Spec, vm.Status}
