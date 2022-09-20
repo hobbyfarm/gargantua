@@ -95,12 +95,7 @@ func (a AuthClient) performAuth(token string) (hfv1.User, error) {
 	return user, nil
 }
 
-func (a *AuthClient) AuthGrant(request *rbacclient.Request, w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
-	user, err := a.AuthN(w, r)
-	if err != nil {
-		return user, err
-	}
-
+func (a *AuthClient) VerifyRBAC(request *rbacclient.Request, user hfv1.User) (hfv1.User, error) {
 	if request.GetOperator() == rbacclient.OperatorAnd {
 		// operator AND, all need to match
 		for _, p := range request.GetPermissions() {
@@ -130,6 +125,24 @@ func (a *AuthClient) AuthGrant(request *rbacclient.Request, w http.ResponseWrite
 	}
 
 	return hfv1.User{}, fmt.Errorf("permission denied")
+}
+
+func (a *AuthClient) AuthGrantWS(request *rbacclient.Request, w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
+	user, err := a.AuthWS(w, r)
+	if err != nil {
+		return user, err
+	}
+
+	return a.VerifyRBAC(request, user)
+}
+
+func (a *AuthClient) AuthGrant(request *rbacclient.Request, w http.ResponseWriter, r *http.Request) (hfv1.User, error) {
+	user, err := a.AuthN(w, r)
+	if err != nil {
+		return user, err
+	}
+
+	return a.VerifyRBAC(request, user)
 }
 
 func (a AuthClient) AuthN(w http.ResponseWriter, r *http.Request) (hfv1.User, error) {

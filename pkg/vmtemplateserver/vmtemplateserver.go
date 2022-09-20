@@ -227,7 +227,7 @@ func (v VirtualMachineTemplateServer) UpdateFunc(w http.ResponseWriter, r *http.
 		vmTemplate, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Get(v.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
-			util.ReturnHTTPMessage(w, r, 400, "badrequest", "vmtemplate not found")
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "badrequest", "vmtemplate not found with given ID")
 			return fmt.Errorf("bad")
 		}
 
@@ -301,7 +301,7 @@ func (v VirtualMachineTemplateServer) DeleteFunc(w http.ResponseWriter, r *http.
 
 	vmt, err := v.hfClientSet.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Get(v.ctx, id, metav1.GetOptions{})
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 400, "notfound", "no vmt found")
+		util.ReturnHTTPMessage(w, r, http.StatusNotFound, "notfound", "no vmt found with given ID")
 		return
 	}
 

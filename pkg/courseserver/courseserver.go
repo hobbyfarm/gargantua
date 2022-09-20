@@ -64,7 +64,7 @@ func (c CourseServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/course/{course_id}", c.GetCourse).Methods("GET")
 	r.HandleFunc("/a/course/list", c.ListFunc).Methods("GET")
 	r.HandleFunc("/a/course/new", c.CreateFunc).Methods("POST")
-	r.HandleFunc("/a/course/{id}", c.GetCourse).Methods("GET")
+	r.HandleFunc("/a/course/{course_id}", c.GetCourse).Methods("GET")
 	r.HandleFunc("/a/course/{id}", c.UpdateFunc).Methods("PUT")
 	r.HandleFunc("/a/course/{id}", c.DeleteFunc).Methods("DELETE")
 	r.HandleFunc("/a/course/previewDynamicScenarios", c.previewDynamicScenarios).Methods("POST")
@@ -262,7 +262,7 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		course, err := c.hfClientSet.HobbyfarmV1().Courses(util.GetReleaseNamespace()).Get(c.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
-			util.ReturnHTTPMessage(w, r, 400, "badrequest", "no id found")
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "badrequest", "no course found with given ID")
 			return fmt.Errorf("bad")
 		}
 		// name, description, scenarios, virtualmachines, keepaliveduration, pauseduration, pauseable

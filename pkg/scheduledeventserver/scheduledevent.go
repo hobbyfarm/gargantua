@@ -95,7 +95,7 @@ func (s ScheduledEventServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		glog.Errorf("error while retrieving scheduledEvent %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "error", "no scheduledEvent found")
+		util.ReturnHTTPMessage(w, r, http.StatusNotFound, "error", "no scheduledEvent with given ID found")
 		return
 	}
 
@@ -317,7 +317,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 		scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
-			util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID found")
+			util.ReturnHTTPMessage(w, r, 404, "badrequest", "no scheduledEvent found with given ID")
 			return fmt.Errorf("bad")
 		}
 
@@ -492,7 +492,7 @@ func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request)
 	scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		glog.Error(err)
-		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID found")
+		util.ReturnHTTPMessage(w, r, 404, "badrequest", "no scheduledEvent found with given ID")
 		return
 	}
 
