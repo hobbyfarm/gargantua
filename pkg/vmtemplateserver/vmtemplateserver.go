@@ -6,10 +6,11 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -71,9 +72,9 @@ type PreparedVMTemplate struct {
 }
 
 type PreparedVMTemplateList struct {
-	ID string 		`json:"id"`
-	Name string 	`json:"name"`
-	Image string 	`json:"image"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Image string `json:"image"`
 }
 
 func (v VirtualMachineTemplateServer) GetFunc(w http.ResponseWriter, r *http.Request) {
@@ -160,8 +161,8 @@ func (v VirtualMachineTemplateServer) CreateFunc(w http.ResponseWriter, r *http.
 		return
 	}
 
-	resourcesRaw := r.PostFormValue("resources") // no validation, resources not required
-	configMapRaw := r.PostFormValue("config_map")  // no validation, count_map not required
+	resourcesRaw := r.PostFormValue("resources")  // no validation, resources not required
+	configMapRaw := r.PostFormValue("config_map") // no validation, config_map not required
 
 	vmTemplate := &hfv1.VirtualMachineTemplate{Spec: hfv1.VirtualMachineTemplateSpec{}}
 
@@ -180,11 +181,11 @@ func (v VirtualMachineTemplateServer) CreateFunc(w http.ResponseWriter, r *http.
 	}
 
 	if configMapRaw != "" {
-		// attempt to decode if count_map passed in
+		// attempt to decode if config_map passed in
 		err := json.Unmarshal([]byte(configMapRaw), &configMap)
 		if err != nil {
-			glog.Errorf("error while unmarshalling count_map: %v", err)
-			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing count_map")
+			glog.Errorf("error while unmarshalling config_map: %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing config_map")
 			return
 		}
 		// no error, assign to vmtemplate
