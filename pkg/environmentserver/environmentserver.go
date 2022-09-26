@@ -73,6 +73,13 @@ type PreparedEnvironment struct {
 	hfv1.EnvironmentStatus
 }
 
+type PreparedListEnvironment struct {
+	Name string 									`json:"name"`
+	DisplayName string 								`json:"display_name"`
+	Provider string 								`json:"provider"`
+	TemplateMapping  map[string]map[string]string 	`json:"template_mapping"`
+}
+
 func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 	_, err := e.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
 	if err != nil {
@@ -123,10 +130,14 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preparedEnvironments := []PreparedEnvironment{} // must be declared this way so as to JSON marshal into [] instead of null
+	preparedEnvironments := []PreparedListEnvironment{} // must be declared this way so as to JSON marshal into [] instead of null
 
 	for _, e := range environments.Items {
-		preparedEnvironments = append(preparedEnvironments, PreparedEnvironment{e.Name, e.Spec, e.Status})
+		keys := make(map[string]map[string]string)
+    	for k, _ := range e.Spec.TemplateMapping {
+        	keys[k] = map[string]string{}
+    	}
+		preparedEnvironments = append(preparedEnvironments, PreparedListEnvironment{e.Name, e.Spec.DisplayName, e.Spec.Provider, keys})
 	}
 
 	encodedEnvironments, err := json.Marshal(preparedEnvironments)
@@ -379,7 +390,11 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e EnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
+	_, err := e.auth.AuthGrant(
+		rbacclient.RbacRequest().
+			HobbyfarmPermission(resourcePlural, rbacclient.VerbList).
+			HobbyfarmPermission("virtualmachinetemplates", rbacclient.VerbList),
+		 w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get environment")
 		return
