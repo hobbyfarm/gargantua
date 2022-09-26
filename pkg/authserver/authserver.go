@@ -591,7 +591,7 @@ func (a *AuthServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// need to get the user's access set and publish to front end
-	as, err := a.rbac.GetAccessSet(user.Spec.Email)
+	as, err := a.rbac.GetAccessSet(user.Name)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error fetching access set")
 		glog.Error(err)

@@ -299,7 +299,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 }
 
 func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scheduledevents")
 		return
@@ -318,11 +318,6 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 		if err != nil {
 			glog.Error(err)
 			util.ReturnHTTPMessage(w, r, 404, "badrequest", "no scheduledEvent found with given ID")
-			return fmt.Errorf("bad")
-		}
-
-		if scheduledEvent.Spec.Creator != user.Spec.Id {
-			util.ReturnHTTPMessage(w, r, 403, "forbidden", "not creator")
 			return fmt.Errorf("bad")
 		}
 
@@ -475,7 +470,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 }
 
 func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbDelete), w, r)
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbDelete), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete scheduledevents")
 		return
@@ -493,11 +488,6 @@ func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		glog.Error(err)
 		util.ReturnHTTPMessage(w, r, 404, "badrequest", "no scheduledEvent found with given ID")
-		return
-	}
-
-	if scheduledEvent.Spec.Creator != user.Spec.Id {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "not creator")
 		return
 	}
 

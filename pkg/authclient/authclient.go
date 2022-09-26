@@ -99,7 +99,7 @@ func (a *AuthClient) VerifyRBAC(request *rbacclient.Request, user hfv1.User) (hf
 	if request.GetOperator() == rbacclient.OperatorAnd {
 		// operator AND, all need to match
 		for _, p := range request.GetPermissions() {
-			g, err := a.rbacServer.Grants(user.Spec.Email, p)
+			g, err := a.rbacServer.Grants(user.Name, p)
 			if err != nil {
 				return hfv1.User{}, err
 			}
@@ -113,7 +113,7 @@ func (a *AuthClient) VerifyRBAC(request *rbacclient.Request, user hfv1.User) (hf
 	} else {
 		// operator OR, only one needs to match
 		for _, p := range request.GetPermissions() {
-			g, err := a.rbacServer.Grants(user.Spec.Email, p)
+			g, err := a.rbacServer.Grants(user.Name, p)
 			if err != nil {
 				return hfv1.User{}, err
 			}
