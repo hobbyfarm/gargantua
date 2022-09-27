@@ -125,7 +125,7 @@ type VirtualMachineTemplateSpec struct {
 	Name      string            `json:"name"`  // 2x4, etc.
 	Image     string            `json:"image"` // ubuntu-18.04
 	Resources CMSStruct         `json:"resources"`
-	ConfigMap  map[string]string `json:"config_map"`
+	ConfigMap map[string]string `json:"config_map"`
 }
 
 // +genclient
@@ -410,6 +410,7 @@ type UserSpec struct {
 	Email       string            `json:"email"`
 	Password    string            `json:"password"`
 	AccessCodes []string          `json:"access_codes"`
+	Admin       bool              `json:"admin"`
 	Settings    map[string]string `json:"settings"`
 }
 
