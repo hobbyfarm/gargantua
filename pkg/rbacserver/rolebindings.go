@@ -146,8 +146,6 @@ func (s Server) CreateRoleBinding(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	roleBinding.Labels[rbacManagedLabel] = "true"
-
 	roleBinding, err = s.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).Create(r.Context(), roleBinding, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating rolebinding in kubernetes: %v", err)
@@ -269,8 +267,8 @@ func (s Server) prepareRoleBinding(roleBinding rbacv1.RoleBinding) PreparedRoleB
 
 func (s Server) unmarshalRoleBinding(ctx context.Context, preparedRoleBinding *PreparedRoleBinding) (*rbacv1.RoleBinding, error) {
 	// first validation, the role it is referencing has to exist
-	if _, err :=
-		s.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Get(ctx, preparedRoleBinding.Role, metav1.GetOptions{}); err != nil {
+	role, err := s.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Get(ctx, preparedRoleBinding.Role, metav1.GetOptions{});
+	if err != nil {
 		return nil, fmt.Errorf("invalid role ref")
 	}
 
@@ -280,6 +278,14 @@ func (s Server) unmarshalRoleBinding(ctx context.Context, preparedRoleBinding *P
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
 				rbacManagedLabel: "true",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "rbac.authorization.k8s.io/v1",
+					Kind:       "Role",
+					Name:       role.Name,
+					UID: 		role.UID,
+				},
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
