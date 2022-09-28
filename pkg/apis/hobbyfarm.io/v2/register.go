@@ -6,7 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-var SchemeGroupVersion = schema.GroupVersion{Group: "hobbyfarm.io", Version: "v1"}
+var SchemeGroupVersion = schema.GroupVersion{Group: "hobbyfarm.io", Version: "v2"}
 
 func Kind(kind string) schema.GroupKind {
 	return SchemeGroupVersion.WithKind(kind).GroupKind()
