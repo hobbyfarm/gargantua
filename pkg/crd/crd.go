@@ -3,7 +3,6 @@ package crd
 import (
 	"context"
 	hobbyfarmv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	hobbyfarmv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	terraformv1 "github.com/hobbyfarm/gargantua/pkg/apis/terraformcontroller.cattle.io/v1"
 	"io"
 	"os"
@@ -78,7 +77,7 @@ func Objects(v1beta1 bool) (result []runtime.Object, err error) {
 
 func List() []crd.CRD {
 	return []crd.CRD{
-		hobbyfarmCRD(&hobbyfarmv1.VirtualMachine{}, "v1", func(c crd.CRD) crd.CRD {
+		hobbyfarmCRD(&hobbyfarmv1.VirtualMachine{}, func(c crd.CRD) crd.CRD {
 			return c.
 				WithColumn("Status", ".status.status").
 				WithColumn("Allocated", ".status.allocated").
@@ -86,24 +85,24 @@ func List() []crd.CRD {
 				WithColumn("privateIP", ".status.private_ip")
 
 		}),
-		hobbyfarmCRD(&hobbyfarmv1.VirtualMachineClaim{}, "v1", func(c crd.CRD) crd.CRD {
+		hobbyfarmCRD(&hobbyfarmv1.VirtualMachineClaim{}, func(c crd.CRD) crd.CRD {
 			return c.
 				WithColumn("BindMode", ".status.bind_mode").
 				WithColumn("Bound", ".status.bound").
 				WithColumn("Ready", ".status.ready")
 
 		}),
-		hobbyfarmCRD(&hobbyfarmv1.VirtualMachineTemplate{}, "v1", nil),
-		hobbyfarmCRD(&hobbyfarmv1.Environment{}, "v1", nil),
-		hobbyfarmCRD(&hobbyfarmv1.VirtualMachineSet{}, "v1", func(c crd.CRD) crd.CRD {
+		hobbyfarmCRD(&hobbyfarmv1.VirtualMachineTemplate{}, nil),
+		hobbyfarmCRD(&hobbyfarmv1.Environment{}, nil),
+		hobbyfarmCRD(&hobbyfarmv1.VirtualMachineSet{}, func(c crd.CRD) crd.CRD {
 			return c.
 				WithColumn("Available", ".status.available").
 				WithColumn("Provisioned", ".status.provisioned")
 
 		}),
-		hobbyfarmCRD(&hobbyfarmv1.Course{}, "v1", nil),
-		hobbyfarmCRD(&hobbyfarmv1.Scenario{}, "v1", nil),
-		hobbyfarmCRD(&hobbyfarmv1.Session{}, "v1", func(c crd.CRD) crd.CRD {
+		hobbyfarmCRD(&hobbyfarmv1.Course{}, nil),
+		hobbyfarmCRD(&hobbyfarmv1.Scenario{}, nil),
+		hobbyfarmCRD(&hobbyfarmv1.Session{}, func(c crd.CRD) crd.CRD {
 			return c.
 				WithColumn("Paused", ".status.paused").
 				WithColumn("Active", ".status.active").
@@ -111,17 +110,16 @@ func List() []crd.CRD {
 				WithColumn("StartTime", ".status.start_time").
 				WithColumn("ExpirationTime", ".status.expiration_time")
 		}),
-		hobbyfarmCRD(&hobbyfarmv1.AccessCode{}, "v1", nil),
-		hobbyfarmCRD(&hobbyfarmv1.User{}, "v1", nil),
-		hobbyfarmCRD(&hobbyfarmv1.ScheduledEvent{}, "v1", func(c crd.CRD) crd.CRD {
+		hobbyfarmCRD(&hobbyfarmv1.AccessCode{}, nil),
+		hobbyfarmCRD(&hobbyfarmv1.User{}, nil),
+		hobbyfarmCRD(&hobbyfarmv1.ScheduledEvent{}, func(c crd.CRD) crd.CRD {
 			return c.
 				WithColumn("AccessCode", ".status.access_code_id").
 				WithColumn("Active", ".status.active").
 				WithColumn("Finished", ".status.finished")
 		}),
-		hobbyfarmCRD(&hobbyfarmv1.DynamicBindConfiguration{}, "v1", nil),
-		hobbyfarmCRD(&hobbyfarmv2.User{}, "v2", nil),
-		hobbyfarmCRD(&hobbyfarmv1.DynamicBindRequest{}, "v1", func(c crd.CRD) crd.CRD {
+		hobbyfarmCRD(&hobbyfarmv1.DynamicBindConfiguration{}, nil),
+		hobbyfarmCRD(&hobbyfarmv1.DynamicBindRequest{}, func(c crd.CRD) crd.CRD {
 			return c.
 				WithColumn("CurrentAttempts", ".status.current_attempts").
 				WithColumn("Expired", ".status.expired").
@@ -154,8 +152,8 @@ func Create(ctx context.Context, cfg *rest.Config) error {
 	return factory.BatchCreateCRDs(ctx, List()...).BatchWait()
 }
 
-func hobbyfarmCRD(obj interface{}, version string, customize func(crd.CRD) crd.CRD) crd.CRD {
-	return newCRD("hobbyfarm.io", version, obj, customize)
+func hobbyfarmCRD(obj interface{}, customize func(crd.CRD) crd.CRD) crd.CRD {
+	return newCRD("hobbyfarm.io", "v1", obj, customize)
 }
 
 func terraformControllerCRD(obj interface{}, customize func(crd.CRD) crd.CRD) crd.CRD {
