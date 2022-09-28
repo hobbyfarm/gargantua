@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"github.com/hobbyfarm/gargantua/pkg/crd"
 	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/rbacserver"
+	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion"
 	"k8s.io/client-go/informers"
 	"os"
 
@@ -274,21 +276,49 @@ func main() {
 		glog.V(6).Infof("Informers have synchronized")
 	*/
 
+	conversionRouter := mux.NewRouter()
+	conversion.New(conversionRouter)
+
 	http.Handle("/", r)
 
 	var wg sync.WaitGroup
 
-	wg.Add(1)
+	wg.Add(2)
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "80"
+	apiPort := os.Getenv("PORT")
+	if apiPort == "" {
+		apiPort = "80"
 	}
-	glog.Info("listening on " + port)
+	glog.Info("apiserver listening on " + apiPort)
+
+	webhookPort := os.Getenv("WEBHOOK_PORT")
+	if webhookPort == "" {
+		webhookPort = "444"
+	}
+	glog.Info("webhook listening on " + webhookPort)
 
 	go func() {
 		defer wg.Done()
-		glog.Fatal(http.ListenAndServe(":"+port, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
+		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		cert, err := tls.X509KeyPair([]byte(conversion.Cert), []byte(conversion.Key))
+		if err != nil {
+			glog.Fatalf("error generating x509keypair from conversion cert and key: %s", err)
+		}
+
+		server := http.Server{
+			TLSConfig: &tls.Config{
+				Certificates: []tls.Certificate{cert},
+			},
+			Addr:    ":" + webhookPort,
+			Handler: handlers.CORS(corsHeaders, corsOrigins, corsMethods)(conversionRouter),
+		}
+
+		glog.Fatal(server.ListenAndServeTLS("", ""))
 	}()
 
 	if !disableControllers {

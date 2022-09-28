@@ -17,6 +17,7 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/json-iterator/go v1.1.11 // indirect
+	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
 	github.com/onsi/ginkgo v1.14.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rancher/terraform-controller v0.0.10-alpha1
@@ -33,7 +34,6 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/code-generator v0.20.2
 	k8s.io/gengo v0.0.0-20201214224949-b6c5ce23f027 // indirect
-	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.9.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20210421082810-95288971da7e // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
