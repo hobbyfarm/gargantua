@@ -8,6 +8,8 @@ spec:
     - name: v2
       served: true
       storage: true
+      deprecated: true
+      deprecationWarning: "hobbyfarm.io/v1 User is deprecated, will be removed in future release. Please move to v2+."
     - name: v1
       served: true
       storage: false

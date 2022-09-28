@@ -724,6 +724,8 @@ spec:
         type: object
     served: true
     storage: false
+    deprecated: true
+    deprecationWarning: "hobbyfarm.io/v1 User is deprecated, will be removed in future release. Please move to v2+."
   - name: v2
     schema:
       openAPIV3Schema:
