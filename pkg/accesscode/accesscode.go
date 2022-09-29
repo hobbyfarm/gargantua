@@ -28,7 +28,7 @@ func (acc AccessCodeClient) GetSomething(code string) error {
 	return nil
 }
 
-func (acc AccessCodeClient) GetAccessCodes(codes []string, expiredOk bool) ([]hfv1.AccessCode, error) {
+func (acc AccessCodeClient) GetAccessCodes(codes []string) ([]hfv1.AccessCode, error) {
 	if len(codes) == 0 {
 		return nil, fmt.Errorf("code list passed in was less than 0")
 	}
@@ -58,20 +58,19 @@ func (acc AccessCodeClient) GetAccessCodes(codes []string, expiredOk bool) ([]hf
 			continue
 		}
 
-		if !expiredOk {
-			if accessCode.Spec.Expiration != "" {
-				expiration, err := time.Parse(time.UnixDate, accessCode.Spec.Expiration)
+		if accessCode.Spec.Expiration != "" {
+			expiration, err := time.Parse(time.UnixDate, accessCode.Spec.Expiration)
 
-				if err != nil {
-					return nil, fmt.Errorf("error while parsing expiration time for access code %s %v", code, err)
-				}
+			if err != nil {
+				return nil, fmt.Errorf("error while parsing expiration time for access code %s %v", code, err)
+			}
 
-				if time.Now().After(expiration) { // if the access code is expired don't return any scenarios
-					glog.V(4).Infof("access code %s was expired at %s", accessCode.Name, accessCode.Spec.Expiration)
-					continue
-				}
+			if time.Now().After(expiration) { // if the access code is expired don't return any scenarios
+				glog.V(4).Infof("access code %s was expired at %s", accessCode.Name, accessCode.Spec.Expiration)
+				continue
 			}
 		}
+
 		accessCodes = append(accessCodes, accessCode)
 	}
 
@@ -79,12 +78,12 @@ func (acc AccessCodeClient) GetAccessCodes(codes []string, expiredOk bool) ([]hf
 
 }
 
-func (acc AccessCodeClient) GetAccessCode(code string, expiredOk bool) (hfv1.AccessCode, error) {
+func (acc AccessCodeClient) GetAccessCode(code string) (hfv1.AccessCode, error) {
 	if len(code) == 0 {
 		return hfv1.AccessCode{}, fmt.Errorf("code was empty")
 	}
 
-	accessCodes, err := acc.GetAccessCodes([]string{code}, false)
+	accessCodes, err := acc.GetAccessCodes([]string{code})
 
 	if err != nil {
 		return hfv1.AccessCode{}, fmt.Errorf("access code (%s) not found: %v", code, err)
@@ -104,7 +103,7 @@ func (acc AccessCodeClient) GetScenarioIds(code string) ([]string, error) {
 		return ids, fmt.Errorf("code was empty")
 	}
 
-	accessCode, err := acc.GetAccessCode(code, false)
+	accessCode, err := acc.GetAccessCode(code)
 
 	if err != nil {
 		return ids, fmt.Errorf("error finding access code %s: %v", code, err)
@@ -120,7 +119,7 @@ func (acc AccessCodeClient) GetCourseIds(code string) ([]string, error) {
 		return ids, fmt.Errorf("code was empty")
 	}
 
-	accessCode, err := acc.GetAccessCode(code, false)
+	accessCode, err := acc.GetAccessCode(code)
 
 	if err != nil {
 		return ids, fmt.Errorf("error finding access code %s: %v", code, err)
@@ -138,7 +137,7 @@ func (acc AccessCodeClient) GetClosestAccessCode(userID string, scenarioOrCourse
 		return "", fmt.Errorf("error retrieving user: %v", err)
 	}
 
-	rawAccessCodes, err := acc.GetAccessCodes(user.Spec.AccessCodes, false)
+	rawAccessCodes, err := acc.GetAccessCodes(user.Spec.AccessCodes)
 
 	if err != nil {
 		return "", fmt.Errorf("access codes were not found %v", err)
