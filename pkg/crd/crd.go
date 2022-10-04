@@ -147,25 +147,31 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 				})
 		}),
 		terraformCRD(&terraformv1.Module{}, func(c *crder.CRD) {
-			c.AddVersion("v1", &terraformv1.Module{}, func(cv *crder.Version) {
-				cv.
-					WithColumn("CheckTime", ".status.time")
-			})
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &terraformv1.Module{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("CheckTime", ".status.time")
+				})
 		}),
 		terraformCRD(&terraformv1.State{}, func(c *crder.CRD) {
-			c.AddVersion("v1", &terraformv1.State{}, func(cv *crder.Version) {
-				cv.
-					WithColumn("LastRunHash", ".status.lasRunHash").
-					WithColumn("ExecutionName", ".status.executionName").
-					WithColumn("StatePlanName", ".status.executionPlanName")
-			})
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &terraformv1.State{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("LastRunHash", ".status.lasRunHash").
+						WithColumn("ExecutionName", ".status.executionName").
+						WithColumn("StatePlanName", ".status.executionPlanName")
+				})
 		}),
 		terraformCRD(&terraformv1.Execution{}, func(c *crder.CRD) {
-			c.AddVersion("v1", &terraformv1.Execution{}, func(cv *crder.Version) {
-				cv.
-					WithColumn("JobName", ".status.jobName").
-					WithColumn("PlanConfirmed", ".status.planConfirmed")
-			})
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &terraformv1.Execution{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("JobName", ".status.jobName").
+						WithColumn("PlanConfirmed", ".status.planConfirmed")
+				})
 		}),
 	}
 }
