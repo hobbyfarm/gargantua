@@ -18,30 +18,53 @@ limitations under the License.
 package conversion
 
 import (
+	"context"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/munnerz/goautoneg"
 	"io/ioutil"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"net/http"
 	"strings"
 )
 
-var converters = map[string]conversionFunc{}
+var converters = map[schema.GroupKind]conversionFunc{}
 
 type conversionFunc func(unstructured *unstructured.Unstructured, toVersion string) (*unstructured.Unstructured, metav1.Status)
 
-func New(mux *mux.Router) {
+func New(mux *mux.Router, apiExtensionsClient *apiextensions.Clientset, caBundle string) {
 	mux.HandleFunc("/conversion/{type}", dispatch).Methods(http.MethodPost)
+
+	// for each conversion function, register the cabundle
+	for gvk, _ := range converters {
+		obj, err := apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(
+			context.Background(), fmt.Sprintf("%s.%s", gvk.Kind, gvk.Group), metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("Error retrieving CustomResourceDefinition %s from api server: %s", gvk, err.Error())
+			continue
+		}
+
+		obj = obj.DeepCopy()
+
+		obj.Spec.Conversion.Webhook.ClientConfig.CABundle = []byte(caBundle)
+
+		obj, err = apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Update(context.Background(), obj, metav1.UpdateOptions{})
+		if err != nil {
+			glog.Errorf("Error updating CRD %s with cabundle: %s", gvk, err.Error())
+			continue
+		}
+	}
 }
 
-func RegisterConverter(objType string, f conversionFunc) {
-	converters[objType] = f
+func RegisterConverter(gk schema.GroupKind, f conversionFunc) {
+	converters[gk] = f
 }
 
 func doConversion(convertRequest *v1.ConversionRequest, convert conversionFunc) *v1.ConversionResponse {
@@ -97,7 +120,7 @@ func dispatch(w http.ResponseWriter, r *http.Request) {
 		glog.Error(err)
 		convertReview.Response = conversionResponseFailureWithMessagef("failed to deserialize body (%v) with error %v", string(body), err)
 	} else {
-		convertReview.Response = doConversion(convertReview.Request, converters[objectType])
+		convertReview.Response = doConversion(convertReview.Request, converters[parseGroupKind(objectType)])
 		convertReview.Response.UID = convertReview.Request.UID
 	}
 
@@ -178,5 +201,13 @@ func StatusFailureWithMessage(msg string, params ...interface{}) metav1.Status {
 func StatusSuccess() metav1.Status {
 	return metav1.Status{
 		Status: metav1.StatusSuccess,
+	}
+}
+
+func parseGroupKind(gk string) schema.GroupKind {
+	gkSlice := strings.SplitN(gk, ".", 2)
+	return schema.GroupKind{
+		Group: gkSlice[1],
+		Kind:  gkSlice[0],
 	}
 }

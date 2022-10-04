@@ -4,17 +4,19 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"github.com/ebauman/crder"
 	"github.com/hobbyfarm/gargantua/pkg/crd"
-	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/rbacserver"
+	tls2 "github.com/hobbyfarm/gargantua/pkg/tls"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion"
-	"k8s.io/client-go/informers"
-	"os"
-
 	"golang.org/x/sync/errgroup"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"os"
 
 	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmtemplateserver"
@@ -69,8 +71,9 @@ var (
 	localKubeconfig    string
 	disableControllers bool
 	shellServer        bool
-	installCRD         bool
-	installRBACRoles   bool
+	webhookTLSCert     string
+	webhookTLSKey      string
+	webhookTLSCA       string
 )
 
 func init() {
@@ -78,8 +81,9 @@ func init() {
 	flag.StringVar(&localMasterUrl, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.BoolVar(&disableControllers, "disablecontrollers", false, "Disable the controllers")
 	flag.BoolVar(&shellServer, "shellserver", false, "Be a shell server")
-	flag.BoolVar(&installCRD, "installcrd", false, "Install new version of CRD")
-	flag.BoolVar(&installRBACRoles, "installrbacroles", false, "Install default RBAC Roles")
+	flag.StringVar(&webhookTLSCert, "webhook-tls-cert", "/webhook-secret/tls.crt", "Path to TLS certificate for webhook server")
+	flag.StringVar(&webhookTLSKey, "webhook-tls-key", "/webhook-secret/tls.key", "Path to TLS key for webhook server")
+	flag.StringVar(&webhookTLSCA, "webhook-tls-ca", "/webhook-secret/ca", "Path to CA cert for webhook server")
 }
 
 func main() {
@@ -101,23 +105,24 @@ func main() {
 		}
 	}
 
-	// self manage crds
-	if installCRD {
-		err = crd.Create(ctx, cfg)
-		if err != nil {
-			glog.Fatalf("Error installing crds: %s", err.Error())
-		}
-		glog.V(9).Infof("Successfully installed CRDs")
+	namespace := util.GetReleaseNamespace()
+
+	ca, err := os.ReadFile(webhookTLSCA)
+	if err != nil {
+		glog.Fatalf("error reading ca certificate: %s", err.Error())
 	}
 
-	// self manage default rbac roles
-	if installRBACRoles {
-		err = rbac.Create(ctx, cfg)
-		if err != nil {
-			glog.Fatalf("Error installing RBAC roles: %s", err.Error())
-		}
-		glog.V(9).Infof("Successfully installed RBAC Roles")
+	crds := crd.GenerateCRDs(string(ca), v1.ServiceReference{
+		Namespace: namespace,
+		Name:      "hobbyfarm-conversion-webhook",
+	})
+
+	glog.Info("installing/updating CRDs")
+	err = crder.InstallUpdateCRDs(cfg, crds...)
+	if err != nil {
+		glog.Fatalf("failed installing/updating crds: %s", err.Error())
 	}
+	glog.Info("finished installing/updating CRDs")
 
 	cfg.QPS = ClientGoQPS
 	cfg.Burst = ClientGoBurst
@@ -132,7 +137,11 @@ func main() {
 		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 
-	namespace := util.GetReleaseNamespace()
+	apiExtensionsClient, err := apiextensions.NewForConfig(cfg)
+	if err != nil {
+		glog.Fatalf("error building apiextensions clientset: %s", err.Error())
+	}
+
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, informers.WithNamespace(namespace))
 
@@ -277,7 +286,7 @@ func main() {
 	*/
 
 	conversionRouter := mux.NewRouter()
-	conversion.New(conversionRouter)
+	conversion.New(conversionRouter, apiExtensionsClient, string(ca))
 
 	http.Handle("/", r)
 
@@ -305,14 +314,14 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		cert, err := tls.X509KeyPair([]byte(conversion.Cert), []byte(conversion.Key))
+		cert, err := tls2.ReadKeyPair(webhookTLSCert, webhookTLSKey)
 		if err != nil {
 			glog.Fatalf("error generating x509keypair from conversion cert and key: %s", err)
 		}
 
 		server := http.Server{
 			TLSConfig: &tls.Config{
-				Certificates: []tls.Certificate{cert},
+				Certificates: []tls.Certificate{*cert},
 			},
 			Addr:    ":" + webhookPort,
 			Handler: handlers.CORS(corsHeaders, corsOrigins, corsMethods)(conversionRouter),

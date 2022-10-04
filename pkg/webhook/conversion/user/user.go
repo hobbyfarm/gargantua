@@ -5,10 +5,14 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func init() {
-	conversion.RegisterConverter("user", convert)
+	conversion.RegisterConverter(schema.GroupKind{
+		Group: "hobbyfarm.io",
+		Kind:  "users",
+	}, convert)
 }
 
 func convert(Object *unstructured.Unstructured, toVersion string) (*unstructured.Unstructured, metav1.Status) {
