@@ -1,176 +1,186 @@
 package crd
 
 import (
-	"context"
-	hobbyfarmv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	"github.com/ebauman/crder"
+	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	v2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	terraformv1 "github.com/hobbyfarm/gargantua/pkg/apis/terraformcontroller.cattle.io/v1"
-	"io"
-	"os"
-	"path/filepath"
-
-	"github.com/rancher/wrangler/pkg/crd"
-	"github.com/rancher/wrangler/pkg/yaml"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/rest"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
-func WriteFile(filename string) error {
-	if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
-		return err
-	}
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.CRD {
+	return []crder.CRD{
+		hobbyfarmCRD(&v1.VirtualMachine{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.VirtualMachine{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("Status", ".status.status").
+						WithColumn("Allocated", ".status.allocated").
+						WithColumn("PublicIP", ".status.public_ip").
+						WithColumn("PrivateIP", ".status.private_ip")
+				})
+		}),
+		hobbyfarmCRD(&v1.VirtualMachineClaim{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.VirtualMachineClaim{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("BindMode", ".status.bind_mode").
+						WithColumn("Bound", ".status.bound").
+						WithColumn("Ready", ".status.ready")
+				})
+		}),
+		hobbyfarmCRD(&v1.VirtualMachineTemplate{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.VirtualMachineTemplate{}, nil)
+		}),
+		hobbyfarmCRD(&v1.Environment{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.Environment{}, nil)
+		}),
+		hobbyfarmCRD(&v1.VirtualMachineSet{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.VirtualMachineSet{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("Available", ".status.available").
+						WithColumn("Provisioned", ".status.provisioned")
+				})
+		}),
+		hobbyfarmCRD(&v1.Course{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.Course{}, nil)
+		}),
+		hobbyfarmCRD(&v1.Scenario{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.Scenario{}, nil)
+		}),
+		hobbyfarmCRD(&v1.Session{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.Session{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("Paused", ".status.paused").
+						WithColumn("Active", ".status.active").
+						WithColumn("Finished", ".status.finished").
+						WithColumn("StartTime", ".status.start_time").
+						WithColumn("ExpirationTime", ".status.expiration_time")
+				})
+		}),
+		hobbyfarmCRD(&v1.Progress{}, func(c *crder.CRD) {
+			c.
+				WithNames("progress", "progresses").
+				IsNamespaced(true).
+				AddVersion("v1", &v1.Progress{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("CurrentStep", ".spec.current_step").
+						WithColumn("Course", ".spec.course").
+						WithColumn("Scenario", ".spec.scenario").
+						WithColumn("User", ".spec.user").
+						WithColumn("Started", ".spec.started").
+						WithColumn("LastUpdate", ".spec.last_update")
+				})
+		}),
+		hobbyfarmCRD(&v1.AccessCode{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.AccessCode{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("AccessCode", ".spec.code").
+						WithColumn("Expiration", ".spec.expiration")
+				})
+		}),
+		hobbyfarmCRD(&v1.User{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.User{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("Email", ".spec.email")
 
-	return Print(f)
+					cv.IsServed(true)
+					cv.IsStored(false)
+				})
+
+			c.
+				AddVersion("v2", &v2.User{}, func(cv *crder.Version) {
+					cv.WithColumn("Email", ".spec.email")
+
+					cv.IsServed(true)
+					cv.IsStored(true)
+				})
+
+			c.WithConversion(func(cc *crder.Conversion) {
+				cc.
+					StrategyWebhook().
+					WithCABundle(caBundle).
+					WithService(reference).
+					WithVersions("v2", "v1")
+			})
+		}),
+		hobbyfarmCRD(&v1.ScheduledEvent{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.ScheduledEvent{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("AccessCode", ".status.access_code_id").
+						WithColumn("Active", ".status.active").
+						WithColumn("Finished", ".status.finished")
+				})
+		}),
+		hobbyfarmCRD(&v1.DynamicBindConfiguration{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.DynamicBindConfiguration{}, nil)
+		}),
+		hobbyfarmCRD(&v1.DynamicBindRequest{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.DynamicBindRequest{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("CurrentAttempts", ".status.current_attempts").
+						WithColumn("Expired", ".status.expired").
+						WithColumn("Fulfilled", ".status.fulfilled")
+				})
+		}),
+		terraformCRD(&terraformv1.Module{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &terraformv1.Module{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("CheckTime", ".status.time")
+				})
+		}),
+		terraformCRD(&terraformv1.State{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &terraformv1.State{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("LastRunHash", ".status.lasRunHash").
+						WithColumn("ExecutionName", ".status.executionName").
+						WithColumn("StatePlanName", ".status.executionPlanName")
+				})
+		}),
+		terraformCRD(&terraformv1.Execution{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &terraformv1.Execution{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("JobName", ".status.jobName").
+						WithColumn("PlanConfirmed", ".status.planConfirmed")
+				})
+		}),
+	}
 }
 
-func Print(out io.Writer) error {
-	obj, err := Objects(false)
-	if err != nil {
-		return err
-	}
-	data, err := yaml.Export(obj...)
-	if err != nil {
-		return err
-	}
-	/* uncomment when adding directly to a helm chart
-	objV1Beta1, err := Objects(true)
-	if err != nil {
-		return err
-	}
-	dataV1Beta1, err := yaml.Export(objV1Beta1...)
-	if err != nil {
-		return err
-	}
-
-
-	data = append([]byte("{{- if .Capabilities.APIVersions.Has \"apiextensions.k8s.io/v1\" -}}\n"), data...)
-	data = append(data, []byte("{{- else -}}\n---\n")...)
-	data = append(data, dataV1Beta1...)
-	data = append(data, []byte("{{- end -}}")...) */
-	_, err = out.Write(data)
-	return err
+func hobbyfarmCRD(obj interface{}, customize func(c *crder.CRD)) crder.CRD {
+	return *crder.NewCRD(obj, "hobbyfarm.io", customize)
 }
 
-func Objects(v1beta1 bool) (result []runtime.Object, err error) {
-	for _, crdDef := range List() {
-		if v1beta1 {
-			crd, err := crdDef.ToCustomResourceDefinitionV1Beta1()
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, crd)
-		} else {
-			crd, err := crdDef.ToCustomResourceDefinition()
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, crd)
-		}
-	}
-	return
-}
-
-func List() []crd.CRD {
-	return []crd.CRD{
-		hobbyfarmCRD(&hobbyfarmv1.VirtualMachine{}, func(c crd.CRD) crd.CRD {
-			return c.
-				WithColumn("Status", ".status.status").
-				WithColumn("Allocated", ".status.allocated").
-				WithColumn("publicIP", ".status.public_ip").
-				WithColumn("privateIP", ".status.private_ip")
-
-		}),
-		hobbyfarmCRD(&hobbyfarmv1.VirtualMachineClaim{}, func(c crd.CRD) crd.CRD {
-			return c.
-				WithColumn("BindMode", ".status.bind_mode").
-				WithColumn("Bound", ".status.bound").
-				WithColumn("Ready", ".status.ready")
-
-		}),
-		hobbyfarmCRD(&hobbyfarmv1.VirtualMachineTemplate{}, nil),
-		hobbyfarmCRD(&hobbyfarmv1.Environment{}, nil),
-		hobbyfarmCRD(&hobbyfarmv1.VirtualMachineSet{}, func(c crd.CRD) crd.CRD {
-			return c.
-				WithColumn("Available", ".status.available").
-				WithColumn("Provisioned", ".status.provisioned")
-
-		}),
-		hobbyfarmCRD(&hobbyfarmv1.Course{}, nil),
-		hobbyfarmCRD(&hobbyfarmv1.Scenario{}, nil),
-		hobbyfarmCRD(&hobbyfarmv1.Session{}, func(c crd.CRD) crd.CRD {
-			return c.
-				WithColumn("Paused", ".status.paused").
-				WithColumn("Active", ".status.active").
-				WithColumn("Finished", ".status.finished").
-				WithColumn("StartTime", ".status.start_time").
-				WithColumn("ExpirationTime", ".status.expiration_time")
-		}),
-		hobbyfarmCRD(&hobbyfarmv1.AccessCode{}, nil),
-		hobbyfarmCRD(&hobbyfarmv1.User{}, nil),
-		hobbyfarmCRD(&hobbyfarmv1.ScheduledEvent{}, func(c crd.CRD) crd.CRD {
-			return c.
-				WithColumn("AccessCode", ".status.access_code_id").
-				WithColumn("Active", ".status.active").
-				WithColumn("Finished", ".status.finished")
-		}),
-		hobbyfarmCRD(&hobbyfarmv1.DynamicBindConfiguration{}, nil),
-		hobbyfarmCRD(&hobbyfarmv1.DynamicBindRequest{}, func(c crd.CRD) crd.CRD {
-			return c.
-				WithColumn("CurrentAttempts", ".status.current_attempts").
-				WithColumn("Expired", ".status.expired").
-				WithColumn("Fulfilled", ".status.fulfilled")
-		}),
-		terraformControllerCRD(&terraformv1.Module{}, func(c crd.CRD) crd.CRD {
-			return c.
-				WithColumn("CheckTime", ".status.time")
-		}),
-		terraformControllerCRD(&terraformv1.State{}, func(c crd.CRD) crd.CRD {
-			return c.
-				WithColumn("LastRunHash", ".status.lastRunHash").
-				WithColumn("ExecutionName", ".status.executionName").
-				WithColumn("StatePlanName", ".status.executionPlanName")
-		}),
-		terraformControllerCRD(&terraformv1.Execution{}, func(c crd.CRD) crd.CRD {
-			return c.
-				WithColumn("JobName", ".status.jobName").
-				WithColumn("PlanConfirmed", ".status.planConfirmed")
-		}),
-	}
-}
-
-func Create(ctx context.Context, cfg *rest.Config) error {
-	factory, err := crd.NewFactoryFromClient(cfg)
-	if err != nil {
-		return err
-	}
-
-	return factory.BatchCreateCRDs(ctx, List()...).BatchWait()
-}
-
-func hobbyfarmCRD(obj interface{}, customize func(crd.CRD) crd.CRD) crd.CRD {
-	return newCRD("hobbyfarm.io", "v1", obj, customize)
-}
-
-func terraformControllerCRD(obj interface{}, customize func(crd.CRD) crd.CRD) crd.CRD {
-	return newCRD("terraformcontroller.cattle.io", "v1", obj, customize)
-}
-
-func newCRD(group string, version string, obj interface{}, customize func(crd.CRD) crd.CRD) crd.CRD {
-	crd := crd.CRD{
-		GVK: schema.GroupVersionKind{
-			Group:   group,
-			Version: version,
-		},
-		Status:       false,
-		SchemaObject: obj,
-	}
-	if customize != nil {
-		crd = customize(crd)
-	}
-	return crd
+func terraformCRD(obj interface{}, customize func(c *crder.CRD)) crder.CRD {
+	return *crder.NewCRD(obj, "terraformcontroller.cattle.io", customize)
 }

@@ -20,6 +20,7 @@ package scheme
 
 import (
 	hobbyfarmv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	hobbyfarmv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	terraformcontrollerv1 "github.com/hobbyfarm/gargantua/pkg/apis/terraformcontroller.cattle.io/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -33,6 +34,7 @@ var Codecs = serializer.NewCodecFactory(Scheme)
 var ParameterCodec = runtime.NewParameterCodec(Scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
 	hobbyfarmv1.AddToScheme,
+	hobbyfarmv2.AddToScheme,
 	terraformcontrollerv1.AddToScheme,
 }
 

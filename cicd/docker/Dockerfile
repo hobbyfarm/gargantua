@@ -1,5 +1,5 @@
 ##### sdk image #####
-FROM golang:1.16-alpine AS sdk
+FROM golang:1.19-alpine AS sdk
 
 WORKDIR /go/src/github.com/hobbyfarm/gargantua
 COPY . .

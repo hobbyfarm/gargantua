@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	v2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	terraformcontrollercattleiov1 "github.com/hobbyfarm/gargantua/pkg/apis/terraformcontroller.cattle.io/v1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
@@ -82,6 +83,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().VirtualMachineSets().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("virtualmachinetemplates"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().VirtualMachineTemplates().Informer()}, nil
+
+		// Group=hobbyfarm.io, Version=v2
+	case v2.SchemeGroupVersion.WithResource("users"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V2().Users().Informer()}, nil
 
 		// Group=terraformcontroller.cattle.io, Version=v1
 	case terraformcontrollercattleiov1.SchemeGroupVersion.WithResource("executions"):
