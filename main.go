@@ -110,22 +110,25 @@ func main() {
 
 	namespace := util.GetReleaseNamespace()
 
-	ca, err := os.ReadFile(webhookTLSCA)
-	if err != nil {
-		glog.Fatalf("error reading ca certificate: %s", err.Error())
-	}
+	var ca string
+	if !shellServer {
+		ca, err := os.ReadFile(webhookTLSCA)
+		if err != nil {
+			glog.Fatalf("error reading ca certificate: %s", err.Error())
+		}
 
-	crds := crd.GenerateCRDs(string(ca), v1.ServiceReference{
-		Namespace: namespace,
-		Name:      "hobbyfarm-webhook",
-	})
+		crds := crd.GenerateCRDs(string(ca), v1.ServiceReference{
+			Namespace: namespace,
+			Name:      "hobbyfarm-webhook",
+		})
 
-	glog.Info("installing/updating CRDs")
-	err = crder.InstallUpdateCRDs(cfg, crds...)
-	if err != nil {
-		glog.Fatalf("failed installing/updating crds: %s", err.Error())
+		glog.Info("installing/updating CRDs")
+		err = crder.InstallUpdateCRDs(cfg, crds...)
+		if err != nil {
+			glog.Fatalf("failed installing/updating crds: %s", err.Error())
+		}
+		glog.Info("finished installing/updating CRDs")
 	}
-	glog.Info("finished installing/updating CRDs")
 
 	// self manage default rbac roles
 	if installRBACRoles {
@@ -297,14 +300,43 @@ func main() {
 		glog.V(6).Infof("Informers have synchronized")
 	*/
 
-	conversionRouter := mux.NewRouter()
-	conversion.New(conversionRouter, apiExtensionsClient, string(ca))
-
-	http.Handle("/", r)
-
 	var wg sync.WaitGroup
 
-	wg.Add(2)
+	// shell server does not serve webhook endpoint, so don't start it
+	if !shellServer {
+		conversionRouter := mux.NewRouter()
+		conversion.New(conversionRouter, apiExtensionsClient, string(ca))
+
+		webhookPort := os.Getenv("WEBHOOK_PORT")
+		if webhookPort == "" {
+			webhookPort = "444"
+		}
+		glog.Info("webhook listening on " + webhookPort)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			cert, err := tls2.ReadKeyPair(webhookTLSCert, webhookTLSKey)
+			if err != nil {
+				glog.Fatalf("error generating x509keypair from conversion cert and key: %s", err)
+			}
+
+			server := http.Server{
+				TLSConfig: &tls.Config{
+					Certificates: []tls.Certificate{*cert},
+				},
+				Addr:    ":" + webhookPort,
+				Handler: handlers.CORS(corsHeaders, corsOrigins, corsMethods)(conversionRouter),
+			}
+
+			glog.Fatal(server.ListenAndServeTLS("", ""))
+		}()
+	}
+
+	wg.Add(1)
+
+	http.Handle("/", r)
 
 	apiPort := os.Getenv("PORT")
 	if apiPort == "" {
@@ -312,34 +344,9 @@ func main() {
 	}
 	glog.Info("apiserver listening on " + apiPort)
 
-	webhookPort := os.Getenv("WEBHOOK_PORT")
-	if webhookPort == "" {
-		webhookPort = "444"
-	}
-	glog.Info("webhook listening on " + webhookPort)
-
 	go func() {
 		defer wg.Done()
 		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
-	}()
-
-	go func() {
-		defer wg.Done()
-
-		cert, err := tls2.ReadKeyPair(webhookTLSCert, webhookTLSKey)
-		if err != nil {
-			glog.Fatalf("error generating x509keypair from conversion cert and key: %s", err)
-		}
-
-		server := http.Server{
-			TLSConfig: &tls.Config{
-				Certificates: []tls.Certificate{*cert},
-			},
-			Addr:    ":" + webhookPort,
-			Handler: handlers.CORS(corsHeaders, corsOrigins, corsMethods)(conversionRouter),
-		}
-
-		glog.Fatal(server.ListenAndServeTLS("", ""))
 	}()
 
 	if !disableControllers {
