@@ -74,6 +74,7 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 		}),
 		hobbyfarmCRD(&v1.Progress{}, func(c *crder.CRD) {
 			c.
+				WithNames("progress", "progresses").
 				IsNamespaced(true).
 				AddVersion("v1", &v1.Progress{}, func(cv *crder.Version) {
 					cv.
