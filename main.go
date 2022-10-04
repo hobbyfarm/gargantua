@@ -117,7 +117,7 @@ func main() {
 
 	crds := crd.GenerateCRDs(string(ca), v1.ServiceReference{
 		Namespace: namespace,
-		Name:      "hobbyfarm-conversion-webhook",
+		Name:      "hobbyfarm-webhook",
 	})
 
 	glog.Info("installing/updating CRDs")
