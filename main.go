@@ -6,6 +6,7 @@ import (
 	"flag"
 	"github.com/ebauman/crder"
 	"github.com/hobbyfarm/gargantua/pkg/crd"
+	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/rbacserver"
 	tls2 "github.com/hobbyfarm/gargantua/pkg/tls"
@@ -71,6 +72,7 @@ var (
 	localKubeconfig    string
 	disableControllers bool
 	shellServer        bool
+	installRBACRoles   bool
 	webhookTLSCert     string
 	webhookTLSKey      string
 	webhookTLSCA       string
@@ -81,6 +83,7 @@ func init() {
 	flag.StringVar(&localMasterUrl, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.BoolVar(&disableControllers, "disablecontrollers", false, "Disable the controllers")
 	flag.BoolVar(&shellServer, "shellserver", false, "Be a shell server")
+	flag.BoolVar(&installRBACRoles, "installrbacroles", false, "Install default RBAC Roles")
 	flag.StringVar(&webhookTLSCert, "webhook-tls-cert", "/webhook-secret/tls.crt", "Path to TLS certificate for webhook server")
 	flag.StringVar(&webhookTLSKey, "webhook-tls-key", "/webhook-secret/tls.key", "Path to TLS key for webhook server")
 	flag.StringVar(&webhookTLSCA, "webhook-tls-ca", "/webhook-secret/ca", "Path to CA cert for webhook server")
@@ -123,6 +126,15 @@ func main() {
 		glog.Fatalf("failed installing/updating crds: %s", err.Error())
 	}
 	glog.Info("finished installing/updating CRDs")
+
+	// self manage default rbac roles
+	if installRBACRoles {
+		err = rbac.Create(ctx, cfg)
+		if err != nil {
+			glog.Fatalf("Error installing RBAC roles: %s", err.Error())
+		}
+		glog.V(9).Infof("Successfully installed RBAC Roles")
+	}
 
 	cfg.QPS = ClientGoQPS
 	cfg.Burst = ClientGoBurst
