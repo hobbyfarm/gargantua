@@ -1,8 +1,8 @@
 module github.com/hobbyfarm/gargantua
 
-go 1.16
+go 1.17
 
-replace k8s.io/client-go => k8s.io/client-go v0.25.0
+replace k8s.io/client-go => k8s.io/client-go v0.25.2
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.1-0.20200107013213-dc14462fd587+incompatible
