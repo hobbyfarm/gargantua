@@ -3,13 +3,14 @@ package accesscode
 import (
 	"context"
 	"fmt"
+	"sort"
+	"time"
+
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sort"
-	"time"
 )
 
 type AccessCodeClient struct {
@@ -131,7 +132,7 @@ func (acc AccessCodeClient) GetCourseIds(code string) ([]string, error) {
 func (acc AccessCodeClient) GetClosestAccessCode(userID string, scenarioOrCourseId string) (string, error) {
 	// basically let's get all of the access codes, sort them by expiration, and start going down the list looking for access codes.
 
-	user, err := acc.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(acc.ctx, userID, metav1.GetOptions{}) // @TODO: FIX THIS TO NOT DIRECTLY CALL USER
+	user, err := acc.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(acc.ctx, userID, metav1.GetOptions{}) // @TODO: FIX THIS TO NOT DIRECTLY CALL USER
 
 	if err != nil {
 		return "", fmt.Errorf("error retrieving user: %v", err)

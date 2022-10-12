@@ -6,15 +6,16 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/errors"
@@ -30,7 +31,7 @@ const (
 
 type AuthServer struct {
 	auth        *authclient.AuthClient
-	rbac *rbacclient.Client
+	rbac        *rbacclient.Client
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
@@ -85,15 +86,15 @@ func (a AuthServer) AuthN(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (a AuthServer) getUserByEmail(email string) (hfv1.User, error) {
+func (a AuthServer) getUserByEmail(email string) (hfv2.User, error) {
 	if len(email) == 0 {
-		return hfv1.User{}, fmt.Errorf("email passed in was empty")
+		return hfv2.User{}, fmt.Errorf("email passed in was empty")
 	}
 
-	users, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).List(a.ctx, metav1.ListOptions{})
+	users, err := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).List(a.ctx, metav1.ListOptions{})
 
 	if err != nil {
-		return hfv1.User{}, fmt.Errorf("error while retrieving user list")
+		return hfv2.User{}, fmt.Errorf("error while retrieving user list")
 	}
 
 	for _, user := range users.Items {
@@ -102,7 +103,7 @@ func (a AuthServer) getUserByEmail(email string) (hfv1.User, error) {
 		}
 	}
 
-	return hfv1.User{}, fmt.Errorf("user not found")
+	return hfv2.User{}, fmt.Errorf("user not found")
 
 }
 
@@ -127,7 +128,7 @@ func (a AuthServer) NewUser(email string, password string) (string, error) {
 		return "", errors.NewAlreadyExists("user already exists")
 	}
 
-	newUser := hfv1.User{}
+	newUser := hfv2.User{}
 
 	hasher := sha256.New()
 	hasher.Write([]byte(email))
@@ -149,7 +150,7 @@ func (a AuthServer) NewUser(email string, password string) (string, error) {
 
 	newUser.Spec.Password = string(passwordHash)
 
-	_, err = a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Create(a.ctx, &newUser, metav1.CreateOptions{})
+	_, err = a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Create(a.ctx, &newUser, metav1.CreateOptions{})
 
 	if err != nil {
 		return "", fmt.Errorf("error creating user")
@@ -215,7 +216,7 @@ func (a AuthServer) ListAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	latestUser, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, user.Name, metav1.GetOptions{})
+	latestUser, err := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(a.ctx, user.Name, metav1.GetOptions{})
 
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", fmt.Sprintf("error retrieving user %s", user.Name))
@@ -238,7 +239,7 @@ func (a AuthServer) RetreiveSettingsFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	latestUser, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, user.Name, metav1.GetOptions{})
+	latestUser, err := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(a.ctx, user.Name, metav1.GetOptions{})
 
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", fmt.Sprintf("error retrieving user %s", user.Name))
@@ -311,7 +312,7 @@ func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 	accessCode = strings.ToLower(accessCode)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
+		user, err := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
 
 		if err != nil {
 			return fmt.Errorf("error retrieving user")
@@ -329,7 +330,7 @@ func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 
 		user.Spec.AccessCodes = append(user.Spec.AccessCodes, accessCode)
 
-		_, updateErr := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
+		_, updateErr := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -348,7 +349,7 @@ func (a AuthServer) RemoveAccessCode(userId string, accessCode string) error {
 	accessCode = strings.ToLower(accessCode)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
+		user, err := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
 
 		if err != nil {
 			return fmt.Errorf("error retrieving user %s", userId)
@@ -378,7 +379,7 @@ func (a AuthServer) RemoveAccessCode(userId string, accessCode string) error {
 
 		user.Spec.AccessCodes = newAccessCodes
 
-		_, updateErr := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
+		_, updateErr := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -394,7 +395,7 @@ func (a AuthServer) ChangePassword(userId string, oldPassword string, newPasswor
 		return fmt.Errorf("bad parameters passed, %s", userId)
 	}
 
-	user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
+	user, err := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("error retrieving user: %v", err)
 		return fmt.Errorf("error retrieving user")
@@ -413,7 +414,7 @@ func (a AuthServer) ChangePassword(userId string, oldPassword string, newPasswor
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
+		user, err := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
 
 		if err != nil {
 			return fmt.Errorf("error retrieving user")
@@ -421,7 +422,7 @@ func (a AuthServer) ChangePassword(userId string, oldPassword string, newPasswor
 
 		user.Spec.Password = string(passwordHash)
 
-		_, updateErr := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
+		_, updateErr := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -438,7 +439,7 @@ func (a AuthServer) UpdateSettings(userId string, newSettings map[string]string)
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
+		user, err := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
 
 		if err != nil {
 			return fmt.Errorf("error retrieving user")
@@ -446,7 +447,7 @@ func (a AuthServer) UpdateSettings(userId string, newSettings map[string]string)
 
 		user.Spec.Settings = newSettings
 
-		_, updateErr := a.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
+		_, updateErr := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Update(a.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -530,7 +531,7 @@ func (a AuthServer) AuthNFunc(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPMessage(w, r, 200, "authorized", token)
 }
 
-func GenerateJWT(user hfv1.User) (string, error) {
+func GenerateJWT(user hfv2.User) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"email": user.Spec.Email,
@@ -547,19 +548,19 @@ func GenerateJWT(user hfv1.User) (string, error) {
 	return tokenString, nil
 }
 
-func (a AuthServer) ValidateJWT(tokenString string) (hfv1.User, error) {
+func (a AuthServer) ValidateJWT(tokenString string) (hfv2.User, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 		}
-		var user hfv1.User
+		var user hfv2.User
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
 			var err error
 			user, err = a.getUserByEmail(fmt.Sprint(claims["email"]))
 			if err != nil {
 				glog.Errorf("could not find user that matched token %s", fmt.Sprint(claims["email"]))
-				return hfv1.User{}, fmt.Errorf("could not find user that matched token %s", fmt.Sprint(claims["email"]))
+				return hfv2.User{}, fmt.Errorf("could not find user that matched token %s", fmt.Sprint(claims["email"]))
 			}
 		}
 		// hmacSampleSecret is a []byte containing your secret, e.g. []byte("my_secret_key")
@@ -568,19 +569,19 @@ func (a AuthServer) ValidateJWT(tokenString string) (hfv1.User, error) {
 
 	if err != nil {
 		glog.Errorf("error while validating user: %v", err)
-		return hfv1.User{}, err
+		return hfv2.User{}, err
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		user, err := a.getUserByEmail(fmt.Sprint(claims["email"]))
 		if err != nil {
-			return hfv1.User{}, err
+			return hfv2.User{}, err
 		} else {
 			return user, nil
 		}
 	}
 	glog.Errorf("error while validating user")
-	return hfv1.User{}, fmt.Errorf("error while validating user")
+	return hfv2.User{}, fmt.Errorf("error while validating user")
 }
 
 func (a *AuthServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
