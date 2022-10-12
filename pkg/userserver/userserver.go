@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
@@ -15,7 +18,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
-	"net/http"
 )
 
 const (
@@ -38,15 +40,15 @@ func NewUserServer(authClient *authclient.AuthClient, hfClientset hfClientset.In
 	return &s, nil
 }
 
-func (u UserServer) getUser(id string) (hfv1.User, error) {
+func (u UserServer) getUser(id string) (hfv2.User, error) {
 
-	empty := hfv1.User{}
+	empty := hfv2.User{}
 
 	if len(id) == 0 {
 		return empty, fmt.Errorf("user id passed in was empty")
 	}
 
-	obj, err := u.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(u.ctx, id, metav1.GetOptions{})
+	obj, err := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(u.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving User by id: %s with error: %v", id, err)
 	}
@@ -65,7 +67,7 @@ func (u UserServer) SetupRoutes(r *mux.Router) {
 
 type PreparedUser struct {
 	ID string `json:"id"`
-	hfv1.UserSpec
+	hfv2.UserSpec
 }
 
 func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +112,7 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users, err := u.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).List(u.ctx, metav1.ListOptions{})
+	users, err := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).List(u.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while retrieving users %v", err)
@@ -146,7 +148,7 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		user, err := u.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(u.ctx, id, metav1.GetOptions{})
+		user, err := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(u.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			return fmt.Errorf("bad")
@@ -178,7 +180,7 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			user.Spec.AccessCodes = acUnmarshaled
 		}
 
-		_, updateErr := u.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Update(u.ctx, user, metav1.UpdateOptions{})
+		_, updateErr := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Update(u.ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -211,7 +213,7 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := u.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Get(u.ctx, id, metav1.GetOptions{})
+	user, err := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(u.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "error fetching user from server")
 		glog.Errorf("error fetching user %s from server during delete request: %s", id, err)
@@ -250,7 +252,7 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	// at this point we have either delete all old sessions, or there were no sessions  to begin with
 	// so we should be safe to delete the user
 
-	deleteErr := u.hfClientSet.HobbyfarmV1().Users(util.GetReleaseNamespace()).Delete(u.ctx, user.Name, metav1.DeleteOptions{})
+	deleteErr := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Delete(u.ctx, user.Name, metav1.DeleteOptions{})
 	if deleteErr != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "error deleting user")
 		glog.Errorf("error deleting user %s: %s", id, deleteErr)
