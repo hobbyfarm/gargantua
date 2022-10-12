@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"os"
+
 	"github.com/ebauman/crder"
 	"github.com/hobbyfarm/gargantua/pkg/crd"
 	"github.com/hobbyfarm/gargantua/pkg/rbac"
@@ -11,13 +13,13 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/rbacserver"
 	tls2 "github.com/hobbyfarm/gargantua/pkg/tls"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion"
+	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion/user"
 	"golang.org/x/sync/errgroup"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"os"
 
 	"github.com/hobbyfarm/gargantua/pkg/scheduledeventserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmtemplateserver"
@@ -304,6 +306,7 @@ func main() {
 
 	// shell server does not serve webhook endpoint, so don't start it
 	if !shellServer {
+		user.Init()
 		conversionRouter := mux.NewRouter()
 		conversion.New(conversionRouter, apiExtensionsClient, string(ca))
 
