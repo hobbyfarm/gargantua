@@ -1,7 +1,6 @@
 package user
 
 import (
-	"github.com/golang/glog"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -16,8 +15,6 @@ func Init() {
 }
 
 func convert(Object *unstructured.Unstructured, toVersion string) (*unstructured.Unstructured, metav1.Status) {
-	glog.V(4).Infof("converting user crd to version " + toVersion)
-
 	convertedObject := Object.DeepCopy()
 	fromVersion := Object.GetAPIVersion()
 
