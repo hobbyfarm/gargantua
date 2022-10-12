@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func init() {
+func Init() {
 	conversion.RegisterConverter(schema.GroupKind{
 		Group: "hobbyfarm.io",
 		Kind:  "users",

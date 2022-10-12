@@ -104,23 +104,20 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 
 					cv.IsServed(true)
 					cv.IsStored(false)
-				})
-
-			c.
+				}).
 				AddVersion("v2", &v2.User{}, func(cv *crder.Version) {
 					cv.WithColumn("Email", ".spec.email")
 
 					cv.IsServed(true)
 					cv.IsStored(true)
+				}).
+				WithConversion(func(cc *crder.Conversion) {
+					cc.
+						StrategyWebhook().
+						WithCABundle(caBundle).
+						WithService(serviceReferenceWithPath(reference, "/conversion/users.hobbyfarm.io")).
+						WithVersions("v2", "v1")
 				})
-
-			c.WithConversion(func(cc *crder.Conversion) {
-				cc.
-					StrategyWebhook().
-					WithCABundle(caBundle).
-					WithService(reference).
-					WithVersions("v2", "v1")
-			})
 		}),
 		hobbyfarmCRD(&v1.ScheduledEvent{}, func(c *crder.CRD) {
 			c.
@@ -175,6 +172,12 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 				})
 		}),
 	}
+}
+
+func serviceReferenceWithPath(reference apiextv1.ServiceReference, path string) apiextv1.ServiceReference {
+	ref := reference.DeepCopy()
+	ref.Path = &path
+	return *ref
 }
 
 func hobbyfarmCRD(obj interface{}, customize func(c *crder.CRD)) crder.CRD {

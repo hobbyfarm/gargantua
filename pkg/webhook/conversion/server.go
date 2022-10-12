@@ -18,12 +18,14 @@ limitations under the License.
 package conversion
 
 import (
-	"context"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strings"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/munnerz/goautoneg"
-	"io/ioutil"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,8 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
-	"net/http"
-	"strings"
 )
 
 var converters = map[schema.GroupKind]conversionFunc{}
@@ -41,26 +41,6 @@ type conversionFunc func(unstructured *unstructured.Unstructured, toVersion stri
 
 func New(mux *mux.Router, apiExtensionsClient *apiextensions.Clientset, caBundle string) {
 	mux.HandleFunc("/conversion/{type}", dispatch).Methods(http.MethodPost)
-
-	// for each conversion function, register the cabundle
-	for gvk, _ := range converters {
-		obj, err := apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Get(
-			context.Background(), fmt.Sprintf("%s.%s", gvk.Kind, gvk.Group), metav1.GetOptions{})
-		if err != nil {
-			glog.Errorf("Error retrieving CustomResourceDefinition %s from api server: %s", gvk, err.Error())
-			continue
-		}
-
-		obj = obj.DeepCopy()
-
-		obj.Spec.Conversion.Webhook.ClientConfig.CABundle = []byte(caBundle)
-
-		obj, err = apiExtensionsClient.ApiextensionsV1().CustomResourceDefinitions().Update(context.Background(), obj, metav1.UpdateOptions{})
-		if err != nil {
-			glog.Errorf("Error updating CRD %s with cabundle: %s", gvk, err.Error())
-			continue
-		}
-	}
 }
 
 func RegisterConverter(gk schema.GroupKind, f conversionFunc) {
