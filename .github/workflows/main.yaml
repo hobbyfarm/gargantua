@@ -9,6 +9,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@master
 
+    # this is where caching gets setup
     - uses: actions/setup-go@v3
       name: go-cache
       with:
