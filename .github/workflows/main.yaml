@@ -28,7 +28,7 @@ jobs:
           startsWith(github.event.ref, 'refs/tags/')
           || endsWith(github.event.ref, '/master')
         )
-      run: docker build -f cicd/Dockerfile .
+      run: docker build -t hobbyfarm/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} -f cicd/Dockerfile .
 
     - name: Compute Docker Tag
       if: |
