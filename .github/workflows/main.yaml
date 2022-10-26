@@ -9,8 +9,18 @@ jobs:
     - name: Checkout
       uses: actions/checkout@master
 
+    - uses: actions/setup-go@v3
+      name: go-cache
+      with:
+        go-version: '1.19'
+        check-latest: false
+        cache: true
+
     - name: Build
-      run: docker-compose -f ./cicd/docker/docker-compose-sdk.yaml build
+      env:
+        GOOS: linux
+        CGO_ENABLED: 0
+      run: go build -v -o gargantua
 
     - name: Build Release
       if: |
@@ -18,7 +28,7 @@ jobs:
           startsWith(github.event.ref, 'refs/tags/')
           || endsWith(github.event.ref, '/master')
         )
-      run: docker-compose -f ./cicd/docker/docker-compose-release.yaml build
+      run: docker build -f cicd/Dockerfile .
 
     - name: Compute Docker Tag
       if: |
