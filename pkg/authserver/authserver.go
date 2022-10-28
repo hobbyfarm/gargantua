@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
@@ -30,18 +31,20 @@ const (
 )
 
 type AuthServer struct {
-	auth        *authclient.AuthClient
-	rbac        *rbacclient.Client
-	hfClientSet hfClientset.Interface
-	ctx         context.Context
+	auth        		*authclient.AuthClient
+	rbac        		*rbacclient.Client
+	hfClientSet 		hfClientset.Interface
+	accessCodeClient    *accesscode.AccessCodeClient
+	ctx         		context.Context
 }
 
-func NewAuthServer(authClient *authclient.AuthClient, hfClientSet hfClientset.Interface, ctx context.Context, rbac *rbacclient.Client) (AuthServer, error) {
+func NewAuthServer(authClient *authclient.AuthClient, hfClientSet hfClientset.Interface, ctx context.Context, acClient *accesscode.AccessCodeClient, rbac *rbacclient.Client) (AuthServer, error) {
 	a := AuthServer{}
 	a.auth = authClient
 	a.hfClientSet = hfClientSet
 	a.ctx = ctx
 	a.rbac = rbac
+	a.accessCodeClient = acClient
 	return a, nil
 }
 
@@ -49,6 +52,7 @@ func (a AuthServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/auth/registerwithaccesscode", a.RegisterWithAccessCodeFunc).Methods("POST")
 	r.HandleFunc("/auth/accesscode", a.ListAccessCodeFunc).Methods("GET")
 	r.HandleFunc("/auth/accesscode", a.AddAccessCodeFunc).Methods("POST")
+	r.HandleFunc("/auth/scheduledevents", a.ListScheduledEventsFunc).Methods("GET")
 	r.HandleFunc("/auth/accesscode/{access_code}", a.RemoveAccessCodeFunc).Methods("DELETE")
 	r.HandleFunc("/auth/changepassword", a.ChangePasswordFunc).Methods("POST")
 	r.HandleFunc("/auth/settings", a.RetreiveSettingsFunc).Methods("GET")
@@ -56,34 +60,6 @@ func (a AuthServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/auth/authenticate", a.AuthNFunc).Methods("POST")
 	r.HandleFunc("/auth/access", a.GetAccessSet).Methods("GET")
 	glog.V(2).Infof("set up route")
-}
-
-func (a AuthServer) AuthN(w http.ResponseWriter, r *http.Request) error {
-	var finalToken string
-	token := r.Header.Get("Authorization")
-
-	if len(token) == 0 {
-		glog.Errorf("no bearer token passed")
-		//util.ReturnHTTPMessage(w, r, 403, "forbidden", "no token passed")
-		return fmt.Errorf("authentication failed")
-	}
-
-	splitToken := strings.Split(token, "Bearer")
-	finalToken = strings.TrimSpace(splitToken[1])
-
-	glog.V(2).Infof("token passed in was: %s", finalToken)
-
-	user, err := a.ValidateJWT(finalToken)
-
-	if err != nil {
-		glog.Errorf("error validating user %v", err)
-		return fmt.Errorf("authentication failed")
-	}
-
-	glog.V(2).Infof("validated user %s!", user.Spec.Email)
-
-	//util.ReturnHTTPMessage(w, r, 200, "success", "test successful. valid token")
-	return nil
 }
 
 func (a AuthServer) getUserByEmail(email string) (hfv2.User, error) {
@@ -216,20 +192,41 @@ func (a AuthServer) ListAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	latestUser, err := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(a.ctx, user.Name, metav1.GetOptions{})
-
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, 500, "error", fmt.Sprintf("error retrieving user %s", user.Name))
-		return
-	}
-
-	encodedACList, err := json.Marshal(latestUser.Spec.AccessCodes)
+	encodedACList, err := json.Marshal(user.Spec.AccessCodes)
 	if err != nil {
 		glog.Error(err)
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedACList)
 
 	glog.V(2).Infof("retrieved accesscode list for user %s", user.Spec.Email)
+}
+
+func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := a.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list suitable scheduledevents")
+		return
+	}
+
+	accessCodes, err := a.accessCodeClient.GetAccessCodes(user.Spec.AccessCodes)
+	
+	accessCodeScheduledEvent := make(map[string]string)
+
+	//Getting single SEs should be faster than listing all of them and iterating them in O(n^2), in most cases users only have a hand full of accessCodes.
+	for _, ac := range accessCodes {
+		se, err := a.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(a.ctx, ac.Labels[util.ScheduledEventLabel], metav1.GetOptions{})
+		if err != nil {
+			glog.Error(err)
+			continue
+		}
+		accessCodeScheduledEvent[ac.Spec.Code] = se.Spec.Name
+	}
+
+	encodedMap, err := json.Marshal(accessCodeScheduledEvent)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedMap)
 }
 
 func (a AuthServer) RetreiveSettingsFunc(w http.ResponseWriter, r *http.Request) {

@@ -29,10 +29,6 @@ const (
 	newSSTimeout        = "5m"
 	keepaliveSSTimeout  = "5m"
 	pauseSSTimeout      = "2h"
-	SessionLabel        = "hobbyfarm.io/session"
-	UserSessionLabel    = "hobbyfarm.io/user"
-	AccessCodeLabel     = "accesscode.hobbyfarm.io"
-	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
 	resourcePlural      = "sessions"
 )
 
@@ -143,7 +139,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 
 	// now we should check for existing sessions for the user
 	sessions, err := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(sss.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", UserSessionLabel, user.Spec.Id),
+		LabelSelector: fmt.Sprintf("%s=%s", util.UserLabel, user.Spec.Id),
 	})
 
 	if err != nil {
@@ -181,7 +177,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 
 					//finish old progress & create new progress for the new scenario
 					sss.FinishProgress(result.Spec.Id, user.Spec.Id)
-					sss.CreateProgress(result.Spec.Id, accessCodeObj.Labels[ScheduledEventLabel], scenario.Spec.Id, course.Spec.Id, user.Spec.Id, len(scenario.Spec.Steps))
+					sss.CreateProgress(result.Spec.Id, accessCodeObj.Labels[util.ScheduledEventLabel], scenario.Spec.Id, course.Spec.Id, user.Spec.Id, len(scenario.Spec.Steps))
 
 					return updateErr
 				})
@@ -214,8 +210,8 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	session.Spec.UserId = user.Spec.Id
 	session.Spec.KeepCourseVM = course.Spec.KeepVM
 	labels := make(map[string]string)
-	labels[AccessCodeLabel] = accessCode    // map accesscode to session
-	labels[UserSessionLabel] = user.Spec.Id // map user to session
+	labels[util.AccessCodeLabel] = accessCode    // map accesscode to session
+	labels[util.UserLabel] = user.Spec.Id // map user to session
 	session.Labels = labels
 	var vms []map[string]string
 	if course.Spec.VirtualMachines != nil {
@@ -262,10 +258,10 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		virtualMachineClaim := hfv1.VirtualMachineClaim{}
 		vmcId := util.GenerateResourceName(baseName, util.RandStringRunes(10), 10)
 		labels := make(map[string]string)
-		labels[SessionLabel] = session.Name     // map vmc to session
-		labels[UserSessionLabel] = user.Spec.Id // map session to user in a way that is searchable
-		labels[AccessCodeLabel] = session.Labels[AccessCodeLabel]
-		labels[ScheduledEventLabel] = schedEvent.Name
+		labels[util.SessionLabel] = session.Name     // map vmc to session
+		labels[util.UserLabel] = user.Spec.Id // map session to user in a way that is searchable
+		labels[util.AccessCodeLabel] = session.Labels[util.AccessCodeLabel]
+		labels[util.ScheduledEventLabel] = schedEvent.Name
 		virtualMachineClaim.Labels = labels
 		virtualMachineClaim.Spec.Id = vmcId
 		virtualMachineClaim.Spec.BaseName = vmcId
@@ -325,7 +321,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 
 	glog.V(2).Infof("created session ID %s", createdSession.Spec.Id)
 
-	sss.CreateProgress(createdSession.Spec.Id, accessCodeObj.Labels[ScheduledEventLabel], scenario.Spec.Id, course.Spec.Id, user.Spec.Id, len(scenario.Spec.Steps))
+	sss.CreateProgress(createdSession.Spec.Id, accessCodeObj.Labels[util.ScheduledEventLabel], scenario.Spec.Id, course.Spec.Id, user.Spec.Id, len(scenario.Spec.Steps))
 
 	encodedSS, err := json.Marshal(createdSession.Spec)
 	if err != nil {
@@ -360,9 +356,9 @@ func (sss SessionServer) CreateProgress(sessionId string, scheduledEventId strin
 	progress.Spec.Steps = steps
 
 	labels := make(map[string]string)
-	labels[SessionLabel] = sessionId               // map to session
-	labels[ScheduledEventLabel] = scheduledEventId // map to scheduledevent
-	labels[UserSessionLabel] = userId              // map to scheduledevent
+	labels[util.SessionLabel] = sessionId               // map to session
+	labels[util.ScheduledEventLabel] = scheduledEventId // map to scheduledevent
+	labels[util.UserLabel] = userId              // map to scheduledevent
 	labels["finished"] = "false"                   // default is in progress, finished = false
 	progress.Labels = labels
 
@@ -380,7 +376,7 @@ func (sss SessionServer) FinishProgress(sessionId string, userId string) {
 	now := time.Now()
 
 	progress, err := sss.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(sss.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", SessionLabel, sessionId, UserSessionLabel, userId)})
+		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", util.SessionLabel, sessionId, util.UserLabel, userId)})
 
 	if err != nil {
 		glog.Errorf("error while retrieving progress %v", err)

@@ -13,7 +13,6 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
-	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"golang.org/x/crypto/bcrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -222,7 +221,7 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 
 	// get a list of sessions for the user
 	sessionList, err := u.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(u.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", sessionserver.UserSessionLabel, id),
+		LabelSelector: fmt.Sprintf("%s=%s", util.UserLabel, id),
 	})
 
 	if err != nil {

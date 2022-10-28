@@ -12,7 +12,6 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -287,7 +286,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 						"environment":                      chosenDynamicBindConfiguration.Spec.Environment,
 						"bound":                            "true",
 						"ready":                            "false",
-						scheduledevent.ScheduledEventLabel: chosenDynamicBindConfiguration.ObjectMeta.Labels[scheduledevent.ScheduledEventLabel],
+						util.ScheduledEventLabel: chosenDynamicBindConfiguration.ObjectMeta.Labels[util.ScheduledEventLabel],
 					},
 				},
 				Spec: hfv1.VirtualMachineSpec{

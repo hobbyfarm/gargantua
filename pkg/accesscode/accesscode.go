@@ -11,6 +11,8 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 type AccessCodeClient struct {
@@ -34,7 +36,14 @@ func (acc AccessCodeClient) GetAccessCodes(codes []string) ([]hfv1.AccessCode, e
 		return nil, fmt.Errorf("code list passed in was less than 0")
 	}
 
-	accessCodeList, err := acc.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).List(acc.ctx, metav1.ListOptions{})
+	acReq, err := labels.NewRequirement(util.AccessCodeLabel, selection.In, codes)
+
+	selector := labels.NewSelector()
+	selector = selector.Add(*acReq)
+
+	accessCodeList, err := acc.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).List(acc.ctx, metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
 
 	if err != nil {
 		return nil, fmt.Errorf("error while retrieving access codes %v", err)
@@ -42,28 +51,13 @@ func (acc AccessCodeClient) GetAccessCodes(codes []string) ([]hfv1.AccessCode, e
 
 	var accessCodes []hfv1.AccessCode
 
-	for _, code := range codes {
-		found := false
-		var accessCode hfv1.AccessCode
-		for _, ac := range accessCodeList.Items {
-			if ac.Spec.Code == code {
-				found = true
-				accessCode = ac
-				break
-			}
-		}
-
-		if !found {
-			//return nil, fmt.Errorf("access code not found")
-			glog.V(4).Infof("access code %s seems to be invalid", code)
-			continue
-		}
+	for _, accessCode := range accessCodeList.Items {
 
 		if accessCode.Spec.Expiration != "" {
 			expiration, err := time.Parse(time.UnixDate, accessCode.Spec.Expiration)
 
 			if err != nil {
-				return nil, fmt.Errorf("error while parsing expiration time for access code %s %v", code, err)
+				return nil, fmt.Errorf("error while parsing expiration time for access code %s %v", accessCode.Name, err)
 			}
 
 			if time.Now().After(expiration) { // if the access code is expired don't return any scenarios

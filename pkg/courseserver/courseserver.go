@@ -444,14 +444,34 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	var courseIds []string
-	for _, ac := range user.Spec.AccessCodes {
-		tempCourseIds, err := c.acClient.GetCourseIds(ac)
-		if err != nil {
-			glog.Errorf("error retrieving course ids for access code: %s %v", ac, err)
-		} else {
-			courseIds = append(courseIds, tempCourseIds...)
+	
+	vars := mux.Vars(r)
+	accessCode := vars["access_code"]
+
+	if accessCode == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "access_code is missing")
+		return
+	}
+
+	contains := false
+	for _, acc := range user.Spec.AccessCodes {
+		if(acc == accessCode){
+			contains = true
+			break;
 		}
+	}
+
+	if !contains {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios for this AccessCode")
+		return
+	}
+
+	var courseIds []string
+	tempCourseIds, err := c.acClient.GetCourseIds(accessCode)
+	if err != nil {
+		glog.Errorf("error retrieving course ids for access code: %s %v", accessCode, err)
+	} else {
+		courseIds = append(courseIds, tempCourseIds...)
 	}
 
 	courseIds = util.UniqueStringSlice(courseIds)
