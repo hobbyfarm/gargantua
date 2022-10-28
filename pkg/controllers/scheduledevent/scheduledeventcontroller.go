@@ -527,8 +527,6 @@ func (s ScheduledEventController) verifyScheduledEvent(se *hfv1.ScheduledEvent) 
 		}
 	}
 
-	keepProvisioned := true
-
 	// Validate AccessCode existence and has label set
 	ac, err := s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Get(s.ctx, se.Spec.AccessCode, metav1.GetOptions{})
 	if err != nil {
@@ -561,7 +559,7 @@ func (s ScheduledEventController) verifyScheduledEvent(se *hfv1.ScheduledEvent) 
 			return err
 		}
 
-		seToUpdate.Status.Provisioned = keepProvisioned
+		seToUpdate.Status.Provisioned = true
 		seToUpdate.Status.Ready = true
 		seToUpdate.Status.Finished = false
 
