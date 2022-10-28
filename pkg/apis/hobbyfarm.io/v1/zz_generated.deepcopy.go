@@ -98,11 +98,6 @@ func (in *AccessCodeSpec) DeepCopyInto(out *AccessCodeSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.VirtualMachineSets != nil {
-		in, out := &in.VirtualMachineSets, &out.VirtualMachineSets
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
 	return
 }
 

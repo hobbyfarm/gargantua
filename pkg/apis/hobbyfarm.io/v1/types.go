@@ -381,7 +381,6 @@ type AccessCodeSpec struct {
 	Scenarios           []string `json:"scenarios"`
 	Courses             []string `json:"courses"`
 	Expiration          string   `json:"expiration"`
-	VirtualMachineSets  []string `json:"vmsets"`
 	RestrictedBind      bool     `json:"restricted_bind"`
 	RestrictedBindValue string   `json:"restricted_bind_value"`
 	Printable           bool     `json:"printable"`
