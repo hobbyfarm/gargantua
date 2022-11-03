@@ -80,7 +80,7 @@ func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.A
 }
 
 func (s ScenarioServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/scenario/list", s.ListScenarioForAccessCode).Methods("GET")
+	r.HandleFunc("/scenario/list/{access_code}", s.ListScenarioForAccessCode).Methods("GET")
 	r.HandleFunc("/a/scenario/categories", s.ListCategories).Methods("GET")
 	r.HandleFunc("/a/scenario/list/{category}", s.ListByCategoryFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/list", s.ListAllFunc).Methods("GET")
