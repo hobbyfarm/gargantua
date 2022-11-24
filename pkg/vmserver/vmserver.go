@@ -15,13 +15,14 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
 const (
 	idIndex             = "vms.hobbyfarm.io/id-index"
 	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
-	resourcePlural		= "virtualmachines"
+	resourcePlural      = "virtualmachines"
 )
 
 type VMServer struct {
@@ -53,10 +54,61 @@ func NewVMServer(authClient *authclient.AuthClient, hfClientset hfClientset.Inte
 
 func (vms VMServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/vm/{vm_id}", vms.GetVMFunc).Methods("GET")
+	r.HandleFunc("/vm/haside/{vm_id}", vms.hasIdeFunc).Methods("GET")
 	r.HandleFunc("/a/vm/list", vms.GetAllVMListFunc).Methods("GET")
 	r.HandleFunc("/a/vm/scheduledevent/{se_id}", vms.GetVMListByScheduledEventFunc).Methods("GET")
 	r.HandleFunc("/a/vm/count", vms.CountByScheduledEvent).Methods("GET")
 	glog.V(2).Infof("set up routes")
+}
+
+/*
+* Checks if VMTemplate used to create VM has "ide"="true" in ConfigMap.
+* Returns http 200 if "ide"="true", else Error Codes.
+ */
+func (vms VMServer) hasIdeFunc(w http.ResponseWriter, r *http.Request) {
+	// Check if User has access to VMs
+	user, err := vms.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
+		return
+	}
+	vars := mux.Vars(r)
+	// Check if id for the VM was provided
+	vmId := vars["vm_id"]
+	if len(vmId) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no vm id passed in")
+		return
+	}
+	// Get the VM, Error if none is found for the given id
+	vm, err := vms.GetVirtualMachineById(vmId)
+	if err != nil {
+		glog.Errorf("did not find the right virtual machine ID")
+		util.ReturnHTTPMessage(w, r, 500, "error", "no vm found")
+		return
+	}
+
+	// Check if the VM belongs to the User or User has RBAC-Rights to access VMs
+	if vm.Spec.UserId != user.Spec.Id {
+		_, err := vms.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
+		if err != nil {
+			glog.Errorf("user forbidden from accessing vm id %s", vm.Spec.Id)
+			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
+			return
+		}
+	}
+
+	// Get the corresponding VMTemplate for the VM and Check for "ide"
+	vmt, err := vms.hfClientSet.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Get(vms.ctx, vm.Spec.VirtualMachineTemplateId, v1.GetOptions{})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 404, "error", "no vm template found")
+		return
+	}
+	if vmt.Spec.ConfigMap["ide"] == "true" {
+		util.ReturnHTTPMessage(w, r, 200, "success", "vm has IDE")
+		return
+	}
+	// Return 404 if "ide" is false or not set
+	util.ReturnHTTPMessage(w, r, 404, "error", "vm has no IDE")
 }
 
 func (vms VMServer) GetVirtualMachineById(id string) (hfv1.VirtualMachine, error) {
