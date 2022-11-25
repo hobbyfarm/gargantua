@@ -54,6 +54,7 @@ func (s ProgressServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/progress/scheduledevent/{id}", s.ListByScheduledEventFunc).Methods("GET")
 	r.HandleFunc("/a/progress/user/{id}", s.ListByUserFunc).Methods("GET")
 	r.HandleFunc("/a/progress/count", s.CountByScheduledEvent).Methods("GET")
+	r.HandleFunc("/a/progress/range", s.ListByRangeFunc).Methods("GET")
 	r.HandleFunc("/progress/update/{id}", s.Update).Methods("POST")
 	r.HandleFunc("/progress/list", s.ListForUserFunc).Methods("GET")
 	glog.V(2).Infof("set up routes for ProgressServer")
@@ -89,6 +90,44 @@ func (s ProgressServer) ListByScheduledEventFunc(w http.ResponseWriter, r *http.
 	s.ListByLabel(w, r, ScheduledEventLabel, id, includeFinished)
 
 	glog.V(2).Infof("listed progress for scheduledevent %s", id)
+}
+
+func (s ProgressServer) ListByRangeFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
+		return
+	}
+
+	fromString := r.URL.Query().Get("from")
+	if fromString == "" {
+	  util.ReturnHTTPMessage(w, r, 500, "error", "no start of range passed in")
+	  return
+	}
+
+	start, err := time.Parse(time.UnixDate, fromString)
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "error parsing start time")
+	   return
+	}
+
+	toString := r.URL.Query().Get("from")
+	if toString == "" {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no end of range passed in")
+		return
+	}
+
+	end, err := time.Parse(time.UnixDate, toString)
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "error parsing end time")
+	   return
+	}
+
+	s.ListByRange(w, r, start, end, true)
+
+	glog.V(2).Info("listed progress for time range")
 }
 
 /*
@@ -160,6 +199,40 @@ func (s ProgressServer) CountByScheduledEvent(w http.ResponseWriter, r *http.Req
 		glog.Error(err)
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedMap)
+}
+
+func (s ProgressServer) ListByRange(w http.ResponseWriter, r *http.Request, start time.Time, end time.Time, includeFinished bool) {
+	includeFinishedFilter := "finished=false" // Default is to only include active (finished=false) progress
+	if includeFinished {
+		includeFinishedFilter = ""
+	}
+	progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s", includeFinishedFilter)})
+
+	if err != nil {
+		glog.Errorf("error while retrieving progress %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "no progress found")
+		return
+	}
+
+	v1TimeStart := metav1.NewTime(start)
+	v1TimeEnd := metav1.NewTime(end)
+
+	preparedProgress := []AdminPreparedProgress{}
+	for _, p := range progress.Items {
+		//CreationTimestamp of progress is out of range
+		if(p.CreationTimestamp.Before(&v1TimeStart) || v1TimeEnd.Before(&p.CreationTimestamp)){
+			continue
+		}
+		pProgress := AdminPreparedProgress{p.Labels[SessionLabel], p.Spec}
+		preparedProgress = append(preparedProgress, pProgress)
+	}
+
+	encodedProgress, err := json.Marshal(preparedProgress)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedProgress)
 }
 
 func (s ProgressServer) ListByLabel(w http.ResponseWriter, r *http.Request, label string, value string, includeFinished bool) {

@@ -89,6 +89,7 @@ func (s ScenarioServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/scenario/{id}/printable", s.PrintFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}/printable", s.AdminPrintFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/new", s.CreateFunc).Methods("POST")
+	r.HandleFunc("/a/scenario/copy/{id}", s.CopyFunc).Methods("POST")
 	r.HandleFunc("/a/scenario/{id}", s.UpdateFunc).Methods("PUT")
 	r.HandleFunc("/scenario/{scenario_id}/step/{step_id:[0-9]+}", s.GetScenarioStepFunc).Methods("GET")
 	glog.V(2).Infof("set up route")
@@ -540,6 +541,61 @@ func (s ScenarioServer) PrintFunc(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPRaw(w, r, content)
 
 	glog.V(2).Infof("retrieved scenario and rendered for printability %s", scenario.Name)
+}
+
+func (s ScenarioServer) CopyFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthGrant(
+		rbacclient.RbacRequest().
+			HobbyfarmPermission(resourcePlural, rbacclient.VerbCreate).
+			HobbyfarmPermission(resourcePlural, rbacclient.VerbGet),
+		w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create scenarios")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	id := vars["id"]
+
+	if len(id) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
+		return
+	}
+
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		scenario, err := s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
+		if err != nil {
+			glog.Error(err)
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "badrequest", "no scenario found with given ID")
+			return fmt.Errorf("bad")
+		}
+
+		name, err := base64.StdEncoding.DecodeString(scenario.Spec.Name)
+		if err != nil {
+			glog.Errorf("Error decoding title of scenario to copy: %s %v", scenario.Name, err)
+		}
+		copyName := string(name) + " - Copy"
+		copyName = base64.StdEncoding.EncodeToString([]byte(copyName))
+		hasher := sha256.New()
+		hasher.Write([]byte(copyName))
+		sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:10]
+
+		scenario.Spec.Name = copyName
+		scenario.Name = "s-" + strings.ToLower(sha)
+		scenario.Spec.Id = "s-" + strings.ToLower(sha) // LEGACY!!!!
+
+		_, updateErr := s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).Create(s.ctx, scenario, metav1.CreateOptions{})
+		return updateErr
+	})
+
+	if retryErr != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "error attempting to copy")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "copied scenario", "")
+	return
 }
 
 func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
