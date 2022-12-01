@@ -200,6 +200,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			}
 			return nil, false
 		}
+		//Status is ReadyForProvisioning AND No Secret provided (Do not provision VM twice, happens due to vm.status being updated after vm.status)
 		if vm.Status.Status == hfv1.VmStatusRFP {
 			vmt, err := t.vmtLister.VirtualMachineTemplates(util.GetReleaseNamespace()).Get(vm.Spec.VirtualMachineTemplateId)
 			if err != nil {
@@ -337,13 +338,28 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 						glog.Errorf("unknown error encountered when setting terminating %v", err)
 					}
 				}
-				toUpdate.Spec.SecretName = keypair.Name
+
 				toUpdate.Status.Status = hfv1.VmStatusProvisioned
 				toUpdate.Status.TFState = tfs.Name
+				
+				toUpdate, updateErr := t.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(t.ctx, toUpdate, metav1.UpdateOptions{})
+
+				if(updateErr != nil){
+					glog.Errorf("error while updating VirtualMachine status %s", toUpdate.Name)
+					return updateErr
+				}
+
+				toUpdate.Spec.SecretName = keypair.Name
 				toUpdate.Labels["ready"] = "false"
 				toUpdate.Finalizers = []string{"tfp.controllers.hobbyfarm.io"}
 
-				toUpdate, updateErr := t.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(t.ctx, toUpdate, metav1.UpdateOptions{})
+				toUpdate, updateErr = t.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(t.ctx, toUpdate, metav1.UpdateOptions{})
+
+				if(updateErr != nil){
+					glog.Errorf("error while updating VirtualMachine %s", toUpdate.Name)
+					return updateErr
+				}
+
 				if err := util.VerifyVM(t.vmLister, toUpdate); err != nil {
 					glog.Errorf("error while verifying machine %s", toUpdate.Name)
 				}
@@ -434,6 +450,19 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 					}
 				}
 
+				toUpdate.Labels["ready"] = "true"
+
+				if reflect.DeepEqual(old.Status, toUpdate.Status) && reflect.DeepEqual(old.Labels, toUpdate.Labels) {
+					return nil
+				}
+
+				toUpdate, updateErr := t.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(t.ctx, toUpdate, metav1.UpdateOptions{})
+
+				if(updateErr != nil){
+					glog.Errorf("error while updating machine: %s", toUpdate.Name)
+					return updateErr
+				}
+
 				toUpdate.Status.PrivateIP = tfOutput["private_ip"]["value"]
 				if _, exists := tfOutput["public_ip"]; exists {
 					toUpdate.Status.PublicIP = tfOutput["public_ip"]["value"]
@@ -442,12 +471,9 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				}
 				toUpdate.Status.Hostname = tfOutput["hostname"]["value"]
 				toUpdate.Status.Status = hfv1.VmStatusRunning
-				toUpdate.Labels["ready"] = "true"
 
-				if reflect.DeepEqual(old.Spec, toUpdate.Spec) && reflect.DeepEqual(old.Status, toUpdate.Status) && reflect.DeepEqual(old.Labels, toUpdate.Labels) {
-					return nil
-				}
-				toUpdate, updateErr := t.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(t.ctx, toUpdate, metav1.UpdateOptions{})
+				_, updateErr = t.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(t.ctx, toUpdate, metav1.UpdateOptions{})
+
 				if err := util.VerifyVM(t.vmLister, toUpdate); err != nil {
 					glog.Errorf("error while verifying machine!!! %s", toUpdate.Name)
 				}

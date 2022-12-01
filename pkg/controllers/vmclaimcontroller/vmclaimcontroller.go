@@ -224,17 +224,17 @@ func (v *VMClaimController) processNextVMClaim() bool {
 }
 
 func (v *VMClaimController) updateVMClaimStatus(bound bool, ready bool, vmc *hfv1.VirtualMachineClaim) error {
-
-	vmc.Status.Bound = bound
-	vmc.Status.Ready = ready
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		vmc, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Update(v.ctx, vmc, metav1.UpdateOptions{})
-		if updateErr != nil {
-			return updateErr
+		newestVmc, err := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Get(v.ctx, vmc.Name, metav1.GetOptions{})
+		newestVmc.Status.Bound = bound
+		newestVmc.Status.Ready = ready
+		newestVmc, err = v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).UpdateStatus(v.ctx, newestVmc, metav1.UpdateOptions{})
+		if err != nil {
+			return err
 		}
 		glog.V(4).Infof("updated result for virtual machine claim")
 
-		verifyErr := util.VerifyVMClaim(v.vmClaimLister, vmc)
+		verifyErr := util.VerifyVMClaim(v.vmClaimLister, newestVmc)
 
 		if verifyErr != nil {
 			return verifyErr
@@ -342,15 +342,6 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 				Provision:                true,
 				VirtualMachineSetId:      "",
 			},
-			Status: hfv1.VirtualMachineStatus{
-				Status:        hfv1.VmStatusRFP,
-				Allocated:     true,
-				Tainted:       false,
-				WsEndpoint:    env.Spec.WsEndpoint,
-				EnvironmentId: env.Name,
-				PublicIP:      "",
-				PrivateIP:     "",
-			},
 		}
 		// used to later repopulate the info back //
 		vmMap[vmName] = hfv1.VirtualMachineClaimVM{
@@ -391,13 +382,34 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 
 		vm.Labels["hobbyfarm.io/vmtemplate"] = vm.Spec.VirtualMachineTemplateId
 
-		_, err = v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Create(v.ctx, vm, metav1.CreateOptions{})
+		createdVM, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Create(v.ctx, vm, metav1.CreateOptions{})
+		if err != nil {
+			return err
+		}
+
+		createdVM.Status = hfv1.VirtualMachineStatus{
+			Status:        hfv1.VmStatusRFP,
+			Allocated:     true,
+			Tainted:       false,
+			WsEndpoint:    env.Spec.WsEndpoint,
+			EnvironmentId: env.Name,
+			PublicIP:      "",
+			PrivateIP:     "",
+		}
+
+		_, err = v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(v.ctx, createdVM, metav1.UpdateOptions{})
 		if err != nil {
 			return err
 		}
 	}
 
 	vmc.Spec.VirtualMachines = vmMap
+
+	_, err = v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Update(v.ctx, vmc, metav1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -501,6 +513,13 @@ func (v *VMClaimController) findVirtualMachines(vmc *hfv1.VirtualMachineClaim) (
 		}
 	}
 	vmc.Spec.VirtualMachines = vmMap
+
+	_, err = v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Update(v.ctx, vmc, metav1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
+
+	
 	return nil
 }
 
@@ -511,16 +530,23 @@ func  (v *VMClaimController) assignVM(vmClaimId string, user string, vmId string
 			return fmt.Errorf("error retrieving latest version of Virtual Machine %s: %v", vmId, getErr)
 		}
 
-		result.Status.Allocated = true
-		result.Spec.VirtualMachineClaimId = vmClaimId
-		result.Spec.UserId = user
 
 		result.Labels["bound"] = "true"
+		result.Spec.VirtualMachineClaimId = vmClaimId
+		result.Spec.UserId = user
 
 		vm, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(v.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
+
+		vm.Status.Allocated = true
+
+		_, updateErr = v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(v.ctx, vm, metav1.UpdateOptions{})
+		if updateErr != nil {
+			return updateErr
+		}
+
 		glog.V(4).Infof("updated result for virtual machine")
 
 		verifyErr := util.VerifyVM(v.vmLister, vm)

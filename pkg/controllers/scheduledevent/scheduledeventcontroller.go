@@ -183,7 +183,7 @@ func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent
 		seToUpdate.Status.Ready = false
 		seToUpdate.Status.Finished = true
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, seToUpdate, metav1.UpdateOptions{})
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, seToUpdate, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for scheduled event")
 
 		return updateErr
@@ -239,7 +239,7 @@ func (s ScheduledEventController) finishSessionsFromScheduledEvent(se *hfv1.Sche
 			result.Status.Active = false
 			result.Status.Finished = false
 
-			_, updateErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(s.ctx, result, metav1.UpdateOptions{})
+			_, updateErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).UpdateStatus(s.ctx, result, metav1.UpdateOptions{})
 			glog.V(4).Infof("updated result for session")
 
 			return updateErr
@@ -490,7 +490,7 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 		seToUpdate.Status.Ready = false
 		seToUpdate.Status.Finished = false
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, seToUpdate, metav1.UpdateOptions{})
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, seToUpdate, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for scheduled event")
 
 		return updateErr
@@ -531,7 +531,7 @@ func (s ScheduledEventController) verifyScheduledEvent(se *hfv1.ScheduledEvent) 
 		seToUpdate.Status.Ready = true
 		seToUpdate.Status.Finished = false
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, seToUpdate, metav1.UpdateOptions{})
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, seToUpdate, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for scheduled event")
 
 		return updateErr
@@ -594,7 +594,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 	if (se.Spec.OnDemand && len(se.Status.VirtualMachineSets) > 0){
 		vmSets := []string{}
 		se.Status.VirtualMachineSets = vmSets
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, se, metav1.UpdateOptions{})
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, se, metav1.UpdateOptions{})
 		s.deleteVMSetsFromScheduledEvent(se)
 		return updateErr
 	}
