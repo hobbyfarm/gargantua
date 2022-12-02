@@ -20,7 +20,6 @@ import (
 
 const (
 	idIndex             = "vms.hobbyfarm.io/id-index"
-	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
 	resourcePlural		= "virtualmachines"
 )
 
@@ -168,7 +167,7 @@ func (vms VMServer) GetVMListByScheduledEventFunc(w http.ResponseWriter, r *http
 		return
 	}
 
-	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, id)}
+	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, id)}
 
 	vms.GetVMListFunc(w, r, lo)
 }
@@ -189,7 +188,7 @@ func (vms VMServer) CountByScheduledEvent(w http.ResponseWriter, r *http.Request
 
 	countMap := map[string]int{}
 	for _, vm := range virtualmachines.Items {
-		se := vm.Labels[ScheduledEventLabel]
+		se := vm.Labels[util.ScheduledEventLabel]
 		if _, ok := countMap[se]; ok {
 			countMap[se] = countMap[se] + 1
 		} else {

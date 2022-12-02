@@ -6,9 +6,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
-	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
-
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
@@ -297,7 +294,7 @@ func (v *VMClaimController) processVMClaim(vmc *hfv1.VirtualMachineClaim) (err e
 }
 
 func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim) (err error) {
-	accessCode, ok := vmc.Labels[sessionserver.AccessCodeLabel]
+	accessCode, ok := vmc.Labels[util.AccessCodeLabel]
 	if !ok {
 		glog.Error("accessCode label not set on vmc, aborting")
 		return fmt.Errorf("accessCode label not set on vmc, aborting")
@@ -329,7 +326,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 					"environment":                      env.Name,
 					"bound":                            "true",
 					"ready":                            "false",
-					scheduledevent.ScheduledEventLabel: seName,
+					util.ScheduledEventLabel: seName,
 				},
 			},
 			Spec: hfv1.VirtualMachineSpec{
@@ -429,7 +426,7 @@ func (v *VMClaimController) findEnvironmentForVM(accessCode string) (env *hfv1.E
 	}
 
 	dbcList, err := v.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", scheduledevent.ScheduledEventLabel, seName),
+		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, seName),
 	})
 
 	if err != nil {
@@ -486,7 +483,7 @@ func (v *VMClaimController) findScheduledEvent(accessCode string) (schedEvent st
 }
 
 func (v *VMClaimController) findVirtualMachines(vmc *hfv1.VirtualMachineClaim) (err error) {
-	accessCode, ok := vmc.Labels[sessionserver.AccessCodeLabel]
+	accessCode, ok := vmc.Labels[util.AccessCodeLabel]
 	if !ok {
 		glog.Error("accessCode label not set on vmc, aborting")
 		return fmt.Errorf("accessCode label not set on vmc, aborting")

@@ -12,7 +12,6 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -294,7 +293,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 						"environment":                      env.Name,
 						"bound":                            "false",
 						"ready":                            "false",
-						scheduledevent.ScheduledEventLabel: vmset.ObjectMeta.Labels[scheduledevent.ScheduledEventLabel],
+						util.ScheduledEventLabel: vmset.ObjectMeta.Labels[util.ScheduledEventLabel],
 					},
 				},
 				Spec: hfv1.VirtualMachineSpec{

@@ -176,12 +176,12 @@ func main() {
 
 	rbacServer := rbacserver.NewRbacServer(kubeClient, authClient, rbacClient)
 
-	authServer, err := authserver.NewAuthServer(authClient, hfClient, ctx, rbacClient)
+	acClient, err := accesscode.NewAccessCodeClient(hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	acClient, err := accesscode.NewAccessCodeClient(hfClient, ctx)
+	authServer, err := authserver.NewAuthServer(authClient, hfClient, ctx, acClient, rbacClient)
 	if err != nil {
 		glog.Fatal(err)
 	}

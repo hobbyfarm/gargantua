@@ -13,9 +13,6 @@ type Role struct {
 	r rbacv1.Role
 }
 
-const(
-	rbacManagedLabel = "rbac.hobbyfarm.io/managed"
-)
 
 func List() []Role{
 	return []Role{
@@ -101,7 +98,7 @@ func newRole(name string, customize func (Role) Role) Role {
 			Name:      name,
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
-				rbacManagedLabel: "true",
+				util.RBACManagedLabel: "true",
 			},
 		},
 		Rules: []rbacv1.PolicyRule{},

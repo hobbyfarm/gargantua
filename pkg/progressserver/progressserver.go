@@ -20,9 +20,6 @@ import (
 
 const (
 	idIndex             = "progressserver.hobbyfarm.io/id-index"
-	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
-	SessionLabel        = "hobbyfarm.io/session"
-	UserLabel           = "hobbyfarm.io/user"
 	resourcePlural		= "progresses"
 )
 
@@ -86,7 +83,7 @@ func (s ProgressServer) ListByScheduledEventFunc(w http.ResponseWriter, r *http.
 		includeFinished = true
 	}
 
-	s.ListByLabel(w, r, ScheduledEventLabel, id, includeFinished)
+	s.ListByLabel(w, r, util.ScheduledEventLabel, id, includeFinished)
 
 	glog.V(2).Infof("listed progress for scheduledevent %s", id)
 }
@@ -101,7 +98,7 @@ func (s ProgressServer) ListForUserFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	s.ListByLabel(w, r, UserLabel, user.Spec.Id, true)
+	s.ListByLabel(w, r, util.UserLabel, user.Spec.Id, true)
 }
 
 /*
@@ -125,7 +122,7 @@ func (s ProgressServer) ListByUserFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.ListByLabel(w, r, UserLabel, id, true)
+	s.ListByLabel(w, r, util.UserLabel, id, true)
 
 	glog.V(2).Infof("listed progress for user %s", id)
 }
@@ -147,7 +144,7 @@ func (s ProgressServer) CountByScheduledEvent(w http.ResponseWriter, r *http.Req
 	}
 	countMap := map[string]int{}
 	for _, p := range progress.Items {
-		se := p.Labels[ScheduledEventLabel]
+		se := p.Labels[util.ScheduledEventLabel]
 		if _, ok := countMap[se]; ok {
 			countMap[se] = countMap[se] + 1
 		} else {
@@ -178,7 +175,7 @@ func (s ProgressServer) ListByLabel(w http.ResponseWriter, r *http.Request, labe
 
 	preparedProgress := []AdminPreparedProgress{}
 	for _, p := range progress.Items {
-		pProgress := AdminPreparedProgress{p.Labels[SessionLabel], p.Spec}
+		pProgress := AdminPreparedProgress{p.Labels[util.SessionLabel], p.Spec}
 		preparedProgress = append(preparedProgress, pProgress)
 	}
 
@@ -226,7 +223,7 @@ func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", SessionLabel, id, UserLabel, user.Spec.Id)})
+		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", util.SessionLabel, id, util.UserLabel, user.Spec.Id)})
 
 	if err != nil {
 		glog.Errorf("error while retrieving progress %v", err)

@@ -130,7 +130,7 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.ScheduledEvent{}, func(cv *crder.Version) {
 					cv.
-						WithColumn("AccessCode", ".status.access_code_id").
+						WithColumn("AccessCode", ".spec.access_code").
 						WithColumn("Active", ".status.active").
 						WithColumn("Finished", ".status.finished").
 						WithStatus()

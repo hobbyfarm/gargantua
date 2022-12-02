@@ -9,8 +9,6 @@ import (
 
 const (
 	k8sRbacGroup = "rbac.authorization.k8s.io"
-	rbacManagedLabel   = "rbac.hobbyfarm.io/managed"
-	userLabel = "hobbyfarm.io/user"
 	roleResourcePlural = "roles"
 	roleBindingResourcePlural = "rolebindings"
 )

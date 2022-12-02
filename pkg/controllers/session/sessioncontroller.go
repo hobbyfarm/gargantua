@@ -19,8 +19,6 @@ import (
 
 const (
 	SessionExpireTime = time.Hour * 3
-	SessionLabel      = "hobbyfarm.io/session"
-	UserSessionLabel  = "hobbyfarm.io/user"
 )
 
 type SessionController struct {
@@ -311,7 +309,7 @@ func (s *SessionController) FinishProgress(sessionId string, userId string) {
 	now := time.Now()
 
 	progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", SessionLabel, sessionId, UserSessionLabel, userId)})
+		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", util.SessionLabel, sessionId, util.UserLabel, userId)})
 
 	if err != nil {
 		glog.Errorf("error while retrieving progress %v", err)
