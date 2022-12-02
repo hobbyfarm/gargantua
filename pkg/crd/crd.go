@@ -18,7 +18,8 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 						WithColumn("Status", ".status.status").
 						WithColumn("Allocated", ".status.allocated").
 						WithColumn("PublicIP", ".status.public_ip").
-						WithColumn("PrivateIP", ".status.private_ip")
+						WithColumn("PrivateIP", ".status.private_ip").
+						WithStatus()
 				})
 		}),
 		hobbyfarmCRD(&v1.VirtualMachineClaim{}, func(c *crder.CRD) {
@@ -28,7 +29,8 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 					cv.
 						WithColumn("BindMode", ".status.bind_mode").
 						WithColumn("Bound", ".status.bound").
-						WithColumn("Ready", ".status.ready")
+						WithColumn("Ready", ".status.ready").
+						WithStatus()
 				})
 		}),
 		hobbyfarmCRD(&v1.VirtualMachineTemplate{}, func(c *crder.CRD) {
@@ -39,7 +41,9 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 		hobbyfarmCRD(&v1.Environment{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
-				AddVersion("v1", &v1.Environment{}, nil)
+				AddVersion("v1", &v1.Environment{}, func(cv *crder.Version) {
+					cv.WithStatus()
+				})
 		}),
 		hobbyfarmCRD(&v1.VirtualMachineSet{}, func(c *crder.CRD) {
 			c.
@@ -47,7 +51,8 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 				AddVersion("v1", &v1.VirtualMachineSet{}, func(cv *crder.Version) {
 					cv.
 						WithColumn("Available", ".status.available").
-						WithColumn("Provisioned", ".status.provisioned")
+						WithColumn("Provisioned", ".status.provisioned").
+						WithStatus()
 				})
 		}),
 		hobbyfarmCRD(&v1.Course{}, func(c *crder.CRD) {
@@ -69,7 +74,8 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 						WithColumn("Active", ".status.active").
 						WithColumn("Finished", ".status.finished").
 						WithColumn("StartTime", ".status.start_time").
-						WithColumn("ExpirationTime", ".status.expiration_time")
+						WithColumn("ExpirationTime", ".status.expiration_time").
+						WithStatus()
 				})
 		}),
 		hobbyfarmCRD(&v1.Progress{}, func(c *crder.CRD) {
@@ -126,7 +132,8 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 					cv.
 						WithColumn("AccessCode", ".spec.access_code").
 						WithColumn("Active", ".status.active").
-						WithColumn("Finished", ".status.finished")
+						WithColumn("Finished", ".status.finished").
+						WithStatus()
 				})
 		}),
 		hobbyfarmCRD(&v1.DynamicBindConfiguration{}, func(c *crder.CRD) {
@@ -141,7 +148,8 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 					cv.
 						WithColumn("CurrentAttempts", ".status.current_attempts").
 						WithColumn("Expired", ".status.expired").
-						WithColumn("Fulfilled", ".status.fulfilled")
+						WithColumn("Fulfilled", ".status.fulfilled").
+						WithStatus()
 				})
 		}),
 		terraformCRD(&terraformv1.Module{}, func(c *crder.CRD) {

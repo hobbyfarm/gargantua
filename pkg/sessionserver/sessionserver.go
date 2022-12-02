@@ -273,9 +273,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 			labels[fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", vmTemplateName)] = "true"
 		}
 		virtualMachineClaim.Spec.UserId = user.Spec.Id
-		virtualMachineClaim.Status.Bound = false
-		virtualMachineClaim.Status.Ready = false
-		virtualMachineClaim.Status.BindMode = bindMode
+
 		virtualMachineClaim.Spec.DynamicCapable = true
 
 		if restrictedBind {
@@ -291,6 +289,18 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 			util.ReturnHTTPMessage(w, r, 500, "error", "something happened")
 			return
 		}
+
+		createdVmClaim.Status.Bound = false
+		createdVmClaim.Status.Ready = false
+		createdVmClaim.Status.BindMode = bindMode
+
+		_, err = sss.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).UpdateStatus(sss.ctx, createdVmClaim, metav1.UpdateOptions{})
+		if err != nil {
+			glog.Errorf("error updating vm claim status %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "error", "something happened")
+			return
+		}
+
 		session.Spec.VmClaimSet[index] = createdVmClaim.Spec.Id
 	}
 
@@ -304,14 +314,22 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		ssTimeout = newSSTimeout
 	}
 
-	session.Status.StartTime = now.Format(time.UnixDate)
+	createdSession, err := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Create(sss.ctx, &session, metav1.CreateOptions{})
+
+	if err != nil {
+		glog.Errorf("error creating session %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "something happened")
+		return
+	}
+
+	createdSession.Status.StartTime = now.Format(time.UnixDate)
 	duration, _ := time.ParseDuration(ssTimeout)
 
-	session.Status.ExpirationTime = now.Add(duration).Format(time.UnixDate)
-	session.Status.Active = true
-	session.Status.Finished = false
+	createdSession.Status.ExpirationTime = now.Add(duration).Format(time.UnixDate)
+	createdSession.Status.Active = true
+	createdSession.Status.Finished = false
 
-	createdSession, err := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Create(sss.ctx, &session, metav1.CreateOptions{})
+	_, err = sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).UpdateStatus(sss.ctx, createdSession, metav1.UpdateOptions{})
 
 	if err != nil {
 		glog.Errorf("error creating session %v", err)
@@ -437,7 +455,7 @@ func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Requ
 		result.Status.Active = false
 		result.Status.Finished = false
 
-		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(sss.ctx, result, metav1.UpdateOptions{})
+		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).UpdateStatus(sss.ctx, result, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for environment")
 
 		return updateErr
@@ -539,7 +557,7 @@ func (sss SessionServer) KeepAliveSessionFunc(w http.ResponseWriter, r *http.Req
 
 		result.Status.ExpirationTime = expiration
 
-		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(sss.ctx, result, metav1.UpdateOptions{})
+		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).UpdateStatus(sss.ctx, result, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated expiration time for session")
 
 		return updateErr
@@ -625,7 +643,7 @@ func (sss SessionServer) PauseSessionFunc(w http.ResponseWriter, r *http.Request
 		result.Status.PausedTime = pauseExpiration
 		result.Status.Paused = true
 
-		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(sss.ctx, result, metav1.UpdateOptions{})
+		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).UpdateStatus(sss.ctx, result, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for course session")
 
 		return updateErr
@@ -706,7 +724,7 @@ func (sss SessionServer) ResumeSessionFunc(w http.ResponseWriter, r *http.Reques
 		result.Status.ExpirationTime = newExpiration
 		result.Status.Paused = false
 
-		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(sss.ctx, result, metav1.UpdateOptions{})
+		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).UpdateStatus(sss.ctx, result, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for session")
 
 		return updateErr

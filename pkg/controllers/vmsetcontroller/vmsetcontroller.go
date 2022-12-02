@@ -306,16 +306,6 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 					Provision:                provision,
 					VirtualMachineSetId:      vmset.Name,
 				},
-				Status: hfv1.VirtualMachineStatus{
-					Status:        hfv1.VmStatusRFP,
-					Allocated:     false,
-					Tainted:       false,
-					WsEndpoint:    env.Spec.WsEndpoint,
-					PublicIP:      "",
-					PrivateIP:     "",
-					EnvironmentId: env.Name,
-					Hostname:      "",
-				},
 			}
 
 
@@ -338,15 +328,38 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			// adding a custom finalizer for reconcile of vmsets
 			vm.SetFinalizers([]string{vmSetFinalizer})
 			vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Create(v.ctx, vm, metav1.CreateOptions{})
+
 			if err != nil {
 				glog.Error(err)
 			}
+
+			vm.Status = hfv1.VirtualMachineStatus{
+				Status:        hfv1.VmStatusRFP,
+				Allocated:     false,
+				Tainted:       false,
+				WsEndpoint:    env.Spec.WsEndpoint,
+				PublicIP:      "",
+				PrivateIP:     "",
+				EnvironmentId: env.Name,
+				Hostname:      "",
+			}
+
+			_, err = v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(v.ctx, vm, metav1.UpdateOptions{})
+
+
+
+			if err != nil {
+				glog.Error(err)
+			}
+
 
 			err = util.VerifyVM(v.vmLister, vm)
 			if err != nil {
 				glog.Error(err)
 			}
 		}
+
+		//TODO handle case of scaling down VMSets
 	}
 
 	vms, err := v.vmLister.List(labels.Set{
@@ -366,7 +379,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		provisionedCount++
 	}
 
-	if(provisionedCount < vmset.Spec.Count){
+	if(activeCount < vmset.Spec.Count){
 		glog.V(4).Infof("requeing VMset as there are not enough VMs ready")
 		v.enqueueVMSet(vmset)
 	}
@@ -386,7 +399,7 @@ func (v *VirtualMachineSetController) updateVMSetCount(vmSetName string, active 
 		result.Status.ProvisionedCount = prov
 		result.Status.AvailableCount = active
 
-		vms, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Update(v.ctx, result, metav1.UpdateOptions{})
+		vms, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).UpdateStatus(v.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			glog.Error(updateErr)
 			return updateErr
