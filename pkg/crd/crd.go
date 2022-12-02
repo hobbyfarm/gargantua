@@ -157,8 +157,7 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 				IsNamespaced(true).
 				AddVersion("v1", &terraformv1.Module{}, func(cv *crder.Version) {
 					cv.
-						WithColumn("CheckTime", ".status.time").
-						WithStatus()
+						WithColumn("CheckTime", ".status.time")
 				})
 		}),
 		terraformCRD(&terraformv1.State{}, func(c *crder.CRD) {
@@ -168,8 +167,7 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 					cv.
 						WithColumn("LastRunHash", ".status.lasRunHash").
 						WithColumn("ExecutionName", ".status.executionName").
-						WithColumn("StatePlanName", ".status.executionPlanName").
-						WithStatus()
+						WithColumn("StatePlanName", ".status.executionPlanName")
 				})
 		}),
 		terraformCRD(&terraformv1.Execution{}, func(c *crder.CRD) {
@@ -178,8 +176,7 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 				AddVersion("v1", &terraformv1.Execution{}, func(cv *crder.Version) {
 					cv.
 						WithColumn("JobName", ".status.jobName").
-						WithColumn("PlanConfirmed", ".status.planConfirmed").
-						WithStatus()
+						WithColumn("PlanConfirmed", ".status.planConfirmed")
 				})
 		}),
 	}
