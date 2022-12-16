@@ -2,8 +2,13 @@ package progressserver
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -13,9 +18,6 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 const (
@@ -23,7 +25,7 @@ const (
 	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
 	SessionLabel        = "hobbyfarm.io/session"
 	UserLabel           = "hobbyfarm.io/user"
-	resourcePlural		= "progresses"
+	resourcePlural      = "progresses"
 )
 
 type ProgressServer struct {
@@ -35,6 +37,12 @@ type ProgressServer struct {
 type AdminPreparedProgress struct {
 	Session string `json:"session"`
 	hfv1.ProgressSpec
+}
+
+type AdminPreparedProgressWithScenarioName struct {
+	Session string `json:"session"`
+	hfv1.ProgressSpec
+	ScenarioName string `json:"scenario_name"`
 }
 
 type ScheduledEventProgressCount struct {
@@ -101,18 +109,18 @@ func (s ProgressServer) ListByRangeFunc(w http.ResponseWriter, r *http.Request) 
 
 	fromString := r.URL.Query().Get("from")
 	if fromString == "" {
-	  util.ReturnHTTPMessage(w, r, 500, "error", "no start of range passed in")
-	  return
+		util.ReturnHTTPMessage(w, r, 500, "error", "no start of range passed in")
+		return
 	}
 
 	start, err := time.Parse(time.UnixDate, fromString)
 
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "error parsing start time")
-	   return
+		return
 	}
 
-	toString := r.URL.Query().Get("from")
+	toString := r.URL.Query().Get("to")
 	if toString == "" {
 		util.ReturnHTTPMessage(w, r, 500, "error", "no end of range passed in")
 		return
@@ -122,7 +130,7 @@ func (s ProgressServer) ListByRangeFunc(w http.ResponseWriter, r *http.Request) 
 
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "error parsing end time")
-	   return
+		return
 	}
 
 	s.ListByRange(w, r, start, end, true)
@@ -218,14 +226,26 @@ func (s ProgressServer) ListByRange(w http.ResponseWriter, r *http.Request, star
 	v1TimeStart := metav1.NewTime(start)
 	v1TimeEnd := metav1.NewTime(end)
 
-	preparedProgress := []AdminPreparedProgress{}
+	preparedProgress := []AdminPreparedProgressWithScenarioName{}
 	for _, p := range progress.Items {
 		//CreationTimestamp of progress is out of range
-		if(p.CreationTimestamp.Before(&v1TimeStart) || v1TimeEnd.Before(&p.CreationTimestamp)){
+		if p.CreationTimestamp.Before(&v1TimeStart) || v1TimeEnd.Before(&p.CreationTimestamp) {
 			continue
 		}
-		pProgress := AdminPreparedProgress{p.Labels[SessionLabel], p.Spec}
-		preparedProgress = append(preparedProgress, pProgress)
+		scenario, err := s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).Get(s.ctx, p.Spec.Scenario, metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("error while retrieving scenario %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "error", "no scenarios found")
+			return
+		}
+		scenarioName, err := base64.StdEncoding.DecodeString(scenario.Spec.Name)
+
+		if err != nil {
+			glog.Errorf("Error decoding title of scenario: %s %v", scenario.Name, err)
+		}
+
+		pProgressWithScenarioName := AdminPreparedProgressWithScenarioName{p.Labels[SessionLabel], p.Spec, string(scenarioName)}
+		preparedProgress = append(preparedProgress, pProgressWithScenarioName)
 	}
 
 	encodedProgress, err := json.Marshal(preparedProgress)
