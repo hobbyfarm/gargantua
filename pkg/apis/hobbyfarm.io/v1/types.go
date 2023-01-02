@@ -381,7 +381,6 @@ type AccessCodeSpec struct {
 	Scenarios           []string `json:"scenarios"`
 	Courses             []string `json:"courses"`
 	Expiration          string   `json:"expiration"`
-	VirtualMachineSets  []string `json:"vmsets"`
 	RestrictedBind      bool     `json:"restricted_bind"`
 	RestrictedBindValue string   `json:"restricted_bind_value"`
 	Printable           bool     `json:"printable"`
@@ -449,7 +448,6 @@ type ScheduledEventSpec struct {
 }
 
 type ScheduledEventStatus struct {
-	AccessCodeId       string   `json:"access_code_id"`
 	VirtualMachineSets []string `json:"vmsets"`
 	Active             bool     `json:"active"`
 	Provisioned        bool     `json:"provisioned"`

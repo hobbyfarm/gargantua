@@ -12,7 +12,6 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +36,6 @@ var baseNameDynamicPrefix string
 const (
 	ScheduledEventBaseDelay = 5 * time.Millisecond
 	ScheduledEventMaxDelay  = 300 * time.Second
-	ScheduledEventLabel     = "hobbyfarm.io/scheduledevent"
 )
 
 func init() {
@@ -183,7 +181,7 @@ func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent
 		seToUpdate.Status.Ready = false
 		seToUpdate.Status.Finished = true
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, seToUpdate, metav1.UpdateOptions{})
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, seToUpdate, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for scheduled event")
 
 		return updateErr
@@ -199,7 +197,7 @@ func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent
 func (s ScheduledEventController) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
 	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
@@ -211,7 +209,7 @@ func (s ScheduledEventController) deleteVMSetsFromScheduledEvent(se *hfv1.Schedu
 func (s ScheduledEventController) deleteProgressFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
 	err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
@@ -223,7 +221,7 @@ func (s ScheduledEventController) deleteProgressFromScheduledEvent(se *hfv1.Sche
 func (s ScheduledEventController) finishSessionsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// get a list of sessions for the user
 	sessionList, err := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", sessionserver.AccessCodeLabel, se.Spec.AccessCode),
+		LabelSelector: fmt.Sprintf("%s=%s", util.AccessCodeLabel, se.Spec.AccessCode),
 	})
 
 	now := time.Now().Format(time.UnixDate)
@@ -239,7 +237,7 @@ func (s ScheduledEventController) finishSessionsFromScheduledEvent(se *hfv1.Sche
 			result.Status.Active = false
 			result.Status.Finished = false
 
-			_, updateErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(s.ctx, result, metav1.UpdateOptions{})
+			_, updateErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).UpdateStatus(s.ctx, result, metav1.UpdateOptions{})
 			glog.V(4).Infof("updated result for session")
 
 			return updateErr
@@ -309,7 +307,7 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 
 				//1. Find existing VMset that match this SE and the current environment
 				existingVMSets, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("%s=%s,environment=%s,virtualmachinetemplate.hobbyfarm.io/%s=true", ScheduledEventLabel, se.Name, envName, templateName),
+					LabelSelector: fmt.Sprintf("%s=%s,environment=%s,virtualmachinetemplate.hobbyfarm.io/%s=true", util.ScheduledEventLabel, se.Name, envName, templateName),
 				})
 
 				if err != nil || len(existingVMSets.Items) == 0 { // create new vmset if no existing one was found
@@ -329,7 +327,7 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 							},
 							Labels: map[string]string{
 								"environment":    env.Name,
-								ScheduledEventLabel: se.Name,
+								util.ScheduledEventLabel: se.Name,
 								fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", templateName): "true",
 							},
 						},
@@ -407,7 +405,7 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 				},
 				Labels: map[string]string{
 					"environment":       env.Name,
-					ScheduledEventLabel: se.Name,
+					util.ScheduledEventLabel: se.Name,
 				},
 			},
 			Spec: hfv1.DynamicBindConfigurationSpec{
@@ -434,6 +432,38 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 		}
 	}
 
+	err := s.createAccessCode(se)
+	if err != nil {
+		return err
+	}
+
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+
+		seToUpdate, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, se.Name, metav1.GetOptions{})
+
+		if err != nil {
+			return err
+		}
+
+		seToUpdate.Status.Provisioned = true
+		seToUpdate.Status.VirtualMachineSets = vmSets
+		seToUpdate.Status.Ready = false
+		seToUpdate.Status.Finished = false
+
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, seToUpdate, metav1.UpdateOptions{})
+		glog.V(4).Infof("updated result for scheduled event")
+
+		return updateErr
+	})
+	if retryErr != nil {
+		return retryErr
+	}
+
+	return nil
+
+}
+
+func (s ScheduledEventController) createAccessCode(se *hfv1.ScheduledEvent) error {
 	ac := &hfv1.AccessCode{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: se.Spec.AccessCode,
@@ -446,7 +476,8 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 				},
 			},
 			Labels: map[string]string{
-				ScheduledEventLabel: se.Name,
+				util.ScheduledEventLabel: se.Name,
+				util.AccessCodeLabel: se.Spec.AccessCode,
 			},
 		},
 		Spec: hfv1.AccessCodeSpec{
@@ -454,7 +485,6 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 			Description:        "Generated by ScheduledEventController",
 			Scenarios:          se.Spec.Scenarios,
 			Courses:            se.Spec.Courses,
-			VirtualMachineSets: vmSets,
 			Expiration:         se.Spec.EndTime,
 		},
 	}
@@ -472,42 +502,20 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 		ac.Spec.Printable = false
 	}
 
+
 	ac, err := s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Create(s.ctx, ac, metav1.CreateOptions{})
 	if err != nil {
-		glog.Error(err)
-	}
-
-	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-
-		seToUpdate, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, se.Name, metav1.GetOptions{})
-
-		if err != nil {
-			return err
-		}
-
-		seToUpdate.Status.Provisioned = true
-		seToUpdate.Status.VirtualMachineSets = vmSets
-		seToUpdate.Status.Ready = false
-		seToUpdate.Status.Finished = false
-
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, seToUpdate, metav1.UpdateOptions{})
-		glog.V(4).Infof("updated result for scheduled event")
-
-		return updateErr
-	})
-	if retryErr != nil {
-		return retryErr
+		return err
 	}
 
 	return nil
-
 }
 
 func (s ScheduledEventController) verifyScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// check the state of the vmset and mark the sevent as ready if everything is OK
 	glog.V(6).Infof("ScheduledEvent %s is in provisioned status, checking status of VMSet Provisioning", se.Name)
 	vmsList, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
@@ -516,6 +524,30 @@ func (s ScheduledEventController) verifyScheduledEvent(se *hfv1.ScheduledEvent) 
 	for _, vms := range vmsList.Items {
 		if vms.Status.ProvisionedCount < vms.Spec.Count {
 			return fmt.Errorf("scheduled event is not ready yet")
+		}
+	}
+
+	// Validate AccessCode existence and has label set
+	ac, err := s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Get(s.ctx, se.Spec.AccessCode, metav1.GetOptions{})
+	if err != nil {
+		err = s.createAccessCode(se)
+
+		if err != nil {
+			return err
+		}
+
+	} else if ac.Labels[util.AccessCodeLabel] != ac.Spec.Code {
+		err = s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
+		})
+		if err != nil {
+			return err
+		}
+
+		err = s.createAccessCode(se)
+
+		if err != nil {
+			return err
 		}
 	}
 
@@ -531,7 +563,7 @@ func (s ScheduledEventController) verifyScheduledEvent(se *hfv1.ScheduledEvent) 
 		seToUpdate.Status.Ready = true
 		seToUpdate.Status.Finished = false
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, seToUpdate, metav1.UpdateOptions{})
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, seToUpdate, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for scheduled event")
 
 		return updateErr
@@ -594,7 +626,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 	if (se.Spec.OnDemand && len(se.Status.VirtualMachineSets) > 0){
 		vmSets := []string{}
 		se.Status.VirtualMachineSets = vmSets
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, se, metav1.UpdateOptions{})
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, se, metav1.UpdateOptions{})
 		s.deleteVMSetsFromScheduledEvent(se)
 		return updateErr
 	}

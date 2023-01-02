@@ -12,7 +12,6 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -287,7 +286,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 						"environment":                      chosenDynamicBindConfiguration.Spec.Environment,
 						"bound":                            "true",
 						"ready":                            "false",
-						scheduledevent.ScheduledEventLabel: chosenDynamicBindConfiguration.ObjectMeta.Labels[scheduledevent.ScheduledEventLabel],
+						util.ScheduledEventLabel: chosenDynamicBindConfiguration.ObjectMeta.Labels[util.ScheduledEventLabel],
 					},
 				},
 				Spec: hfv1.VirtualMachineSpec{
@@ -300,16 +299,6 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 					Provision:                provision,
 					VirtualMachineSetId:      "",
 				},
-				Status: hfv1.VirtualMachineStatus{
-					Status:        hfv1.VmStatusRFP,
-					Allocated:     true,
-					Tainted:       false,
-					WsEndpoint:    chosenEnvironment.Spec.WsEndpoint,
-					PublicIP:      "",
-					PrivateIP:     "",
-					EnvironmentId: chosenEnvironment.Name,
-					Hostname:      "",
-				},
 			}
 
 			vmt, err := d.vmtLister.VirtualMachineTemplates(util.GetReleaseNamespace()).Get(vmX.Template)
@@ -320,10 +309,10 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 
 			config := util.GetVMConfig(chosenEnvironment,vmt)
       
-      protocol, exists := config["protocol"]
-      if exists {
+      		protocol, exists := config["protocol"]
+      		if exists {
 			   vm.Spec.Protocol = protocol
-		  }
+		  	}
 
 			sshUser, exists := config["ssh_username"]
 			if exists {
@@ -346,9 +335,28 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 				vm.ObjectMeta.Labels["restrictedbind"] = "false"
 			}
 			newVm, err := d.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Create(d.ctx, vm, metav1.CreateOptions{})
+
 			if err != nil {
 				glog.Error(err)
 			}
+
+			newVm.Status = hfv1.VirtualMachineStatus{
+				Status:        hfv1.VmStatusRFP,
+				Allocated:     true,
+				Tainted:       false,
+				WsEndpoint:    chosenEnvironment.Spec.WsEndpoint,
+				PublicIP:      "",
+				PrivateIP:     "",
+				EnvironmentId: chosenEnvironment.Name,
+				Hostname:      "",
+			}
+
+			_, err = d.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(d.ctx, newVm, metav1.UpdateOptions{})
+
+			if err != nil {
+				glog.Error(err)
+			}
+
 			virtualMachines[vmClaimVMName] = newVm.Name
 		}
 
@@ -380,7 +388,7 @@ func (d *DynamicBindController) updateDynamicBindRequestStatus(dynamicBindAttemp
 		result.Status.DynamicBindConfigurationId = dynamicBindConfigurationId
 		result.Status.VirtualMachineIds = virtualMachineIds
 
-		_, updateErr := d.hfClientSet.HobbyfarmV1().DynamicBindRequests(util.GetReleaseNamespace()).Update(d.ctx, result, metav1.UpdateOptions{})
+		_, updateErr := d.hfClientSet.HobbyfarmV1().DynamicBindRequests(util.GetReleaseNamespace()).UpdateStatus(d.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}

@@ -32,7 +32,7 @@ func (s Server) ListRoles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	listOptions := metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%t", rbacManagedLabel, true),
+		LabelSelector: fmt.Sprintf("%s=%t", util.RBACManagedLabel, true),
 	}
 
 	roles, err := s.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).List(r.Context(), listOptions)
@@ -194,7 +194,7 @@ func (s Server) getRole(w http.ResponseWriter, r *http.Request) (*rbacv1.Role, e
 		return nil, err
 	}
 
-	if _, ok := role.Labels[rbacManagedLabel]; !ok {
+	if _, ok := role.Labels[util.RBACManagedLabel]; !ok {
 		// this isn't a hobbyfarm role. we don't serve your kind here
 		util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", "role not managed by hobbyfarm")
 		return nil, fmt.Errorf("role not managed by hobbyfarm")
@@ -236,7 +236,7 @@ func (s Server) marshalRole(preparedRole *PreparedRole) (*rbacv1.Role, error) {
 			Name:      preparedRole.Name,
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
-				rbacManagedLabel: "true",
+				util.RBACManagedLabel: "true",
 			},
 		},
 		Rules: []rbacv1.PolicyRule{},

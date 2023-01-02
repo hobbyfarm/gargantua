@@ -6,9 +6,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
-	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
-
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
@@ -224,17 +221,17 @@ func (v *VMClaimController) processNextVMClaim() bool {
 }
 
 func (v *VMClaimController) updateVMClaimStatus(bound bool, ready bool, vmc *hfv1.VirtualMachineClaim) error {
-
-	vmc.Status.Bound = bound
-	vmc.Status.Ready = ready
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		vmc, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Update(v.ctx, vmc, metav1.UpdateOptions{})
-		if updateErr != nil {
-			return updateErr
+		newestVmc, err := v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Get(v.ctx, vmc.Name, metav1.GetOptions{})
+		newestVmc.Status.Bound = bound
+		newestVmc.Status.Ready = ready
+		newestVmc, err = v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).UpdateStatus(v.ctx, newestVmc, metav1.UpdateOptions{})
+		if err != nil {
+			return err
 		}
 		glog.V(4).Infof("updated result for virtual machine claim")
 
-		verifyErr := util.VerifyVMClaim(v.vmClaimLister, vmc)
+		verifyErr := util.VerifyVMClaim(v.vmClaimLister, newestVmc)
 
 		if verifyErr != nil {
 			return verifyErr
@@ -297,7 +294,7 @@ func (v *VMClaimController) processVMClaim(vmc *hfv1.VirtualMachineClaim) (err e
 }
 
 func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim) (err error) {
-	accessCode, ok := vmc.Labels[sessionserver.AccessCodeLabel]
+	accessCode, ok := vmc.Labels[util.AccessCodeLabel]
 	if !ok {
 		glog.Error("accessCode label not set on vmc, aborting")
 		return fmt.Errorf("accessCode label not set on vmc, aborting")
@@ -329,7 +326,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 					"environment":                      env.Name,
 					"bound":                            "true",
 					"ready":                            "false",
-					scheduledevent.ScheduledEventLabel: seName,
+					util.ScheduledEventLabel: seName,
 				},
 			},
 			Spec: hfv1.VirtualMachineSpec{
@@ -341,15 +338,6 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 				UserId:                   vmc.Spec.UserId,
 				Provision:                true,
 				VirtualMachineSetId:      "",
-			},
-			Status: hfv1.VirtualMachineStatus{
-				Status:        hfv1.VmStatusRFP,
-				Allocated:     true,
-				Tainted:       false,
-				WsEndpoint:    env.Spec.WsEndpoint,
-				EnvironmentId: env.Name,
-				PublicIP:      "",
-				PrivateIP:     "",
 			},
 		}
 		// used to later repopulate the info back //
@@ -391,13 +379,34 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 
 		vm.Labels["hobbyfarm.io/vmtemplate"] = vm.Spec.VirtualMachineTemplateId
 
-		_, err = v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Create(v.ctx, vm, metav1.CreateOptions{})
+		createdVM, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Create(v.ctx, vm, metav1.CreateOptions{})
+		if err != nil {
+			return err
+		}
+
+		createdVM.Status = hfv1.VirtualMachineStatus{
+			Status:        hfv1.VmStatusRFP,
+			Allocated:     true,
+			Tainted:       false,
+			WsEndpoint:    env.Spec.WsEndpoint,
+			EnvironmentId: env.Name,
+			PublicIP:      "",
+			PrivateIP:     "",
+		}
+
+		_, err = v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(v.ctx, createdVM, metav1.UpdateOptions{})
 		if err != nil {
 			return err
 		}
 	}
 
 	vmc.Spec.VirtualMachines = vmMap
+
+	_, err = v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Update(v.ctx, vmc, metav1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -417,7 +426,7 @@ func (v *VMClaimController) findEnvironmentForVM(accessCode string) (env *hfv1.E
 	}
 
 	dbcList, err := v.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", scheduledevent.ScheduledEventLabel, seName),
+		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, seName),
 	})
 
 	if err != nil {
@@ -474,7 +483,7 @@ func (v *VMClaimController) findScheduledEvent(accessCode string) (schedEvent st
 }
 
 func (v *VMClaimController) findVirtualMachines(vmc *hfv1.VirtualMachineClaim) (err error) {
-	accessCode, ok := vmc.Labels[sessionserver.AccessCodeLabel]
+	accessCode, ok := vmc.Labels[util.AccessCodeLabel]
 	if !ok {
 		glog.Error("accessCode label not set on vmc, aborting")
 		return fmt.Errorf("accessCode label not set on vmc, aborting")
@@ -501,6 +510,13 @@ func (v *VMClaimController) findVirtualMachines(vmc *hfv1.VirtualMachineClaim) (
 		}
 	}
 	vmc.Spec.VirtualMachines = vmMap
+
+	_, err = v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Update(v.ctx, vmc, metav1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
+
+	
 	return nil
 }
 
@@ -511,16 +527,23 @@ func  (v *VMClaimController) assignVM(vmClaimId string, user string, vmId string
 			return fmt.Errorf("error retrieving latest version of Virtual Machine %s: %v", vmId, getErr)
 		}
 
-		result.Status.Allocated = true
-		result.Spec.VirtualMachineClaimId = vmClaimId
-		result.Spec.UserId = user
 
 		result.Labels["bound"] = "true"
+		result.Spec.VirtualMachineClaimId = vmClaimId
+		result.Spec.UserId = user
 
 		vm, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(v.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
+
+		vm.Status.Allocated = true
+
+		_, updateErr = v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(v.ctx, vm, metav1.UpdateOptions{})
+		if updateErr != nil {
+			return updateErr
+		}
+
 		glog.V(4).Infof("updated result for virtual machine")
 
 		verifyErr := util.VerifyVM(v.vmLister, vm)

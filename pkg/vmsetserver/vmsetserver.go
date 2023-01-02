@@ -20,7 +20,6 @@ import (
 
 const (
 	idIndex             = "vms.hobbyfarm.io/id-index"
-	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
 	resourcePlural		= "virtualmachinesets"
 )
 
@@ -68,7 +67,7 @@ func (vms VMSetServer) GetVMSetListByScheduledEventFunc(w http.ResponseWriter, r
 		return
 	}
 
-	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, id)}
+	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, id)}
 
 	vms.GetVMSetListFunc(w, r, lo)
 }

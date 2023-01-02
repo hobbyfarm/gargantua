@@ -19,8 +19,6 @@ import (
 
 const (
 	SessionExpireTime = time.Hour * 3
-	SessionLabel      = "hobbyfarm.io/session"
-	UserSessionLabel  = "hobbyfarm.io/user"
 )
 
 type SessionController struct {
@@ -217,7 +215,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 			result.Status.Finished = true
 			result.Status.Active = false
 
-			result, updateErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(s.ctx, result, metav1.UpdateOptions{})
+			result, updateErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).UpdateStatus(s.ctx, result, metav1.UpdateOptions{})
 			if updateErr != nil {
 				return updateErr
 			}
@@ -252,9 +250,15 @@ func (s *SessionController) taintVM(vmName string) error {
 			return getErr
 		}
 		result.Labels["ready"] = "false"
-		result.Status.Tainted = true
 
 		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(s.ctx, result, metav1.UpdateOptions{})
+		if updateErr != nil {
+			return updateErr
+		}
+
+		result.Status.Tainted = true
+
+		result, updateErr = s.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(s.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
@@ -283,7 +287,7 @@ func (s *SessionController) taintVMC(vmcName string) error {
 		}
 		result.Status.Tainted = true
 
-		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Update(s.ctx, result, metav1.UpdateOptions{})
+		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).UpdateStatus(s.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
@@ -305,7 +309,7 @@ func (s *SessionController) FinishProgress(sessionId string, userId string) {
 	now := time.Now()
 
 	progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", SessionLabel, sessionId, UserSessionLabel, userId)})
+		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", util.SessionLabel, sessionId, util.UserLabel, userId)})
 
 	if err != nil {
 		glog.Errorf("error while retrieving progress %v", err)
