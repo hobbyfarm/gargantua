@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -229,9 +228,6 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 
 			config["name"] = vm.Name
 			config["public_key"] = pubKey
-			config["cpu"] = strconv.Itoa(vmt.Spec.Resources.CPU)
-			config["memory"] = strconv.Itoa(vmt.Spec.Resources.Memory)
-			config["disk"] = strconv.Itoa(vmt.Spec.Resources.Storage)
 
 			image, exists := config["image"]
 			if !exists ||  image == "" {

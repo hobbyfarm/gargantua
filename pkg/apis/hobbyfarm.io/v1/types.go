@@ -124,7 +124,6 @@ type VirtualMachineTemplateSpec struct {
 	Id        string            `json:"id"`
 	Name      string            `json:"name"`  // 2x4, etc.
 	Image     string            `json:"image"` // ubuntu-18.04
-	Resources CMSStruct         `json:"resources"`
 	ConfigMap map[string]string `json:"config_map"`
 }
 
@@ -157,23 +156,11 @@ type EnvironmentSpec struct {
 	EnvironmentSpecifics map[string]string            `json:"environment_specifics"`
 	IPTranslationMap     map[string]string            `json:"ip_translation_map"`
 	WsEndpoint           string                       `json:"ws_endpoint"`
-	CapacityMode         CapacityMode                 `json:"capacity_mode"`
-	BurstCapable         bool                         `json:"burst_capable"`
 	CountCapacity        map[string]int               `json:"count_capacity"`
-	Capacity             CMSStruct                    `json:"capacity"`
-	BurstCountCapacity   map[string]int               `json:"burst_count_capacity"`
-	BurstCapacity        CMSStruct                    `json:"burst_capacity"`
 }
 
 type EnvironmentStatus struct {
-	Used           CMSStruct      `json:"used"`
 	AvailableCount map[string]int `json:"available_count"`
-}
-
-type CMSStruct struct {
-	CPU     int `json:"cpu"`     // cores
-	Memory  int `json:"memory"`  // in MB
-	Storage int `json:"storage"` // in GB
 }
 
 // +genclient
@@ -485,7 +472,6 @@ type DynamicBindConfigurationSpec struct {
 	RestrictedBind      bool           `json:"restricted_bind"`
 	RestrictedBindValue string         `json:"restricted_bind_value"`
 	BurstCountCapacity  map[string]int `json:"burst_count_capacity"`
-	BurstCapacity       CMSStruct      `json:"burst_capacity"`
 }
 
 // +genclient

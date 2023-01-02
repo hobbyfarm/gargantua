@@ -6,4 +6,5 @@ const (
 	SessionLabel = 			"hobbyfarm.io/sessionlabel"
 	UserLabel = 			"hobbyfarm.io/user"
 	RBACManagedLabel =		"rbac.hobbyfarm.io/managed"
+	EnvironmentLabel =		"hobbyfarm.io/environment"
 )

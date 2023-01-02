@@ -161,25 +161,11 @@ func (v VirtualMachineTemplateServer) CreateFunc(w http.ResponseWriter, r *http.
 		return
 	}
 
-	resourcesRaw := r.PostFormValue("resources")  // no validation, resources not required
 	configMapRaw := r.PostFormValue("config_map") // no validation, config_map not required
 
 	vmTemplate := &hfv1.VirtualMachineTemplate{Spec: hfv1.VirtualMachineTemplateSpec{}}
 
-	resources := hfv1.CMSStruct{}
 	configMap := map[string]string{}
-	if resourcesRaw != "" {
-		// attempt to decode if resources passed in
-		err := json.Unmarshal([]byte(resourcesRaw), &resources)
-		if err != nil {
-			glog.Errorf("error while unmarshalling resources: %v", err)
-			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing resources")
-			return
-		}
-		// no error, assign to vmtemplate
-		vmTemplate.Spec.Resources = resources
-	}
-
 	if configMapRaw != "" {
 		// attempt to decode if config_map passed in
 		err := json.Unmarshal([]byte(configMapRaw), &configMap)
@@ -240,7 +226,6 @@ func (v VirtualMachineTemplateServer) UpdateFunc(w http.ResponseWriter, r *http.
 
 		name := r.PostFormValue("name")
 		image := r.PostFormValue("image")
-		resourcesRaw := r.PostFormValue("resources")
 		configMapRaw := r.PostFormValue("config_map")
 
 		if name != "" {
@@ -249,16 +234,6 @@ func (v VirtualMachineTemplateServer) UpdateFunc(w http.ResponseWriter, r *http.
 
 		if image != "" {
 			vmTemplate.Spec.Image = image
-		}
-
-		if resourcesRaw != "" {
-			cms := hfv1.CMSStruct{}
-			err := json.Unmarshal([]byte(resourcesRaw), &cms)
-			if err != nil {
-				glog.Error(err)
-				return fmt.Errorf("bad")
-			}
-			vmTemplate.Spec.Resources = cms
 		}
 
 		if configMapRaw != "" {

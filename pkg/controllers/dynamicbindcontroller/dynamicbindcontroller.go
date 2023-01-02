@@ -186,11 +186,6 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 			return err
 		}
 
-		if !environment.Spec.BurstCapable {
-			glog.V(8).Infof("Environment %s is not burst capable. Ignoring.", environment.Name)
-			continue
-		}
-
 		suitable := true
 
 		needed := make(map[string]int)
@@ -205,52 +200,35 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 			}
 		}
 
-		if environment.Spec.CapacityMode == hfv1.CapacityModeRaw {
+		for vmTemplate, vmsNeeded := range needed {
+			// first, let's see if the environment itself has capacity 
 			currentVMs, err := d.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(d.ctx, metav1.ListOptions{
-				LabelSelector: fmt.Sprintf("dynamic=true,environment=%s", environment.Name),
+				LabelSelector: fmt.Sprintf("dynamic=true,%s=%s,template=%s", util.EnvironmentLabel, environment.Name, vmTemplate),
 			})
 			if err != nil {
 				glog.V(4).Infof("error retrieving current vm list, assuming environment empty")
 			}
+			availableVMCount := environment.Spec.CountCapacity[vmTemplate] - len(currentVMs.Items)
 
-			availableCapacity := util.AvailableRawCapacity(d.hfClientSet, environment.Spec.BurstCapacity, currentVMs.Items, d.ctx)
-			availableVMCount := util.MaxVMCountsRaw(d.hfClientSet, needed, *availableCapacity, d.ctx)
-
-			if availableVMCount <= 0 {
+			if availableVMCount < vmsNeeded {
+				// this environment does not suit us. move on.
 				suitable = false
+				break
 			}
 
-		} else {
-			for vmTemplate, vmsNeeded := range needed {
-				// first, let's see if the environment itself has capacity
+			// next check if the dynamicbindconfiguration has capacity
+			currentVMs, err = d.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(d.ctx, metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("dynamic=true,dynamicbindconfig=%s,template=%s", dynamicBindConfiguration.Spec.Id, vmTemplate),
+			})
+			if err != nil {
+				glog.V(4).Infof("error retrieving current vm list, assuming no machines")
+			}
+			availableVMCount = dynamicBindConfiguration.Spec.BurstCountCapacity[vmTemplate] - len(currentVMs.Items)
 
-				currentVMs, err := d.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(d.ctx, metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("dynamic=true,environment=%s,template=%s", environment.Name, vmTemplate),
-				})
-				if err != nil {
-					glog.V(4).Infof("error retrieving current vm list, assuming environment empty")
-				}
-				availableVMCount := environment.Spec.BurstCountCapacity[vmTemplate] - len(currentVMs.Items)
-
-				if availableVMCount < vmsNeeded {
-					// this environment does not suit us. move on.
-					suitable = false
-					break
-				}
-
-				currentVMs, err = d.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(d.ctx, metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("dynamic=true,dynamicbindconfig=%s,environment=%s,template=%s", dynamicBindConfiguration.Spec.Id, environment.Name, vmTemplate),
-				})
-				if err != nil {
-					glog.V(4).Infof("error retrieving current vm list, assuming environment empty")
-				}
-				availableVMCount = dynamicBindConfiguration.Spec.BurstCountCapacity[vmTemplate] - len(currentVMs.Items)
-
-				if availableVMCount < vmsNeeded {
-					// this DBC has no more provisioning capacity
-					suitable = false
-					break
-				}
+			if availableVMCount < vmsNeeded {
+				// this DBC has no more provisioning capacity
+				suitable = false
+				break
 			}
 		}
 
@@ -283,7 +261,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 						"dynamicbindrequest":               dynamicBindRequest.Name,
 						"dynamicbindconfiguration":         chosenDynamicBindConfiguration.Spec.Id,
 						"template":                         vmX.Template,
-						"environment":                      chosenDynamicBindConfiguration.Spec.Environment,
+						util.EnvironmentLabel:              chosenDynamicBindConfiguration.Spec.Environment,
 						"bound":                            "true",
 						"ready":                            "false",
 						util.ScheduledEventLabel: chosenDynamicBindConfiguration.ObjectMeta.Labels[util.ScheduledEventLabel],

@@ -319,71 +319,10 @@ func EnsureVMNotReady(hfClientset hfClientset.Interface, vmLister hfListers.Virt
 	return nil
 }
 
-func AvailableRawCapacity(hfClientset hfClientset.Interface, capacity hfv1.CMSStruct, virtualMachines []hfv1.VirtualMachine, ctx context.Context) *hfv1.CMSStruct {
-	vmTemplates, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates(GetReleaseNamespace()).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		glog.Errorf("unable to list virtual machine templates, got error %v", err)
-		return nil
-	}
-
-	currentUsage := hfv1.CMSStruct{}
-	for _, vm := range virtualMachines {
-		for _, vmTemplate := range vmTemplates.Items {
-			if vmTemplate.Spec.Id == vm.Spec.VirtualMachineTemplateId {
-				currentUsage.CPU = currentUsage.CPU + vmTemplate.Spec.Resources.CPU
-				currentUsage.Memory = currentUsage.Memory + vmTemplate.Spec.Resources.Memory
-				currentUsage.Storage = currentUsage.Storage + vmTemplate.Spec.Resources.Storage
-			}
-		}
-	}
-
-	availableCapacity := hfv1.CMSStruct{}
-
-	availableCapacity.CPU = capacity.CPU - currentUsage.CPU
-	availableCapacity.Memory = capacity.Memory - currentUsage.Memory
-	availableCapacity.Storage = capacity.Storage - currentUsage.Storage
-
-	return &availableCapacity
-}
-
-func MaxVMCountsRaw(hfClientset hfClientset.Interface, vmTemplates map[string]int, available hfv1.CMSStruct, ctx context.Context) int {
-	vmTemplatesFromK8s, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates(GetReleaseNamespace()).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		glog.Errorf("unable to list virtual machine templates, got error %v", err)
-		return 0
-	}
-
-	maxCount := 0
-
-	var neededResources hfv1.CMSStruct
-
-	for _, vmTemplate := range vmTemplatesFromK8s.Items {
-		if vmtCount, ok := vmTemplates[vmTemplate.Name]; ok {
-			neededResources.CPU = neededResources.CPU + vmTemplate.Spec.Resources.CPU*vmtCount
-			neededResources.Memory = neededResources.Memory + vmTemplate.Spec.Resources.Memory*vmtCount
-			neededResources.Storage = neededResources.Storage + vmTemplate.Spec.Resources.Storage*vmtCount
-		}
-	}
-
-	maxCount = available.CPU / neededResources.CPU
-
-	if available.Memory/neededResources.Memory > maxCount {
-		maxCount = available.Memory / neededResources.Memory
-	}
-
-	if available.Storage/neededResources.Storage > maxCount {
-		maxCount = available.Storage / neededResources.Storage
-	}
-
-	return maxCount
-
-}
 
 // pending rename...
 type Maximus struct {
-	CapacityMode      hfv1.CapacityMode `json:"capacity_mode"`
 	AvailableCount    map[string]int    `json:"available_count"`
-	AvailableCapacity hfv1.CMSStruct    `json:"available_capacity"`
 }
 
 func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context) (Maximus, error) {
@@ -412,25 +351,12 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 		return Maximus{}, fmt.Errorf("error retrieving environment %v", err)
 	}
 
-	vmTemplatesFromK8s, err := hfClientset.HobbyfarmV1().VirtualMachineTemplates(GetReleaseNamespace()).List(ctx, metav1.ListOptions{})
-
-	if err != nil {
-		return Maximus{}, fmt.Errorf("error retrieving virtual machine templates %v", err)
-	}
-
-	vmTemplateResources := map[string]hfv1.CMSStruct{}
-
-	for _, vmTemplateInfo := range vmTemplatesFromK8s.Items {
-		vmTemplateResources[vmTemplateInfo.Name] = vmTemplateInfo.Spec.Resources
-	}
-
 	scheduledEvents, err := hfClientset.HobbyfarmV1().ScheduledEvents(GetReleaseNamespace()).List(ctx, metav1.ListOptions{})
 
 	if err != nil {
 		return Maximus{}, fmt.Errorf("error retrieving scheduled events %v", err)
 	}
 
-	maxRaws := make([]hfv1.CMSStruct, 1)
 	maxCounts := map[string]int{}
 	maxCounts = make(map[string]int)
 	// maxCount will be the largest number of virtual machines allocated from the environment
@@ -439,7 +365,6 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 	}*/
 	for i := start; i.Before(end) || i.Equal(end); i = i.Add(duration) {
 		glog.V(8).Infof("Checking time at %s", i.Format(time.UnixDate))
-		maxRaw := hfv1.CMSStruct{}
 		currentMaxCount := map[string]int{}
 		for _, se := range scheduledEvents.Items {
 			glog.V(4).Infof("Checking scheduled event %s", se.Spec.Name)
@@ -457,77 +382,37 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 				// and if i is before or equal to the end of the scheduled event
 				if i.Equal(seStart) || i.Equal(seEnd) || (i.Before(seEnd) && i.After(seStart)) {
 					glog.V(4).Infof("Scheduled Event %s was within the time period", se.Name)
-					if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeRaw {
-						for vmTemplateName, vmTemplateCount := range vmMapping {
-							if vmTemplateR, ok := vmTemplateResources[vmTemplateName]; ok {
-								maxRaw.CPU = vmTemplateR.CPU * vmTemplateCount
-								maxRaw.Memory = vmTemplateR.Memory * vmTemplateCount
-								maxRaw.Storage = vmTemplateR.Storage * vmTemplateCount
-							} else {
-								return Maximus{}, fmt.Errorf("error retrieving vm template %s resources %v", vmTemplateName, err)
-							}
-						}
-					} else if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeCount {
-						for vmTemplateName, vmTemplateCount := range vmMapping {
-							glog.V(4).Infof("SE VM Template %s Count was %d", vmTemplateName, vmTemplateCount)
-							currentMaxCount[vmTemplateName] = currentMaxCount[vmTemplateName] + vmTemplateCount
-						}
-					} else {
-						return Maximus{}, fmt.Errorf("environment %s had unexpected capacity mode %s", environment, environmentFromK8s.Spec.CapacityMode)
+					for vmTemplateName, vmTemplateCount := range vmMapping {
+						glog.V(4).Infof("SE VM Template %s Count was %d", vmTemplateName, vmTemplateCount)
+						currentMaxCount[vmTemplateName] = currentMaxCount[vmTemplateName] + vmTemplateCount
 					}
 				}
 			}
 		}
-		maxRaws = append(maxRaws, maxRaw)
-		if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeCount {
-			for vmt, currentCount := range currentMaxCount {
-				glog.V(4).Infof("currentCount for vmt %s is %d", vmt, currentCount)
-				if maxCount, ok := maxCounts[vmt]; ok {
-					glog.V(4).Infof("Current max count for vmt %s is %d", vmt, maxCount)
-					if maxCount < currentCount {
-						maxCounts[vmt] = currentCount
-					}
-				} else {
+		for vmt, currentCount := range currentMaxCount {
+			glog.V(4).Infof("currentCount for vmt %s is %d", vmt, currentCount)
+			if maxCount, ok := maxCounts[vmt]; ok {
+				glog.V(4).Infof("Current max count for vmt %s is %d", vmt, maxCount)
+				if maxCount < currentCount {
 					maxCounts[vmt] = currentCount
 				}
+			} else {
+				maxCounts[vmt] = currentCount
 			}
 		}
 	}
 	max := Maximus{}
-	max.CapacityMode = environmentFromK8s.Spec.CapacityMode
-	if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeRaw {
-		maxCPU := 0
-		maxMem := 0
-		maxStorage := 0
-		for _, raw := range maxRaws {
-			if maxCPU < raw.CPU {
-				maxCPU = raw.CPU
-			}
-			if maxMem < raw.Memory {
-				maxMem = raw.Memory
-			}
-			if maxStorage < raw.Storage {
-				maxStorage = raw.Storage
-			}
+	max.AvailableCount = make(map[string]int)
+	for k, v := range environmentFromK8s.Spec.CountCapacity {
+		max.AvailableCount[k] = v
+	}
+	for vmt, count := range maxCounts {
+		if vmtCap, ok := environmentFromK8s.Spec.CountCapacity[vmt]; ok {
+			max.AvailableCount[vmt] = vmtCap - count
+		} else {
+			glog.Errorf("Error looking for maximum count capacity of virtual machine template %s", vmt)
+			max.AvailableCount[vmt] = 0
 		}
-		max.AvailableCapacity.CPU = environmentFromK8s.Spec.Capacity.CPU - maxCPU
-		max.AvailableCapacity.Memory = environmentFromK8s.Spec.Capacity.Memory - maxMem
-		max.AvailableCapacity.Storage = environmentFromK8s.Spec.Capacity.Storage - maxStorage
-	} else if environmentFromK8s.Spec.CapacityMode == hfv1.CapacityModeCount {
-		max.AvailableCount = make(map[string]int)
-		for k, v := range environmentFromK8s.Spec.CountCapacity {
-			max.AvailableCount[k] = v
-		}
-		for vmt, count := range maxCounts {
-			if vmtCap, ok := environmentFromK8s.Spec.CountCapacity[vmt]; ok {
-				max.AvailableCount[vmt] = vmtCap - count
-			} else {
-				glog.Errorf("Error looking for maximum count capacity of virtual machine template %s", vmt)
-				max.AvailableCount[vmt] = 0
-			}
-		}
-	} else {
-		return Maximus{}, fmt.Errorf("environment %s had unexpected capacity mode %s", environment, environmentFromK8s.Spec.CapacityMode)
 	}
 	return max, nil
 }

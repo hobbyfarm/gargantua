@@ -271,126 +271,82 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 			glog.Errorf("error retreiving environment %s", err.Error())
 			return err
 		}
-		// get all vmsets that are being provisioned into this environment (label selector)
-		vmsList, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("environment=%s", envName),
-		})
-		if err != nil {
-			glog.Errorf("error while retrieving virtual machine sets %v", err)
-		}
 
-		_, usedCapacity := calculateUsedCapacity(env, vmsList, templates)
-		
-		if env.Spec.CapacityMode == hfv1.CapacityModeRaw {
-			neededCapacity := calculateNeededCapacity(env, vmtMap, templates)
+		// TODO: actually check for capacity usage
 
-			if env.Spec.Capacity.CPU < (usedCapacity.CPU + neededCapacity.CPU) {
-				glog.Errorf("we are overprovisioning this environment %s by CPU, capacity is %d but need %d", envName, env.Spec.Capacity.CPU, usedCapacity.CPU+neededCapacity.CPU)
-			}
-			if env.Spec.Capacity.Memory < (usedCapacity.Memory + neededCapacity.Memory) {
-				glog.Errorf("we are overprovisioning this environment %s by Memory, capacity is %d but need %d", envName, env.Spec.Capacity.Memory, usedCapacity.Memory+neededCapacity.Memory)
-			}
-			if env.Spec.Capacity.Storage < (usedCapacity.Storage + neededCapacity.Storage) {
-				glog.Errorf("we are overprovisioning this environment %s by Storage, capacity is %d but need %d", envName, env.Spec.Capacity.Storage, usedCapacity.Storage+neededCapacity.Storage)
-			}
-		} else if env.Spec.CapacityMode == hfv1.CapacityModeCount {
-			// TODO: actually check for capacity usage
-
-			// vmtMap has all the neededCapacity for this environment.
-			// used capacity is calculated by calculateUsedCapacity()
-		}
-
-		// create the virtualmachinesets now
-
-		for templateName, count := range vmtMap {
-			if count > 0 && !se.Spec.OnDemand { // only setup vmsets if >0 VMs are requested, and they aren't ondemand
-
-				//1. Find existing VMset that match this SE and the current environment
-				existingVMSets, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("%s=%s,environment=%s,virtualmachinetemplate.hobbyfarm.io/%s=true", util.ScheduledEventLabel, se.Name, envName, templateName),
-				})
-
-				if err != nil || len(existingVMSets.Items) == 0 { // create new vmset if no existing one was found
-					vmsRand := fmt.Sprintf("%s-%08x", baseNameScheduledPrefix, rand.Uint32())
-					vmsName := strings.Join([]string{"se", se.Name, "vms", vmsRand}, "-")
-					vmSets = append(vmSets, vmsName)
-					vms := &hfv1.VirtualMachineSet{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: vmsName,
-							OwnerReferences: []metav1.OwnerReference{
-								{
-									APIVersion: "hobbyfarm.io/v1",
-									Kind:       "ScheduledEvent",
-									Name:       se.Name,
-									UID:        se.UID,
+		// create virtualmachinesets if not on demand
+		if !se.Spec.OnDemand {
+			for templateName, count := range vmtMap {
+				if count > 0 { // only setup vmsets if >0 VMs are requested, and they aren't ondemand
+					//1. Find existing VMset that match this SE and the current environment
+					existingVMSets, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("%s=%s,%s=%s,virtualmachinetemplate.hobbyfarm.io/%s=true", util.ScheduledEventLabel, se.Name, util.EnvironmentLabel, envName, templateName),
+					})
+	
+					if err != nil || len(existingVMSets.Items) == 0 { // create new vmset if no existing one was found
+						vmsRand := fmt.Sprintf("%s-%08x", baseNameScheduledPrefix, rand.Uint32())
+						vmsName := strings.Join([]string{"se", se.Name, "vms", vmsRand}, "-")
+						vmSets = append(vmSets, vmsName)
+						vms := &hfv1.VirtualMachineSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: vmsName,
+								OwnerReferences: []metav1.OwnerReference{
+									{
+										APIVersion: "hobbyfarm.io/v1",
+										Kind:       "ScheduledEvent",
+										Name:       se.Name,
+										UID:        se.UID,
+									},
+								},
+								Labels: map[string]string{
+									util.EnvironmentLabel:    env.Name,
+									util.ScheduledEventLabel: se.Name,
+									fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", templateName): "true",
 								},
 							},
-							Labels: map[string]string{
-								"environment":    env.Name,
-								util.ScheduledEventLabel: se.Name,
-								fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", templateName): "true",
+							Spec: hfv1.VirtualMachineSetSpec{
+								Count:       count,
+								Environment: envName,
+								VMTemplate:  templateName,
+								BaseName:    vmsRand,
 							},
-						},
-						Spec: hfv1.VirtualMachineSetSpec{
-							Count:       count,
-							Environment: envName,
-							VMTemplate:  templateName,
-							BaseName:    vmsRand,
-						},
-					}
-					if se.Spec.RestrictedBind {
-						vms.Spec.RestrictedBind = true
-						vms.Spec.RestrictedBindValue = se.Spec.RestrictedBindValue
-					} else {
-						vms.Spec.RestrictedBind = false
-					}
-					_, err = s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Create(s.ctx, vms, metav1.CreateOptions{})
-					if err != nil {
-						glog.Error(err)
-						return err
-					}
-				} else { // update existing vmset
-					existingVMSet := existingVMSets.Items[0]
-					vmSets = append(vmSets, existingVMSet.Name)
-
-					existingVMSet.Labels["environment"] = env.Name
-					existingVMSet.Spec.Count = count
-					if se.Spec.RestrictedBind {
-						existingVMSet.Spec.RestrictedBind = true
-
-					} else {
-						existingVMSet.Spec.RestrictedBind = false
-					}
-					_, err = s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Update(s.ctx, &existingVMSet, metav1.UpdateOptions{})
-					if err != nil {
-						glog.Errorf("error updating vmset config %s", err.Error())
-						return err
+						}
+						if se.Spec.RestrictedBind {
+							vms.Spec.RestrictedBind = true
+							vms.Spec.RestrictedBindValue = se.Spec.RestrictedBindValue
+						} else {
+							vms.Spec.RestrictedBind = false
+						}
+						_, err = s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Create(s.ctx, vms, metav1.CreateOptions{})
+						if err != nil {
+							glog.Error(err)
+							return err
+						}
+					} else { // update existing vmset
+						// Todo support multiple VM Sets
+						existingVMSet := existingVMSets.Items[0]
+						vmSets = append(vmSets, existingVMSet.Name)
+	
+						existingVMSet.Labels[util.EnvironmentLabel] = env.Name
+						existingVMSet.Spec.Count = count
+						if se.Spec.RestrictedBind {
+							existingVMSet.Spec.RestrictedBind = true
+						} else {
+							existingVMSet.Spec.RestrictedBind = false
+						}
+						_, err = s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Update(s.ctx, &existingVMSet, metav1.UpdateOptions{})
+						if err != nil {
+							glog.Errorf("error updating vmset config %s", err.Error())
+							return err
+						}
 					}
 				}
-
 			}
 		}
-
+		
 		// create the dynamic bind configurations
 		dbcRand := fmt.Sprintf("%s-%08x", baseNameDynamicPrefix, rand.Uint32())
 		dbcName := strings.Join([]string{"se", se.Name, "dbc", dbcRand}, "-")
-		emptyCap := hfv1.CMSStruct{
-			CPU:     0,
-			Memory:  0,
-			Storage: 0,
-		}
-
-		bcc := map[string]int{}
-
-		for t, c := range vmtMap {
-			if se.Spec.OnDemand {
-				bcc[t] = c
-			} else if c == 0 || c == -1 {
-				bcc[t] = 10
-			} else {
-				bcc[t] = c
-			}
-		}
 
 		dbc := &hfv1.DynamicBindConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
@@ -404,7 +360,7 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 					},
 				},
 				Labels: map[string]string{
-					"environment":       env.Name,
+					util.EnvironmentLabel:       env.Name,
 					util.ScheduledEventLabel: se.Name,
 				},
 			},
@@ -412,8 +368,7 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 				Id:                 dbcName,
 				Environment:        envName,
 				BaseName:           dbcRand,
-				BurstCountCapacity: bcc,
-				BurstCapacity:      emptyCap,
+				BurstCountCapacity: vmtMap,
 			},
 		}
 
@@ -460,7 +415,6 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 	}
 
 	return nil
-
 }
 
 func (s ScheduledEventController) createAccessCode(se *hfv1.ScheduledEvent) error {
@@ -634,38 +588,14 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 	return nil
 }
 
-func calculateUsedCapacity(env *hfv1.Environment, vmsList *hfv1.VirtualMachineSetList, templates *hfv1.VirtualMachineTemplateList) (map[string]int, hfv1.CMSStruct) {
-	used := hfv1.CMSStruct{}
+func calculateUsedCapacity(env *hfv1.Environment, vmsList *hfv1.VirtualMachineSetList, templates *hfv1.VirtualMachineTemplateList) (map[string]int) {
 	usedCount := map[string]int{}
 	for _, vms := range vmsList.Items {
 		for _, t := range templates.Items {
 			if t.Name == vms.Spec.VMTemplate {
-				if env.Spec.CapacityMode == hfv1.CapacityModeRaw {
-					used.CPU = used.CPU + (t.Spec.Resources.CPU * vms.Spec.Count)
-					used.Memory = used.Memory + (t.Spec.Resources.Memory * vms.Spec.Count)
-					used.Storage = used.Storage + (t.Spec.Resources.Storage * vms.Spec.Count)
-				} else if env.Spec.CapacityMode == hfv1.CapacityModeCount {
-					usedCount[t.Name] = usedCount[t.Name] + vms.Spec.Count
-				}
+				usedCount[t.Name] = usedCount[t.Name] + vms.Spec.Count
 			}
 		}
 	}
-
-	return usedCount, used
-}
-
-func calculateNeededCapacity(env *hfv1.Environment, vmtMap map[string]int, templates *hfv1.VirtualMachineTemplateList) hfv1.CMSStruct {
-	needed := hfv1.CMSStruct{}
-
-	for templateName, count := range vmtMap {
-		for _, t := range templates.Items {
-			if t.Name == templateName {
-				needed.CPU = needed.CPU + (t.Spec.Resources.CPU * count)
-				needed.Memory = needed.Memory + (t.Spec.Resources.Memory * count)
-				needed.Storage = needed.Storage + (t.Spec.Resources.Storage * count)
-			}
-		}
-	}
-
-	return needed
+	return usedCount
 }

@@ -16,7 +16,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -195,27 +194,6 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	capacityMode := r.PostFormValue("capacity_mode")
-	if capacityMode == "" {
-		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no capacity_mode passed in")
-		return
-	} else if capacityMode != "raw" && capacityMode != "count" {
-		// invalid capacity mode passed in
-		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid capacity_mode passed in")
-		return
-	}
-
-	burstCapable := r.PostFormValue("burst_capable")
-	if burstCapable == "" {
-		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no burst_capable passed in")
-		return
-	}
-	burstCapableBool, err := strconv.ParseBool(burstCapable)
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid burst_capacity passed in")
-		return
-	}
-
 	templateMappingUnmarshaled := map[string]map[string]string{} // lol
 	err = json.Unmarshal([]byte(templateMapping), &templateMappingUnmarshaled)
 	if err != nil {
@@ -254,14 +232,6 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	environment.Spec.IPTranslationMap = ipTranslationUnmarshaled
 	environment.Spec.WsEndpoint = wsEndpoint
 
-	if capacityMode == "raw" {
-		environment.Spec.CapacityMode = hfv1.CapacityModeRaw
-	} else {
-		// not validating "count" here as we already validated input var above
-		environment.Spec.CapacityMode = hfv1.CapacityModeCount
-	}
-
-	environment.Spec.BurstCapable = burstCapableBool
 
 	environment, err = e.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Create(e.ctx, environment, metav1.CreateOptions{})
 	if err != nil {
@@ -304,8 +274,6 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		environmentSpecifics := r.PostFormValue("environment_specifics")
 		ipTranslationMap := r.PostFormValue("ip_translation_map")
 		wsEndpoint := r.PostFormValue("ws_endpoint")
-		capacityMode := r.PostFormValue("capacity_mode")
-		burstCapable := r.PostFormValue("burst_capable")
 
 		if len(displayName) > 0 {
 			environment.Spec.DisplayName = displayName
@@ -354,26 +322,6 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 
 		if len(wsEndpoint) > 0 {
 			environment.Spec.WsEndpoint = wsEndpoint
-		}
-
-		if len(capacityMode) > 0 {
-			if capacityMode == "raw" {
-				environment.Spec.CapacityMode = hfv1.CapacityModeRaw
-			} else if capacityMode == "count" {
-				environment.Spec.CapacityMode = hfv1.CapacityModeCount
-			} else {
-				util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid capacity_mode passed in")
-				return fmt.Errorf("bad")
-			}
-		}
-
-		if len(burstCapable) > 0 {
-			burstCapableBool, err := strconv.ParseBool(burstCapable)
-			if err != nil {
-				util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid burst_capable passed in")
-				return fmt.Errorf("bad")
-			}
-			environment.Spec.BurstCapable = burstCapableBool
 		}
 
 		_, updateErr := e.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Update(e.ctx, &environment, metav1.UpdateOptions{})
