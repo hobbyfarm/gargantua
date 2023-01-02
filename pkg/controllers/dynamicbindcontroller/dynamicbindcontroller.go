@@ -140,12 +140,12 @@ func (d *DynamicBindController) processNextDynamicBindRequest() bool {
 
 func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *hfv1.DynamicBindRequest) error {
 
-	d.updateDynamicBindRequestStatus(dynamicBindRequest.Status.CurrentAttempts+1, false, false, "", make(map[string]string), dynamicBindRequest.Spec.Id)
+	d.updateDynamicBindRequestStatus(dynamicBindRequest.Status.CurrentAttempts+1, false, false, "", make(map[string]string), dynamicBindRequest.Name)
 
 	vmClaim, err := d.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Get(d.ctx, dynamicBindRequest.Spec.VirtualMachineClaim, metav1.GetOptions{})
 
 	if err != nil {
-		glog.Errorf("error retrieving corresponding virtual machine claim %s for dynamic bind request %s", dynamicBindRequest.Spec.VirtualMachineClaim, dynamicBindRequest.Spec.Id)
+		glog.Errorf("error retrieving corresponding virtual machine claim %s for dynamic bind request %s", dynamicBindRequest.Spec.VirtualMachineClaim, dynamicBindRequest.Name)
 		return err
 	}
 
@@ -218,7 +218,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 
 			// next check if the dynamicbindconfiguration has capacity
 			currentVMs, err = d.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(d.ctx, metav1.ListOptions{
-				LabelSelector: fmt.Sprintf("dynamic=true,dynamicbindconfig=%s,template=%s", dynamicBindConfiguration.Spec.Id, vmTemplate),
+				LabelSelector: fmt.Sprintf("dynamic=true,dynamicbindconfig=%s,template=%s", dynamicBindConfiguration.Name, vmTemplate),
 			})
 			if err != nil {
 				glog.V(4).Infof("error retrieving current vm list, assuming no machines")
@@ -259,7 +259,7 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 					Labels: map[string]string{
 						"dynamic":                          "true",
 						"dynamicbindrequest":               dynamicBindRequest.Name,
-						"dynamicbindconfiguration":         chosenDynamicBindConfiguration.Spec.Id,
+						"dynamicbindconfiguration":         chosenDynamicBindConfiguration.Name,
 						"template":                         vmX.Template,
 						util.EnvironmentLabel:              chosenDynamicBindConfiguration.Spec.Environment,
 						"bound":                            "true",
@@ -268,7 +268,6 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 					},
 				},
 				Spec: hfv1.VirtualMachineSpec{
-					Id:                       vmName,
 					VirtualMachineTemplateId: vmX.Template,
 					SecretName:               "",
 					Protocol:                 "ssh", //default protocol is ssh
@@ -338,14 +337,14 @@ func (d *DynamicBindController) reconcileDynamicBindRequest(dynamicBindRequest *
 			virtualMachines[vmClaimVMName] = newVm.Name
 		}
 
-		d.updateDynamicBindRequestStatus(dynamicBindRequest.Spec.Attempts, false, true, chosenDynamicBindConfiguration.Spec.Id, virtualMachines, dynamicBindRequest.Spec.Id)
+		d.updateDynamicBindRequestStatus(dynamicBindRequest.Spec.Attempts, false, true, chosenDynamicBindConfiguration.Name, virtualMachines, dynamicBindRequest.Name)
 
 	} else {
 		// check to see if we're above our attempt threshold
 		if dynamicBindRequest.Status.CurrentAttempts > dynamicBindRequest.Spec.Attempts {
-			d.updateDynamicBindRequestStatus(dynamicBindRequest.Status.CurrentAttempts, true, false, "", make(map[string]string), dynamicBindRequest.Spec.Id)
+			d.updateDynamicBindRequestStatus(dynamicBindRequest.Status.CurrentAttempts, true, false, "", make(map[string]string), dynamicBindRequest.Name)
 		} else {
-			return fmt.Errorf("did not bind dynamic vms for dynamic bind request %s", dynamicBindRequest.Spec.Id)
+			return fmt.Errorf("did not bind dynamic vms for dynamic bind request %s", dynamicBindRequest.Name)
 		}
 	}
 

@@ -98,7 +98,7 @@ func (s ProgressServer) ListForUserFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	s.ListByLabel(w, r, util.UserLabel, user.Spec.Id, true)
+	s.ListByLabel(w, r, util.UserLabel, user.Name, true)
 }
 
 /*
@@ -223,7 +223,7 @@ func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", util.SessionLabel, id, util.UserLabel, user.Spec.Id)})
+		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", util.SessionLabel, id, util.UserLabel, user.Name)})
 
 	if err != nil {
 		glog.Errorf("error while retrieving progress %v", err)
@@ -256,7 +256,7 @@ func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if retryErr != nil {
-			glog.Errorf("error updating progress %s: %v", p.Spec.Id, err)
+			glog.Errorf("error updating progress %s: %v", p.Name, err)
 			util.ReturnHTTPMessage(w, r, 500, "error", "progress could not be updated")
 			return
 		}

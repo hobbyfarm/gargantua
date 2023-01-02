@@ -5,15 +5,12 @@ import (
 )
 
 type VmStatus string
-type CapacityMode string
 
 const (
 	VmStatusRFP         VmStatus     = "readyforprovisioning"
 	VmStatusProvisioned VmStatus     = "provisioned"
 	VmStatusRunning     VmStatus     = "running"
 	VmStatusTerminating VmStatus     = "terminating"
-	CapacityModeRaw     CapacityMode = "raw"
-	CapacityModeCount   CapacityMode = "count"
 )
 
 // +genclient
@@ -35,7 +32,6 @@ type VirtualMachineList struct {
 }
 
 type VirtualMachineSpec struct {
-	Id                       string `json:"id"`
 	VirtualMachineTemplateId string `json:"vm_template_id"`
 	SshUsername              string `json:"ssh_username"`
 	Protocol                 string `json:"protocol"`
@@ -77,7 +73,6 @@ type VirtualMachineClaimList struct {
 }
 
 type VirtualMachineClaimSpec struct {
-	Id                  string                           `json:"id"`
 	UserId              string                           `json:"user"`
 	RestrictedBind      bool                             `json:"restricted_bind"`
 	RestrictedBindValue string                           `json:"restricted_bind_value"`
@@ -121,7 +116,6 @@ type VirtualMachineTemplateList struct {
 // VM type is a genercized collection of information about a VM. this includes things like
 // cpu, ram, disk, etc.
 type VirtualMachineTemplateSpec struct {
-	Id        string            `json:"id"`
 	Name      string            `json:"name"`  // 2x4, etc.
 	Image     string            `json:"image"` // ubuntu-18.04
 	ConfigMap map[string]string `json:"config_map"`
@@ -221,7 +215,6 @@ type CourseList struct {
 }
 
 type CourseSpec struct {
-	Id                string              `json:"id"`
 	Name              string              `json:"name"`
 	Description       string              `json:"description"`
 	Scenarios         []string            `json:"scenarios"`
@@ -252,7 +245,6 @@ type ScenarioList struct {
 }
 
 type ScenarioSpec struct {
-	Id                string              `json:"id"`
 	Name              string              `json:"name"`
 	Description       string              `json:"description"`
 	Steps             []ScenarioStep      `json:"steps"`
@@ -288,7 +280,6 @@ type SessionList struct {
 }
 
 type SessionSpec struct {
-	Id           string   `json:"id"`
 	ScenarioId   string   `json:"scenario"`
 	CourseId     string   `json:"course"`
 	KeepCourseVM bool     `json:"keep_course_vm"`
@@ -325,7 +316,6 @@ type ProgressList struct {
 }
 
 type ProgressSpec struct {
-	Id          string         `json:"id"`
 	CurrentStep int            `json:"current_step"`
 	MaxStep     int            `json:"max_step"`
 	TotalStep   int            `json:"total_step"`
@@ -466,7 +456,6 @@ type DynamicBindConfigurationList struct {
 // that there is adequate vm capacity, it will always choose the environment with the highest capacity before creating a dynamic VM.
 
 type DynamicBindConfigurationSpec struct {
-	Id                  string         `json:"id"`
 	Environment         string         `json:"environment"`
 	BaseName            string         `json:"base_name"`
 	RestrictedBind      bool           `json:"restricted_bind"`
@@ -493,7 +482,6 @@ type DynamicBindRequestList struct {
 }
 
 type DynamicBindRequestSpec struct {
-	Id                  string `json:"id"`
 	VirtualMachineClaim string `json:"vm_claim"`
 	Attempts            int    `json:"attempts"`
 }

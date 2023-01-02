@@ -255,13 +255,12 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 
 	scheduledEvent.Spec.Name = name
 	scheduledEvent.Spec.Description = description
-	scheduledEvent.Spec.Creator = user.Spec.Id
+	scheduledEvent.Spec.Creator = user.Name
 	scheduledEvent.Spec.StartTime = startTime
 	scheduledEvent.Spec.EndTime = endTime
 	scheduledEvent.Spec.OnDemand = onDemand
 	scheduledEvent.Spec.Printable = printable
 	scheduledEvent.Spec.RequiredVirtualMachines = requiredVMUnmarshaled
-	scheduledEvent.Spec.AccessCode = accessCode
 
 	if scenariosRaw != "" {
 		scheduledEvent.Spec.Scenarios = scenarios
@@ -576,9 +575,9 @@ func (s ScheduledEventServer) finishSessions(se *hfv1.ScheduledEvent) error {
 
 	for _, session := range sessionList.Items {
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(s.ctx, session.Spec.Id, metav1.GetOptions{})
+			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(s.ctx, session.Name, metav1.GetOptions{})
 			if getErr != nil {
-				return fmt.Errorf("error retrieving latest version of session %s: %v", session.Spec.Id, getErr)
+				return fmt.Errorf("error retrieving latest version of session %s: %v", session.Name, getErr)
 			}
 
 			result.Status.ExpirationTime = now

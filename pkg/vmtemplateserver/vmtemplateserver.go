@@ -182,7 +182,6 @@ func (v VirtualMachineTemplateServer) CreateFunc(w http.ResponseWriter, r *http.
 	hasher.Write([]byte(name))
 	sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:10]
 	vmTemplate.Name = "vmt-" + strings.ToLower(sha)
-	vmTemplate.Spec.Id = vmTemplate.Name
 	vmTemplate.Spec.Name = name
 	vmTemplate.Spec.Image = image
 

@@ -330,7 +330,6 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 				},
 			},
 			Spec: hfv1.VirtualMachineSpec{
-				Id:                       genName,
 				VirtualMachineTemplateId: vmDetails.Template,
 				SecretName:               "",
 				Protocol: 				  "ssh",  //default protocol is ssh
@@ -499,7 +498,7 @@ func (v *VMClaimController) findVirtualMachines(vmc *hfv1.VirtualMachineClaim) (
 	for name, vmStruct := range vmc.Spec.VirtualMachines {
 		if vmStruct.VirtualMachineId == "" {
 			glog.Info("assigning a vm")
-			vmID, err := v.assignNextFreeVM(vmc.Spec.Id, vmc.Spec.UserId, vmStruct.Template, env, vmc.Spec.RestrictedBind, vmc.Spec.RestrictedBindValue)
+			vmID, err := v.assignNextFreeVM(vmc.Name, vmc.Spec.UserId, vmStruct.Template, env, vmc.Spec.RestrictedBind, vmc.Spec.RestrictedBindValue)
 			if err != nil {
 				return err
 			}
@@ -587,7 +586,7 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, temp
 		if !vm.Status.Allocated && !vm.Status.Tainted {
 			// we can assign this vm
 			assigned = true
-			vmId = vm.Spec.Id
+			vmId = vm.Name
 		
 			// Prefer running machines
 			if( vm.Status.Status == hfv1.VmStatusRunning){

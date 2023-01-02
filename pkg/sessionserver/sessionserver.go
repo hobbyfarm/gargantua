@@ -91,7 +91,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	restrictedBindVal := ""
 
 	if accessCode == "" {
-		accessCode, err = sss.accessCodeClient.GetClosestAccessCode(user.Spec.Id, id)
+		accessCode, err = sss.accessCodeClient.GetClosestAccessCode(user.Name, id)
 		if err != nil {
 			glog.Error(err)
 			util.ReturnHTTPMessage(w, r, 500, "error", "error retrieving access code applicable to course/scenario")
@@ -139,7 +139,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 
 	// now we should check for existing sessions for the user
 	sessions, err := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(sss.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util.UserLabel, user.Spec.Id),
+		LabelSelector: fmt.Sprintf("%s=%s", util.UserLabel, user.Name),
 	})
 
 	if err != nil {
@@ -153,8 +153,8 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		if err != nil {
 			continue
 		}
-		if v.Spec.UserId == user.Spec.Id &&
-			(v.Spec.CourseId == course.Spec.Id || v.Spec.ScenarioId == scenario.Spec.Id) &&
+		if v.Spec.UserId == user.Name &&
+			(v.Spec.CourseId == course.Name || v.Spec.ScenarioId == scenario.Name) &&
 			!v.Status.Finished &&
 			v.Status.Active && expires.After(now) {
 			// we should just return this session...
@@ -176,8 +176,8 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 					glog.V(4).Infof("updated session for new scenario")
 
 					//finish old progress & create new progress for the new scenario
-					sss.FinishProgress(result.Spec.Id, user.Spec.Id)
-					sss.CreateProgress(result.Spec.Id, accessCodeObj.Labels[util.ScheduledEventLabel], scenario.Spec.Id, course.Spec.Id, user.Spec.Id, len(scenario.Spec.Steps))
+					sss.FinishProgress(result.Name, user.Name)
+					sss.CreateProgress(result.Name, accessCodeObj.Labels[util.ScheduledEventLabel], scenario.Name, course.Name, user.Name, len(scenario.Spec.Steps))
 
 					return updateErr
 				})
@@ -204,14 +204,13 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	session := hfv1.Session{}
 
 	session.Name = sessionName
-	session.Spec.Id = sessionName
-	session.Spec.CourseId = course.Spec.Id
-	session.Spec.ScenarioId = scenario.Spec.Id
-	session.Spec.UserId = user.Spec.Id
+	session.Spec.CourseId = course.Name
+	session.Spec.ScenarioId = scenario.Name
+	session.Spec.UserId = user.Name
 	session.Spec.KeepCourseVM = course.Spec.KeepVM
 	labels := make(map[string]string)
 	labels[util.AccessCodeLabel] = accessCode    // map accesscode to session
-	labels[util.UserLabel] = user.Spec.Id // map user to session
+	labels[util.UserLabel] = user.Name // map user to session
 	session.Labels = labels
 	var vms []map[string]string
 	if course.Spec.VirtualMachines != nil {
@@ -259,11 +258,10 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		vmcId := util.GenerateResourceName(baseName, util.RandStringRunes(10), 10)
 		labels := make(map[string]string)
 		labels[util.SessionLabel] = session.Name     // map vmc to session
-		labels[util.UserLabel] = user.Spec.Id // map session to user in a way that is searchable
+		labels[util.UserLabel] = user.Name // map session to user in a way that is searchable
 		labels[util.AccessCodeLabel] = session.Labels[util.AccessCodeLabel]
 		labels[util.ScheduledEventLabel] = schedEvent.Name
 		virtualMachineClaim.Labels = labels
-		virtualMachineClaim.Spec.Id = vmcId
 		virtualMachineClaim.Spec.BaseName = vmcId
 		virtualMachineClaim.Name = vmcId
 		virtualMachineClaim.Spec.VirtualMachines = make(map[string]hfv1.VirtualMachineClaimVM)
@@ -272,7 +270,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 			// also label this vmc so we can query against it later
 			labels[fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", vmTemplateName)] = "true"
 		}
-		virtualMachineClaim.Spec.UserId = user.Spec.Id
+		virtualMachineClaim.Spec.UserId = user.Name
 
 		virtualMachineClaim.Spec.DynamicCapable = true
 
@@ -301,7 +299,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 
-		session.Spec.VmClaimSet[index] = createdVmClaim.Spec.Id
+		session.Spec.VmClaimSet[index] = createdVmClaim.Name
 	}
 
 	var ssTimeout string
@@ -337,9 +335,9 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	glog.V(2).Infof("created session ID %s", createdSession.Spec.Id)
+	glog.V(2).Infof("created session ID %s", createdSession.Name)
 
-	sss.CreateProgress(createdSession.Spec.Id, accessCodeObj.Labels[util.ScheduledEventLabel], scenario.Spec.Id, course.Spec.Id, user.Spec.Id, len(scenario.Spec.Steps))
+	sss.CreateProgress(createdSession.Name, accessCodeObj.Labels[util.ScheduledEventLabel], scenario.Name, course.Name, user.Name, len(scenario.Spec.Steps))
 
 	encodedSS, err := json.Marshal(createdSession.Spec)
 	if err != nil {
@@ -357,7 +355,6 @@ func (sss SessionServer) CreateProgress(sessionId string, scheduledEventId strin
 	progress := hfv1.Progress{}
 
 	progress.Name = progressName
-	progress.Spec.Id = progressName
 	progress.Spec.Course = courseId
 	progress.Spec.Scenario = scenarioId
 	progress.Spec.UserId = userId
@@ -387,7 +384,7 @@ func (sss SessionServer) CreateProgress(sessionId string, scheduledEventId strin
 		return
 	}
 
-	glog.V(2).Infof("created progress with ID %s", createdProgress.Spec.Id)
+	glog.V(2).Infof("created progress with ID %s", createdProgress.Name)
 }
 
 func (sss SessionServer) FinishProgress(sessionId string, userId string) {
@@ -408,7 +405,7 @@ func (sss SessionServer) FinishProgress(sessionId string, userId string) {
 			p.Spec.Finished = "true"
 
 			_, updateErr := sss.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Update(sss.ctx, &p, metav1.UpdateOptions{})
-			glog.V(4).Infof("updated progress with ID %s", p.Spec.Id)
+			glog.V(4).Infof("updated progress with ID %s", p.Name)
 
 			return updateErr
 		})
@@ -434,7 +431,7 @@ func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Requ
 	}
 
 	ss, err := sss.GetSessionById(sessionId)
-	if ss.Spec.UserId != user.Spec.Id {
+	if ss.Spec.UserId != user.Name {
 		// check if the user has access to write sessions
 		_, err := sss.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
 		if err != nil {
@@ -486,7 +483,7 @@ func (sss SessionServer) KeepAliveSessionFunc(w http.ResponseWriter, r *http.Req
 	}
 
 	ss, err := sss.GetSessionById(sessionId)
-	if ss.Spec.UserId != user.Spec.Id {
+	if ss.Spec.UserId != user.Name {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no session found that matches this user")
 		return
 	}
@@ -497,7 +494,7 @@ func (sss SessionServer) KeepAliveSessionFunc(w http.ResponseWriter, r *http.Req
 	}
 
 	if ss.Status.Paused {
-		glog.V(4).Infof("session %s was paused, returning paused", ss.Spec.Id)
+		glog.V(4).Infof("session %s was paused, returning paused", ss.Name)
 
 		now := time.Now()
 		pauseExpiration, err := time.Parse(time.UnixDate, ss.Status.PausedTime)
@@ -588,7 +585,7 @@ func (sss SessionServer) PauseSessionFunc(w http.ResponseWriter, r *http.Request
 	}
 
 	ss, err := sss.GetSessionById(sessionId)
-	if ss.Spec.UserId != user.Spec.Id {
+	if ss.Spec.UserId != user.Name {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no session found that matches this user")
 		return
 	}
@@ -614,7 +611,7 @@ func (sss SessionServer) PauseSessionFunc(w http.ResponseWriter, r *http.Request
 	}
 
 	if !course.Spec.Pauseable && !scenario.Spec.Pauseable {
-		glog.Errorf("session is not pauseable %s", course.Spec.Id)
+		glog.Errorf("session is not pauseable %s", course.Name)
 		util.ReturnHTTPMessage(w, r, 500, "error", "not pauseable")
 		return
 	}
@@ -674,7 +671,7 @@ func (sss SessionServer) ResumeSessionFunc(w http.ResponseWriter, r *http.Reques
 	}
 
 	ss, err := sss.GetSessionById(sessionId)
-	if ss.Spec.UserId != user.Spec.Id {
+	if ss.Spec.UserId != user.Name {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no session found that matches this user")
 		return
 	}
@@ -763,7 +760,7 @@ func (sss SessionServer) GetSessionFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if ss.Spec.UserId != user.Spec.Id {
+	if ss.Spec.UserId != user.Name {
 		_, err := sss.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission("sessions", rbacclient.VerbGet), w, r)
 		if err != nil {
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no session found that matches for this user")
@@ -777,7 +774,7 @@ func (sss SessionServer) GetSessionFunc(w http.ResponseWriter, r *http.Request) 
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedSS)
 
-	glog.V(2).Infof("retrieved session %s", ss.Spec.Id)
+	glog.V(2).Infof("retrieved session %s", ss.Name)
 }
 
 func ssIdIndexer(obj interface{}) ([]string, error) {
@@ -785,7 +782,7 @@ func ssIdIndexer(obj interface{}) ([]string, error) {
 	if !ok {
 		return []string{}, nil
 	}
-	return []string{ss.Spec.Id}, nil
+	return []string{ss.Name}, nil
 }
 
 func (sss SessionServer) GetSessionById(id string) (hfv1.Session, error) {

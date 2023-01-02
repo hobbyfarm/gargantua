@@ -109,10 +109,10 @@ func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if vm.Spec.UserId != user.Spec.Id {
+	if vm.Spec.UserId != user.Name {
 		_, err := vms.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
 		if err != nil {
-			glog.Errorf("user forbidden from accessing vm id %s", vm.Spec.Id)
+			glog.Errorf("user forbidden from accessing vm id %s", vm.Name)
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
 			return
 		}
@@ -126,7 +126,7 @@ func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedVM)
 
-	glog.V(2).Infof("retrieved vm %s", vm.Spec.Id)
+	glog.V(2).Infof("retrieved vm %s", vm.Name)
 }
 
 func (vms VMServer) GetVMListFunc(w http.ResponseWriter, r *http.Request, listOptions metav1.ListOptions) {
@@ -212,5 +212,5 @@ func vmIdIndexer(obj interface{}) ([]string, error) {
 	if !ok {
 		return []string{}, nil
 	}
-	return []string{vm.Spec.Id}, nil
+	return []string{vm.Name}, nil
 }

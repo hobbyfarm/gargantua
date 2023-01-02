@@ -228,9 +228,9 @@ func (s ScheduledEventController) finishSessionsFromScheduledEvent(se *hfv1.Sche
 
 	for _, session := range sessionList.Items {
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(s.ctx, session.Spec.Id, metav1.GetOptions{})
+			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(s.ctx, session.Name, metav1.GetOptions{})
 			if getErr != nil {
-				return fmt.Errorf("error retrieving latest version of session %s: %v", session.Spec.Id, getErr)
+				return fmt.Errorf("error retrieving latest version of session %s: %v", session.Name, getErr)
 			}
 
 			result.Status.ExpirationTime = now

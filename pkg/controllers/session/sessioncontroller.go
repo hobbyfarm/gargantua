@@ -180,11 +180,11 @@ func (s *SessionController) reconcileSession(ssName string) error {
 			}
 
 			if pausedExpiration.After(now) {
-				glog.V(4).Infof("Session %s was paused, and the pause expiration is after now, skipping clean up.", ss.Spec.Id)
+				glog.V(4).Infof("Session %s was paused, and the pause expiration is after now, skipping clean up.", ss.Name)
 				return nil
 			}
 
-			glog.V(4).Infof("Session %s was paused, but the pause expiration was before now, so cleaning up.", ss.Spec.Id)
+			glog.V(4).Infof("Session %s was paused, but the pause expiration was before now, so cleaning up.", ss.Name)
 		}
 		for _, vmc := range ss.Spec.VmClaimSet {
 			vmcObj, err := s.vmcLister.VirtualMachineClaims(util.GetReleaseNamespace()).Get(vmc)
@@ -323,7 +323,7 @@ func (s *SessionController) FinishProgress(sessionId string, userId string) {
 			p.Spec.Finished = "true"
 
 			_, updateErr := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Update(s.ctx, &p, metav1.UpdateOptions{})
-			glog.V(4).Infof("updated progress with ID %s", p.Spec.Id)
+			glog.V(4).Infof("updated progress with ID %s", p.Name)
 
 			return updateErr
 		})
