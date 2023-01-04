@@ -365,7 +365,6 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 				},
 			},
 			Spec: hfv1.DynamicBindConfigurationSpec{
-				Id:                 dbcName,
 				Environment:        envName,
 				BaseName:           dbcRand,
 				BurstCountCapacity: vmtMap,
