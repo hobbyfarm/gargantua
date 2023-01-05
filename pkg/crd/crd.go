@@ -41,9 +41,7 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 		hobbyfarmCRD(&v1.Environment{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
-				AddVersion("v1", &v1.Environment{}, func(cv *crder.Version) {
-					cv.WithStatus()
-				})
+				AddVersion("v1", &v1.Environment{}, nil)
 		}),
 		hobbyfarmCRD(&v1.VirtualMachineSet{}, func(c *crder.CRD) {
 			c.
@@ -74,7 +72,7 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 						WithColumn("Active", ".status.active").
 						WithColumn("Finished", ".status.finished").
 						WithColumn("StartTime", ".status.start_time").
-						WithColumn("ExpirationTime", ".status.expiration_time").
+						WithColumn("ExpirationTime", ".status.end_time").
 						WithStatus()
 				})
 		}),
