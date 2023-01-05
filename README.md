@@ -6,7 +6,7 @@
 
 Gargantua is the megalith backend component of HobbyFarm, which is currently being built as a monolith, but will be transitioned into a proper microservices architecture one day™
 
-## Gargantua components
+## Design
 
 Gargantua is based on, and provisions, the following Kubernetes controllers to manage various aspects of HobbyFarm:
 
@@ -16,7 +16,7 @@ Gargantua is based on, and provisions, the following Kubernetes controllers to m
 - Environment Controller
 - Session Controller
 
-Their relationship is better illustrated with the following ERD:
+Their relationship is illustrated with the following ERD:
 
 ![workflow](./artifacts/diagrams/Workflow.png)
 
