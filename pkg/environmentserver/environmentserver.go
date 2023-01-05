@@ -69,7 +69,6 @@ func (e EnvironmentServer) SetupRoutes(r *mux.Router) {
 type PreparedEnvironment struct {
 	Name string `json:"name"`
 	hfv1.EnvironmentSpec
-	hfv1.EnvironmentStatus
 }
 
 type PreparedListEnvironment struct {
@@ -103,7 +102,7 @@ func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preparedEnvironment := PreparedEnvironment{environment.Name, environment.Spec, environment.Status}
+	preparedEnvironment := PreparedEnvironment{environment.Name, environment.Spec}
 
 	encodedEnvironment, err := json.Marshal(preparedEnvironment)
 	if err != nil {
