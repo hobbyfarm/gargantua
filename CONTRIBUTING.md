@@ -2,9 +2,11 @@
 
 ## Local Development via docker-compose
 
-First, start the docker-compose stack in [hobbyfarm/hobbyfarm](https://github.com/hobbyfarm/hobbyfarm) to provide a local  [kind](https://github.com/kubernetes-sigs/kind) cluster for CRDs.  Next, run:
+* First, start the docker-compose stack in [hobbyfarm/hobbyfarm](https://github.com/hobbyfarm/hobbyfarm) to provide a local [kind](https://github.com/kubernetes-sigs/kind) cluster for CRDs.
 
-```
+* Next, run:
+
+```bash
 # create or start stack
 ./compose.sh up
 
