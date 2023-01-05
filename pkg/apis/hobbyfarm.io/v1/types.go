@@ -128,7 +128,6 @@ type Environment struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              EnvironmentSpec   `json:"spec"`
-	Status            EnvironmentStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -151,10 +150,6 @@ type EnvironmentSpec struct {
 	IPTranslationMap     map[string]string            `json:"ip_translation_map"`
 	WsEndpoint           string                       `json:"ws_endpoint"`
 	CountCapacity        map[string]int               `json:"count_capacity"`
-}
-
-type EnvironmentStatus struct {
-	AvailableCount map[string]int `json:"available_count"`
 }
 
 // +genclient
