@@ -1,0 +1,7 @@
+# Only for CI pipeline to leverage cache from the CI build system
+FROM alpine:latest
+
+COPY gargantua /usr/local/bin/
+
+ENTRYPOINT ["gargantua"]
+CMD ["-v=9", "-logtostderr"]

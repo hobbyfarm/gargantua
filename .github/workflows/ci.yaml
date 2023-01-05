@@ -14,6 +14,7 @@ concurrency:
 jobs:
   build:
     name: Build
+    # the system must match the one in .github/workflows/Dockerfile-ci
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -36,4 +37,4 @@ jobs:
             startsWith(github.event.ref, 'refs/tags/')
             || endsWith(github.event.ref, '/master')
           )
-        run: docker build -t hobbyfarm/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} -f Dockerfile .
+        run: docker build -t hobbyfarm/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} -f .github/workflows/Dockerfile-ci .
