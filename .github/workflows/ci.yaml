@@ -30,8 +30,12 @@ jobs:
           GOOS: linux
           CGO_ENABLED: 0
         run: go build -v -o gargantua
-      # TODO: lint, sonar, tests, etc.
-      - name: Build Docker image
+      - name: Lint Go code
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.50
+      # TODO: sonar, tests
+      - name: Build container image
         if: |
           github.event_name == 'push' && (
             startsWith(github.event.ref, 'refs/tags/')
