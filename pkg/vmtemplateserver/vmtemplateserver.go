@@ -68,6 +68,7 @@ func (v VirtualMachineTemplateServer) SetupRoutes(r *mux.Router) {
 }
 
 type PreparedVMTemplate struct {
+	ID string `json:"id"`
 	hfv1.VirtualMachineTemplateSpec
 }
 
@@ -101,7 +102,7 @@ func (v VirtualMachineTemplateServer) GetFunc(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	preparedEnvironment := PreparedVMTemplate{vmt.Spec}
+	preparedEnvironment := PreparedVMTemplate{vmt.Name, vmt.Spec}
 
 	encodedEnvironment, err := json.Marshal(preparedEnvironment)
 	if err != nil {

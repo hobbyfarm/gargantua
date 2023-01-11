@@ -30,6 +30,7 @@ type ProgressServer struct {
 }
 
 type AdminPreparedProgress struct {
+	ID string `json:"id"`
 	Session string `json:"session"`
 	hfv1.ProgressSpec
 }
@@ -175,7 +176,7 @@ func (s ProgressServer) ListByLabel(w http.ResponseWriter, r *http.Request, labe
 
 	preparedProgress := []AdminPreparedProgress{}
 	for _, p := range progress.Items {
-		pProgress := AdminPreparedProgress{p.Labels[util.SessionLabel], p.Spec}
+		pProgress := AdminPreparedProgress{p.Name, p.Labels[util.SessionLabel], p.Spec}
 		preparedProgress = append(preparedProgress, pProgress)
 	}
 

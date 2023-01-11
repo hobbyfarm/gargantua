@@ -31,6 +31,7 @@ type VMServer struct {
 }
 
 type PreparedVirtualMachine struct {
+	ID string `json:"id"`
 	hfv1.VirtualMachineSpec
 	hfv1.VirtualMachineStatus
 }
@@ -118,7 +119,7 @@ func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	preparedVM := PreparedVirtualMachine{vm.Spec, vm.Status}
+	preparedVM := PreparedVirtualMachine{vm.Name, vm.Spec, vm.Status}
 
 	encodedVM, err := json.Marshal(preparedVM)
 	if err != nil {
@@ -146,7 +147,7 @@ func (vms VMServer) GetVMListFunc(w http.ResponseWriter, r *http.Request, listOp
 
 	preparedVMs := []PreparedVirtualMachine{}
 	for _, vm := range vmList.Items {
-		pVM := PreparedVirtualMachine{vm.Spec, vm.Status}
+		pVM := PreparedVirtualMachine{vm.Name, vm.Spec, vm.Status}
 		preparedVMs = append(preparedVMs, pVM)
 	}
 

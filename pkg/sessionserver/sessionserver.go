@@ -42,6 +42,11 @@ type SessionServer struct {
 	ctx              context.Context
 }
 
+type preparedSession struct {
+	ID string `json:"id"`
+	hfv1.SessionSpec
+}
+
 func NewSessionServer(authClient *authclient.AuthClient, accessCodeClient *accesscode.AccessCodeClient, scenarioClient *scenarioclient.ScenarioClient, courseClient *courseclient.CourseClient, hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*SessionServer, error) {
 	a := SessionServer{}
 	a.hfClientSet = hfClientSet
@@ -339,7 +344,8 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 
 	sss.CreateProgress(createdSession.Name, accessCodeObj.Labels[util.ScheduledEventLabel], scenario.Name, course.Name, user.Name, len(scenario.Spec.Steps))
 
-	encodedSS, err := json.Marshal(createdSession.Spec)
+	preparedSession := preparedSession{createdSession.Name, createdSession.Spec}
+	encodedSS, err := json.Marshal(preparedSession)
 	if err != nil {
 		glog.Error(err)
 	}
@@ -768,7 +774,8 @@ func (sss SessionServer) GetSessionFunc(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	encodedSS, err := json.Marshal(ss.Spec)
+	preparedSession := preparedSession{ss.Name, ss.Spec}
+	encodedSS, err := json.Marshal(preparedSession)
 	if err != nil {
 		glog.Error(err)
 	}

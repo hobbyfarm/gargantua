@@ -74,6 +74,7 @@ func (vmcs VMClaimServer) SetupRoutes(r *mux.Router) {
 }
 
 type PreparedVirtualMachineClaim struct {
+	ID string `json:"id"`
 	hfv1.VirtualMachineClaimSpec
 	hfv1.VirtualMachineClaimStatus
 }
@@ -110,7 +111,7 @@ func (vmcs VMClaimServer) GetVMClaimFunc(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	preparedVMC := PreparedVirtualMachineClaim{vmc.Spec, vmc.Status}
+	preparedVMC := PreparedVirtualMachineClaim{vmc.Name, vmc.Spec, vmc.Status}
 
 	encodedVMC, err := json.Marshal(preparedVMC)
 	if err != nil {
