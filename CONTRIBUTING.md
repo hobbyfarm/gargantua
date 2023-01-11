@@ -36,6 +36,6 @@ The script `./compose-up.sh` does the following:
 - connects to the external docker network `hobbyfarm-dev`
 - mounts the external volume for kube service account credentials called `hobbyfarm-kube-sa`
 - calls `docker-compose up`
-    - creates or starts the `hf-garg` container, which runs a watch loop on golang files, re-builds on change, and listens on [localhost:16210](http://localhost:16210)
+  - creates or starts the `hf-garg` container, which runs a watch loop on golang files, re-builds on change, and listens on [localhost:16210](http://localhost:16210)
 
 To modify docker-compose variables for your local environment, copy `.env.example` to `.env` and update variables as needed.
