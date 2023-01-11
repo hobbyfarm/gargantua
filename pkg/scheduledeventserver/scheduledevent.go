@@ -261,6 +261,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 	scheduledEvent.Spec.OnDemand = onDemand
 	scheduledEvent.Spec.Printable = printable
 	scheduledEvent.Spec.RequiredVirtualMachines = requiredVMUnmarshaled
+	scheduledEvent.Spec.AccessCode = accessCode
 
 	if scenariosRaw != "" {
 		scheduledEvent.Spec.Scenarios = scenarios

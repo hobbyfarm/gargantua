@@ -348,10 +348,12 @@ func Max(x, y int) int {
 	return x
 }
 
-func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context) (Maximus, error) {
+// Calculates available virtualMachineTemplates for a given period (startString, endString) and environment
+// Returns a map with timestamps and corresponding availability of virtualmachines. Also returns the maximum available count of virtualmachinetemplates over the whole duration.
+func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context)(map[time.Time]map[string]int, map[string]int, error){
 	start, err := time.Parse(time.UnixDate, startString)
 	if err != nil {
-		return Maximus{}, fmt.Errorf("error parsing start time %v", err)
+		return map[time.Time]map[string]int{}, map[string]int{}, fmt.Errorf("error parsing start time %v", err)
 	}
 
 	// We only want to calculate for the future. Otherwise old ( even finished ) events will be considered too.
@@ -361,17 +363,12 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 
 	end, err := time.Parse(time.UnixDate, endString)
 	if err != nil {
-		return Maximus{}, fmt.Errorf("error parsing end time %v", err)
-	}
-
-	environmentFromK8s, err := hfClientset.HobbyfarmV1().Environments(GetReleaseNamespace()).Get(ctx, environment, metav1.GetOptions{})
-	if err != nil {
-		return Maximus{}, fmt.Errorf("error retrieving environment %v", err)
+		return map[time.Time]map[string]int{}, map[string]int{}, fmt.Errorf("error parsing end time %v", err)
 	}
 
 	scheduledEvents, err := hfClientset.HobbyfarmV1().ScheduledEvents(GetReleaseNamespace()).List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return Maximus{}, fmt.Errorf("error retrieving scheduled events %v", err)
+		return map[time.Time]map[string]int{}, map[string]int{}, fmt.Errorf("error retrieving scheduled events %v", err)
 	}
 
 	var timeRange []Range
@@ -384,11 +381,11 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 		if vmMapping, ok := se.Spec.RequiredVirtualMachines[environment]; ok {
 			seStart, err := time.Parse(time.UnixDate, se.Spec.StartTime)
 			if err != nil {
-				return Maximus{}, fmt.Errorf("error parsing scheduled event start %v", err)
+				return map[time.Time]map[string]int{}, map[string]int{}, fmt.Errorf("error parsing scheduled event start %v", err)
 			}
 			seEnd, err := time.Parse(time.UnixDate, se.Spec.EndTime)
 			if err != nil {
-				return Maximus{}, fmt.Errorf("error parsing scheduled event end %v", err)
+				return map[time.Time]map[string]int{}, map[string]int{}, fmt.Errorf("error parsing scheduled event end %v", err)
 			}
 			// Scheduled Event is withing our timerange. We consider it by adding it to our Ranges
 			if start.Equal(seStart) || end.Equal(seEnd) || (start.Before(seEnd) && end.After(seStart)) {
@@ -433,6 +430,22 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 
 		}
 	}
+
+	return virtualMachineCount, maximumVirtualMachineCount, nil
+}
+
+func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context) (Maximus, error) {
+	_, maximumVirtualMachineCount, err := VirtualMachinesUsedDuringPeriod(hfClientset, environment, startString, endString, ctx);
+
+	if(err != nil) {
+		return Maximus{}, err
+	}
+
+	environmentFromK8s, err := hfClientset.HobbyfarmV1().Environments(GetReleaseNamespace()).Get(ctx, environment, metav1.GetOptions{})
+	if err != nil {
+		return Maximus{}, fmt.Errorf("error retrieving environment %v", err)
+	}
+
 
 	max := Maximus{}
 	max.AvailableCount = make(map[string]int)
