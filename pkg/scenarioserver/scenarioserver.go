@@ -97,6 +97,7 @@ func (s ScenarioServer) SetupRoutes(r *mux.Router) {
 func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario, printable bool) (PreparedScenario, error) {
 	ps := PreparedScenario{}
 
+	ps.Id = scenario.Name
 	ps.Name = scenario.Spec.Name
 	ps.Description = scenario.Spec.Description
 	ps.VirtualMachines = scenario.Spec.VirtualMachines

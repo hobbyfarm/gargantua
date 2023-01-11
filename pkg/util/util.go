@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"sort"
 
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 )
@@ -325,88 +326,120 @@ type Maximus struct {
 	AvailableCount    map[string]int    `json:"available_count"`
 }
 
+// Range with reserved virtual machine amounts for given time range
+type Range struct {
+	Start time.Time
+	End   time.Time
+	VMMapping map[string]int
+}
+// These functions are used to sort arrays of time.Time
+type ByTime []time.Time
+func (t ByTime) Len() int { return len(t) }
+func (t ByTime) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
+func (t ByTime) Less(i, j int) bool { return t[i].Before(t[j]) }
+func sortTime(timeArray []time.Time) {
+    sort.Sort(ByTime(timeArray))
+}
+
+func Max(x, y int) int {
+	if x < y {
+		return y
+	}
+	return x
+}
+
 func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context) (Maximus, error) {
-
-	duration, _ := time.ParseDuration("30m")
-
 	start, err := time.Parse(time.UnixDate, startString)
-
 	if err != nil {
 		return Maximus{}, fmt.Errorf("error parsing start time %v", err)
 	}
 
-	start = start.Round(duration)
+	// We only want to calculate for the future. Otherwise old ( even finished ) events will be considered too.
+	if(start.Before(time.Now())){
+		start = time.Now();
+	}
 
 	end, err := time.Parse(time.UnixDate, endString)
-
 	if err != nil {
 		return Maximus{}, fmt.Errorf("error parsing end time %v", err)
 	}
 
-	end = end.Round(duration)
-
 	environmentFromK8s, err := hfClientset.HobbyfarmV1().Environments(GetReleaseNamespace()).Get(ctx, environment, metav1.GetOptions{})
-
 	if err != nil {
 		return Maximus{}, fmt.Errorf("error retrieving environment %v", err)
 	}
 
 	scheduledEvents, err := hfClientset.HobbyfarmV1().ScheduledEvents(GetReleaseNamespace()).List(ctx, metav1.ListOptions{})
-
 	if err != nil {
 		return Maximus{}, fmt.Errorf("error retrieving scheduled events %v", err)
 	}
 
-	maxCounts := map[string]int{}
-	maxCounts = make(map[string]int)
-	// maxCount will be the largest number of virtual machines allocated from the environment
-	/*for t, c := range environmentFromK8s.Spec.CountCapacity {
-		maxCounts[t] = c
-	}*/
-	for i := start; i.Before(end) || i.Equal(end); i = i.Add(duration) {
-		glog.V(8).Infof("Checking time at %s", i.Format(time.UnixDate))
-		currentMaxCount := map[string]int{}
-		for _, se := range scheduledEvents.Items {
-			glog.V(4).Infof("Checking scheduled event %s", se.Spec.Name)
-			if vmMapping, ok := se.Spec.RequiredVirtualMachines[environment]; ok {
-				seStart, err := time.Parse(time.UnixDate, se.Spec.StartTime)
-				if err != nil {
-					return Maximus{}, fmt.Errorf("error parsing scheduled event start %v", err)
-				}
-				seEnd, err := time.Parse(time.UnixDate, se.Spec.EndTime)
-				if err != nil {
-					return Maximus{}, fmt.Errorf("error parsing scheduled event end %v", err)
-				}
-				// i is the checking time
-				// if the time to be checked is after or equal to the start time of the scheduled event
-				// and if i is before or equal to the end of the scheduled event
-				if i.Equal(seStart) || i.Equal(seEnd) || (i.Before(seEnd) && i.After(seStart)) {
-					glog.V(4).Infof("Scheduled Event %s was within the time period", se.Name)
-					for vmTemplateName, vmTemplateCount := range vmMapping {
-						glog.V(4).Infof("SE VM Template %s Count was %d", vmTemplateName, vmTemplateCount)
-						currentMaxCount[vmTemplateName] = currentMaxCount[vmTemplateName] + vmTemplateCount
-					}
-				}
+	var timeRange []Range
+	var changingTimestamps []time.Time // All timestamps where number of virtualmachines changes (Begin or End of Scheduled Event)
+	virtualMachineCount := make(map[time.Time]map[string]int) // Count of virtualmachines per VMTemplate for any given timestamp where a change happened
+	maximumVirtualMachineCount := make(map[string]int) // Maximum VirtualMachine Count per VirtualMachineTemplate over all timestamps
+
+	for _, se := range scheduledEvents.Items {
+		// Scheduled Event uses the environment we are checking
+		if vmMapping, ok := se.Spec.RequiredVirtualMachines[environment]; ok {
+			seStart, err := time.Parse(time.UnixDate, se.Spec.StartTime)
+			if err != nil {
+				return Maximus{}, fmt.Errorf("error parsing scheduled event start %v", err)
 			}
-		}
-		for vmt, currentCount := range currentMaxCount {
-			glog.V(4).Infof("currentCount for vmt %s is %d", vmt, currentCount)
-			if maxCount, ok := maxCounts[vmt]; ok {
-				glog.V(4).Infof("Current max count for vmt %s is %d", vmt, maxCount)
-				if maxCount < currentCount {
-					maxCounts[vmt] = currentCount
-				}
-			} else {
-				maxCounts[vmt] = currentCount
+			seEnd, err := time.Parse(time.UnixDate, se.Spec.EndTime)
+			if err != nil {
+				return Maximus{}, fmt.Errorf("error parsing scheduled event end %v", err)
+			}
+			// Scheduled Event is withing our timerange. We consider it by adding it to our Ranges
+			if start.Equal(seStart) || end.Equal(seEnd) || (start.Before(seEnd) && end.After(seStart)) {
+				timeRange = append(timeRange, Range{Start: seStart, End: seEnd, VMMapping: vmMapping})
+				changingTimestamps = append(changingTimestamps, seStart)
+				changingTimestamps = append(changingTimestamps, seEnd)
+				virtualMachineCount[seStart] = make(map[string]int)
+				virtualMachineCount[seEnd] = make(map[string]int)
+				glog.V(4).Infof("Scheduled Event %s was within the time period", se.Name)
 			}
 		}
 	}
+
+	// Sort timestamps
+	sortTime(changingTimestamps)
+
+	for _, eventRange := range timeRange {
+		// For any given Scheduled Event check if the timestamp is during the duration of our event. Add required Virtualmachine Counts to this timestamp.
+		for _, timestamp := range changingTimestamps {
+			if(eventRange.Start.After(timestamp)){
+				continue
+			}
+			if(eventRange.End.Before(timestamp)){
+				break
+			}
+
+			// When we are here the timestamp is in the duration of this event.
+			for vmTemplateName, vmTemplateCount := range eventRange.VMMapping {
+				// VM Capacity for this timestamp
+				if currentVMCapacity, ok := virtualMachineCount[timestamp][vmTemplateName]; ok {
+					virtualMachineCount[timestamp][vmTemplateName] = currentVMCapacity + vmTemplateCount
+				} else {
+					virtualMachineCount[timestamp][vmTemplateName] = vmTemplateCount
+				}
+				// Highest VM Capacity over all timestamps
+				if maximumVMCapacity, ok := maximumVirtualMachineCount[vmTemplateName]; ok {
+					maximumVirtualMachineCount[vmTemplateName] = Max(maximumVMCapacity, virtualMachineCount[timestamp][vmTemplateName])
+				} else {
+					maximumVirtualMachineCount[vmTemplateName] = vmTemplateCount
+				}
+			}
+
+		}
+	}
+
 	max := Maximus{}
 	max.AvailableCount = make(map[string]int)
 	for k, v := range environmentFromK8s.Spec.CountCapacity {
 		max.AvailableCount[k] = v
 	}
-	for vmt, count := range maxCounts {
+	for vmt, count := range maximumVirtualMachineCount {
 		if vmtCap, ok := environmentFromK8s.Spec.CountCapacity[vmt]; ok {
 			max.AvailableCount[vmt] = vmtCap - count
 		} else {
