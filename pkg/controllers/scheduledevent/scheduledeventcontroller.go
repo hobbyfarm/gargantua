@@ -163,12 +163,6 @@ func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent
 		return err
 	}
 
-	err = s.deleteProgressFromScheduledEvent(se)
-
-	if err != nil {
-		return err
-	}
-
 	// update the scheduled event and set the various flags accordingly (provisioned, ready, finished)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		seToUpdate, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, se.Name, metav1.GetOptions{})
@@ -206,17 +200,6 @@ func (s ScheduledEventController) deleteVMSetsFromScheduledEvent(se *hfv1.Schedu
 	return nil
 }
 
-func (s ScheduledEventController) deleteProgressFromScheduledEvent(se *hfv1.ScheduledEvent) error {
-	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
-	err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func (s ScheduledEventController) finishSessionsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// get a list of sessions for the user

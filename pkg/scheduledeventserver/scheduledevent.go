@@ -514,6 +514,13 @@ func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	err = s.deleteProgressFromScheduledEvent(scheduledEvent)
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", err.Error())
+		return
+	}
+
 	err = s.deleteScheduledEventConfig(scheduledEvent)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting scheduled event's access code(s) and DBC(s)")
@@ -552,6 +559,18 @@ func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent
 	}
 
 	return nil // break (return) here because we're done with this SE.
+}
+
+func (s ScheduledEventServer) deleteProgressFromScheduledEvent(se *hfv1.ScheduledEvent) error {
+	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
+	err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
