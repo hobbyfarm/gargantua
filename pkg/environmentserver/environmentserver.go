@@ -181,6 +181,12 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	countCapacity := r.PostFormValue("count_capacity")
+	if environmentSpecifics == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no count_capacity passed in")
+		return
+	}
+
 	ipTranslationMap := r.PostFormValue("ip_translation_map")
 	if ipTranslationMap == "" {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ip_translation_map passed in")
@@ -197,6 +203,14 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal([]byte(templateMapping), &templateMappingUnmarshaled)
 	if err != nil {
 		glog.Errorf("error while unmarshaling template_mapping (create environment) %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+		return
+	}
+
+	countCapacityUnmarshaled := map[string]int{}
+	err = json.Unmarshal([]byte(countCapacity), &countCapacityUnmarshaled)
+	if err != nil {
+		glog.Errorf("error while unmarshaling count_capacity (create environment) %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
 		return
 	}
@@ -230,6 +244,7 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	environment.Spec.EnvironmentSpecifics = environmentSpecificsUnmarshaled
 	environment.Spec.IPTranslationMap = ipTranslationUnmarshaled
 	environment.Spec.WsEndpoint = wsEndpoint
+	environment.Spec.CountCapacity = countCapacityUnmarshaled
 
 
 	environment, err = e.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Create(e.ctx, environment, metav1.CreateOptions{})
@@ -273,6 +288,7 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		environmentSpecifics := r.PostFormValue("environment_specifics")
 		ipTranslationMap := r.PostFormValue("ip_translation_map")
 		wsEndpoint := r.PostFormValue("ws_endpoint")
+		countCapacity := r.PostFormValue("count_capacity")
 
 		if len(displayName) > 0 {
 			environment.Spec.DisplayName = displayName
@@ -308,11 +324,22 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			environment.Spec.EnvironmentSpecifics = environmentSpecificsUnmarshaled
 		}
 
+		if(len(countCapacity) > 0){
+			countCapacityUnmarshaled := map[string]int{}
+			err = json.Unmarshal([]byte(countCapacity), &countCapacityUnmarshaled)
+			if err != nil {
+				glog.Errorf("error while unmarshaling count_capacity (update environment) %v", err)
+				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+				return fmt.Errorf("bad")
+			}
+			environment.Spec.CountCapacity = countCapacityUnmarshaled
+		}
+
 		if len(ipTranslationMap) > 0 {
 			ipTranslationUnmarshaled := map[string]string{}
 			err = json.Unmarshal([]byte(ipTranslationMap), &ipTranslationUnmarshaled)
 			if err != nil {
-				glog.Errorf("error while unmarshaling ip_translation_map (create environment) %v", err)
+				glog.Errorf("error while unmarshaling ip_translation_map (update environment) %v", err)
 				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
 				return fmt.Errorf("bad")
 			}
