@@ -31,7 +31,6 @@ type HobbyfarmV1Interface interface {
      AccessCodesGetter
      CoursesGetter
      DynamicBindConfigurationsGetter
-     DynamicBindRequestsGetter
      EnvironmentsGetter
      ProgressesGetter
      ScenariosGetter
@@ -60,10 +59,6 @@ func (c *HobbyfarmV1Client) Courses(namespace string) CourseInterface {
 
 func (c *HobbyfarmV1Client) DynamicBindConfigurations(namespace string) DynamicBindConfigurationInterface {
 	return newDynamicBindConfigurations(c, namespace)
-}
-
-func (c *HobbyfarmV1Client) DynamicBindRequests(namespace string) DynamicBindRequestInterface {
-	return newDynamicBindRequests(c, namespace)
 }
 
 func (c *HobbyfarmV1Client) Environments(namespace string) EnvironmentInterface {

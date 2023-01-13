@@ -20,6 +20,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"net/http"
 	"os"
@@ -432,6 +433,16 @@ func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environm
 	}
 
 	return virtualMachineCount, maximumVirtualMachineCount, nil
+}
+
+func CountMachinesPerTemplateAndEnvironment(vmLister hfListers.VirtualMachineLister, template string, enviroment string) (int, error) {
+	vmLabels := labels.Set{
+		"environment": enviroment,
+		"template":    template,
+	}
+
+	vms, err := vmLister.List(vmLabels.AsSelector())
+	return len(vms), err
 }
 
 func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context) (Maximus, error) {

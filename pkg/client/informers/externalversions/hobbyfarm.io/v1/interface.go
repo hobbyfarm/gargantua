@@ -30,8 +30,6 @@ type Interface interface {
 	Courses() CourseInformer
 	// DynamicBindConfigurations returns a DynamicBindConfigurationInformer.
 	DynamicBindConfigurations() DynamicBindConfigurationInformer
-	// DynamicBindRequests returns a DynamicBindRequestInformer.
-	DynamicBindRequests() DynamicBindRequestInformer
 	// Environments returns a EnvironmentInformer.
 	Environments() EnvironmentInformer
 	// Progresses returns a ProgressInformer.
@@ -78,11 +76,6 @@ func (v *version) Courses() CourseInformer {
 // DynamicBindConfigurations returns a DynamicBindConfigurationInformer.
 func (v *version) DynamicBindConfigurations() DynamicBindConfigurationInformer {
 	return &dynamicBindConfigurationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// DynamicBindRequests returns a DynamicBindRequestInformer.
-func (v *version) DynamicBindRequests() DynamicBindRequestInformer {
-	return &dynamicBindRequestInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Environments returns a EnvironmentInformer.

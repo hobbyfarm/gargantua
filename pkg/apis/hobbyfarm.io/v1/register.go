@@ -51,8 +51,6 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ScheduledEventList{},
 		&DynamicBindConfiguration{},
 		&DynamicBindConfigurationList{},
-		&DynamicBindRequest{},
-		&DynamicBindRequestList{},
 		&Progress{},
 		&ProgressList{},
 	)

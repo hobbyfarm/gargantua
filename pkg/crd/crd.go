@@ -139,17 +139,6 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.DynamicBindConfiguration{}, nil)
 		}),
-		hobbyfarmCRD(&v1.DynamicBindRequest{}, func(c *crder.CRD) {
-			c.
-				IsNamespaced(true).
-				AddVersion("v1", &v1.DynamicBindRequest{}, func(cv *crder.Version) {
-					cv.
-						WithColumn("CurrentAttempts", ".status.current_attempts").
-						WithColumn("Expired", ".status.expired").
-						WithColumn("Fulfilled", ".status.fulfilled").
-						WithStatus()
-				})
-		}),
 		terraformCRD(&terraformv1.Module{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).

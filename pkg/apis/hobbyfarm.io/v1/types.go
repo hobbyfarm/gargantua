@@ -84,7 +84,6 @@ type VirtualMachineClaimSpec struct {
 type VirtualMachineClaimStatus struct {
 	BindMode             string `json:"bind_mode"`
 	StaticBindAttempts   int    `json:"static_bind_attempts"`
-	DynamicBindRequestId string `json:"dynamic_bind_request_id"`
 	Bound                bool   `json:"bound"`
 	Ready                bool   `json:"ready"`
 	Tainted              bool   `json:"tainted"` // If tainted, we should delete the VM's underneath then delete ourself...
@@ -456,35 +455,4 @@ type DynamicBindConfigurationSpec struct {
 	RestrictedBind      bool           `json:"restricted_bind"`
 	RestrictedBindValue string         `json:"restricted_bind_value"`
 	BurstCountCapacity  map[string]int `json:"burst_count_capacity"`
-}
-
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type DynamicBindRequest struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              DynamicBindRequestSpec   `json:"spec"`
-	Status            DynamicBindRequestStatus `json:"status"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type DynamicBindRequestList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-	Items           []DynamicBindRequest `json:"items"`
-}
-
-type DynamicBindRequestSpec struct {
-	VirtualMachineClaim string `json:"vm_claim"`
-	Attempts            int    `json:"attempts"`
-}
-
-type DynamicBindRequestStatus struct {
-	CurrentAttempts            int               `json:"current_attempts"`
-	Expired                    bool              `json:"expired"`
-	Fulfilled                  bool              `json:"fulfilled"`
-	DynamicBindConfigurationId string            `json:"dynamic_bind_configuration_id"`
-	VirtualMachineIds          map[string]string `json:"virtual_machines_id"`
 }

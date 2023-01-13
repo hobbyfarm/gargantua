@@ -256,6 +256,7 @@ func (v *VMClaimController) processVMClaim(vmc *hfv1.VirtualMachineClaim) (err e
 		if vmc.Status.BindMode == "dynamic" {
 			err = v.submitVirtualMachines(vmc)
 			if err != nil {
+				// TODO 13.01.2023: Delete VirtualMachineClaim OR Set it to invalid. Same for static mode
 				return err
 			}
 		} else if vmc.Status.BindMode == "static" {
@@ -293,6 +294,11 @@ func (v *VMClaimController) processVMClaim(vmc *hfv1.VirtualMachineClaim) (err e
 	return nil
 }
 
+type VMEnvironment struct {
+ 	Environment hfv1.Environment
+	DynamicBindConfiguration hfv1.DynamicBindConfiguration
+}
+
 func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim) (err error) {
 	accessCode, ok := vmc.Labels[util.AccessCodeLabel]
 	if !ok {
@@ -300,14 +306,28 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 		return fmt.Errorf("accessCode label not set on vmc, aborting")
 	}
 
-	env, seName, dbc, err := v.findEnvironmentForVM(accessCode)
+	environments, seName, dbcList, err := v.findEnvironmentsForVM(accessCode, vmc)
 	if err != nil {
 		glog.Errorf("error fetching environment for access code %s  %v", accessCode, err)
 		return err
 	}
+
+	// TODO 13.01.2023: Fix issue where provisioning two of the same template in the samce VMC can cause overprovisioning for environments
+	environmentMap := make(map[string]VMEnvironment)
+	for vmName, vmDetails := range vmc.Spec.VirtualMachines {
+		env, dbc, err := v.findSuitableEnvironmentForVMTemplate(environments, dbcList, vmDetails.Template)
+		if err != nil{
+			glog.Errorf("no suitable environment for %s (%s): %v", vmName, vmDetails.Template, err)
+			return err
+		}
+		environmentMap[vmName] = VMEnvironment{env, dbc}
+	}
+
 	vmMap := make(map[string]hfv1.VirtualMachineClaimVM)
 	for vmName, vmDetails := range vmc.Spec.VirtualMachines {
 		genName := fmt.Sprintf("%s-%08x", vmc.Spec.BaseName, rand.Uint32())
+		environment := environmentMap[vmName].Environment
+		dbc := environmentMap[vmName].DynamicBindConfiguration
 		vm := &hfv1.VirtualMachine{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: genName,
@@ -323,7 +343,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 					"dynamic":                          "true",
 					"vmc":                              vmc.Name,
 					"template":                         vmDetails.Template,
-					"environment":                      env.Name,
+					"environment":                      environment.Name,
 					"bound":                            "true",
 					"ready":                            "false",
 					util.ScheduledEventLabel: seName,
@@ -351,7 +371,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 			return err
 		}
 
-		config := util.GetVMConfig(env,vmt)
+		config := util.GetVMConfig(&environment,vmt)
      
     protocol, exists := config["protocol"]
     if exists {
@@ -364,7 +384,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 		}
 
 		// extra label to indicate external provisioning so tfpcontroller ignores this request //
-		if provisionMethod, ok := env.Annotations["hobbyfarm.io/provisioner"]; ok {
+		if provisionMethod, ok := environment.Annotations["hobbyfarm.io/provisioner"]; ok {
 			vm.Labels["hobbyfarm.io/provisioner"] = provisionMethod
 			vm.Spec.Provision = false
 		}
@@ -387,8 +407,8 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 			Status:        hfv1.VmStatusRFP,
 			Allocated:     true,
 			Tainted:       false,
-			WsEndpoint:    env.Spec.WsEndpoint,
-			EnvironmentId: env.Name,
+			WsEndpoint:    environment.Spec.WsEndpoint,
+			EnvironmentId: environment.Name,
 			PublicIP:      "",
 			PrivateIP:     "",
 		}
@@ -409,19 +429,11 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 	return nil
 }
 
-func (v *VMClaimController) findEnvironmentForVM(accessCode string) (env *hfv1.Environment, seName string, dbc *hfv1.DynamicBindConfiguration, err error) {
-	// find scheduledEvent for this accessCode
-	var envName string
-	seName, envName, err = v.findScheduledEvent(accessCode)
+// Based on the given VirtualMachineClaim and ScheduledEvent find all suitable Environments (e.g. environment provides required VMTeplate & ScheduledEvents allows this environment and VMTemplate configuration etc.)
+func (v *VMClaimController) findEnvironmentsForVM(accessCode string, vmc *hfv1.VirtualMachineClaim) (environments []hfv1.Environment, seName string, dbc []hfv1.DynamicBindConfiguration, err error) {
+	seName, _, err = v.findScheduledEvent(accessCode)
 	if err != nil {
-		return env, seName, dbc, err
-	}
-
-	env, err = v.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Get(v.ctx, envName, metav1.GetOptions{})
-
-	if err != nil {
-		glog.Errorf("error fetching environment %v", err)
-		return env, seName, dbc, err
+		return environments, seName, dbc, err
 	}
 
 	dbcList, err := v.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{
@@ -430,16 +442,51 @@ func (v *VMClaimController) findEnvironmentForVM(accessCode string) (env *hfv1.E
 
 	if err != nil {
 		glog.Errorf("error listing dbc %v", err)
-		return env, seName, dbc, err
+		return environments, seName, dbc, err
 	}
 
-	if len(dbcList.Items) != 1 {
-		return env, seName, dbc, fmt.Errorf("incorrect number of dbc matching sessionName found")
+	for _ , dbc := range dbcList.Items {
+		env, err := v.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Get(v.ctx, dbc.Spec.Environment, metav1.GetOptions{})
+
+		if err != nil {
+			glog.Errorf("error fetching environment %v", err)
+			return environments, seName, dbcList.Items, err
+		}
+		environments = append(environments, *env)
 	}
 
-	dbc = &dbcList.Items[0]
-	//dbc = &dbcList.Items[0]
-	return env, seName, dbc, err
+	if len(dbcList.Items) < 1 {
+		return environments, seName, dbc, fmt.Errorf("incorrect number of dbc matching sessionName found")
+	}
+
+	return environments, seName, dbcList.Items, err
+}
+
+func (v *VMClaimController) findSuitableEnvironmentForVMTemplate(environments []hfv1.Environment, dbcList []hfv1.DynamicBindConfiguration, template string) (hfv1.Environment, hfv1.DynamicBindConfiguration, error) {
+	for _, environment := range environments {
+		count, err := util.CountMachinesPerTemplateAndEnvironment(v.vmLister, template, environment.Name)
+		if(err != nil){
+			continue
+		}
+		if(count >= environment.Spec.CountCapacity[template]){
+			// Environment has no capacity left for this Template. Skipping
+			continue
+		}
+		// found environment that satisfies capacity for this template
+		for _, dbc := range dbcList {
+			if(dbc.Spec.Environment == environment.Name){
+				if capacity, found := dbc.Spec.BurstCountCapacity[template]; found {
+					if(count < capacity){
+						// Capacity also satisfied for environment + scheduledEvent via DBC
+						return environment, dbc,  nil
+					}
+				}
+			}
+		}
+
+	}
+
+	return hfv1.Environment{}, hfv1.DynamicBindConfiguration{}, fmt.Errorf("no suitable environment found. capacity reached")
 }
 
 func (v *VMClaimController) checkVMStatus(vmc *hfv1.VirtualMachineClaim) (ready bool, err error) {
@@ -459,26 +506,25 @@ func (v *VMClaimController) checkVMStatus(vmc *hfv1.VirtualMachineClaim) (ready 
 	return ready, err
 }
 
-func (v *VMClaimController) findScheduledEvent(accessCode string) (schedEvent string, envName string, err error) {
+func (v *VMClaimController) findScheduledEvent(accessCode string) (schedEvent string, environments map[string]map[string]int, err error) {
 	seList, err := v.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{})
 	if err != nil {
-		return schedEvent, envName, err
+		return schedEvent, environments, err
 	}
 
 	for _, se := range seList.Items {
 		if se.Spec.AccessCode == accessCode {
 			schedEvent = se.Name
-			for k, _ := range se.Spec.RequiredVirtualMachines {
-				envName = k
-			}
+			environments = se.Spec.RequiredVirtualMachines
+			break
 		}
 	}
 
 	if schedEvent == "" {
-		return schedEvent, envName, fmt.Errorf("no scheduled event matching access code %s found", accessCode)
+		return schedEvent, environments, fmt.Errorf("no scheduled event matching access code %s found", accessCode)
 	}
 
-	return schedEvent, envName, nil
+	return schedEvent, environments, nil
 }
 
 func (v *VMClaimController) findVirtualMachines(vmc *hfv1.VirtualMachineClaim) (err error) {
@@ -487,7 +533,7 @@ func (v *VMClaimController) findVirtualMachines(vmc *hfv1.VirtualMachineClaim) (
 		glog.Error("accessCode label not set on vmc, aborting")
 		return fmt.Errorf("accessCode label not set on vmc, aborting")
 	}
-	_, env, err := v.findScheduledEvent(accessCode)
+	_, environments, err := v.findScheduledEvent(accessCode)
 
 	if err != nil {
 		glog.Error("error finding scheduledevent during static bind")
@@ -498,7 +544,7 @@ func (v *VMClaimController) findVirtualMachines(vmc *hfv1.VirtualMachineClaim) (
 	for name, vmStruct := range vmc.Spec.VirtualMachines {
 		if vmStruct.VirtualMachineId == "" {
 			glog.Info("assigning a vm")
-			vmID, err := v.assignNextFreeVM(vmc.Name, vmc.Spec.UserId, vmStruct.Template, env, vmc.Spec.RestrictedBind, vmc.Spec.RestrictedBindValue)
+			vmID, err := v.assignNextFreeVM(vmc.Name, vmc.Spec.UserId, environments, vmStruct.Template, vmc.Spec.RestrictedBind, vmc.Spec.RestrictedBindValue)
 			if err != nil {
 				return err
 			}
@@ -559,11 +605,12 @@ func  (v *VMClaimController) assignVM(vmClaimId string, user string, vmId string
 	return vmId, nil
 }
 
-func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, template string, environmentId string, restrictedBind bool, restrictedBindValue string) (string, error) {
+func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, environments map[string]map[string]int, template string, restrictedBind bool, restrictedBindValue string) (string, error) {
+
+	// TODO 13.01.2023: Ability to force the same environment for all VMs from one VMClaim
 
 	vmLabels := labels.Set{
 		"bound":       "false",
-		"environment": environmentId,
 		"template":    template,
 	}
 
@@ -583,6 +630,17 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, temp
 	assigned := false
 	vmId := ""
 	for _, vm := range vms {
+		// Check for Supported environment
+		if vmts, found := environments[vm.Labels["environment"]]; found {
+			// This virtualmachine is one of the supported environments
+			if _, foundVMT := vmts[vm.Spec.VirtualMachineTemplateId]; !foundVMT {
+				// ... but this environment does not support this virtualmachinetemplate
+				continue
+			}
+		}else{
+			// This virtualmachine is in a non supported environment
+			continue;
+		}
 		if !vm.Status.Allocated && !vm.Status.Tainted {
 			// we can assign this vm
 			assigned = true
