@@ -337,7 +337,6 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 	}
 
 	if(err != nil) {
-		// TODO 13.01.2023: Fix issue where provisioning two of the same template in the samce VMC can cause overprovisioning for environments
 		// We can not provision all VirtualMachines in one environment. Figure out which environments we want to use
 		for vmName, vmDetails := range vmc.Spec.VirtualMachines {
 			env, dbc, err := v.findSuitableEnvironmentForVMTemplate(environments, dbcList, vmDetails.Template, reservedCapacity)
