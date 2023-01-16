@@ -680,9 +680,6 @@ func  (v *VMClaimController) assignVM(vmClaimId string, user string, vmId string
 }
 
 func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, environments map[string]map[string]int, template string, restrictedBind bool, restrictedBindValue string) (string, error) {
-
-	// TODO 13.01.2023: Ability to force the same environment for all VMs from one VMClaim
-
 	vmLabels := labels.Set{
 		"bound":       "false",
 		"template":    template,
