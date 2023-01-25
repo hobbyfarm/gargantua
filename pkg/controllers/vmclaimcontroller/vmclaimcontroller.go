@@ -256,14 +256,17 @@ func (v *VMClaimController) processVMClaim(vmc *hfv1.VirtualMachineClaim) (err e
 		if vmc.Status.BindMode == "dynamic" {
 			err = v.submitVirtualMachines(vmc)
 			if err != nil {
-				// TODO 13.01.2023: Delete VirtualMachineClaim OR Set it to invalid. Same for static mode
-				return err
+				// VirtualMachines could not be submitted. Delete Claim
+				glog.Errorf("error processing vmc %s - %s", vmc.Name, err.Error())
+				return v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Delete(v.ctx, vmc.Name, metav1.DeleteOptions{})
 			}
 		} else if vmc.Status.BindMode == "static" {
 			err = v.findVirtualMachines(vmc)
 			if err != nil {
+				// VirtualMachines could not be bound. Delete Claim
+				// TODO 17.01.2023 delete session?
 				glog.Errorf("error processing vmc %s - %s", vmc.Name, err.Error())
-				return err
+				return v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Delete(v.ctx, vmc.Name, metav1.DeleteOptions{})
 			}
 		} else {
 			glog.Errorf("vmc bind mode needs to be either dynamic or static.. ignoring this object %s", vmc.Name)
