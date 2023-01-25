@@ -473,6 +473,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 	})
 
 	if retryErr != nil {
+		glog.Error(retryErr)
 		util.ReturnHTTPMessage(w, r, 500, "error", "error attempting to update")
 		return
 	}

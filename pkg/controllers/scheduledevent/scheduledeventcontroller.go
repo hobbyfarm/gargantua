@@ -588,6 +588,10 @@ func (s ScheduledEventController) verifyScheduledEvent(se *hfv1.ScheduledEvent) 
 			return err
 		}
 
+		if seToUpdate.Status.Provisioned == false || seToUpdate.Status.Finished == true {
+			return fmt.Errorf("scheduled event is not provisioned. Maybe changed recently")
+		}
+
 		seToUpdate.Status.Provisioned = true
 		seToUpdate.Status.Ready = true
 		seToUpdate.Status.Finished = false
