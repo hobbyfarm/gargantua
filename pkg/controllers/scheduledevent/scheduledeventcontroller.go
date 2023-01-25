@@ -218,6 +218,18 @@ func (s ScheduledEventController) deleteProgressFromScheduledEvent(se *hfv1.Sche
 	return nil
 }
 
+func (s ScheduledEventController) deleteAccessCode(se *hfv1.ScheduledEvent) error {
+	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
+	err := s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s ScheduledEventController) finishSessionsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// get a list of sessions for the user
 	sessionList, err := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
@@ -371,6 +383,14 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 			}
 		}
 
+		// Delete existing DynamicBindConfigurations
+		err = s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("%s=%s,environment=%s", util.ScheduledEventLabel, se.Name, env.Name),
+		})
+		if err != nil {
+			return err
+		}
+
 		// create the dynamic bind configurations
 		dbcRand := fmt.Sprintf("%s-%08x", baseNameDynamicPrefix, rand.Uint32())
 		dbcName := strings.Join([]string{"se", se.Name, "dbc", dbcRand}, "-")
@@ -432,7 +452,16 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 		}
 	}
 
-	err := s.createAccessCode(se)
+	// Delete AccessCode if it exists
+	_, err := s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Get(s.ctx, se.Spec.AccessCode, metav1.GetOptions{})
+	if err == nil {
+		err = s.deleteAccessCode(se)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = s.createAccessCode(se)
 	if err != nil {
 		return err
 	}
