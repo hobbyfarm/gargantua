@@ -314,7 +314,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			if exists {
 				vm.Spec.SshUsername = sshUser
 			}
-			protocol, exists := env.Spec.TemplateMapping[vmt.Name]["protocol"]
+			protocol, exists := config["protocol"]
 			if exists {
 				vm.Spec.Protocol = protocol
 			}
