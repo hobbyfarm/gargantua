@@ -20,6 +20,6 @@ Their relationship is illustrated with the following ERD:
 
 ![workflow](./artifacts/diagrams/Workflow.png)
 
-## Contributing
+## Contributions
 
-If you're interested in contributing, see [CONTRIBUTING.md](CONTRIBUTING.md)
+If you're interested in working with the source code, see [CONTRIBUTING.md](CONTRIBUTING.md)
