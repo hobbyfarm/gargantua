@@ -457,21 +457,23 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 			if err != nil {
 				return err
 			}
-			scheduledEvent.Status.Provisioned = false
-			scheduledEvent.Status.Ready = false
-			scheduledEvent.Status.Finished = false
 		}
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, scheduledEvent, metav1.UpdateOptions{})
+		updateSE, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, scheduledEvent, metav1.UpdateOptions{})
 		if(updateErr != nil){
 			return updateErr
 		}
 
-		_, updateErr = s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, scheduledEvent, metav1.UpdateOptions{})
+		updateSE.Status.Provisioned = false
+		updateSE.Status.Ready = false
+		updateSE.Status.Finished = false
+
+		_, updateErr = s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, updateSE, metav1.UpdateOptions{})
 		return updateErr
 	})
 
 	if retryErr != nil {
+		glog.Error(retryErr)
 		util.ReturnHTTPMessage(w, r, 500, "error", "error attempting to update")
 		return
 	}
