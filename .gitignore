@@ -14,5 +14,5 @@ gargantua
 .idea
 artifacts/testing
 
-# docker-compose enviornment variables
+# docker-compose environment variables
 /.env
