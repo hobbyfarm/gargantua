@@ -46,7 +46,9 @@ k3d cluster create hobbyfarm --api-port 6550 -p "8081:80@loadbalancer" -p "8082:
 
 ```bash
 kubectl create ns hobbyfarm
+kubectl apply -f samples/kubernetes/roles.yaml -n hobbyfarm
 kubectl apply -f samples/kubernetes/users.yaml -n hobbyfarm
+kubectl apply -f samples/kubernetes/rolebindings.yaml -n hobbyfarm
 ```
 
 * Create CA and TLS files (see [How To Create CA and Generate SSL/TLS Certificates & Keys](https://scriptcrunch.com/create-ca-tls-ssl-certificates-keys/))
