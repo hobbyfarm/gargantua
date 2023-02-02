@@ -8,7 +8,7 @@ import (
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
-func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.CRD {
+func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference, disableWebhookCall bool) []crder.CRD {
 	return []crder.CRD{
 		hobbyfarmCRD(&v1.VirtualMachine{}, func(c *crder.CRD) {
 			c.
@@ -116,14 +116,17 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 
 					cv.IsServed(true)
 					cv.IsStored(true)
-				}).
-				WithConversion(func(cc *crder.Conversion) {
-					cc.
-						StrategyWebhook().
-						WithCABundle(caBundle).
-						WithService(serviceReferenceWithPath(reference, "/conversion/users.hobbyfarm.io")).
-						WithVersions("v2", "v1")
 				})
+			if !disableWebhookCall {
+				c.
+					WithConversion(func(cc *crder.Conversion) {
+						cc.
+							StrategyWebhook().
+							WithCABundle(caBundle).
+							WithService(serviceReferenceWithPath(reference, "/conversion/users.hobbyfarm.io")).
+							WithVersions("v2", "v1")
+					})
+			}
 		}),
 		hobbyfarmCRD(&v1.ScheduledEvent{}, func(c *crder.CRD) {
 			c.

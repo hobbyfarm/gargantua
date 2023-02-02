@@ -2,7 +2,25 @@
 
 ## Code logic
 
-It all starts from `main.go` file.
+The application processing starts with `main.go` file at the root of the source files. All the other go code is located in `pkg` folder. 
+
+How it works:
+
+- _Clients_ are TODO
+- _Controllers_ are TODO
+- _Servers_ define the REST API entry points (route,method -> action)
+  - `AuthServer`
+  - `CourseServer`
+  - `EnvironmentServer`
+  - `ProgressServer`
+  - `RbacServer`
+  - `ScenarioServer`
+  - `ScheduleEventServer`
+  - `SessionServer`
+  - `UserServer`
+  - `VmServer`
+  - `VmSetServer`
+  - `VmTemplateServer`
 
 ## Local Development
 
@@ -22,6 +40,13 @@ go build
 
 ```bash
 k3d cluster create hobbyfarm --api-port 6550 -p "8081:80@loadbalancer" -p "8082:443@loadbalancer" --agents 1
+```
+
+* Define Kubernetes objects needed by HobbyFarm
+
+```bash
+kubectl create ns hobbyfarm
+kubectl apply -f samples/kubernetes/users.yaml -n hobbyfarm
 ```
 
 * Create CA and TLS files (see [How To Create CA and Generate SSL/TLS Certificates & Keys](https://scriptcrunch.com/create-ca-tls-ssl-certificates-keys/))
@@ -66,7 +91,7 @@ cd ..
 * Run the application
 
 ```bash
-go run . --kubeconfig=%userprofile%\.kube\config --webhook-tls-cert=.ssl/server.crt --webhook-tls-key=.ssl/server.key -webhook-tls-ca=.ssl/ca.crt
+go run . --kubeconfig=%userprofile%\.kube\config --webhook-tls-cert=.ssl/server.crt --webhook-tls-key=.ssl/server.key -webhook-tls-ca=.ssl/ca.crt -logtostderr -v=9 -nowebwookcall=true
 ```
 
 ## Local Development via docker-compose

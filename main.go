@@ -74,6 +74,7 @@ var (
 	localKubeconfig    string
 	disableControllers bool
 	shellServer        bool
+	disableWebhookCall bool
 	installRBACRoles   bool
 	webhookTLSCert     string
 	webhookTLSKey      string
@@ -85,6 +86,7 @@ func init() {
 	flag.StringVar(&localMasterUrl, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.BoolVar(&disableControllers, "disablecontrollers", false, "Disable the controllers")
 	flag.BoolVar(&shellServer, "shellserver", false, "Be a shell server")
+	flag.BoolVar(&disableWebhookCall, "nowebwookcall", false, "Disable calls to webhook")
 	flag.BoolVar(&installRBACRoles, "installrbacroles", false, "Install default RBAC Roles")
 	flag.StringVar(&webhookTLSCert, "webhook-tls-cert", "/webhook-secret/tls.crt", "Path to TLS certificate for webhook server")
 	flag.StringVar(&webhookTLSKey, "webhook-tls-key", "/webhook-secret/tls.key", "Path to TLS key for webhook server")
@@ -119,10 +121,13 @@ func main() {
 			glog.Fatalf("error reading ca certificate: %s", err.Error())
 		}
 
-		crds := crd.GenerateCRDs(string(ca), v1.ServiceReference{
-			Namespace: namespace,
-			Name:      "hobbyfarm-webhook",
-		})
+		crds := crd.GenerateCRDs(
+			string(ca),
+			v1.ServiceReference{
+				Namespace: namespace,
+				Name:      "hobbyfarm-webhook",
+			},
+			disableWebhookCall)
 
 		glog.Info("installing/updating CRDs")
 		err = crder.InstallUpdateCRDs(cfg, crds...)
