@@ -313,7 +313,15 @@ func (v *VMClaimController) taintSession(session string) (err error){
 		return updateErr
 	})
 
-	return retryErr
+	if(retryErr != nil){
+		return retryErr
+	}
+
+	// Remove outstanding Progresses as there was an error with this session
+	err = v.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).DeleteCollection(v.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s,finished=false", util.SessionLabel, session)})
+
+	return err;
 }
 
 type VMEnvironment struct {
