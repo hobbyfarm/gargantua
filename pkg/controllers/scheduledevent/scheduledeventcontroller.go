@@ -230,7 +230,6 @@ func (s ScheduledEventController) finishSessionsFromScheduledEvent(se *hfv1.Sche
 
 			result.Status.ExpirationTime = now
 			result.Status.Active = false
-			result.Status.Finished = false
 
 			_, updateErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).UpdateStatus(s.ctx, result, metav1.UpdateOptions{})
 			glog.V(4).Infof("updated result for session")

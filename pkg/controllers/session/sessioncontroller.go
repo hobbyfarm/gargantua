@@ -249,16 +249,9 @@ func (s *SessionController) taintVM(vmName string) error {
 		if getErr != nil {
 			return getErr
 		}
-		result.Labels["ready"] = "false"
-
-		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(s.ctx, result, metav1.UpdateOptions{})
-		if updateErr != nil {
-			return updateErr
-		}
-
 		result.Status.Tainted = true
 
-		result, updateErr = s.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(s.ctx, result, metav1.UpdateOptions{})
+		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(s.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}

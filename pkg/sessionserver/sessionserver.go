@@ -454,9 +454,9 @@ func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Requ
 			return fmt.Errorf("error retrieving latest version of session %s: %v", sessionId, getErr)
 		}
 
+		// Change the expiration time to now, the sessionController will clean up the session
 		result.Status.ExpirationTime = now
 		result.Status.Active = false
-		result.Status.Finished = false
 
 		_, updateErr := sss.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).UpdateStatus(sss.ctx, result, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for environment")

@@ -256,17 +256,16 @@ func (v *VMClaimController) processVMClaim(vmc *hfv1.VirtualMachineClaim) (err e
 		if vmc.Status.BindMode == "dynamic" {
 			err = v.submitVirtualMachines(vmc)
 			if err != nil {
-				// VirtualMachines could not be submitted. Delete Claim
+				// VirtualMachines could not be submitted. Delete Session
 				glog.Errorf("error processing vmc %s - %s", vmc.Name, err.Error())
-				return v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Delete(v.ctx, vmc.Name, metav1.DeleteOptions{})
+				return v.taintSession(vmc.Labels[util.SessionLabel]);
 			}
 		} else if vmc.Status.BindMode == "static" {
 			err = v.findVirtualMachines(vmc)
 			if err != nil {
-				// VirtualMachines could not be bound. Delete Claim
-				// TODO 17.01.2023 delete session?
+				// VirtualMachines could not be bound. Delete Session
 				glog.Errorf("error processing vmc %s - %s", vmc.Name, err.Error())
-				return v.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Delete(v.ctx, vmc.Name, metav1.DeleteOptions{})
+				return v.taintSession(vmc.Labels[util.SessionLabel]);
 			}
 		} else {
 			glog.Errorf("vmc bind mode needs to be either dynamic or static.. ignoring this object %s", vmc.Name)
@@ -295,6 +294,26 @@ func (v *VMClaimController) processVMClaim(vmc *hfv1.VirtualMachineClaim) (err e
 	}
 
 	return nil
+}
+
+func (v *VMClaimController) taintSession(session string) (err error){
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		result, getErr := v.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(v.ctx, session, metav1.GetOptions{})
+		if getErr != nil {
+			return fmt.Errorf("error retrieving latest version of session %s: %v", session, getErr)
+		}
+
+		// Change the expiration time to now, the sessionController will clean up the session
+		result.Status.ExpirationTime = time.Now().Format(time.UnixDate)
+		result.Status.Active = false
+
+		_, updateErr := v.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).UpdateStatus(v.ctx, result, metav1.UpdateOptions{})
+		glog.V(4).Infof("updated result for environment")
+
+		return updateErr
+	})
+
+	return retryErr
 }
 
 type VMEnvironment struct {
