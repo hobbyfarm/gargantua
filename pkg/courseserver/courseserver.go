@@ -215,7 +215,6 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	generatedName := util.GenerateResourceName("c", name, 10)
 
 	course.Name = generatedName
-	course.Spec.Id = generatedName
 
 	course.Spec.Name = name
 	course.Spec.Description = description
@@ -550,7 +549,7 @@ func (c CourseServer) AppendDynamicScenariosByCategories(scenariosList []string,
 			continue
 		}
 		for _, scenario := range scenarios.Items {
-			scenariosList = append(scenariosList, scenario.Spec.Id)
+			scenariosList = append(scenariosList, scenario.Name)
 		}
 	}
 
@@ -615,5 +614,5 @@ func idIndexer(obj interface{}) ([]string, error) {
 	if !ok {
 		return []string{}, nil
 	}
-	return []string{course.Spec.Id}, nil
+	return []string{course.Name}, nil
 }

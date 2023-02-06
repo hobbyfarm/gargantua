@@ -24,8 +24,6 @@ type CourseExpansion interface{}
 
 type DynamicBindConfigurationExpansion interface{}
 
-type DynamicBindRequestExpansion interface{}
-
 type EnvironmentExpansion interface{}
 
 type ProgressExpansion interface{}

@@ -111,7 +111,6 @@ func (a AuthServer) NewUser(email string, password string) (string, error) {
 	sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:10]
 	id := "u-" + strings.ToLower(sha)
 	newUser.Name = id
-	newUser.Spec.Id = id
 	newUser.Spec.Email = email
 
 	settings := make(map[string]string)
@@ -147,7 +146,7 @@ func (a AuthServer) ChangePasswordFunc(w http.ResponseWriter, r *http.Request) {
 	oldPassword := r.PostFormValue("old_password")
 	newPassword := r.PostFormValue("new_password")
 
-	err = a.ChangePassword(user.Spec.Id, oldPassword, newPassword)
+	err = a.ChangePassword(user.Name, oldPassword, newPassword)
 
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", fmt.Sprintf("error changing password for user %s", user.Name))
@@ -173,7 +172,7 @@ func (a AuthServer) UpdateSettingsFunc(w http.ResponseWriter, r *http.Request) {
 		newSettings[key] = r.FormValue(key) //Ignore when multiple values were set for one argument. Just take the first one
 	}
 
-	err = a.UpdateSettings(user.Spec.Id, newSettings)
+	err = a.UpdateSettings(user.Name, newSettings)
 
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", fmt.Sprintf("error updating settings for user %s", user.Name))
@@ -264,7 +263,7 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 
 	accessCode := strings.ToLower(r.PostFormValue("access_code"))
 
-	err = a.AddAccessCode(user.Spec.Id, accessCode)
+	err = a.AddAccessCode(user.Name, accessCode)
 
 	if err != nil {
 		glog.Error(err)
@@ -288,7 +287,7 @@ func (a AuthServer) RemoveAccessCodeFunc(w http.ResponseWriter, r *http.Request)
 
 	accessCode := strings.ToLower(vars["access_code"])
 
-	err = a.RemoveAccessCode(user.Spec.Id, accessCode)
+	err = a.RemoveAccessCode(user.Name, accessCode)
 
 	if err != nil {
 		glog.Error(err)

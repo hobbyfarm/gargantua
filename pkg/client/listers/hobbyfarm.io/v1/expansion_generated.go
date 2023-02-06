@@ -42,14 +42,6 @@ type DynamicBindConfigurationListerExpansion interface{}
 // DynamicBindConfigurationNamespaceLister.
 type DynamicBindConfigurationNamespaceListerExpansion interface{}
 
-// DynamicBindRequestListerExpansion allows custom methods to be added to
-// DynamicBindRequestLister.
-type DynamicBindRequestListerExpansion interface{}
-
-// DynamicBindRequestNamespaceListerExpansion allows custom methods to be added to
-// DynamicBindRequestNamespaceLister.
-type DynamicBindRequestNamespaceListerExpansion interface{}
-
 // EnvironmentListerExpansion allows custom methods to be added to
 // EnvironmentLister.
 type EnvironmentListerExpansion interface{}
