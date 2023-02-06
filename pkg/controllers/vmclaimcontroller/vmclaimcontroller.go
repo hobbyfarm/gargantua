@@ -257,14 +257,14 @@ func (v *VMClaimController) processVMClaim(vmc *hfv1.VirtualMachineClaim) (err e
 			err = v.submitVirtualMachines(vmc)
 			if err != nil {
 				// VirtualMachines could not be submitted. Delete Session
-				glog.Errorf("error processing vmc %s - %s", vmc.Name, err.Error())
+				glog.Errorf("error processing vmc %s, taint session: %v", vmc.Name, err)
 				return v.taintSession(vmc.Labels[util.SessionLabel]);
 			}
 		} else if vmc.Status.BindMode == "static" {
 			err = v.findVirtualMachines(vmc)
 			if err != nil {
 				// VirtualMachines could not be bound. Delete Session
-				glog.Errorf("error processing vmc %s - %s", vmc.Name, err.Error())
+				glog.Errorf("error processing vmc %s, taint session: %v", vmc.Name, err)
 				return v.taintSession(vmc.Labels[util.SessionLabel]);
 			}
 		} else {
@@ -650,6 +650,10 @@ func (v *VMClaimController) findVirtualMachines(vmc *hfv1.VirtualMachineClaim) (
 			glog.Info("assigning a vm")
 			vmID, err := v.assignNextFreeVM(vmc.Name, vmc.Spec.UserId, environments, vmStruct.Template, vmc.Spec.RestrictedBind, vmc.Spec.RestrictedBindValue)
 			if err != nil {
+				// If we run into any issue assigning a VM we need to unassign the previously assigned VMs
+				for _, vm := range vmMap {
+					v.unassignVM(vm.VirtualMachineId)
+				}
 				return err
 			}
 			vmMap[name] = hfv1.VirtualMachineClaimVM{
@@ -669,7 +673,7 @@ func (v *VMClaimController) findVirtualMachines(vmc *hfv1.VirtualMachineClaim) (
 	return nil
 }
 
-func  (v *VMClaimController) assignVM(vmClaimId string, user string, vmId string) (string, error) {
+func  (v *VMClaimController) assignVM(vmClaimId string, user string, vmId string) (error) {
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Get(v.ctx, vmId, metav1.GetOptions{})
 		if getErr != nil {
@@ -694,6 +698,43 @@ func  (v *VMClaimController) assignVM(vmClaimId string, user string, vmId string
 		}
 
 		glog.V(4).Infof("updated result for virtual machine")
+
+		verifyErr := util.VerifyVM(v.vmLister, vm)
+
+		if verifyErr != nil {
+			return verifyErr
+		}
+		return nil
+	})
+	if retryErr != nil {
+		return fmt.Errorf("error updating Virtual Machine: %s, %v", vmId, retryErr)
+	}
+
+	return nil
+}
+
+func  (v *VMClaimController) unassignVM(vmId string) (string, error) {
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Get(v.ctx, vmId, metav1.GetOptions{})
+		if getErr != nil {
+			return fmt.Errorf("error retrieving latest version of Virtual Machine %s: %v", vmId, getErr)
+		}
+
+		result.Labels["bound"] = "false"
+		result.Spec.VirtualMachineClaimId = ""
+		result.Spec.UserId = ""
+
+		vm, updateErr := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(v.ctx, result, metav1.UpdateOptions{})
+		if updateErr != nil {
+			return updateErr
+		}
+
+		vm.Status.Allocated = false
+
+		_, updateErr = v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(v.ctx, vm, metav1.UpdateOptions{})
+		if updateErr != nil {
+			return updateErr
+		}
 
 		verifyErr := util.VerifyVM(v.vmLister, vm)
 
@@ -728,6 +769,10 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, envi
 		return "", fmt.Errorf("error while listing all vms %v", err)
 	}
 
+	if(len(vms) == 0){
+		return "", fmt.Errorf("No static VMs matching template: %s. All static VMs are in use.", template)
+	}
+
 	assigned := false
 	vmId := ""
 	for _, vm := range vms {
@@ -755,7 +800,7 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, envi
 	}
 
 	if assigned {
-		vmId, err = v.assignVM(vmClaimId, user, vmId)
+		err = v.assignVM(vmClaimId, user, vmId)
 
 		if err != nil {
 			return "", err

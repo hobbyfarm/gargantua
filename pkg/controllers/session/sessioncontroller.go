@@ -194,6 +194,10 @@ func (s *SessionController) reconcileSession(ssName string) error {
 			}
 
 			for _, vm := range vmcObj.Spec.VirtualMachines {
+				if(len(vm.VirtualMachineId) == 0){
+					// VM was not even provisioned / assigned yet.
+					continue
+				}
 				taintErr := s.taintVM(vm.VirtualMachineId)
 				if taintErr != nil {
 					glog.Error(taintErr)
