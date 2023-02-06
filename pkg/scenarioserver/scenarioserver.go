@@ -98,8 +98,8 @@ func (s ScenarioServer) SetupRoutes(r *mux.Router) {
 func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario, printable bool) (PreparedScenario, error) {
 	ps := PreparedScenario{}
 
+	ps.Id = scenario.Name
 	ps.Name = scenario.Spec.Name
-	ps.Id = scenario.Spec.Id
 	ps.Description = scenario.Spec.Description
 	ps.VirtualMachines = scenario.Spec.VirtualMachines
 	ps.Pauseable = scenario.Spec.Pauseable
@@ -688,7 +688,6 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	hasher.Write([]byte(name))
 	sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:10]
 	scenario.Name = "s-" + strings.ToLower(sha)
-	scenario.Spec.Id = "s-" + strings.ToLower(sha) // LEGACY!!!!
 
 	scenario.Spec.Name = name
 	scenario.Spec.Description = description
@@ -875,5 +874,5 @@ func idIndexer(obj interface{}) ([]string, error) {
 	if !ok {
 		return []string{}, nil
 	}
-	return []string{scenario.Spec.Id}, nil
+	return []string{scenario.Name}, nil
 }

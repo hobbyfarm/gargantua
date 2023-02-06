@@ -40,10 +40,6 @@ func (c *FakeHobbyfarmV1) DynamicBindConfigurations(namespace string) v1.Dynamic
 	return &FakeDynamicBindConfigurations{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) DynamicBindRequests(namespace string) v1.DynamicBindRequestInterface {
-	return &FakeDynamicBindRequests{c, namespace}
-}
-
 func (c *FakeHobbyfarmV1) Environments(namespace string) v1.EnvironmentInterface {
 	return &FakeEnvironments{c, namespace}
 }

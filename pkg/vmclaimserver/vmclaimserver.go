@@ -74,6 +74,7 @@ func (vmcs VMClaimServer) SetupRoutes(r *mux.Router) {
 }
 
 type PreparedVirtualMachineClaim struct {
+	ID string `json:"id"`
 	hfv1.VirtualMachineClaimSpec
 	hfv1.VirtualMachineClaimStatus
 }
@@ -102,7 +103,7 @@ func (vmcs VMClaimServer) GetVMClaimFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if vmc.Spec.UserId != user.Spec.Id {
+	if vmc.Spec.UserId != user.Name {
 		_, err := vmcs.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
 		if err != nil {
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to get vmclaim")
@@ -110,7 +111,7 @@ func (vmcs VMClaimServer) GetVMClaimFunc(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	preparedVMC := PreparedVirtualMachineClaim{vmc.Spec, vmc.Status}
+	preparedVMC := PreparedVirtualMachineClaim{vmc.Name, vmc.Spec, vmc.Status}
 
 	encodedVMC, err := json.Marshal(preparedVMC)
 	if err != nil {
@@ -118,7 +119,7 @@ func (vmcs VMClaimServer) GetVMClaimFunc(w http.ResponseWriter, r *http.Request)
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedVMC)
 
-	glog.V(2).Infof("retrieved vmc %s", vmc.Spec.Id)
+	glog.V(2).Infof("retrieved vmc %s", vmc.Name)
 }
 
 func vmcIdIndexer(obj interface{}) ([]string, error) {
@@ -126,5 +127,5 @@ func vmcIdIndexer(obj interface{}) ([]string, error) {
 	if !ok {
 		return []string{}, nil
 	}
-	return []string{vmc.Spec.Id}, nil
+	return []string{vmc.Name}, nil
 }

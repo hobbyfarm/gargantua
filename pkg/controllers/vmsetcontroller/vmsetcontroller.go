@@ -289,7 +289,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 					Labels: map[string]string{
 						"dynamic":                          "false",
 						"vmset":                            vmset.Name,
-						"template":                         vmt.Spec.Id,
+						"template":                         vmt.Name,
 						"environment":                      env.Name,
 						"bound":                            "false",
 						"ready":                            "false",
@@ -297,8 +297,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 					},
 				},
 				Spec: hfv1.VirtualMachineSpec{
-					Id:                       vmName,
-					VirtualMachineTemplateId: vmt.Spec.Id,
+					VirtualMachineTemplateId: vmt.Name,
 					SecretName:               "",
 					Protocol:                 "ssh",
 					VirtualMachineClaimId:    "",
@@ -315,7 +314,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			if exists {
 				vm.Spec.SshUsername = sshUser
 			}
-			protocol, exists := env.Spec.TemplateMapping[vmt.Name]["protocol"]
+			protocol, exists := config["protocol"]
 			if exists {
 				vm.Spec.Protocol = protocol
 			}

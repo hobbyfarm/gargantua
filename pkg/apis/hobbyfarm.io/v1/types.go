@@ -5,15 +5,12 @@ import (
 )
 
 type VmStatus string
-type CapacityMode string
 
 const (
 	VmStatusRFP         VmStatus     = "readyforprovisioning"
 	VmStatusProvisioned VmStatus     = "provisioned"
 	VmStatusRunning     VmStatus     = "running"
 	VmStatusTerminating VmStatus     = "terminating"
-	CapacityModeRaw     CapacityMode = "raw"
-	CapacityModeCount   CapacityMode = "count"
 )
 
 // +genclient
@@ -35,7 +32,6 @@ type VirtualMachineList struct {
 }
 
 type VirtualMachineSpec struct {
-	Id                       string `json:"id"`
 	VirtualMachineTemplateId string `json:"vm_template_id"`
 	SshUsername              string `json:"ssh_username"`
 	Protocol                 string `json:"protocol"`
@@ -77,7 +73,6 @@ type VirtualMachineClaimList struct {
 }
 
 type VirtualMachineClaimSpec struct {
-	Id                  string                           `json:"id"`
 	UserId              string                           `json:"user"`
 	RestrictedBind      bool                             `json:"restricted_bind"`
 	RestrictedBindValue string                           `json:"restricted_bind_value"`
@@ -89,7 +84,6 @@ type VirtualMachineClaimSpec struct {
 type VirtualMachineClaimStatus struct {
 	BindMode             string `json:"bind_mode"`
 	StaticBindAttempts   int    `json:"static_bind_attempts"`
-	DynamicBindRequestId string `json:"dynamic_bind_request_id"`
 	Bound                bool   `json:"bound"`
 	Ready                bool   `json:"ready"`
 	Tainted              bool   `json:"tainted"` // If tainted, we should delete the VM's underneath then delete ourself...
@@ -121,10 +115,8 @@ type VirtualMachineTemplateList struct {
 // VM type is a genercized collection of information about a VM. this includes things like
 // cpu, ram, disk, etc.
 type VirtualMachineTemplateSpec struct {
-	Id        string            `json:"id"`
 	Name      string            `json:"name"`  // 2x4, etc.
 	Image     string            `json:"image"` // ubuntu-18.04
-	Resources CMSStruct         `json:"resources"`
 	ConfigMap map[string]string `json:"config_map"`
 }
 
@@ -135,7 +127,6 @@ type Environment struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              EnvironmentSpec   `json:"spec"`
-	Status            EnvironmentStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -157,23 +148,7 @@ type EnvironmentSpec struct {
 	EnvironmentSpecifics map[string]string            `json:"environment_specifics"`
 	IPTranslationMap     map[string]string            `json:"ip_translation_map"`
 	WsEndpoint           string                       `json:"ws_endpoint"`
-	CapacityMode         CapacityMode                 `json:"capacity_mode"`
-	BurstCapable         bool                         `json:"burst_capable"`
 	CountCapacity        map[string]int               `json:"count_capacity"`
-	Capacity             CMSStruct                    `json:"capacity"`
-	BurstCountCapacity   map[string]int               `json:"burst_count_capacity"`
-	BurstCapacity        CMSStruct                    `json:"burst_capacity"`
-}
-
-type EnvironmentStatus struct {
-	Used           CMSStruct      `json:"used"`
-	AvailableCount map[string]int `json:"available_count"`
-}
-
-type CMSStruct struct {
-	CPU     int `json:"cpu"`     // cores
-	Memory  int `json:"memory"`  // in MB
-	Storage int `json:"storage"` // in GB
 }
 
 // +genclient
@@ -234,7 +209,6 @@ type CourseList struct {
 }
 
 type CourseSpec struct {
-	Id                string              `json:"id"`
 	Name              string              `json:"name"`
 	Description       string              `json:"description"`
 	Scenarios         []string            `json:"scenarios"`
@@ -265,7 +239,6 @@ type ScenarioList struct {
 }
 
 type ScenarioSpec struct {
-	Id                string              `json:"id"`
 	Name              string              `json:"name"`
 	Description       string              `json:"description"`
 	Steps             []ScenarioStep      `json:"steps"`
@@ -301,7 +274,6 @@ type SessionList struct {
 }
 
 type SessionSpec struct {
-	Id           string   `json:"id"`
 	ScenarioId   string   `json:"scenario"`
 	CourseId     string   `json:"course"`
 	KeepCourseVM bool     `json:"keep_course_vm"`
@@ -338,7 +310,6 @@ type ProgressList struct {
 }
 
 type ProgressSpec struct {
-	Id          string         `json:"id"`
 	CurrentStep int            `json:"current_step"`
 	MaxStep     int            `json:"max_step"`
 	TotalStep   int            `json:"total_step"`
@@ -479,43 +450,9 @@ type DynamicBindConfigurationList struct {
 // that there is adequate vm capacity, it will always choose the environment with the highest capacity before creating a dynamic VM.
 
 type DynamicBindConfigurationSpec struct {
-	Id                  string         `json:"id"`
 	Environment         string         `json:"environment"`
 	BaseName            string         `json:"base_name"`
 	RestrictedBind      bool           `json:"restricted_bind"`
 	RestrictedBindValue string         `json:"restricted_bind_value"`
 	BurstCountCapacity  map[string]int `json:"burst_count_capacity"`
-	BurstCapacity       CMSStruct      `json:"burst_capacity"`
-}
-
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type DynamicBindRequest struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              DynamicBindRequestSpec   `json:"spec"`
-	Status            DynamicBindRequestStatus `json:"status"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type DynamicBindRequestList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-	Items           []DynamicBindRequest `json:"items"`
-}
-
-type DynamicBindRequestSpec struct {
-	Id                  string `json:"id"`
-	VirtualMachineClaim string `json:"vm_claim"`
-	Attempts            int    `json:"attempts"`
-}
-
-type DynamicBindRequestStatus struct {
-	CurrentAttempts            int               `json:"current_attempts"`
-	Expired                    bool              `json:"expired"`
-	Fulfilled                  bool              `json:"fulfilled"`
-	DynamicBindConfigurationId string            `json:"dynamic_bind_configuration_id"`
-	VirtualMachineIds          map[string]string `json:"virtual_machines_id"`
 }

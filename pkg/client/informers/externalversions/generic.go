@@ -61,8 +61,6 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Courses().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("dynamicbindconfigurations"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().DynamicBindConfigurations().Informer()}, nil
-	case v1.SchemeGroupVersion.WithResource("dynamicbindrequests"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().DynamicBindRequests().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("environments"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Environments().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("progresses"):

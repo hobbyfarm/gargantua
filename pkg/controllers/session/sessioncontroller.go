@@ -180,11 +180,11 @@ func (s *SessionController) reconcileSession(ssName string) error {
 			}
 
 			if pausedExpiration.After(now) {
-				glog.V(4).Infof("Session %s was paused, and the pause expiration is after now, skipping clean up.", ss.Spec.Id)
+				glog.V(4).Infof("Session %s was paused, and the pause expiration is after now, skipping clean up.", ss.Name)
 				return nil
 			}
 
-			glog.V(4).Infof("Session %s was paused, but the pause expiration was before now, so cleaning up.", ss.Spec.Id)
+			glog.V(4).Infof("Session %s was paused, but the pause expiration was before now, so cleaning up.", ss.Name)
 		}
 		for _, vmc := range ss.Spec.VmClaimSet {
 			vmcObj, err := s.vmcLister.VirtualMachineClaims(util.GetReleaseNamespace()).Get(vmc)
@@ -194,6 +194,10 @@ func (s *SessionController) reconcileSession(ssName string) error {
 			}
 
 			for _, vm := range vmcObj.Spec.VirtualMachines {
+				if(len(vm.VirtualMachineId) == 0){
+					// VM was not even provisioned / assigned yet.
+					continue
+				}
 				taintErr := s.taintVM(vm.VirtualMachineId)
 				if taintErr != nil {
 					glog.Error(taintErr)
@@ -249,16 +253,9 @@ func (s *SessionController) taintVM(vmName string) error {
 		if getErr != nil {
 			return getErr
 		}
-		result.Labels["ready"] = "false"
-
-		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(s.ctx, result, metav1.UpdateOptions{})
-		if updateErr != nil {
-			return updateErr
-		}
-
 		result.Status.Tainted = true
 
-		result, updateErr = s.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(s.ctx, result, metav1.UpdateOptions{})
+		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(s.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
@@ -323,7 +320,7 @@ func (s *SessionController) FinishProgress(sessionId string, userId string) {
 			p.Spec.Finished = "true"
 
 			_, updateErr := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Update(s.ctx, &p, metav1.UpdateOptions{})
-			glog.V(4).Infof("updated progress with ID %s", p.Spec.Id)
+			glog.V(4).Infof("updated progress with ID %s", p.Name)
 
 			return updateErr
 		})

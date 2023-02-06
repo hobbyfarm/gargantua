@@ -109,5 +109,5 @@ func vmIdIndexer(obj interface{}) ([]string, error) {
 	if !ok {
 		return []string{}, nil
 	}
-	return []string{vm.Spec.Id}, nil
+	return []string{vm.Name}, nil
 }

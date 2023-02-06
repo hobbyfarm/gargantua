@@ -255,7 +255,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 
 	scheduledEvent.Spec.Name = name
 	scheduledEvent.Spec.Description = description
-	scheduledEvent.Spec.Creator = user.Spec.Id
+	scheduledEvent.Spec.Creator = user.Name
 	scheduledEvent.Spec.StartTime = startTime
 	scheduledEvent.Spec.EndTime = endTime
 	scheduledEvent.Spec.OnDemand = onDemand
@@ -457,21 +457,23 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 			if err != nil {
 				return err
 			}
-			scheduledEvent.Status.Provisioned = false
-			scheduledEvent.Status.Ready = false
-			scheduledEvent.Status.Finished = false
 		}
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, scheduledEvent, metav1.UpdateOptions{})
+		updateSE, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, scheduledEvent, metav1.UpdateOptions{})
 		if(updateErr != nil){
 			return updateErr
 		}
 
-		_, updateErr = s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, scheduledEvent, metav1.UpdateOptions{})
+		updateSE.Status.Provisioned = false
+		updateSE.Status.Ready = false
+		updateSE.Status.Finished = false
+
+		_, updateErr = s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, updateSE, metav1.UpdateOptions{})
 		return updateErr
 	})
 
 	if retryErr != nil {
+		glog.Error(retryErr)
 		util.ReturnHTTPMessage(w, r, 500, "error", "error attempting to update")
 		return
 	}
@@ -509,6 +511,13 @@ func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request)
 	}
 
 	err = s.finishSessions(scheduledEvent)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", err.Error())
+		return
+	}
+
+	err = s.deleteProgressFromScheduledEvent(scheduledEvent)
+
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", err.Error())
 		return
@@ -554,6 +563,18 @@ func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent
 	return nil // break (return) here because we're done with this SE.
 }
 
+func (s ScheduledEventServer) deleteProgressFromScheduledEvent(se *hfv1.ScheduledEvent) error {
+	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
+	err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// delete all vmsets corresponding to this scheduled event
 	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
@@ -576,9 +597,9 @@ func (s ScheduledEventServer) finishSessions(se *hfv1.ScheduledEvent) error {
 
 	for _, session := range sessionList.Items {
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(s.ctx, session.Spec.Id, metav1.GetOptions{})
+			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(s.ctx, session.Name, metav1.GetOptions{})
 			if getErr != nil {
-				return fmt.Errorf("error retrieving latest version of session %s: %v", session.Spec.Id, getErr)
+				return fmt.Errorf("error retrieving latest version of session %s: %v", session.Name, getErr)
 			}
 
 			result.Status.ExpirationTime = now
