@@ -2,7 +2,6 @@ package progressserver
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -22,9 +21,6 @@ import (
 
 const (
 	idIndex             = "progressserver.hobbyfarm.io/id-index"
-	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
-	SessionLabel        = "hobbyfarm.io/session"
-	UserLabel           = "hobbyfarm.io/user"
 	resourcePlural      = "progresses"
 )
 
@@ -40,10 +36,11 @@ type AdminPreparedProgress struct {
 	hfv1.ProgressSpec
 }
 
-type AdminPreparedProgressWithScenarioName struct {
+type AdminPreparedProgressWithScheduledEvent struct {
+	ID string `json:"id"`
 	Session string `json:"session"`
 	hfv1.ProgressSpec
-	ScenarioName string `json:"scenario_name"`
+	ScheduledEvent string `json:"scheduled_event"`
 }
 
 type ScheduledEventProgressCount struct {
@@ -227,25 +224,13 @@ func (s ProgressServer) ListByRange(w http.ResponseWriter, r *http.Request, star
 	v1TimeStart := metav1.NewTime(start)
 	v1TimeEnd := metav1.NewTime(end)
 
-	preparedProgress := []AdminPreparedProgressWithScenarioName{}
+	preparedProgress := []AdminPreparedProgressWithScheduledEvent{}
 	for _, p := range progress.Items {
 		//CreationTimestamp of progress is out of range
 		if p.CreationTimestamp.Before(&v1TimeStart) || v1TimeEnd.Before(&p.CreationTimestamp) {
 			continue
 		}
-		scenario, err := s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).Get(s.ctx, p.Spec.Scenario, metav1.GetOptions{})
-		if err != nil {
-			glog.Errorf("error while retrieving scenario %v", err)
-			util.ReturnHTTPMessage(w, r, 500, "error", "no scenarios found")
-			return
-		}
-		scenarioName, err := base64.StdEncoding.DecodeString(scenario.Spec.Name)
-
-		if err != nil {
-			glog.Errorf("Error decoding title of scenario: %s %v", scenario.Name, err)
-		}
-
-		pProgressWithScenarioName := AdminPreparedProgressWithScenarioName{p.Labels[SessionLabel], p.Spec, string(scenarioName)}
+		pProgressWithScenarioName := AdminPreparedProgressWithScheduledEvent{p.Name, p.Labels[util.SessionLabel], p.Spec, p.Labels[util.ScheduledEventLabel]}
 		preparedProgress = append(preparedProgress, pProgressWithScenarioName)
 	}
 
