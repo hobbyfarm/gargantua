@@ -599,7 +599,6 @@ func (s ScenarioServer) CopyFunc(w http.ResponseWriter, r *http.Request) {
 
 		scenario.Spec.Name = copyName
 		scenario.Name = "s-" + strings.ToLower(sha)
-		scenario.Spec.Id = "s-" + strings.ToLower(sha) // LEGACY!!!!
 
 		_, updateErr := s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).Create(s.ctx, scenario, metav1.CreateOptions{})
 		return updateErr
