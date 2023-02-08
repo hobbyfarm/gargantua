@@ -54,7 +54,7 @@ func NewVMServer(authClient *authclient.AuthClient, hfClientset hfClientset.Inte
 
 func (vms VMServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/vm/{vm_id}", vms.GetVMFunc).Methods("GET")
-	r.HandleFunc("/vm/haside/{vm_id}", vms.hasIdeFunc).Methods("GET")
+	r.HandleFunc("/vm/getwebinterfaces/{vm_id}", vms.getWebinterfaces).Methods("GET")
 	r.HandleFunc("/a/vm/list", vms.GetAllVMListFunc).Methods("GET")
 	r.HandleFunc("/a/vm/scheduledevent/{se_id}", vms.GetVMListByScheduledEventFunc).Methods("GET")
 	r.HandleFunc("/a/vm/count", vms.CountByScheduledEvent).Methods("GET")
@@ -62,10 +62,10 @@ func (vms VMServer) SetupRoutes(r *mux.Router) {
 }
 
 /*
-* Checks if VMTemplate used to create VM has "ide"="true" in ConfigMap.
-* Returns http 200 if "ide"="true", else Error Codes.
+* Checks if VMTemplate used to create VM has "webinterfaces" in ConfigMap.
+* Returns those webinterface definitions or http Error Codes.
  */
-func (vms VMServer) hasIdeFunc(w http.ResponseWriter, r *http.Request) {
+func (vms VMServer) getWebinterfaces(w http.ResponseWriter, r *http.Request) {
 	// Check if User has access to VMs
 	user, err := vms.auth.AuthN(w, r)
 	if err != nil {
@@ -102,13 +102,19 @@ func (vms VMServer) hasIdeFunc(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 404, "error", "no vm template found")
 		return
-	}
-	if vmt.Spec.ConfigMap["ide"] == "true" {
-		util.ReturnHTTPMessage(w, r, 200, "success", "vm has IDE")
+	}	
+
+	services, found := vmt.Spec.ConfigMap["webinterfaces"] 
+	if !found {
+		util.ReturnHTTPMessage(w, r, 404, "error", "No Webinterfaces found for this VM")
 		return
 	}
-	// Return 404 if "ide" is false or not set
-	util.ReturnHTTPMessage(w, r, 404, "error", "vm has no IDE")
+	
+	encodedWebinterfaceDefinitions, err := json.Marshal(services)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedWebinterfaceDefinitions)
 }
 
 func (vms VMServer) GetVirtualMachineById(id string) (hfv1.VirtualMachine, error) {

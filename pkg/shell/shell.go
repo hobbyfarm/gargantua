@@ -85,7 +85,7 @@ func (sp ShellProxy) SetupRoutes(r *mux.Router) {
 func (sp ShellProxy) ConnectToPortFunc(w http.ResponseWriter, r *http.Request) {
 	// Get variables from Request
 	vars := mux.Vars(r)
-	// Get the auth Variable, built an Authorization Header that can be handled by AuthN
+	// Get the auth Variable, build an Authorization Header that can be handled by AuthN
 	authToken := vars["auth"]
 	r.Header.Add("Authorization", "Bearer "+authToken)
 	user, err := sp.auth.AuthN(w, r)
@@ -109,7 +109,7 @@ func (sp ShellProxy) ConnectToPortFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if vm.Spec.UserId != user.Spec.Id {
-		// check if the user has access to access user sessions
+		// check if the user has access to user sessions
 		_, err := sp.auth.AuthGrantWS(
 			rbacclient.RbacRequest().
 				HobbyfarmPermission("users", rbacclient.VerbGet).
@@ -122,13 +122,13 @@ func (sp ShellProxy) ConnectToPortFunc(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	// Get the target Port variable, default to 8080
-	tPort := vars["port"]
-	if tPort == "" {
-		tPort = "8080"
+	// Get the target Port variable, default to 80
+	targetPort := vars["port"]
+	if targetPort == "" {
+		targetPort = "80"
 	}
 	// Build URL and Proxy to forward the Request to
-	target := "http://127.0.0.1:" + tPort
+	target := "http://127.0.0.1:" + targetPort
 	remote, err := url.Parse(target)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to parse URL for Localhost")
@@ -200,7 +200,7 @@ func (sp ShellProxy) ConnectToPortFunc(w http.ResponseWriter, r *http.Request) {
 	r.URL.Path = mux.Vars(r)["rest"]
 
 	// Handle Response before returning to original Client
-	proxy.ModifyResponse = modifyProxyResponse(w, r, sshConn)
+	// proxy.ModifyResponse = modifyProxyResponse(w, r, sshConn)
 
 	proxy.ServeHTTP(w, r)
 
