@@ -16,6 +16,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	v2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
@@ -75,24 +76,69 @@ func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.Virtual
 func (sp ShellProxy) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/shell/{vm_id}/connect", sp.ConnectSSHFunc)
 	r.HandleFunc("/guacShell/{vm_id}/connect", sp.ConnectGuacFunc)
-	r.HandleFunc("/code/{vm_id}/connect/{port}/{auth}/{rest:.*}", sp.ConnectToPortFunc)
+	r.HandleFunc("/p/{vm_id}/{port}/{rest:.*}", sp.checkCookieAndProxy)
+	r.HandleFunc("/pa/{token}/{vm_id}/{port}/{rest:.*}", sp.authAndProxyFunc)
+	r.HandleFunc("/auth/{token}/{rest:.*}", sp.setAuthCookieAndRedirect)
 	glog.V(2).Infof("set up routes")
+}
+
+func (sp ShellProxy) authAndProxyFunc(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	authToken := vars["token"]
+	user, err := sp.proxyAuth(w, r, authToken)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "invalid auth token")
+		return
+	}
+	sp.proxy(w, r, user)
+}
+
+func (sp ShellProxy) setAuthCookieAndRedirect(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	authToken := vars["token"]
+	_, err := sp.proxyAuth(w, r, authToken)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "invalid auth token")
+		return
+	}
+	cookie := http.Cookie{Name: "jwt", Value: authToken, SameSite: http.SameSiteNoneMode, Secure: true, Path: "/"}
+	http.SetCookie(w, &cookie)
+	url := mux.Vars(r)["rest"]
+	http.Redirect(w, r, "/"+url, 302)
+
 }
 
 /*
 * Used to Proxy to Services exposed by the VM on specified Port
  */
-func (sp ShellProxy) ConnectToPortFunc(w http.ResponseWriter, r *http.Request) {
-	// Get variables from Request
-	vars := mux.Vars(r)
+func (sp ShellProxy) checkCookieAndProxy(w http.ResponseWriter, r *http.Request) {
+
 	// Get the auth Variable, build an Authorization Header that can be handled by AuthN
-	authToken := vars["auth"]
-	r.Header.Add("Authorization", "Bearer "+authToken)
-	user, err := sp.auth.AuthN(w, r)
+	authToken, err := r.Cookie("jwt")
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 400, "error", "cookie not set")
+		return
+	}
+	user, err := sp.proxyAuth(w, r, authToken.Value)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
 		return
 	}
+	sp.proxy(w, r, user)
+}
+
+func (sp ShellProxy) proxyAuth(w http.ResponseWriter, r *http.Request, token string) (v2.User, error) {
+	r.Header.Add("Authorization", "Bearer "+token)
+	user, err := sp.auth.AuthN(w, r)
+	if err != nil {
+		return v2.User{}, err
+	}
+	return user, nil
+}
+
+func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User) {
+
+	vars := mux.Vars(r)
 	// Check if variable for vm id was passed in
 	vmId := vars["vm_id"]
 	if len(vmId) == 0 {
@@ -127,6 +173,7 @@ func (sp ShellProxy) ConnectToPortFunc(w http.ResponseWriter, r *http.Request) {
 	if targetPort == "" {
 		targetPort = "80"
 	}
+
 	// Build URL and Proxy to forward the Request to
 	target := "http://127.0.0.1:" + targetPort
 	remote, err := url.Parse(target)
@@ -203,7 +250,6 @@ func (sp ShellProxy) ConnectToPortFunc(w http.ResponseWriter, r *http.Request) {
 	// proxy.ModifyResponse = modifyProxyResponse(w, r, sshConn)
 
 	proxy.ServeHTTP(w, r)
-
 }
 
 func modifyProxyResponse(w http.ResponseWriter, r *http.Request, sshConn *ssh.Client) func(*http.Response) error {
