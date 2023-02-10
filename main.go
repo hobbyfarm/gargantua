@@ -36,7 +36,6 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/pkg/controllers/dynamicbindcontroller"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/scheduledevent"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/session"
 	"github.com/hobbyfarm/gargantua/pkg/controllers/tfpcontroller"
@@ -176,12 +175,12 @@ func main() {
 
 	rbacServer := rbacserver.NewRbacServer(kubeClient, authClient, rbacClient)
 
-	authServer, err := authserver.NewAuthServer(authClient, hfClient, ctx, rbacClient)
+	acClient, err := accesscode.NewAccessCodeClient(hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	acClient, err := accesscode.NewAccessCodeClient(hfClient, ctx)
+	authServer, err := authserver.NewAuthServer(authClient, hfClient, ctx, acClient, rbacClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -420,10 +419,6 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	if err != nil {
 		return err
 	}
-	dynamicBindController, err := dynamicbindcontroller.NewDynamicBindController(hfClient, hfInformerFactory, gctx)
-	if err != nil {
-		return err
-	}
 
 	g.Go(func() error {
 		return sessionController.Run(stopCh)
@@ -443,10 +438,6 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 
 	g.Go(func() error {
 		return vmSetController.Run(stopCh)
-	})
-
-	g.Go(func() error {
-		return dynamicBindController.Run(stopCh)
 	})
 
 	g.Go(func() error {

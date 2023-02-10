@@ -45,7 +45,7 @@ func (s Server) ListRoleBindingsForUser(w http.ResponseWriter, r *http.Request) 
 
 	var preparedRoleBindings = make([]PreparedRoleBinding, 0)
 	for _, b := range bindings {
-		if _, ok := b.Labels[rbacManagedLabel]; !ok {
+		if _, ok := b.Labels[util.RBACManagedLabel]; !ok {
 			continue // we aren't managing this role, don't return it
 		}
 		prb := s.prepareRoleBinding(*b)
@@ -70,7 +70,7 @@ func (s Server) ListRoleBindings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	listOptions := metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%t", rbacManagedLabel, true),
+		LabelSelector: fmt.Sprintf("%s=%t", util.RBACManagedLabel, true),
 	}
 
 	roleBindings, err := s.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).List(r.Context(), listOptions)
@@ -240,7 +240,7 @@ func (s Server) getRoleBinding(w http.ResponseWriter, r *http.Request) (*rbacv1.
 		return nil, err
 	}
 
-	if _, ok := roleBinding.Labels[rbacManagedLabel]; !ok {
+	if _, ok := roleBinding.Labels[util.RBACManagedLabel]; !ok {
 		util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", "rolebinding not managed by hobbyfarm")
 		return nil, fmt.Errorf("rolebinding not managed by hobbyfarm")
 	}
@@ -277,7 +277,7 @@ func (s Server) unmarshalRoleBinding(ctx context.Context, preparedRoleBinding *P
 			Name: preparedRoleBinding.Name,
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
-				rbacManagedLabel: "true",
+				util.RBACManagedLabel: "true",
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{

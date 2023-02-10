@@ -60,7 +60,7 @@ func NewCourseServer(authClient *authclient.AuthClient, acClient *accesscode.Acc
 }
 
 func (c CourseServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/course/list", c.ListCoursesForAccesscode).Methods("GET")
+	r.HandleFunc("/course/list/{access_code}", c.ListCoursesForAccesscode).Methods("GET")
 	r.HandleFunc("/course/{course_id}", c.GetCourse).Methods("GET")
 	r.HandleFunc("/a/course/list", c.ListFunc).Methods("GET")
 	r.HandleFunc("/a/course/new", c.CreateFunc).Methods("POST")
@@ -215,7 +215,6 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	generatedName := util.GenerateResourceName("c", name, 10)
 
 	course.Name = generatedName
-	course.Spec.Id = generatedName
 
 	course.Spec.Name = name
 	course.Spec.Description = description
@@ -444,14 +443,34 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	var courseIds []string
-	for _, ac := range user.Spec.AccessCodes {
-		tempCourseIds, err := c.acClient.GetCourseIds(ac)
-		if err != nil {
-			glog.Errorf("error retrieving course ids for access code: %s %v", ac, err)
-		} else {
-			courseIds = append(courseIds, tempCourseIds...)
+	
+	vars := mux.Vars(r)
+	accessCode := vars["access_code"]
+
+	if accessCode == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "access_code is missing")
+		return
+	}
+
+	contains := false
+	for _, acc := range user.Spec.AccessCodes {
+		if(acc == accessCode){
+			contains = true
+			break;
 		}
+	}
+
+	if !contains {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios for this AccessCode")
+		return
+	}
+
+	var courseIds []string
+	tempCourseIds, err := c.acClient.GetCourseIds(accessCode)
+	if err != nil {
+		glog.Errorf("error retrieving course ids for access code: %s %v", accessCode, err)
+	} else {
+		courseIds = append(courseIds, tempCourseIds...)
 	}
 
 	courseIds = util.UniqueStringSlice(courseIds)
@@ -530,7 +549,7 @@ func (c CourseServer) AppendDynamicScenariosByCategories(scenariosList []string,
 			continue
 		}
 		for _, scenario := range scenarios.Items {
-			scenariosList = append(scenariosList, scenario.Spec.Id)
+			scenariosList = append(scenariosList, scenario.Name)
 		}
 	}
 
@@ -595,5 +614,5 @@ func idIndexer(obj interface{}) ([]string, error) {
 	if !ok {
 		return []string{}, nil
 	}
-	return []string{course.Spec.Id}, nil
+	return []string{course.Name}, nil
 }

@@ -19,8 +19,6 @@ import (
 
 const (
 	SessionExpireTime = time.Hour * 3
-	SessionLabel      = "hobbyfarm.io/session"
-	UserSessionLabel  = "hobbyfarm.io/user"
 )
 
 type SessionController struct {
@@ -182,11 +180,11 @@ func (s *SessionController) reconcileSession(ssName string) error {
 			}
 
 			if pausedExpiration.After(now) {
-				glog.V(4).Infof("Session %s was paused, and the pause expiration is after now, skipping clean up.", ss.Spec.Id)
+				glog.V(4).Infof("Session %s was paused, and the pause expiration is after now, skipping clean up.", ss.Name)
 				return nil
 			}
 
-			glog.V(4).Infof("Session %s was paused, but the pause expiration was before now, so cleaning up.", ss.Spec.Id)
+			glog.V(4).Infof("Session %s was paused, but the pause expiration was before now, so cleaning up.", ss.Name)
 		}
 		for _, vmc := range ss.Spec.VmClaimSet {
 			vmcObj, err := s.vmcLister.VirtualMachineClaims(util.GetReleaseNamespace()).Get(vmc)
@@ -196,6 +194,10 @@ func (s *SessionController) reconcileSession(ssName string) error {
 			}
 
 			for _, vm := range vmcObj.Spec.VirtualMachines {
+				if(len(vm.VirtualMachineId) == 0){
+					// VM was not even provisioned / assigned yet.
+					continue
+				}
 				taintErr := s.taintVM(vm.VirtualMachineId)
 				if taintErr != nil {
 					glog.Error(taintErr)
@@ -217,7 +219,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 			result.Status.Finished = true
 			result.Status.Active = false
 
-			result, updateErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(s.ctx, result, metav1.UpdateOptions{})
+			result, updateErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).UpdateStatus(s.ctx, result, metav1.UpdateOptions{})
 			if updateErr != nil {
 				return updateErr
 			}
@@ -251,10 +253,9 @@ func (s *SessionController) taintVM(vmName string) error {
 		if getErr != nil {
 			return getErr
 		}
-		result.Labels["ready"] = "false"
 		result.Status.Tainted = true
 
-		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(s.ctx, result, metav1.UpdateOptions{})
+		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(s.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
@@ -283,7 +284,7 @@ func (s *SessionController) taintVMC(vmcName string) error {
 		}
 		result.Status.Tainted = true
 
-		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Update(s.ctx, result, metav1.UpdateOptions{})
+		result, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).UpdateStatus(s.ctx, result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
@@ -305,7 +306,7 @@ func (s *SessionController) FinishProgress(sessionId string, userId string) {
 	now := time.Now()
 
 	progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", SessionLabel, sessionId, UserSessionLabel, userId)})
+		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", util.SessionLabel, sessionId, util.UserLabel, userId)})
 
 	if err != nil {
 		glog.Errorf("error while retrieving progress %v", err)
@@ -319,7 +320,7 @@ func (s *SessionController) FinishProgress(sessionId string, userId string) {
 			p.Spec.Finished = "true"
 
 			_, updateErr := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Update(s.ctx, &p, metav1.UpdateOptions{})
-			glog.V(4).Infof("updated progress with ID %s", p.Spec.Id)
+			glog.V(4).Infof("updated progress with ID %s", p.Name)
 
 			return updateErr
 		})

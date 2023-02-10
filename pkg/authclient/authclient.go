@@ -82,17 +82,13 @@ func (a AuthClient) AuthWS(w http.ResponseWriter, r *http.Request) (hfv2.User, e
 // if admin is true then check if user is an admin
 
 func (a AuthClient) performAuth(token string) (hfv2.User, error) {
-	//glog.V(2).Infof("token passed in was: %s", token)
-
 	user, err := a.ValidateJWT(token)
 
 	if err != nil {
 		glog.Errorf("error validating user %v", err)
-		//util.ReturnHTTPMessage(w, r, 403, "forbidden", "forbidden")
 		return hfv2.User{}, fmt.Errorf("authentication failed")
 	}
 
-	glog.V(2).Infof("validated user %s!", user.Spec.Email)
 	return user, nil
 }
 

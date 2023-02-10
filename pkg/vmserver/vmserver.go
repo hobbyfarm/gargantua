@@ -21,8 +21,7 @@ import (
 
 const (
 	idIndex             = "vms.hobbyfarm.io/id-index"
-	ScheduledEventLabel = "hobbyfarm.io/scheduledevent"
-	resourcePlural      = "virtualmachines"
+	resourcePlural		= "virtualmachines"
 )
 
 type VMServer struct {
@@ -33,6 +32,7 @@ type VMServer struct {
 }
 
 type PreparedVirtualMachine struct {
+	ID string `json:"id"`
 	hfv1.VirtualMachineSpec
 	hfv1.VirtualMachineStatus
 }
@@ -168,16 +168,16 @@ func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if vm.Spec.UserId != user.Spec.Id {
+	if vm.Spec.UserId != user.Name {
 		_, err := vms.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
 		if err != nil {
-			glog.Errorf("user forbidden from accessing vm id %s", vm.Spec.Id)
+			glog.Errorf("user forbidden from accessing vm id %s", vm.Name)
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
 			return
 		}
 	}
 
-	preparedVM := PreparedVirtualMachine{vm.Spec, vm.Status}
+	preparedVM := PreparedVirtualMachine{vm.Name, vm.Spec, vm.Status}
 
 	encodedVM, err := json.Marshal(preparedVM)
 	if err != nil {
@@ -185,7 +185,7 @@ func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedVM)
 
-	glog.V(2).Infof("retrieved vm %s", vm.Spec.Id)
+	glog.V(2).Infof("retrieved vm %s", vm.Name)
 }
 
 func (vms VMServer) GetVMListFunc(w http.ResponseWriter, r *http.Request, listOptions metav1.ListOptions) {
@@ -205,7 +205,7 @@ func (vms VMServer) GetVMListFunc(w http.ResponseWriter, r *http.Request, listOp
 
 	preparedVMs := []PreparedVirtualMachine{}
 	for _, vm := range vmList.Items {
-		pVM := PreparedVirtualMachine{vm.Spec, vm.Status}
+		pVM := PreparedVirtualMachine{vm.Name, vm.Spec, vm.Status}
 		preparedVMs = append(preparedVMs, pVM)
 	}
 
@@ -226,7 +226,7 @@ func (vms VMServer) GetVMListByScheduledEventFunc(w http.ResponseWriter, r *http
 		return
 	}
 
-	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, id)}
+	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, id)}
 
 	vms.GetVMListFunc(w, r, lo)
 }
@@ -247,7 +247,7 @@ func (vms VMServer) CountByScheduledEvent(w http.ResponseWriter, r *http.Request
 
 	countMap := map[string]int{}
 	for _, vm := range virtualmachines.Items {
-		se := vm.Labels[ScheduledEventLabel]
+		se := vm.Labels[util.ScheduledEventLabel]
 		if _, ok := countMap[se]; ok {
 			countMap[se] = countMap[se] + 1
 		} else {
@@ -271,5 +271,5 @@ func vmIdIndexer(obj interface{}) ([]string, error) {
 	if !ok {
 		return []string{}, nil
 	}
-	return []string{vm.Spec.Id}, nil
+	return []string{vm.Name}, nil
 }

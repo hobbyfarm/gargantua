@@ -80,7 +80,7 @@ func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.A
 }
 
 func (s ScenarioServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/scenario/list", s.ListScenarioForAccessCodes).Methods("GET")
+	r.HandleFunc("/scenario/list/{access_code}", s.ListScenarioForAccessCode).Methods("GET")
 	r.HandleFunc("/a/scenario/categories", s.ListCategories).Methods("GET")
 	r.HandleFunc("/a/scenario/list/{category}", s.ListByCategoryFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/list", s.ListAllFunc).Methods("GET")
@@ -97,8 +97,8 @@ func (s ScenarioServer) SetupRoutes(r *mux.Router) {
 func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario, printable bool) (PreparedScenario, error) {
 	ps := PreparedScenario{}
 
+	ps.Id = scenario.Name
 	ps.Name = scenario.Spec.Name
-	ps.Id = scenario.Spec.Id
 	ps.Description = scenario.Spec.Description
 	ps.VirtualMachines = scenario.Spec.VirtualMachines
 	ps.Pauseable = scenario.Spec.Pauseable
@@ -274,10 +274,31 @@ func (s ScenarioServer) GetScenarioStepFunc(w http.ResponseWriter, r *http.Reque
 
 }
 
-func (s ScenarioServer) ListScenarioForAccessCodes(w http.ResponseWriter, r *http.Request) {
+func (s ScenarioServer) ListScenarioForAccessCode(w http.ResponseWriter, r *http.Request) {
 	user, err := s.auth.AuthN(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios")
+		return
+	}
+
+	vars := mux.Vars(r)
+	accessCode := vars["access_code"]
+
+	if accessCode == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "access_code is missing")
+		return
+	}
+
+	contains := false
+	for _, acc := range user.Spec.AccessCodes {
+		if(acc == accessCode){
+			contains = true
+			break;
+		}
+	}
+
+	if !contains {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios for this AccessCode")
 		return
 	}
 
@@ -285,23 +306,18 @@ func (s ScenarioServer) ListScenarioForAccessCodes(w http.ResponseWriter, r *htt
 	//var courseScenarios []string
 	var scenarioIds []string
 	var printableScenarioIds []string
-	for _, acString := range user.Spec.AccessCodes {
-		ac, err := s.acClient.GetAccessCode(acString)
-		if err != nil {
-			glog.Errorf("error retrieving access code: %s %v", acString, err)
-			continue
-		}
-		tempScenarioIds, err := s.acClient.GetScenarioIds(acString)
-		if err != nil {
-			glog.Errorf("error retrieving scenario ids for access code: %s %v", acString, err)
-			continue
-		}
-		if ac.Spec.Printable {
-			printableScenarioIds = append(printableScenarioIds, tempScenarioIds...)
-			continue
-		}
-		scenarioIds = append(scenarioIds, tempScenarioIds...)
+	ac, err := s.acClient.GetAccessCode(accessCode)
+	if err != nil {
+		glog.Errorf("error retrieving access code: %s %v", accessCode, err)
 	}
+	tempScenarioIds, err := s.acClient.GetScenarioIds(accessCode)
+	if err != nil {
+		glog.Errorf("error retrieving scenario ids for access code: %s %v", accessCode, err)
+	}
+	if ac.Spec.Printable {
+		printableScenarioIds = append(printableScenarioIds, tempScenarioIds...)
+	}
+	scenarioIds = append(scenarioIds, tempScenarioIds...)
 	scenarioIds = util.UniqueStringSlice(append(scenarioIds, printableScenarioIds...))
 
 	var scenarios []PreparedScenario
@@ -617,7 +633,6 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	hasher.Write([]byte(name))
 	sha := base32.StdEncoding.WithPadding(-1).EncodeToString(hasher.Sum(nil))[:10]
 	scenario.Name = "s-" + strings.ToLower(sha)
-	scenario.Spec.Id = "s-" + strings.ToLower(sha) // LEGACY!!!!
 
 	scenario.Spec.Name = name
 	scenario.Spec.Description = description
@@ -804,5 +819,5 @@ func idIndexer(obj interface{}) ([]string, error) {
 	if !ok {
 		return []string{}, nil
 	}
-	return []string{scenario.Spec.Id}, nil
+	return []string{scenario.Name}, nil
 }

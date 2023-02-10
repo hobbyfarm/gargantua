@@ -303,12 +303,12 @@ func (sp ShellProxy) ConnectGuacFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if vm.Spec.UserId != user.Spec.Id {
+	if vm.Spec.UserId != user.Name {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "you do not have access to shell")
 		return
 	}
 
-	glog.Infof("Going to upgrade guac connection now... %s", vm.Spec.Id)
+	glog.Infof("Going to upgrade guac connection now... %s", vm.Name)
 
 	// ok first get the secret for the vm
 	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?
@@ -478,7 +478,7 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if vm.Spec.UserId != user.Spec.Id {
+	if vm.Spec.UserId != user.Name {
 		// check if the user has access to access user sessions
 		// TODO: add permission like 'virtualmachine/shell' similar to 'pod/exec'
 		_, err := sp.auth.AuthGrantWS(
@@ -494,7 +494,7 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	glog.Infof("Going to upgrade connection now... %s", vm.Spec.Id)
+	glog.Infof("Going to upgrade connection now... %s", vm.Name)
 
 	// ok first get the secret for the vm
 	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?

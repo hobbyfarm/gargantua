@@ -12,7 +12,6 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +36,6 @@ var baseNameDynamicPrefix string
 const (
 	ScheduledEventBaseDelay = 5 * time.Millisecond
 	ScheduledEventMaxDelay  = 300 * time.Second
-	ScheduledEventLabel     = "hobbyfarm.io/scheduledevent"
 )
 
 func init() {
@@ -165,12 +163,6 @@ func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent
 		return err
 	}
 
-	err = s.deleteProgressFromScheduledEvent(se)
-
-	if err != nil {
-		return err
-	}
-
 	// update the scheduled event and set the various flags accordingly (provisioned, ready, finished)
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		seToUpdate, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, se.Name, metav1.GetOptions{})
@@ -183,7 +175,7 @@ func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent
 		seToUpdate.Status.Ready = false
 		seToUpdate.Status.Finished = true
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, seToUpdate, metav1.UpdateOptions{})
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, seToUpdate, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for scheduled event")
 
 		return updateErr
@@ -199,7 +191,7 @@ func (s ScheduledEventController) completeScheduledEvent(se *hfv1.ScheduledEvent
 func (s ScheduledEventController) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
 	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
@@ -208,10 +200,11 @@ func (s ScheduledEventController) deleteVMSetsFromScheduledEvent(se *hfv1.Schedu
 	return nil
 }
 
-func (s ScheduledEventController) deleteProgressFromScheduledEvent(se *hfv1.ScheduledEvent) error {
+
+func (s ScheduledEventController) deleteAccessCode(se *hfv1.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
-	err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, se.Name),
+	err := s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
@@ -223,23 +216,22 @@ func (s ScheduledEventController) deleteProgressFromScheduledEvent(se *hfv1.Sche
 func (s ScheduledEventController) finishSessionsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// get a list of sessions for the user
 	sessionList, err := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", sessionserver.AccessCodeLabel, se.Spec.AccessCode),
+		LabelSelector: fmt.Sprintf("%s=%s", util.AccessCodeLabel, se.Spec.AccessCode),
 	})
 
 	now := time.Now().Format(time.UnixDate)
 
 	for _, session := range sessionList.Items {
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(s.ctx, session.Spec.Id, metav1.GetOptions{})
+			result, getErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(s.ctx, session.Name, metav1.GetOptions{})
 			if getErr != nil {
-				return fmt.Errorf("error retrieving latest version of session %s: %v", session.Spec.Id, getErr)
+				return fmt.Errorf("error retrieving latest version of session %s: %v", session.Name, getErr)
 			}
 
 			result.Status.ExpirationTime = now
 			result.Status.Active = false
-			result.Status.Finished = false
 
-			_, updateErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Update(s.ctx, result, metav1.UpdateOptions{})
+			_, updateErr := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).UpdateStatus(s.ctx, result, metav1.UpdateOptions{})
 			glog.V(4).Infof("updated result for session")
 
 			return updateErr
@@ -273,126 +265,90 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 			glog.Errorf("error retreiving environment %s", err.Error())
 			return err
 		}
-		// get all vmsets that are being provisioned into this environment (label selector)
-		vmsList, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("environment=%s", envName),
-		})
-		if err != nil {
-			glog.Errorf("error while retrieving virtual machine sets %v", err)
-		}
 
-		_, usedCapacity := calculateUsedCapacity(env, vmsList, templates)
-		
-		if env.Spec.CapacityMode == hfv1.CapacityModeRaw {
-			neededCapacity := calculateNeededCapacity(env, vmtMap, templates)
+		// TODO: actually check for capacity usage
 
-			if env.Spec.Capacity.CPU < (usedCapacity.CPU + neededCapacity.CPU) {
-				glog.Errorf("we are overprovisioning this environment %s by CPU, capacity is %d but need %d", envName, env.Spec.Capacity.CPU, usedCapacity.CPU+neededCapacity.CPU)
-			}
-			if env.Spec.Capacity.Memory < (usedCapacity.Memory + neededCapacity.Memory) {
-				glog.Errorf("we are overprovisioning this environment %s by Memory, capacity is %d but need %d", envName, env.Spec.Capacity.Memory, usedCapacity.Memory+neededCapacity.Memory)
-			}
-			if env.Spec.Capacity.Storage < (usedCapacity.Storage + neededCapacity.Storage) {
-				glog.Errorf("we are overprovisioning this environment %s by Storage, capacity is %d but need %d", envName, env.Spec.Capacity.Storage, usedCapacity.Storage+neededCapacity.Storage)
-			}
-		} else if env.Spec.CapacityMode == hfv1.CapacityModeCount {
-			// TODO: actually check for capacity usage
-
-			// vmtMap has all the neededCapacity for this environment.
-			// used capacity is calculated by calculateUsedCapacity()
-		}
-
-		// create the virtualmachinesets now
-
-		for templateName, count := range vmtMap {
-			if count > 0 && !se.Spec.OnDemand { // only setup vmsets if >0 VMs are requested, and they aren't ondemand
-
-				//1. Find existing VMset that match this SE and the current environment
-				existingVMSets, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-					LabelSelector: fmt.Sprintf("%s=%s,environment=%s,virtualmachinetemplate.hobbyfarm.io/%s=true", ScheduledEventLabel, se.Name, envName, templateName),
-				})
-
-				if err != nil || len(existingVMSets.Items) == 0 { // create new vmset if no existing one was found
-					vmsRand := fmt.Sprintf("%s-%08x", baseNameScheduledPrefix, rand.Uint32())
-					vmsName := strings.Join([]string{"se", se.Name, "vms", vmsRand}, "-")
-					vmSets = append(vmSets, vmsName)
-					vms := &hfv1.VirtualMachineSet{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: vmsName,
-							OwnerReferences: []metav1.OwnerReference{
-								{
-									APIVersion: "hobbyfarm.io/v1",
-									Kind:       "ScheduledEvent",
-									Name:       se.Name,
-									UID:        se.UID,
+		// create virtualmachinesets if not on demand
+		if !se.Spec.OnDemand {
+			for templateName, count := range vmtMap {
+				if count > 0 { // only setup vmsets if >0 VMs are requested, and they aren't ondemand
+					//1. Find existing VMset that match this SE and the current environment
+					existingVMSets, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
+						LabelSelector: fmt.Sprintf("%s=%s,%s=%s,virtualmachinetemplate.hobbyfarm.io/%s=true", util.ScheduledEventLabel, se.Name, util.EnvironmentLabel, envName, templateName),
+					})
+	
+					if err != nil || len(existingVMSets.Items) == 0 { // create new vmset if no existing one was found
+						vmsRand := fmt.Sprintf("%s-%08x", baseNameScheduledPrefix, rand.Uint32())
+						vmsName := strings.Join([]string{"se", se.Name, "vms", vmsRand}, "-")
+						vmSets = append(vmSets, vmsName)
+						vms := &hfv1.VirtualMachineSet{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: vmsName,
+								OwnerReferences: []metav1.OwnerReference{
+									{
+										APIVersion: "hobbyfarm.io/v1",
+										Kind:       "ScheduledEvent",
+										Name:       se.Name,
+										UID:        se.UID,
+									},
+								},
+								Labels: map[string]string{
+									util.EnvironmentLabel:    env.Name,
+									util.ScheduledEventLabel: se.Name,
+									fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", templateName): "true",
 								},
 							},
-							Labels: map[string]string{
-								"environment":    env.Name,
-								ScheduledEventLabel: se.Name,
-								fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", templateName): "true",
+							Spec: hfv1.VirtualMachineSetSpec{
+								Count:       count,
+								Environment: envName,
+								VMTemplate:  templateName,
+								BaseName:    vmsRand,
 							},
-						},
-						Spec: hfv1.VirtualMachineSetSpec{
-							Count:       count,
-							Environment: envName,
-							VMTemplate:  templateName,
-							BaseName:    vmsRand,
-						},
-					}
-					if se.Spec.RestrictedBind {
-						vms.Spec.RestrictedBind = true
-						vms.Spec.RestrictedBindValue = se.Spec.RestrictedBindValue
-					} else {
-						vms.Spec.RestrictedBind = false
-					}
-					_, err = s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Create(s.ctx, vms, metav1.CreateOptions{})
-					if err != nil {
-						glog.Error(err)
-						return err
-					}
-				} else { // update existing vmset
-					existingVMSet := existingVMSets.Items[0]
-					vmSets = append(vmSets, existingVMSet.Name)
-
-					existingVMSet.Labels["environment"] = env.Name
-					existingVMSet.Spec.Count = count
-					if se.Spec.RestrictedBind {
-						existingVMSet.Spec.RestrictedBind = true
-
-					} else {
-						existingVMSet.Spec.RestrictedBind = false
-					}
-					_, err = s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Update(s.ctx, &existingVMSet, metav1.UpdateOptions{})
-					if err != nil {
-						glog.Errorf("error updating vmset config %s", err.Error())
-						return err
+						}
+						if se.Spec.RestrictedBind {
+							vms.Spec.RestrictedBind = true
+							vms.Spec.RestrictedBindValue = se.Spec.RestrictedBindValue
+						} else {
+							vms.Spec.RestrictedBind = false
+						}
+						_, err = s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Create(s.ctx, vms, metav1.CreateOptions{})
+						if err != nil {
+							glog.Error(err)
+							return err
+						}
+					} else { // update existing vmset
+						// Todo support multiple VM Sets
+						existingVMSet := existingVMSets.Items[0]
+						vmSets = append(vmSets, existingVMSet.Name)
+	
+						existingVMSet.Labels[util.EnvironmentLabel] = env.Name
+						existingVMSet.Spec.Count = count
+						if se.Spec.RestrictedBind {
+							existingVMSet.Spec.RestrictedBind = true
+						} else {
+							existingVMSet.Spec.RestrictedBind = false
+						}
+						_, err = s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Update(s.ctx, &existingVMSet, metav1.UpdateOptions{})
+						if err != nil {
+							glog.Errorf("error updating vmset config %s", err.Error())
+							return err
+						}
 					}
 				}
-
 			}
+		}
+
+		// Delete existing DynamicBindConfigurations
+		err = s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("%s=%s,environment=%s", util.ScheduledEventLabel, se.Name, env.Name),
+		})
+		if err != nil {
+			return err
 		}
 
 		// create the dynamic bind configurations
 		dbcRand := fmt.Sprintf("%s-%08x", baseNameDynamicPrefix, rand.Uint32())
 		dbcName := strings.Join([]string{"se", se.Name, "dbc", dbcRand}, "-")
-		emptyCap := hfv1.CMSStruct{
-			CPU:     0,
-			Memory:  0,
-			Storage: 0,
-		}
-
-		bcc := map[string]int{}
-
-		for t, c := range vmtMap {
-			if se.Spec.OnDemand {
-				bcc[t] = c
-			} else if c == 0 || c == -1 {
-				bcc[t] = 10
-			} else {
-				bcc[t] = c
-			}
-		}
 
 		dbc := &hfv1.DynamicBindConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
@@ -406,16 +362,14 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 					},
 				},
 				Labels: map[string]string{
-					"environment":       env.Name,
-					ScheduledEventLabel: se.Name,
+					util.EnvironmentLabel:       env.Name,
+					util.ScheduledEventLabel: se.Name,
 				},
 			},
 			Spec: hfv1.DynamicBindConfigurationSpec{
-				Id:                 dbcName,
 				Environment:        envName,
 				BaseName:           dbcRand,
-				BurstCountCapacity: bcc,
-				BurstCapacity:      emptyCap,
+				BurstCountCapacity: vmtMap,
 			},
 		}
 
@@ -434,6 +388,46 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 		}
 	}
 
+	// Delete AccessCode if it exists
+	_, err := s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Get(s.ctx, se.Spec.AccessCode, metav1.GetOptions{})
+	if err == nil {
+		err = s.deleteAccessCode(se)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = s.createAccessCode(se)
+	if err != nil {
+		return err
+	}
+
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+
+		seToUpdate, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, se.Name, metav1.GetOptions{})
+
+		if err != nil {
+			return err
+		}
+
+		seToUpdate.Status.Provisioned = true
+		seToUpdate.Status.VirtualMachineSets = vmSets
+		seToUpdate.Status.Ready = false
+		seToUpdate.Status.Finished = false
+
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, seToUpdate, metav1.UpdateOptions{})
+		glog.V(4).Infof("updated result for scheduled event")
+
+		return updateErr
+	})
+	if retryErr != nil {
+		return retryErr
+	}
+
+	return nil
+}
+
+func (s ScheduledEventController) createAccessCode(se *hfv1.ScheduledEvent) error {
 	ac := &hfv1.AccessCode{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: se.Spec.AccessCode,
@@ -446,7 +440,8 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 				},
 			},
 			Labels: map[string]string{
-				ScheduledEventLabel: se.Name,
+				util.ScheduledEventLabel: se.Name,
+				util.AccessCodeLabel: se.Spec.AccessCode,
 			},
 		},
 		Spec: hfv1.AccessCodeSpec{
@@ -454,7 +449,6 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 			Description:        "Generated by ScheduledEventController",
 			Scenarios:          se.Spec.Scenarios,
 			Courses:            se.Spec.Courses,
-			VirtualMachineSets: vmSets,
 			Expiration:         se.Spec.EndTime,
 		},
 	}
@@ -472,42 +466,20 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 		ac.Spec.Printable = false
 	}
 
+
 	ac, err := s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Create(s.ctx, ac, metav1.CreateOptions{})
 	if err != nil {
-		glog.Error(err)
-	}
-
-	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-
-		seToUpdate, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, se.Name, metav1.GetOptions{})
-
-		if err != nil {
-			return err
-		}
-
-		seToUpdate.Status.Provisioned = true
-		seToUpdate.Status.VirtualMachineSets = vmSets
-		seToUpdate.Status.Ready = false
-		seToUpdate.Status.Finished = false
-
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, seToUpdate, metav1.UpdateOptions{})
-		glog.V(4).Infof("updated result for scheduled event")
-
-		return updateErr
-	})
-	if retryErr != nil {
-		return retryErr
+		return err
 	}
 
 	return nil
-
 }
 
 func (s ScheduledEventController) verifyScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// check the state of the vmset and mark the sevent as ready if everything is OK
 	glog.V(6).Infof("ScheduledEvent %s is in provisioned status, checking status of VMSet Provisioning", se.Name)
 	vmsList, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
@@ -519,6 +491,30 @@ func (s ScheduledEventController) verifyScheduledEvent(se *hfv1.ScheduledEvent) 
 		}
 	}
 
+	// Validate AccessCode existence and has label set
+	ac, err := s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Get(s.ctx, se.Spec.AccessCode, metav1.GetOptions{})
+	if err != nil {
+		err = s.createAccessCode(se)
+
+		if err != nil {
+			return err
+		}
+
+	} else if ac.Labels[util.AccessCodeLabel] != ac.Spec.Code {
+		err = s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
+		})
+		if err != nil {
+			return err
+		}
+
+		err = s.createAccessCode(se)
+
+		if err != nil {
+			return err
+		}
+	}
+
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 
 		seToUpdate, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, se.Name, metav1.GetOptions{})
@@ -527,11 +523,15 @@ func (s ScheduledEventController) verifyScheduledEvent(se *hfv1.ScheduledEvent) 
 			return err
 		}
 
+		if seToUpdate.Status.Provisioned == false || seToUpdate.Status.Finished == true {
+			return fmt.Errorf("scheduled event is not provisioned. Maybe changed recently")
+		}
+
 		seToUpdate.Status.Provisioned = true
 		seToUpdate.Status.Ready = true
 		seToUpdate.Status.Finished = false
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, seToUpdate, metav1.UpdateOptions{})
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, seToUpdate, metav1.UpdateOptions{})
 		glog.V(4).Infof("updated result for scheduled event")
 
 		return updateErr
@@ -594,7 +594,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 	if (se.Spec.OnDemand && len(se.Status.VirtualMachineSets) > 0){
 		vmSets := []string{}
 		se.Status.VirtualMachineSets = vmSets
-		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, se, metav1.UpdateOptions{})
+		_, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, se, metav1.UpdateOptions{})
 		s.deleteVMSetsFromScheduledEvent(se)
 		return updateErr
 	}
@@ -602,38 +602,14 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 	return nil
 }
 
-func calculateUsedCapacity(env *hfv1.Environment, vmsList *hfv1.VirtualMachineSetList, templates *hfv1.VirtualMachineTemplateList) (map[string]int, hfv1.CMSStruct) {
-	used := hfv1.CMSStruct{}
+func calculateUsedCapacity(env *hfv1.Environment, vmsList *hfv1.VirtualMachineSetList, templates *hfv1.VirtualMachineTemplateList) (map[string]int) {
 	usedCount := map[string]int{}
 	for _, vms := range vmsList.Items {
 		for _, t := range templates.Items {
 			if t.Name == vms.Spec.VMTemplate {
-				if env.Spec.CapacityMode == hfv1.CapacityModeRaw {
-					used.CPU = used.CPU + (t.Spec.Resources.CPU * vms.Spec.Count)
-					used.Memory = used.Memory + (t.Spec.Resources.Memory * vms.Spec.Count)
-					used.Storage = used.Storage + (t.Spec.Resources.Storage * vms.Spec.Count)
-				} else if env.Spec.CapacityMode == hfv1.CapacityModeCount {
-					usedCount[t.Name] = usedCount[t.Name] + vms.Spec.Count
-				}
+				usedCount[t.Name] = usedCount[t.Name] + vms.Spec.Count
 			}
 		}
 	}
-
-	return usedCount, used
-}
-
-func calculateNeededCapacity(env *hfv1.Environment, vmtMap map[string]int, templates *hfv1.VirtualMachineTemplateList) hfv1.CMSStruct {
-	needed := hfv1.CMSStruct{}
-
-	for templateName, count := range vmtMap {
-		for _, t := range templates.Items {
-			if t.Name == templateName {
-				needed.CPU = needed.CPU + (t.Spec.Resources.CPU * count)
-				needed.Memory = needed.Memory + (t.Spec.Resources.Memory * count)
-				needed.Storage = needed.Storage + (t.Spec.Resources.Storage * count)
-			}
-		}
-	}
-
-	return needed
+	return usedCount
 }
