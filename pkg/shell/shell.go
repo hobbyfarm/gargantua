@@ -154,7 +154,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 		return
 	}
 
-	if vm.Spec.UserId != user.Spec.Id {
+	if vm.Spec.UserId != user.Name {
 		// check if the user has access to user sessions
 		_, err := sp.auth.AuthGrantWS(
 			rbacclient.RbacRequest().
