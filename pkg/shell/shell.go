@@ -1,22 +1,25 @@
 package shell
 
 import (
-	"fmt"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	v2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
 	"golang.org/x/crypto/ssh"
@@ -73,7 +76,204 @@ func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.Virtual
 func (sp ShellProxy) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/shell/{vm_id}/connect", sp.ConnectSSHFunc)
 	r.HandleFunc("/guacShell/{vm_id}/connect", sp.ConnectGuacFunc)
+	r.HandleFunc("/p/{vm_id}/{port}/{rest:.*}", sp.checkCookieAndProxy)
+	r.HandleFunc("/pa/{token}/{vm_id}/{port}/{rest:.*}", sp.authAndProxyFunc)
+	r.HandleFunc("/auth/{token}/{rest:.*}", sp.setAuthCookieAndRedirect)
 	glog.V(2).Infof("set up routes")
+}
+
+func (sp ShellProxy) authAndProxyFunc(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	authToken := vars["token"]
+	user, err := sp.proxyAuth(w, r, authToken)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "invalid auth token")
+		return
+	}
+	sp.proxy(w, r, user)
+}
+
+func (sp ShellProxy) setAuthCookieAndRedirect(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	authToken := vars["token"]
+	_, err := sp.proxyAuth(w, r, authToken)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "invalid auth token")
+		return
+	}
+	cookie := http.Cookie{Name: "jwt", Value: authToken, SameSite: http.SameSiteNoneMode, Secure: true, Path: "/"}
+	http.SetCookie(w, &cookie)
+	url := mux.Vars(r)["rest"]
+	http.Redirect(w, r, "/"+url, 302)
+
+}
+
+/*
+* Used to Proxy to Services exposed by the VM on specified Port
+ */
+func (sp ShellProxy) checkCookieAndProxy(w http.ResponseWriter, r *http.Request) {
+
+	// Get the auth Variable, build an Authorization Header that can be handled by AuthN
+	authToken, err := r.Cookie("jwt")
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 400, "error", "cookie not set")
+		return
+	}
+	user, err := sp.proxyAuth(w, r, authToken.Value)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
+		return
+	}
+	sp.proxy(w, r, user)
+}
+
+func (sp ShellProxy) proxyAuth(w http.ResponseWriter, r *http.Request, token string) (v2.User, error) {
+	r.Header.Add("Authorization", "Bearer "+token)
+	user, err := sp.auth.AuthN(w, r)
+	if err != nil {
+		return v2.User{}, err
+	}
+	return user, nil
+}
+
+func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User) {
+
+	vars := mux.Vars(r)
+	// Check if variable for vm id was passed in
+	vmId := vars["vm_id"]
+	if len(vmId) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no vm id passed in")
+		return
+	}
+	// Get the corresponding VM, if it exists
+	vm, err := sp.vmClient.GetVirtualMachineById(vmId)
+
+	if err != nil {
+		glog.Errorf("did not find the right virtual machine ID")
+		util.ReturnHTTPMessage(w, r, 500, "error", "no vm found")
+		return
+	}
+
+	if vm.Spec.UserId != user.Name {
+		// check if the user has access to user sessions
+		_, err := sp.auth.AuthGrantWS(
+			rbacclient.RbacRequest().
+				HobbyfarmPermission("users", rbacclient.VerbGet).
+				HobbyfarmPermission("sessions", rbacclient.VerbGet).
+				HobbyfarmPermission("virtualmachines", rbacclient.VerbGet),
+			w, r)
+		if err != nil {
+			glog.Infof("Error doing authGrantWS %s", err)
+			util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to connect to ssh shell session")
+			return
+		}
+	}
+	// Get the target Port variable, default to 80
+	targetPort := vars["port"]
+	if targetPort == "" {
+		targetPort = "80"
+	}
+
+	// Build URL and Proxy to forward the Request to
+	target := "http://127.0.0.1:" + targetPort
+	remote, err := url.Parse(target)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "unable to parse URL for Localhost")
+		return
+	}
+
+	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?
+	if err != nil {
+		glog.Errorf("did not find secret for virtual machine")
+		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
+		return
+	}
+
+	// parse the private key
+	signer, err := ssh.ParsePrivateKey(secret.Data["private_key"])
+	if err != nil {
+		glog.Errorf("did not correctly parse private key")
+		util.ReturnHTTPMessage(w, r, 500, "error", "unable to parse private key")
+		return
+	}
+
+	sshUsername := vm.Spec.SshUsername
+	if len(sshUsername) < 1 {
+		sshUsername = defaultSshUsername
+	}
+
+	// now use the secret and ssh off to something
+	config := &ssh.ClientConfig{
+		User: sshUsername,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	// get the host and port
+	host, ok := vm.Annotations["sshEndpoint"]
+	if !ok {
+		host = vm.Status.PublicIP
+	}
+	port := "22"
+	if sshDev == "true" {
+		if sshDevHost != "" {
+			host = sshDevHost
+		}
+		if sshDevPort != "" {
+			port = sshDevPort
+		}
+	}
+
+	// dial the instance
+	sshConn, err := ssh.Dial("tcp", host+":"+port, config)
+	if err != nil {
+		glog.Errorf("did not connect ssh successfully: %s", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "could not establish ssh session to vm")
+		return
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(remote)
+	proxy.Transport = &http.Transport{
+		Dial:                sshConn.Dial,
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
+	r.Host = remote.Host
+	r.URL.Host = remote.Host
+	r.URL.Scheme = remote.Scheme
+	r.RequestURI = ""
+	r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
+	r.URL.Path = mux.Vars(r)["rest"]
+
+	// Handle Response before returning to original Client
+	// proxy.ModifyResponse = modifyProxyResponse(w, r, sshConn)
+
+	proxy.ServeHTTP(w, r)
+}
+
+func modifyProxyResponse(w http.ResponseWriter, r *http.Request, sshConn *ssh.Client) func(*http.Response) error {
+	return func(resp *http.Response) error {
+
+		// Allow embedding in iframe
+		w.Header().Del("X-Frame-Options")
+
+		// Catch HTTP-Statuscode 302 and "follow" the Redirect
+		if resp.StatusCode == 302 {
+			newRemote, err := resp.Location()
+			if err != nil {
+				return err
+			}
+			glog.V(2).Infof("redirect, serve new proxy")
+			proxy := httputil.NewSingleHostReverseProxy(newRemote)
+			proxy.Transport = &http.Transport{
+				Dial:                sshConn.Dial,
+				TLSHandshakeTimeout: 10 * time.Second,
+			}
+			proxy.ServeHTTP(w, r)
+		}
+		return nil
+	}
 }
 
 /*

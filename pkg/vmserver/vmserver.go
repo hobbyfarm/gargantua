@@ -15,6 +15,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -53,10 +54,67 @@ func NewVMServer(authClient *authclient.AuthClient, hfClientset hfClientset.Inte
 
 func (vms VMServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/vm/{vm_id}", vms.GetVMFunc).Methods("GET")
+	r.HandleFunc("/vm/getwebinterfaces/{vm_id}", vms.getWebinterfaces).Methods("GET")
 	r.HandleFunc("/a/vm/list", vms.GetAllVMListFunc).Methods("GET")
 	r.HandleFunc("/a/vm/scheduledevent/{se_id}", vms.GetVMListByScheduledEventFunc).Methods("GET")
 	r.HandleFunc("/a/vm/count", vms.CountByScheduledEvent).Methods("GET")
 	glog.V(2).Infof("set up routes")
+}
+
+/*
+* Checks if VMTemplate used to create VM has "webinterfaces" in ConfigMap.
+* Returns those webinterface definitions or http Error Codes.
+ */
+func (vms VMServer) getWebinterfaces(w http.ResponseWriter, r *http.Request) {
+	// Check if User has access to VMs
+	user, err := vms.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
+		return
+	}
+	vars := mux.Vars(r)
+	// Check if id for the VM was provided
+	vmId := vars["vm_id"]
+	if len(vmId) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no vm id passed in")
+		return
+	}
+	// Get the VM, Error if none is found for the given id
+	vm, err := vms.GetVirtualMachineById(vmId)
+	if err != nil {
+		glog.Errorf("did not find the right virtual machine ID")
+		util.ReturnHTTPMessage(w, r, 500, "error", "no vm found")
+		return
+	}
+
+	// Check if the VM belongs to the User or User has RBAC-Rights to access VMs
+	if vm.Spec.UserId != user.Name {
+		_, err := vms.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
+		if err != nil {
+			glog.Errorf("user forbidden from accessing vm id %s", vm.Name)
+			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
+			return
+		}
+	}
+
+	// Get the corresponding VMTemplate for the VM and Check for "ide"
+	vmt, err := vms.hfClientSet.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Get(vms.ctx, vm.Spec.VirtualMachineTemplateId, v1.GetOptions{})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 404, "error", "no vm template found")
+		return
+	}	
+
+	services, found := vmt.Spec.ConfigMap["webinterfaces"] 
+	if !found {
+		util.ReturnHTTPMessage(w, r, 404, "error", "No Webinterfaces found for this VM")
+		return
+	}
+	
+	encodedWebinterfaceDefinitions, err := json.Marshal(services)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedWebinterfaceDefinitions)
 }
 
 func (vms VMServer) GetVirtualMachineById(id string) (hfv1.VirtualMachine, error) {
