@@ -437,8 +437,20 @@ func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environm
 
 func CountMachinesPerTemplateAndEnvironment(vmLister hfListers.VirtualMachineLister, template string, enviroment string) (int, error) {
 	vmLabels := labels.Set{
-		"environment": enviroment,
-		"template":    template,
+		EnvironmentLabel: enviroment,
+		VirtualMachineTemplate:    template,
+	}
+
+	vms, err := vmLister.List(vmLabels.AsSelector())
+	return len(vms), err
+}
+
+func CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(vmLister hfListers.VirtualMachineLister, template string, enviroment string, se string) (int, error) {
+	vmLabels := labels.Set{
+		EnvironmentLabel: enviroment,
+		VirtualMachineTemplate:    template,
+		ScheduledEventLabel: se,
+
 	}
 
 	vms, err := vmLister.List(vmLabels.AsSelector())
