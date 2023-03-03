@@ -289,8 +289,8 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 					Labels: map[string]string{
 						"dynamic":                          "false",
 						"vmset":                            vmset.Name,
-						"template":                         vmt.Name,
-						"environment":                      env.Name,
+						util.VirtualMachineTemplate:        vmt.Name,
+						util.EnvironmentLabel:                      env.Name,
 						"bound":                            "false",
 						"ready":                            "false",
 						util.ScheduledEventLabel: vmset.ObjectMeta.Labels[util.ScheduledEventLabel],

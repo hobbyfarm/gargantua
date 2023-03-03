@@ -7,4 +7,5 @@ const (
 	UserLabel = 			"hobbyfarm.io/user"
 	RBACManagedLabel =		"rbac.hobbyfarm.io/managed"
 	EnvironmentLabel =		"hobbyfarm.io/environment"
+	VirtualMachineTemplate = "hobbyfarm.io/virtualmachinetemplate"
 )

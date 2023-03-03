@@ -289,7 +289,7 @@ func (v VirtualMachineTemplateServer) DeleteFunc(w http.ResponseWriter, r *http.
 
 	// vmt exists, now we need to check all other objects for references
 	// start with virtualmachines
-	virtualmachines, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("hobbyfarm.io/vmtemplate=%s", vmt.Name)})
+	virtualmachines, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", util.VirtualMachineTemplate, vmt.Name)})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror",
 			"error listing virtual machines while attempting vmt deletion")

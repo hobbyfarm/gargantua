@@ -353,23 +353,22 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 	}
 
 	environmentMap := make(map[string]VMEnvironment) // Maps node to the environment it should use
-	bestDBC, err := v.findBestDBCForVMs(dbcList, requiredTemplateCount) // Try to find if one environment can provision all VMs
-
-
-	reservedCapacity := make(map[string]map[string]int) // EnvironmentID -> TemplateID -> Count
-	// Initialize reservedCapacity with 0 for all environments + associated templates
-	for _, environment := range environments {
-		reserved := make(map[string]int)
-		for template, _ := range environment.Spec.TemplateMapping {
-			reserved[template] = 0
-		}
-		reservedCapacity[environment.Name] = reserved
-	}
+	bestDBC, err := v.findBestDBCForVMs(dbcList, requiredTemplateCount, vmc.Labels[util.ScheduledEventLabel]) // Try to find if one environment can provision all VMs
 
 	if(err != nil) {
 		// We can not provision all VirtualMachines in one environment. Figure out which environments we want to use
+
+		reservedCapacity := make(map[string]map[string]int) // EnvironmentID -> TemplateID -> Count
+		// Initialize reservedCapacity with 0 for all environments + associated templates
+		for _, environment := range environments {
+			reserved := make(map[string]int)
+			for template, _ := range environment.Spec.TemplateMapping {
+				reserved[template] = 0
+			}
+			reservedCapacity[environment.Name] = reserved
+		}
 		for vmName, vmDetails := range vmc.Spec.VirtualMachines {
-			env, dbc, err := v.findSuitableEnvironmentForVMTemplate(environments, dbcList, vmDetails.Template, reservedCapacity)
+			env, dbc, err := v.findSuitableEnvironmentForVMTemplate(environments, dbcList, vmDetails.Template, reservedCapacity, vmc.Labels[util.ScheduledEventLabel])
 			if err != nil{
 				glog.Errorf("no suitable environment for %s (%s): %v", vmName, vmDetails.Template, err)
 				return err
@@ -410,10 +409,10 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 				Labels: map[string]string{
 					"dynamic":                          "true",
 					"vmc":                              vmc.Name,
-					"template":                         vmDetails.Template,
-					"environment":                      environment.Name,
+					util.EnvironmentLabel:              environment.Name,
 					"bound":                            "true",
 					"ready":                            "false",
+					util.VirtualMachineTemplate: 		vmDetails.Template,
 					util.ScheduledEventLabel: seName,
 				},
 			},
@@ -463,8 +462,6 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 		} else {
 			vm.ObjectMeta.Labels["restrictedbind"] = "false"
 		}
-
-		vm.Labels["hobbyfarm.io/vmtemplate"] = vm.Spec.VirtualMachineTemplateId
 
 		createdVM, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Create(v.ctx, vm, metav1.CreateOptions{})
 		if err != nil {
@@ -531,13 +528,20 @@ func (v *VMClaimController) findEnvironmentsForVM(accessCode string, vmc *hfv1.V
 }
 
 // Can one DBC provide all VMs when considering the limits? Return the DBC if there exists one
-func (v *VMClaimController) findBestDBCForVMs(dbcList []hfv1.DynamicBindConfiguration, requiredTemplateCount map[string]int) (hfv1.DynamicBindConfiguration, error) {
+func (v *VMClaimController) findBestDBCForVMs(dbcList []hfv1.DynamicBindConfiguration, requiredTemplateCount map[string]int, scheduledEvent string) (hfv1.DynamicBindConfiguration, error) {
 	// Try to find best possible environment / DBC = All required VMs can be provisioned here
 	for _, dbc := range dbcList {
 		satisfiedDBC := true
+		env, err := v.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Get(v.ctx, dbc.Spec.Environment, metav1.GetOptions{})
+		if err != nil {
+			return hfv1.DynamicBindConfiguration{}, fmt.Errorf("error fetching environment")
+		}
 		for requiredTemplate, requiredCount := range requiredTemplateCount {
-			if dbcCapacity, found := dbc.Spec.BurstCountCapacity[requiredTemplate]; found {
-				count, err := util.CountMachinesPerTemplateAndEnvironment(v.vmLister, requiredTemplate, dbc.Spec.Environment)
+			dbcCapacity, foundDBC := dbc.Spec.BurstCountCapacity[requiredTemplate];
+			envCapacity, foundEnv := env.Spec.CountCapacity[requiredTemplate];
+			if foundDBC && foundEnv {
+				// Does the DBC satisfy this amount?
+				count, err := util.CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(v.vmLister, requiredTemplate, dbc.Spec.Environment, scheduledEvent)
 				if(err != nil){
 					satisfiedDBC = false
 					break
@@ -546,6 +550,18 @@ func (v *VMClaimController) findBestDBCForVMs(dbcList []hfv1.DynamicBindConfigur
 					satisfiedDBC = false
 					break
 				}
+
+				// Does the environment satisfy this amount?
+				count, err = util.CountMachinesPerTemplateAndEnvironment(v.vmLister, requiredTemplate, dbc.Spec.Environment)
+				if(err != nil){
+					satisfiedDBC = false
+					break
+				}
+				if requiredCount >= (envCapacity - count) {
+					satisfiedDBC = false
+					break
+				}
+
 			}else{
 				satisfiedDBC = false
 				break
@@ -561,25 +577,32 @@ func (v *VMClaimController) findBestDBCForVMs(dbcList []hfv1.DynamicBindConfigur
 	return hfv1.DynamicBindConfiguration{}, fmt.Errorf("there is no best environment")
 }
 
-func (v *VMClaimController) findSuitableEnvironmentForVMTemplate(environments []hfv1.Environment, dbcList []hfv1.DynamicBindConfiguration, template string, reservedCapacity map[string]map[string]int) (hfv1.Environment, hfv1.DynamicBindConfiguration, error) {
+func (v *VMClaimController) findSuitableEnvironmentForVMTemplate(environments []hfv1.Environment, dbcList []hfv1.DynamicBindConfiguration, template string, reservedCapacity map[string]map[string]int, scheduledEvent string) (hfv1.Environment, hfv1.DynamicBindConfiguration, error) {
 	for _, environment := range environments {
-		count, err := util.CountMachinesPerTemplateAndEnvironment(v.vmLister, template, environment.Name)
+		countEnv, err := util.CountMachinesPerTemplateAndEnvironment(v.vmLister, template, environment.Name)
 		if(err != nil){
 			continue
 		}
-
 		// We have also reserved capacity for other VMs
-		count += reservedCapacity[environment.Name][template]
+		countEnv += reservedCapacity[environment.Name][template]
 
-		if(count >= environment.Spec.CountCapacity[template]){
+		if(countEnv >= environment.Spec.CountCapacity[template]){
 			// Environment is at limit
 			continue
 		}
+
+		countDBC, err := util.CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(v.vmLister, template, environment.Name, scheduledEvent)
+		if(err != nil){
+			continue
+		}
+		// We have also reserved capacity for other VMs
+		countDBC += reservedCapacity[environment.Name][template]
+
 		// found environment that satisfies capacity for this template
 		for _, dbc := range dbcList {
 			if(dbc.Spec.Environment == environment.Name){
 				if capacity, found := dbc.Spec.BurstCountCapacity[template]; found {
-					if(count < capacity){
+					if(countDBC < capacity){
 						// Capacity also satisfied for environment + scheduledEvent via DBC
 						return environment, dbc,  nil
 					}
@@ -753,7 +776,7 @@ func  (v *VMClaimController) unassignVM(vmId string) (string, error) {
 func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, environments map[string]map[string]int, template string, restrictedBind bool, restrictedBindValue string) (string, error) {
 	vmLabels := labels.Set{
 		"bound":       "false",
-		"template":    template,
+		util.VirtualMachineTemplate:    template,
 	}
 
 	if restrictedBind {
@@ -777,7 +800,7 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, envi
 	vmId := ""
 	for _, vm := range vms {
 		// Check for Supported environment
-		if vmts, found := environments[vm.Labels["environment"]]; found {
+		if vmts, found := environments[vm.Labels[util.EnvironmentLabel]]; found {
 			// This virtualmachine is one of the supported environments
 			if _, foundVMT := vmts[vm.Spec.VirtualMachineTemplateId]; !foundVMT {
 				// ... but this environment does not support this virtualmachinetemplate
