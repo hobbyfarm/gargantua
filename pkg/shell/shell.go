@@ -234,46 +234,21 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 		return
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(remote)
+	proxy := &httputil.ReverseProxy{
+		Rewrite: func(r *httputil.ProxyRequest) {
+			r.SetURL(remote)
+			r.Out.Host = r.In.Host
+		},
+	}
 	proxy.Transport = &http.Transport{
 		Dial:                sshConn.Dial,
 		TLSHandshakeTimeout: 10 * time.Second,
 	}
-	r.Host = remote.Host
-	r.URL.Host = remote.Host
-	r.URL.Scheme = remote.Scheme
 	r.RequestURI = ""
-	r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
+	//r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
 	r.URL.Path = mux.Vars(r)["rest"]
 
-	// Handle Response before returning to original Client
-	// proxy.ModifyResponse = modifyProxyResponse(w, r, sshConn)
-
 	proxy.ServeHTTP(w, r)
-}
-
-func modifyProxyResponse(w http.ResponseWriter, r *http.Request, sshConn *ssh.Client) func(*http.Response) error {
-	return func(resp *http.Response) error {
-
-		// Allow embedding in iframe
-		w.Header().Del("X-Frame-Options")
-
-		// Catch HTTP-Statuscode 302 and "follow" the Redirect
-		if resp.StatusCode == 302 {
-			newRemote, err := resp.Location()
-			if err != nil {
-				return err
-			}
-			glog.V(2).Infof("redirect, serve new proxy")
-			proxy := httputil.NewSingleHostReverseProxy(newRemote)
-			proxy.Transport = &http.Transport{
-				Dial:                sshConn.Dial,
-				TLSHandshakeTimeout: 10 * time.Second,
-			}
-			proxy.ServeHTTP(w, r)
-		}
-		return nil
-	}
 }
 
 /*

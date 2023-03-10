@@ -1,5 +1,5 @@
 ##### sdk image #####
-FROM golang:1.19 AS sdk
+FROM golang:1.20.2 AS sdk
 
 WORKDIR /go/src/github.com/hobbyfarm/gargantua
 COPY . .
