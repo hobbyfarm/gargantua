@@ -2,6 +2,7 @@ package shell
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -34,6 +35,16 @@ type ShellProxy struct {
 	hfClient   hfClientset.Interface
 	kubeClient kubernetes.Interface
 	ctx        context.Context
+}
+
+type Service struct {
+	Name string `json:"name"`
+	HasWebinterface bool `json:"hasWebinterface"`
+	Port int `json:"port"`
+	Path string `json:"path"`
+	HasOwnTab bool `json:"hasOwnTab"`
+	NoRewriteRootPath bool `json:"noRewriteRootPath"`
+	RewriteHostHeader bool `json:"rewriteHostHeader"`
 }
 
 var sshDev = ""
@@ -168,10 +179,40 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 			return
 		}
 	}
+
+	// Get the corresponding VMTemplate for the VM
+	vmt, err := sp.hfClient.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.VirtualMachineTemplateId, v1.GetOptions{})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 404, "error", "no vm template found")
+		return
+	}
+	
 	// Get the target Port variable, default to 80
 	targetPort := vars["port"]
 	if targetPort == "" {
 		targetPort = "80"
+	}
+
+
+	// find the corresponding service
+	service := Service{}
+	hasService := false
+	if servicesMarhaled, ok := vmt.Spec.ConfigMap["webinterfaces"]; ok {
+		servicesUnmarshaled := []Service{}
+		err = json.Unmarshal([]byte(servicesMarhaled), &servicesUnmarshaled)
+
+		if(err != nil){
+			glog.Infof("Error umarshaling: %v", err)
+		} else {
+			for _, s := range servicesUnmarshaled {
+				if strconv.Itoa(s.Port) == targetPort {
+					glog.Infof("Found webservice with port %s", targetPort)
+					service = s
+					hasService = true
+					break
+				}
+			}
+		}
 	}
 
 	// Build URL and Proxy to forward the Request to
@@ -237,7 +278,10 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(r *httputil.ProxyRequest) {
 			r.SetURL(remote)
-			r.Out.Host = r.In.Host
+			if( hasService && service.RewriteHostHeader){
+				// Rewrite Host Header to shell server Host (this is needed for some applications like code-server)
+				r.Out.Host = r.In.Host
+			}
 		},
 	}
 	proxy.Transport = &http.Transport{
@@ -245,8 +289,13 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 		TLSHandshakeTimeout: 10 * time.Second,
 	}
 	r.RequestURI = ""
-	//r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
-	r.URL.Path = mux.Vars(r)["rest"]
+
+	// Service is configured to rewrite the rootPath (default setting).
+	// proxy path "/p/xyz/80/path" will be rewritten to application path "/path")
+	// This is needed by applications like code-server. Some applications (like jupyter when setting a base_url) need the whole proxy path
+	if hasService && !service.NoRewriteRootPath {
+		r.URL.Path = mux.Vars(r)["rest"]
+	}
 
 	proxy.ServeHTTP(w, r)
 }
