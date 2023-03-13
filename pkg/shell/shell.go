@@ -206,7 +206,6 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 		} else {
 			for _, s := range servicesUnmarshaled {
 				if strconv.Itoa(s.Port) == targetPort {
-					glog.Infof("Found webservice with port %s", targetPort)
 					service = s
 					hasService = true
 					break
@@ -268,7 +267,10 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 	}
 
 	// dial the instance
-	sshConn, err := ssh.Dial("tcp", host+":"+port, config)
+	//sshConn, err := ssh.Dial("tcp", host+":"+port, config)
+
+
+	sshConn, err := retry(5, 1, func() (*ssh.Client, error) { return ssh.Dial("tcp", host+":"+port, config) })
 	if err != nil {
 		glog.Errorf("did not connect ssh successfully: %s", err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "could not establish ssh session to vm")
@@ -645,4 +647,18 @@ func ResizePty(h int, w int) {
 	if err := sess.WindowChange(h, w); err != nil {
 		glog.Warningf("error resizing pty: %s", err)
 	}
+}
+
+func retry[T any](attempts int, sleep int, f func() (T, error)) (result T, err error) {
+    for i := 0; i < attempts; i++ {
+        if i > 0 {
+            time.Sleep(time.Duration(sleep) * time.Second)
+            sleep *= 2
+        }
+        result, err = f()
+        if err == nil {
+            return result, nil
+        }
+    }
+    return result, fmt.Errorf("after %d attempts, last error: %s", attempts, err)
 }
