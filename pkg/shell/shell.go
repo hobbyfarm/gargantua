@@ -293,7 +293,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 	// Service is configured to rewrite the rootPath (default setting).
 	// proxy path "/p/xyz/80/path" will be rewritten to application path "/path")
 	// This is needed by applications like code-server. Some applications (like jupyter when setting a base_url) need the whole proxy path
-	if hasService && !service.NoRewriteRootPath {
+	if !hasService || !service.NoRewriteRootPath {
 		r.URL.Path = mux.Vars(r)["rest"]
 	}
 
