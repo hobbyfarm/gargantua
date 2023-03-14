@@ -45,6 +45,7 @@ type Service struct {
 	HasOwnTab bool `json:"hasOwnTab"`
 	NoRewriteRootPath bool `json:"noRewriteRootPath"`
 	RewriteHostHeader bool `json:"rewriteHostHeader"`
+	RewriteOriginHeader bool `json:"rewriteOriginHeader"`
 }
 
 var sshDev = ""
@@ -266,11 +267,8 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 		}
 	}
 
-	// dial the instance
-	//sshConn, err := ssh.Dial("tcp", host+":"+port, config)
-
-
-	sshConn, err := retry(5, 1, func() (*ssh.Client, error) { return ssh.Dial("tcp", host+":"+port, config) })
+	// establish a connection to the server; retry a maximum of 5 times
+	sshConn, err := retry(5, 100, func() (*ssh.Client, error) { return ssh.Dial("tcp", host+":"+port, config) })
 	if err != nil {
 		glog.Errorf("did not connect ssh successfully: %s", err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "could not establish ssh session to vm")
@@ -281,16 +279,24 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 		Rewrite: func(r *httputil.ProxyRequest) {
 			r.SetURL(remote)
 			if( hasService && service.RewriteHostHeader){
-				// Rewrite Host Header to shell server Host (this is needed for some applications like code-server)
+				// Rewrite Host header to proxy server host (this is needed for some applications like code-server)
 				r.Out.Host = r.In.Host
 			}
+
+			if( hasService && service.RewriteOriginHeader){
+				// Rewrite Origin header to remote host (this is needed for some applications like jupyter)
+				r.Out.Header.Set("Origin", target)
+			}
+			
 		},
 	}
 	proxy.Transport = &http.Transport{
 		Dial:                sshConn.Dial,
 		TLSHandshakeTimeout: 10 * time.Second,
 	}
-	r.RequestURI = ""
+	//r.RequestURI = ""
+	r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
+	r.Header.Set("X-Forwarded-Proto", r.URL.Scheme)
 
 	// Service is configured to rewrite the rootPath (default setting).
 	// proxy path "/p/xyz/80/path" will be rewritten to application path "/path")
@@ -652,7 +658,7 @@ func ResizePty(h int, w int) {
 func retry[T any](attempts int, sleep int, f func() (T, error)) (result T, err error) {
     for i := 0; i < attempts; i++ {
         if i > 0 {
-            time.Sleep(time.Duration(sleep) * time.Second)
+            time.Sleep(time.Duration(sleep) * time.Millisecond)
             sleep *= 2
         }
         result, err = f()
