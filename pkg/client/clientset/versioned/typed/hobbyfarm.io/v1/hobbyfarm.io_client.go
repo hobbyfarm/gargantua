@@ -19,29 +19,29 @@ limitations under the License.
 package v1
 
 import (
+	"net/http"
+
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
-	"net/http"
 )
 
-
 type HobbyfarmV1Interface interface {
-    RESTClient() rest.Interface
-     AccessCodesGetter
-     CoursesGetter
-     DynamicBindConfigurationsGetter
-     EnvironmentsGetter
-     ProgressesGetter
-     ScenariosGetter
-     ScheduledEventsGetter
-     SessionsGetter
-     UsersGetter
-     VirtualMachinesGetter
-     VirtualMachineClaimsGetter
-     VirtualMachineSetsGetter
-     VirtualMachineTemplatesGetter
-    
+	RESTClient() rest.Interface
+	AccessCodesGetter
+	CoursesGetter
+	DynamicBindConfigurationsGetter
+	EnvironmentsGetter
+	PredefinedServicesGetter
+	ProgressesGetter
+	ScenariosGetter
+	ScheduledEventsGetter
+	SessionsGetter
+	UsersGetter
+	VirtualMachinesGetter
+	VirtualMachineClaimsGetter
+	VirtualMachineSetsGetter
+	VirtualMachineTemplatesGetter
 }
 
 // HobbyfarmV1Client is used to interact with features provided by the hobbyfarm.io group.
@@ -63,6 +63,10 @@ func (c *HobbyfarmV1Client) DynamicBindConfigurations(namespace string) DynamicB
 
 func (c *HobbyfarmV1Client) Environments(namespace string) EnvironmentInterface {
 	return newEnvironments(c, namespace)
+}
+
+func (c *HobbyfarmV1Client) PredefinedServices(namespace string) PredefinedServiceInterface {
+	return newPredefinedServices(c, namespace)
 }
 
 func (c *HobbyfarmV1Client) Progresses(namespace string) ProgressInterface {
@@ -147,7 +151,7 @@ func New(c rest.Interface) *HobbyfarmV1Client {
 
 func setConfigDefaults(config *rest.Config) error {
 	gv := v1.SchemeGroupVersion
-	config.GroupVersion =  &gv
+	config.GroupVersion = &gv
 	config.APIPath = "/apis"
 	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 

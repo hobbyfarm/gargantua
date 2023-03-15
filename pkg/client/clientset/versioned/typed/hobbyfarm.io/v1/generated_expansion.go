@@ -26,6 +26,8 @@ type DynamicBindConfigurationExpansion interface{}
 
 type EnvironmentExpansion interface{}
 
+type PredefinedServiceExpansion interface{}
+
 type ProgressExpansion interface{}
 
 type ScenarioExpansion interface{}

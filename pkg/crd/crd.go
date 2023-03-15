@@ -134,6 +134,15 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 						WithStatus()
 				})
 		}),
+		hobbyfarmCRD(&v1.PredefinedService{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.PredefinedService{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("Name", ".spec.name").
+						WithColumn("Port", ".spec.port")
+				})
+		}),
 		hobbyfarmCRD(&v1.DynamicBindConfiguration{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
