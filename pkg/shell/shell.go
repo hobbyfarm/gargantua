@@ -2,6 +2,7 @@ package shell
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -34,6 +35,17 @@ type ShellProxy struct {
 	hfClient   hfClientset.Interface
 	kubeClient kubernetes.Interface
 	ctx        context.Context
+}
+
+type Service struct {
+	Name string `json:"name"`
+	HasWebinterface bool `json:"hasWebinterface"`
+	Port int `json:"port"`
+	Path string `json:"path"`
+	HasOwnTab bool `json:"hasOwnTab"`
+	NoRewriteRootPath bool `json:"noRewriteRootPath"`
+	RewriteHostHeader bool `json:"rewriteHostHeader"`
+	RewriteOriginHeader bool `json:"rewriteOriginHeader"`
 }
 
 var sshDev = ""
@@ -168,10 +180,39 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 			return
 		}
 	}
+
+	// Get the corresponding VMTemplate for the VM
+	vmt, err := sp.hfClient.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.VirtualMachineTemplateId, v1.GetOptions{})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 404, "error", "no vm template found")
+		return
+	}
+	
 	// Get the target Port variable, default to 80
 	targetPort := vars["port"]
 	if targetPort == "" {
 		targetPort = "80"
+	}
+
+
+	// find the corresponding service
+	service := Service{}
+	hasService := false
+	if servicesMarhaled, ok := vmt.Spec.ConfigMap["webinterfaces"]; ok {
+		servicesUnmarshaled := []Service{}
+		err = json.Unmarshal([]byte(servicesMarhaled), &servicesUnmarshaled)
+
+		if(err != nil){
+			glog.Infof("Error umarshaling: %v", err)
+		} else {
+			for _, s := range servicesUnmarshaled {
+				if strconv.Itoa(s.Port) == targetPort {
+					service = s
+					hasService = true
+					break
+				}
+			}
+		}
 	}
 
 	// Build URL and Proxy to forward the Request to
@@ -226,8 +267,8 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 		}
 	}
 
-	// dial the instance
-	sshConn, err := ssh.Dial("tcp", host+":"+port, config)
+	// establish a connection to the server; retry a maximum of 5 times
+	sshConn, err := retry(5, 100, func() (*ssh.Client, error) { return ssh.Dial("tcp", host+":"+port, config) })
 	if err != nil {
 		glog.Errorf("did not connect ssh successfully: %s", err)
 		util.ReturnHTTPMessage(w, r, 500, "error", "could not establish ssh session to vm")
@@ -237,16 +278,32 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(r *httputil.ProxyRequest) {
 			r.SetURL(remote)
-			r.Out.Host = r.In.Host
+			if( hasService && service.RewriteHostHeader){
+				// Rewrite Host header to proxy server host (this is needed for some applications like code-server)
+				r.Out.Host = r.In.Host
+			}
+
+			if( hasService && service.RewriteOriginHeader){
+				// Rewrite Origin header to remote host (this is needed for some applications like jupyter)
+				r.Out.Header.Set("Origin", target)
+			}
+			
 		},
 	}
 	proxy.Transport = &http.Transport{
 		Dial:                sshConn.Dial,
 		TLSHandshakeTimeout: 10 * time.Second,
 	}
-	r.RequestURI = ""
-	//r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
-	r.URL.Path = mux.Vars(r)["rest"]
+	//r.RequestURI = ""
+	r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
+	r.Header.Set("X-Forwarded-Proto", r.URL.Scheme)
+
+	// Service is configured to rewrite the rootPath (default setting).
+	// proxy path "/p/xyz/80/path" will be rewritten to application path "/path")
+	// This is needed by applications like code-server. Some applications (like jupyter when setting a base_url) need the whole proxy path
+	if !hasService || !service.NoRewriteRootPath {
+		r.URL.Path = mux.Vars(r)["rest"]
+	}
 
 	proxy.ServeHTTP(w, r)
 }
@@ -596,4 +653,18 @@ func ResizePty(h int, w int) {
 	if err := sess.WindowChange(h, w); err != nil {
 		glog.Warningf("error resizing pty: %s", err)
 	}
+}
+
+func retry[T any](attempts int, sleep int, f func() (T, error)) (result T, err error) {
+    for i := 0; i < attempts; i++ {
+        if i > 0 {
+            time.Sleep(time.Duration(sleep) * time.Millisecond)
+            sleep *= 2
+        }
+        result, err = f()
+        if err == nil {
+            return result, nil
+        }
+    }
+    return result, fmt.Errorf("after %d attempts, last error: %s", attempts, err)
 }
