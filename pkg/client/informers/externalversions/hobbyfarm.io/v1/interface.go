@@ -32,6 +32,8 @@ type Interface interface {
 	DynamicBindConfigurations() DynamicBindConfigurationInformer
 	// Environments returns a EnvironmentInformer.
 	Environments() EnvironmentInformer
+	// PredefinedServices returns a PredefinedServiceInformer.
+	PredefinedServices() PredefinedServiceInformer
 	// Progresses returns a ProgressInformer.
 	Progresses() ProgressInformer
 	// Scenarios returns a ScenarioInformer.
@@ -81,6 +83,11 @@ func (v *version) DynamicBindConfigurations() DynamicBindConfigurationInformer {
 // Environments returns a EnvironmentInformer.
 func (v *version) Environments() EnvironmentInformer {
 	return &environmentInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// PredefinedServices returns a PredefinedServiceInformer.
+func (v *version) PredefinedServices() PredefinedServiceInformer {
+	return &predefinedServiceInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Progresses returns a ProgressInformer.

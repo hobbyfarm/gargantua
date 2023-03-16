@@ -44,6 +44,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/pkg/courseserver"
 	"github.com/hobbyfarm/gargantua/pkg/environmentserver"
+	"github.com/hobbyfarm/gargantua/pkg/predefinedserviceserver"
 	"github.com/hobbyfarm/gargantua/pkg/progressserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
@@ -255,6 +256,11 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	predefinedServiceServer, err := predefinedservicesserver.NewPredefinedServiceServer(authClient, hfClient, ctx)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
 	progressServer, err := progressserver.NewProgressServer(authClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
@@ -278,6 +284,7 @@ func main() {
 		vmTemplateServer.SetupRoutes(r)
 		progressServer.SetupRoutes(r)
 		rbacServer.SetupRoutes(r)
+		predefinedServiceServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})

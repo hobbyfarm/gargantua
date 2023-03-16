@@ -50,6 +50,14 @@ type EnvironmentListerExpansion interface{}
 // EnvironmentNamespaceLister.
 type EnvironmentNamespaceListerExpansion interface{}
 
+// PredefinedServiceListerExpansion allows custom methods to be added to
+// PredefinedServiceLister.
+type PredefinedServiceListerExpansion interface{}
+
+// PredefinedServiceNamespaceListerExpansion allows custom methods to be added to
+// PredefinedServiceNamespaceLister.
+type PredefinedServiceNamespaceListerExpansion interface{}
+
 // ProgressListerExpansion allows custom methods to be added to
 // ProgressLister.
 type ProgressListerExpansion interface{}

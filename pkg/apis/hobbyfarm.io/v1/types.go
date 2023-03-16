@@ -121,6 +121,35 @@ type VirtualMachineTemplateSpec struct {
 }
 
 // +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type PredefinedService struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              ServiceSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type PredefinedServiceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []PredefinedService `json:"items"`
+}
+
+type ServiceSpec struct {
+	Name      			string	`json:"name"`  // IDE, Jupyter etc.
+	Port     			int		`json:"port"` // 80, 8888 etc.
+	HasWebinterface 	bool	`json:"has_webinterface"` // Has a webservice that can be proxies via http/wss
+	HasTab 				bool	`json:"has_tab"` // Is displayed in its own tab rather than in a submenu
+	Path 				string	`json:"path"` // Default path to be called e.g. /dashboard
+	NoRewriteRootPath 	bool	`json:"no_rewrite_root_path"` // Path is rewritten to application root, can be disabled with this flag
+	RewriteHostHeader 	bool	`json:"rewrite_host_header"` // Rewrite Host header to proxy host
+	RewriteOriginHeader bool	`json:"rewrite_origin_header"` // Rewrite Origin to localhost
+	DisallowIFrame 		bool	`json:"disallow_iframe"` // Application can only be accessed in a new tab
+	CloudConfig		 	string	`json:"cloud_config"` // Cloud config data, used to install applications etc.
+}
+
+// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type Environment struct {
