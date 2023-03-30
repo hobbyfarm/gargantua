@@ -195,7 +195,8 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 
 			}
 
-			encodedSS, err := json.Marshal(v.Spec)
+			preparedSession := preparedSession{v.Name, v.Spec}
+			encodedSS, err := json.Marshal(preparedSession)
 			if err != nil {
 				glog.Error(err)
 			}
