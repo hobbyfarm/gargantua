@@ -148,6 +148,15 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.DynamicBindConfiguration{}, nil)
 		}),
+		hobbyfarmCRD(&v1.Setting{}, func(c *crder.CRD) {
+			c.IsNamespaced(true).AddVersion("v1", &v1.Setting{}, func(cv *crder.Version) {
+				cv.
+					WithColumn("Name", ".displayName").
+					WithColumn("Value", ".value").
+					IsServed(true).
+					IsStored(true)
+			})
+		}),
 		terraformCRD(&terraformv1.Module{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).

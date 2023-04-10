@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"github.com/hobbyfarm/gargantua/pkg/settingserver"
 	"os"
 
 	"github.com/ebauman/crder"
@@ -266,6 +267,11 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	settingServer, err := settingserver.NewSettingServer(hfClient, authClient, ctx)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
 	if shellServer {
 		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
@@ -285,6 +291,7 @@ func main() {
 		progressServer.SetupRoutes(r)
 		rbacServer.SetupRoutes(r)
 		predefinedServiceServer.SetupRoutes(r)
+		settingServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})

@@ -1,0 +1,119 @@
+package settingserver
+
+import (
+	"context"
+	"encoding/json"
+	"github.com/golang/glog"
+	"github.com/gorilla/mux"
+	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/pkg/util"
+	"io"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/http"
+)
+
+const (
+	resourcePlural = "settings"
+)
+
+type SettingServer struct {
+	ctx         context.Context
+	auth        *authclient.AuthClient
+	hfClientSet hfClientset.Interface
+}
+
+type PreparedSetting struct {
+	Id string `json:"id"`
+	v1.SettingDetails
+}
+
+func NewSettingServer(clientset hfClientset.Interface, authClient *authclient.AuthClient, ctx context.Context) (*SettingServer, error) {
+	setting := SettingServer{}
+
+	setting.ctx = ctx
+	setting.hfClientSet = clientset
+	setting.auth = authClient
+
+	return &setting, nil
+}
+
+func (s SettingServer) SetupRoutes(r *mux.Router) {
+	r.HandleFunc("/setting/list", s.ListFunc)
+}
+
+func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list settings")
+		return
+	}
+
+	kSettings, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("error listing settings: %s", err.Error())
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing settings")
+		return
+	}
+
+	var settings []PreparedSetting
+	for _, ks := range kSettings.Items {
+		settings = append(settings, PreparedSetting{ks.Name, ks.SettingDetails})
+	}
+
+	encodedSettings, err := json.Marshal(settings)
+	if err != nil {
+		glog.Errorf("error marshalling prepared settings: %s", err.Error())
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing settings")
+		return
+	}
+
+	util.ReturnHTTPContent(w, r, 200, "success", encodedSettings)
+
+	glog.V(8).Infof("listed settings")
+}
+
+func (s SettingServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update settings")
+		return
+	}
+
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		glog.Errorf("error reading request body: %s", err.Error())
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error handling request body")
+		return
+	}
+
+	setting := PreparedSetting{}
+	err = json.Unmarshal(data, &setting)
+	if err != nil {
+		glog.Errorf("error unmarshalling json: %s", err.Error())
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error unmarshalling json body")
+		return
+	}
+
+	// given the setting name, fetch it and update it
+	kSetting, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Get(s.ctx, setting.Id, metav1.GetOptions{})
+	if err != nil {
+		glog.Errorf("error getting setting: %s", err.Error())
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error getting setting from database")
+		return
+	}
+
+	kSetting.SettingDetails = setting.SettingDetails
+
+	_, err = s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Update(s.ctx, kSetting, metav1.UpdateOptions{})
+	if err != nil {
+		glog.Errorf("error updating setting: %s", err.Error())
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error updating setting")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "updated", "")
+	glog.V(8).Infof("updated setting %s", setting.Id)
+}
