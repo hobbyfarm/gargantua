@@ -105,7 +105,7 @@ func (c *FakeScenarios) Update(ctx context.Context, scenario *hobbyfarmiov1.Scen
 // Delete takes name of the scenario and deletes it. Returns an error if one occurs.
 func (c *FakeScenarios) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(scenariosResource, c.ns, name), &hobbyfarmiov1.Scenario{})
+		Invokes(testing.NewDeleteActionWithOptions(scenariosResource, c.ns, name, opts), &hobbyfarmiov1.Scenario{})
 
 	return err
 }

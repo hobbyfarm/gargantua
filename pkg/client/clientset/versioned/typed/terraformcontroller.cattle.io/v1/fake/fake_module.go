@@ -117,7 +117,7 @@ func (c *FakeModules) UpdateStatus(ctx context.Context, module *terraformcontrol
 // Delete takes name of the module and deletes it. Returns an error if one occurs.
 func (c *FakeModules) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(modulesResource, c.ns, name), &terraformcontrollercattleiov1.Module{})
+		Invokes(testing.NewDeleteActionWithOptions(modulesResource, c.ns, name, opts), &terraformcontrollercattleiov1.Module{})
 
 	return err
 }
