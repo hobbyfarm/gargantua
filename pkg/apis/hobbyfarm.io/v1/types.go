@@ -507,8 +507,6 @@ type Setting struct {
 	SettingDetails `json:",inline"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 type SettingDetails struct {
 	// Display name of the setting
 	DisplayName string `json:"displayName"`
@@ -524,10 +522,16 @@ type SettingDetails struct {
 	// EnumValues enumerates the possible values for Type of enum
 	EnumValues []string `json:"enumValues,omitempty"`
 
-	// Categories maps a string category name to an integer weight.
-	// The weight can be used to construct ordered inputs.
-	Categories map[string]int `json:"categories"`
+	// Category is the category of the setting
+	Category string `json:"category"`
+
+	Scope string `json:"scope"`
+
+	// Weight determines the weight of the setting to help drive the display
+	Weight int `json:"int"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type SettingList struct {
 	metav1.TypeMeta `json:",inline"`
