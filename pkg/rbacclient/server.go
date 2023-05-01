@@ -20,10 +20,10 @@ type Client struct {
 }
 
 func NewRbacClient(namespace string, kubeInformerFactory informers.SharedInformerFactory) (*Client, error) {
-	rbInformer := kubeInformerFactory.Rbac().V1().RoleBindings()
-	crbInformer := kubeInformerFactory.Rbac().V1().ClusterRoleBindings()
-	rInformer := kubeInformerFactory.Rbac().V1().Roles()
-	crInformer := kubeInformerFactory.Rbac().V1().ClusterRoles()
+	rbInformer := kubeInformerFactory.Rbac().V1().RoleBindings().Informer()
+	crbInformer := kubeInformerFactory.Rbac().V1().ClusterRoleBindings().Informer()
+	rInformer := kubeInformerFactory.Rbac().V1().Roles().Informer()
+	crInformer := kubeInformerFactory.Rbac().V1().ClusterRoles().Informer()
 
 	userIndex, err := NewIndex("User", namespace, rbInformer, crbInformer, rInformer, crInformer)
 	if err != nil {

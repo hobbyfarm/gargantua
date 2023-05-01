@@ -3,7 +3,6 @@ package rbacclient
 import (
 	"fmt"
 	v1 "k8s.io/api/rbac/v1"
-	v12 "k8s.io/client-go/informers/rbac/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -35,10 +34,13 @@ type Index struct {
 func NewIndex(
 	kind string,
 	namespace string,
-	rbInformer v12.RoleBindingInformer,
-	crbInformer v12.ClusterRoleBindingInformer,
-	rInformer v12.RoleInformer,
-	crInformer v12.ClusterRoleInformer) (*Index, error) {
+	//	rbInformer v12.RoleBindingInformer,
+	roleBindingInformer cache.SharedIndexInformer,
+	// crbInformer v12.ClusterRoleBindingInformer,
+	clusterRoleBindingInformer cache.SharedIndexInformer,
+	// rInformer v12.RoleInformer,
+	roleInformer cache.SharedIndexInformer,
+	clusterRoleInformer cache.SharedIndexInformer) (*Index, error) {
 	i := &Index{
 		kind:      kind,
 		namespace: namespace,
@@ -49,20 +51,20 @@ func NewIndex(
 	crbIndexers := map[string]cache.IndexFunc{rbIndex + "-" + kind: i.clusterRoleBindingSubjectIndexer}
 
 	// ... then tell the informers to use those indexers
-	if err := rbInformer.Informer().AddIndexers(rbIndexers); err != nil {
+	if err := roleBindingInformer.AddIndexers(rbIndexers); err != nil {
 		return nil, err
 	}
 
-	if err := crbInformer.Informer().AddIndexers(crbIndexers); err != nil {
+	if err := clusterRoleBindingInformer.AddIndexers(crbIndexers); err != nil {
 		return nil, err
 	}
 
 	// finally, generate the indexers and store in the index struct
-	i.roleBindingIndexer = rbInformer.Informer().GetIndexer()
-	i.clusterRoleBindingIndexer = crbInformer.Informer().GetIndexer()
+	i.roleBindingIndexer = roleBindingInformer.GetIndexer()
+	i.clusterRoleBindingIndexer = clusterRoleBindingInformer.GetIndexer()
 
-	i.roleIndexer = rInformer.Informer().GetIndexer()
-	i.clusterRoleIndexer = crInformer.Informer().GetIndexer()
+	i.roleIndexer = roleInformer.GetIndexer()
+	i.clusterRoleIndexer = clusterRoleInformer.GetIndexer()
 
 	return i, nil
 }
