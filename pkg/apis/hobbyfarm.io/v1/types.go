@@ -486,14 +486,22 @@ type DynamicBindConfigurationSpec struct {
 	BurstCountCapacity  map[string]int `json:"burst_count_capacity"`
 }
 
+type DataType string
+
+var (
+	DataTypeString  DataType = "string"
+	DataTypeBoolean DataType = "boolean"
+	DataTypeFloat   DataType = "float"
+	DataTypeInteger DataType = "integer"
+	DataTypeEnum    DataType = "enum"
+)
+
 type SettingType string
 
 var (
-	SettingTypeString  SettingType = "string"
-	SettingTypeBoolean SettingType = "boolean"
-	SettingTypeFloat   SettingType = "float"
-	SettingTypeInteger SettingType = "integer"
-	SettingTypeEnum    SettingType = "enum"
+	SettingTypeScalar SettingType = "scalar"
+	SettingTypeArray  SettingType = "array"
+	SettingTypeMap    SettingType = "map"
 )
 
 // +genclient
@@ -505,30 +513,12 @@ type Setting struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	SettingDetails `json:",inline"`
-}
 
-type SettingDetails struct {
-	// Display name of the setting
-	DisplayName string `json:"displayName"`
-
-	// Type of the setting, see SettingType for possible values
-	Type SettingType `json:"type"`
-
-	// Value is the string value of the setting.
-	// Consumers of the setting will need to convert between string and the target
-	// type.
+	// String-encoded JSON value of the setting
+	// For scalars, this is "[value]"
+	// For arrays, this is "[val1, val2]"
+	// For maps, this is "{key: val}"
 	Value string `json:"value"`
-
-	// EnumValues enumerates the possible values for Type of enum
-	EnumValues []string `json:"enumValues,omitempty"`
-
-	// Category is the category of the setting
-	Category string `json:"category"`
-
-	Scope string `json:"scope"`
-
-	// Weight determines the weight of the setting to help drive the display
-	Weight int `json:"int"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -538,4 +528,18 @@ type SettingList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Setting `json:"items"`
+}
+
+type SettingDetails struct {
+	// Display name of the setting
+	DisplayName string `json:"displayName"`
+
+	// DataType of the setting, see DataType for possible values
+	DataType DataType `json:"dataType"`
+
+	// SettingType of the setting, see SettingType for possible values
+	SettingType SettingType `json:"settingType"`
+
+	// EnumValues enumerates the possible values for Type of enum
+	EnumValues []string `json:"enumValues,omitempty"`
 }

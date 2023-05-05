@@ -3,6 +3,7 @@ package settingserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
@@ -28,6 +29,7 @@ type SettingServer struct {
 type PreparedSetting struct {
 	Id string `json:"id"`
 	v1.SettingDetails
+	Value string `json:"value"`
 }
 
 func NewSettingServer(clientset hfClientset.Interface, authClient *authclient.AuthClient, ctx context.Context) (*SettingServer, error) {
@@ -41,17 +43,29 @@ func NewSettingServer(clientset hfClientset.Interface, authClient *authclient.Au
 }
 
 func (s SettingServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/setting/list", s.ListFunc)
+	r.HandleFunc("/setting/list/{scope}", s.ListFunc)
+	r.HandleFunc("/setting/update/{setting_id}", s.UpdateFunc)
 }
 
 func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
+	vars := mux.Vars(r)
+
+	scope, ok := vars["scope"]
+	if !ok {
+		util.ReturnHTTPMessage(w, r, 404, "notfound", "scope not found")
+		return
+	}
+
+	resource := resourcePlural + "/" + scope
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resource, rbacclient.VerbList), w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list settings")
 		return
 	}
 
-	kSettings, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
+	kSettings, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", "hobbyfarm.io/setting-scope", scope),
+	})
 	if err != nil {
 		glog.Errorf("error listing settings: %s", err.Error())
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing settings")
@@ -60,7 +74,7 @@ func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 
 	var settings []PreparedSetting
 	for _, ks := range kSettings.Items {
-		settings = append(settings, PreparedSetting{ks.Name, ks.SettingDetails})
+		settings = append(settings, PreparedSetting{ks.Name, ks.SettingDetails, ks.Value})
 	}
 
 	encodedSettings, err := json.Marshal(settings)
@@ -105,7 +119,7 @@ func (s SettingServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	kSetting.SettingDetails = setting.SettingDetails
+	kSetting.Value = setting.Value
 
 	_, err = s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Update(s.ctx, kSetting, metav1.UpdateOptions{})
 	if err != nil {

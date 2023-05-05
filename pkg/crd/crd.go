@@ -1,10 +1,12 @@
 package crd
 
 import (
+	"fmt"
 	"github.com/ebauman/crder"
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	v2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	terraformv1 "github.com/hobbyfarm/gargantua/pkg/apis/terraformcontroller.cattle.io/v1"
+	"github.com/hobbyfarm/gargantua/pkg/labels"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
@@ -152,6 +154,7 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 			c.IsNamespaced(true).AddVersion("v1", &v1.Setting{}, func(cv *crder.Version) {
 				cv.
 					WithColumn("Name", ".displayName").
+					WithColumn("Scope", fmt.Sprintf(".metadata.labels['%s']", labels.SettingScope)).
 					WithColumn("Value", ".value").
 					IsServed(true).
 					IsStored(true)
