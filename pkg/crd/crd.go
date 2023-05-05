@@ -154,7 +154,7 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 			c.IsNamespaced(true).AddVersion("v1", &v1.Setting{}, func(cv *crder.Version) {
 				cv.
 					WithColumn("Name", ".displayName").
-					WithColumn("Scope", fmt.Sprintf(".metadata.labels['%s']", labels.SettingScope)).
+					WithColumn("Scope", fmt.Sprintf(".metadata.labels.%s", labels.DotEscapeLabel(labels.SettingScope))).
 					WithColumn("Value", ".value").
 					IsServed(true).
 					IsStored(true)
