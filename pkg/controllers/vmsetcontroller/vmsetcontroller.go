@@ -358,46 +358,15 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 	}
 //-----------------------handle case of scaling down VMSets
 	if len(currentVMs) > vmset.Spec.Count {
-		workVMCount := 0
+		needed_delete := len(currentVMs) - vmset.Spec.Count
 		for _, cur_vm := range currentVMs {
-			glog.V(6).Infof("status Status.Allocated : %t", cur_vm.Status.Allocated)
-			glog.V(6).Infof("status DeletionTimestamp : %s", cur_vm.DeletionTimestamp)
-			if cur_vm.Status.Allocated {
-				workVMCount++
-				glog.V(6).Infof("Alive VM : %s", cur_vm.Name)
-				glog.V(6).Infof("Allocated workVMCount : %d", workVMCount)
+			if !cur_vm.Status.Allocated {
+				v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Delete(v.ctx, cur_vm.Name, metav1.DeleteOptions{} )
+				needed_delete--
+				if needed_delete == 0 {break}
 			}
 		}
-		if workVMCount >= vmset.Spec.Count {
-			for _, cur_vm := range currentVMs {
-				if !cur_vm.Status.Allocated {
-				//	now := metav1.Now()
-				//	cur_vm.SetDeletionTimestamp(&now)
-					v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Delete(v.ctx, cur_vm.Name, metav1.DeleteOptions{} )
-					glog.V(6).Infof("status DeletionTimestamp workVMCount >= vmset.Spec.Count : %s, delete after %d", cur_vm.DeletionTimestamp, cur_vm.DeletionGracePeriodSeconds)
-
-				}
-			}
-		}
-		if workVMCount < vmset.Spec.Count {
-			for _, cur_vm := range currentVMs {
-				if !cur_vm.Status.Allocated && workVMCount < vmset.Spec.Count {
-					workVMCount++
-					glog.V(6).Infof("Alive VM : %s", cur_vm.Name)
-					glog.V(6).Infof("NotAllocated workVMCount : %d", workVMCount)
-				} else {
-					if !cur_vm.Status.Allocated {
-					//	now := metav1.Now()
-					//	cur_vm.SetDeletionTimestamp(&now)
-						glog.V(6).Infof("Need Delete VM: %s", cur_vm.Name)
-						v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Delete(v.ctx, cur_vm.Name, metav1.DeleteOptions{})
-						glog.V(6).Infof("status DeletionTimestamp workVMCount < vmset.Spec.Count : %s, delete after %d", cur_vm.DeletionTimestamp, cur_vm.DeletionGracePeriodSeconds)
-					}
-				}
-
-			}
-		}
-	}
+	}	
 //-----------------------------------------------------
 	vms, err := v.vmLister.List(labels.Set{
 		"vmset": string(vmset.Name),
