@@ -287,13 +287,13 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 						},
 					},
 					Labels: map[string]string{
-						"dynamic":                          "false",
-						"vmset":                            vmset.Name,
-						util.VirtualMachineTemplate:        vmt.Name,
-						util.EnvironmentLabel:                      env.Name,
-						"bound":                            "false",
-						"ready":                            "false",
-						util.ScheduledEventLabel: vmset.ObjectMeta.Labels[util.ScheduledEventLabel],
+						"dynamic":                   "false",
+						"vmset":                     vmset.Name,
+						util.VirtualMachineTemplate: vmt.Name,
+						util.EnvironmentLabel:       env.Name,
+						"bound":                     "false",
+						"ready":                     "false",
+						util.ScheduledEventLabel:    vmset.ObjectMeta.Labels[util.ScheduledEventLabel],
 					},
 				},
 				Spec: hfv1.VirtualMachineSpec{
@@ -307,8 +307,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 				},
 			}
 
-
-			config := util.GetVMConfig(env,vmt)
+			config := util.GetVMConfig(env, vmt)
 
 			sshUser, exists := config["ssh_username"]
 			if exists {
@@ -345,12 +344,9 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 
 			_, err = v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(v.ctx, vm, metav1.UpdateOptions{})
 
-
-
 			if err != nil {
 				glog.Error(err)
 			}
-
 
 			err = util.VerifyVM(v.vmLister, vm)
 			if err != nil {
@@ -360,7 +356,49 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 
 		//TODO handle case of scaling down VMSets
 	}
+//-----------------------handle case of scaling down VMSets
+	if len(currentVMs) > vmset.Spec.Count {
+		workVMCount := 0
+		for _, cur_vm := range currentVMs {
+			glog.V(6).Infof("status Status.Allocated : %t", cur_vm.Status.Allocated)
+			glog.V(6).Infof("status DeletionTimestamp : %s", cur_vm.DeletionTimestamp)
+			if cur_vm.Status.Allocated {
+				workVMCount++
+				glog.V(6).Infof("Alive VM : %s", cur_vm.Name)
+				glog.V(6).Infof("Allocated workVMCount : %d", workVMCount)
+			}
+		}
+		if workVMCount >= vmset.Spec.Count {
+			for _, cur_vm := range currentVMs {
+				if !cur_vm.Status.Allocated {
+				//	now := metav1.Now()
+				//	cur_vm.SetDeletionTimestamp(&now)
+					v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Delete(v.ctx, cur_vm.Name, metav1.DeleteOptions{} )
+					glog.V(6).Infof("status DeletionTimestamp workVMCount >= vmset.Spec.Count : %s, delete after %d", cur_vm.DeletionTimestamp, cur_vm.DeletionGracePeriodSeconds)
 
+				}
+			}
+		}
+		if workVMCount < vmset.Spec.Count {
+			for _, cur_vm := range currentVMs {
+				if !cur_vm.Status.Allocated && workVMCount < vmset.Spec.Count {
+					workVMCount++
+					glog.V(6).Infof("Alive VM : %s", cur_vm.Name)
+					glog.V(6).Infof("NotAllocated workVMCount : %d", workVMCount)
+				} else {
+					if !cur_vm.Status.Allocated {
+					//	now := metav1.Now()
+					//	cur_vm.SetDeletionTimestamp(&now)
+						glog.V(6).Infof("Need Delete VM: %s", cur_vm.Name)
+						v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Delete(v.ctx, cur_vm.Name, metav1.DeleteOptions{})
+						glog.V(6).Infof("status DeletionTimestamp workVMCount < vmset.Spec.Count : %s, delete after %d", cur_vm.DeletionTimestamp, cur_vm.DeletionGracePeriodSeconds)
+					}
+				}
+
+			}
+		}
+	}
+//-----------------------------------------------------
 	vms, err := v.vmLister.List(labels.Set{
 		"vmset": string(vmset.Name),
 	}.AsSelector())
@@ -378,7 +416,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		provisionedCount++
 	}
 
-	if(activeCount < vmset.Spec.Count){
+	if activeCount < vmset.Spec.Count {
 		glog.V(4).Infof("requeing VMset as there are not enough VMs ready")
 		v.enqueueVMSet(vmset)
 	}
