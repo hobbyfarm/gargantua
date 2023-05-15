@@ -266,7 +266,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 				Name: strings.Join([]string{vm.Name + "-cm", r}, "-"),
 				OwnerReferences: []metav1.OwnerReference{
 					{
-						APIVersion: "v1",
+						APIVersion: "hobbyfarm.io/v1",
 						Kind:       "VirtualMachine",
 						Name:       vm.Name,
 						UID:        vm.UID,
