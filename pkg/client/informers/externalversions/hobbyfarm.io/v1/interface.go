@@ -42,8 +42,6 @@ type Interface interface {
 	ScheduledEvents() ScheduledEventInformer
 	// Sessions returns a SessionInformer.
 	Sessions() SessionInformer
-	// Settings returns a SettingInformer.
-	Settings() SettingInformer
 	// Users returns a UserInformer.
 	Users() UserInformer
 	// VirtualMachines returns a VirtualMachineInformer.
@@ -110,11 +108,6 @@ func (v *version) ScheduledEvents() ScheduledEventInformer {
 // Sessions returns a SessionInformer.
 func (v *version) Sessions() SessionInformer {
 	return &sessionInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// Settings returns a SettingInformer.
-func (v *version) Settings() SettingInformer {
-	return &settingInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Users returns a UserInformer.

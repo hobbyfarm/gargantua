@@ -37,7 +37,6 @@ type HobbyfarmV1Interface interface {
 	ScenariosGetter
 	ScheduledEventsGetter
 	SessionsGetter
-	SettingsGetter
 	UsersGetter
 	VirtualMachinesGetter
 	VirtualMachineClaimsGetter
@@ -84,10 +83,6 @@ func (c *HobbyfarmV1Client) ScheduledEvents(namespace string) ScheduledEventInte
 
 func (c *HobbyfarmV1Client) Sessions(namespace string) SessionInterface {
 	return newSessions(c, namespace)
-}
-
-func (c *HobbyfarmV1Client) Settings(namespace string) SettingInterface {
-	return newSettings(c, namespace)
 }
 
 func (c *HobbyfarmV1Client) Users(namespace string) UserInterface {

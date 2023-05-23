@@ -64,10 +64,6 @@ func (c *FakeHobbyfarmV1) Sessions(namespace string) v1.SessionInterface {
 	return &FakeSessions{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) Settings(namespace string) v1.SettingInterface {
-	return &FakeSettings{c, namespace}
-}
-
 func (c *FakeHobbyfarmV1) Users(namespace string) v1.UserInterface {
 	return &FakeUsers{c, namespace}
 }

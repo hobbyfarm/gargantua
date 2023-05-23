@@ -36,8 +36,6 @@ type ScheduledEventExpansion interface{}
 
 type SessionExpansion interface{}
 
-type SettingExpansion interface{}
-
 type UserExpansion interface{}
 
 type VirtualMachineExpansion interface{}

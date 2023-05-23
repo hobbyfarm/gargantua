@@ -90,14 +90,6 @@ type SessionListerExpansion interface{}
 // SessionNamespaceLister.
 type SessionNamespaceListerExpansion interface{}
 
-// SettingListerExpansion allows custom methods to be added to
-// SettingLister.
-type SettingListerExpansion interface{}
-
-// SettingNamespaceListerExpansion allows custom methods to be added to
-// SettingNamespaceLister.
-type SettingNamespaceListerExpansion interface{}
-
 // UserListerExpansion allows custom methods to be added to
 // UserLister.
 type UserListerExpansion interface{}
