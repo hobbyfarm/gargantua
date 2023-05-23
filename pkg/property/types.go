@@ -20,8 +20,6 @@ var (
 // +k8s:deepcopy-gen=true
 
 type Property struct {
-	Name string `json:"name"`
-
 	DataType  DataType  `json:"dataType"`
 	ValueType ValueType `json:"variableType"`
 

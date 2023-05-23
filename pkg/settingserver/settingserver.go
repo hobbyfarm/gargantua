@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	labels "github.com/hobbyfarm/gargantua/pkg/labels"
+	"github.com/hobbyfarm/gargantua/pkg/property"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"io"
@@ -29,8 +29,8 @@ type SettingServer struct {
 }
 
 type PreparedSetting struct {
-	Id string `json:"id"`
-	v1.SettingDetail
+	Name string `json:"name"`
+	property.Property
 	Value  string `json:"value"`
 	Scope  string `json:"scope"`
 	Weight int    `json:"weight"`
@@ -82,7 +82,7 @@ func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		weight, _ := ks.Labels[labels.SettingWeight]
 		iweight, _ := strconv.Atoi(weight)
 
-		settings = append(settings, PreparedSetting{ks.Name, ks.SettingDetail, ks.Value, scope, iweight})
+		settings = append(settings, PreparedSetting{Name: ks.Name, Property: ks.Property, Value: ks.Value, Scope: scope, Weight: iweight})
 	}
 
 	encodedSettings, err := json.Marshal(settings)
@@ -120,7 +120,7 @@ func (s SettingServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// given the setting name, fetch it and update it
-	kSetting, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Get(s.ctx, setting.Id, metav1.GetOptions{})
+	kSetting, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Get(s.ctx, setting.Name, metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("error getting setting: %s", err.Error())
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error getting setting from database")
@@ -137,5 +137,5 @@ func (s SettingServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.ReturnHTTPMessage(w, r, 200, "updated", "")
-	glog.V(8).Infof("updated setting %s", setting.Id)
+	glog.V(8).Infof("updated setting %s", setting.Name)
 }
