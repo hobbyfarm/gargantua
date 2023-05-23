@@ -3,7 +3,8 @@ package labels
 import "strings"
 
 const (
-	SettingScope = "hobbyfarm.io/setting-scope"
+	SettingScope  = "hobbyfarm.io/setting-scope"
+	SettingWeight = "hobbyfarm.io/setting-weight"
 )
 
 func DotEscapeLabel(label string) string {

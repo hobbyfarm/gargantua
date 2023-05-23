@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"github.com/hobbyfarm/gargantua/pkg/property"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -375,6 +376,8 @@ type AccessCodeList struct {
 	Items           []AccessCode `json:"items"`
 }
 
+// +k8s:deepcopy-gen:true
+
 type AccessCodeSpec struct {
 	Code                string   `json:"code"`
 	Description         string   `json:"description"`
@@ -486,24 +489,6 @@ type DynamicBindConfigurationSpec struct {
 	BurstCountCapacity  map[string]int `json:"burst_count_capacity"`
 }
 
-type DataType string
-
-var (
-	DataTypeString  DataType = "string"
-	DataTypeBoolean DataType = "boolean"
-	DataTypeFloat   DataType = "float"
-	DataTypeInteger DataType = "integer"
-	DataTypeEnum    DataType = "enum"
-)
-
-type SettingType string
-
-var (
-	SettingTypeScalar SettingType = "scalar"
-	SettingTypeArray  SettingType = "array"
-	SettingTypeMap    SettingType = "map"
-)
-
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -512,12 +497,8 @@ type Setting struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	SettingDetails `json:",inline"`
+	property.Property `json:",inline"`
 
-	// String-encoded JSON value of the setting
-	// For scalars, this is "[value]"
-	// For arrays, this is "[val1, val2]"
-	// For maps, this is "{key: val}"
 	Value string `json:"value"`
 }
 
@@ -528,18 +509,4 @@ type SettingList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Setting `json:"items"`
-}
-
-type SettingDetails struct {
-	// Display name of the setting
-	DisplayName string `json:"displayName"`
-
-	// DataType of the setting, see DataType for possible values
-	DataType DataType `json:"dataType"`
-
-	// SettingType of the setting, see SettingType for possible values
-	SettingType SettingType `json:"settingType"`
-
-	// EnumValues enumerates the possible values for Type of enum
-	EnumValues []string `json:"enumValues,omitempty"`
 }

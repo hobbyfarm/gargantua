@@ -9,11 +9,13 @@ import (
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	labels "github.com/hobbyfarm/gargantua/pkg/labels"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
+	"strconv"
 )
 
 const (
@@ -28,8 +30,10 @@ type SettingServer struct {
 
 type PreparedSetting struct {
 	Id string `json:"id"`
-	v1.SettingDetails
-	Value string `json:"value"`
+	v1.SettingDetail
+	Value  string `json:"value"`
+	Scope  string `json:"scope"`
+	Weight int    `json:"weight"`
 }
 
 func NewSettingServer(clientset hfClientset.Interface, authClient *authclient.AuthClient, ctx context.Context) (*SettingServer, error) {
@@ -74,7 +78,11 @@ func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 
 	var settings []PreparedSetting
 	for _, ks := range kSettings.Items {
-		settings = append(settings, PreparedSetting{ks.Name, ks.SettingDetails, ks.Value})
+		scope, _ := ks.Labels[labels.SettingScope]
+		weight, _ := ks.Labels[labels.SettingWeight]
+		iweight, _ := strconv.Atoi(weight)
+
+		settings = append(settings, PreparedSetting{ks.Name, ks.SettingDetail, ks.Value, scope, iweight})
 	}
 
 	encodedSettings, err := json.Marshal(settings)
