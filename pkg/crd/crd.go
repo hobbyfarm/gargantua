@@ -61,7 +61,21 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 		hobbyfarmCRD(&v1.Scenario{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
-				AddVersion("v1", &v1.Scenario{}, nil)
+				AddVersion("v1", &v1.Scenario{}, func(cv *crder.Version) {
+					cv.IsServed(true)
+					cv.IsStored(false)
+				}).
+				AddVersion("v2", &v2.Scenario{}, func(cv *crder.Version) {					
+					cv.IsServed(true)
+					cv.IsStored(true)
+				}).
+				WithConversion(func(cc *crder.Conversion) {
+					cc.
+						StrategyWebhook().
+						WithCABundle(caBundle).
+						WithService(serviceReferenceWithPath(reference, "/conversion/scenarios.hobbyfarm.io")).
+						WithVersions("v2", "v1")
+				})			
 		}),
 		hobbyfarmCRD(&v1.Session{}, func(c *crder.CRD) {
 			c.

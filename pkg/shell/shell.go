@@ -665,8 +665,8 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroup(w http.ResponseWriter, r *http.R
 		if err != nil {
 			glog.Infof("%s", err)
 		}
-		defer sess.Close()
-		commands_resp = append(commands_resp, *VMTaskCommandRun(&task_command,sess))	
+		commands_resp = append(commands_resp, *VMTaskCommandRun(&task_command,sess))
+		sess.Close()	
 	}
 	vm_output_task := VirtualMachineOutputTask{
 		VMId: vm_input_task.VMId, 

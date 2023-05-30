@@ -1,7 +1,7 @@
 package scenarioclient
 
 import (
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
 )
 
@@ -16,12 +16,12 @@ func NewScenarioClient(sServer *scenarioserver.ScenarioServer) (*ScenarioClient,
 	return &a, nil
 }
 
-func (sc ScenarioClient) GetScenarioById(id string) (hfv1.Scenario, error) {
+func (sc ScenarioClient) GetScenarioById(id string) (hfv2.Scenario, error) {
 
 	sResult, err := sc.sServer.GetScenarioById(id)
 
 	if err != nil {
-		return hfv1.Scenario{}, err
+		return hfv2.Scenario{}, err
 	}
 
 	return sResult, nil

@@ -13,6 +13,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/rbacserver"
 	tls2 "github.com/hobbyfarm/gargantua/pkg/tls"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion"
+	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion/scenario"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion/user"
 	"golang.org/x/sync/errgroup"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -44,7 +45,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/pkg/courseserver"
 	"github.com/hobbyfarm/gargantua/pkg/environmentserver"
-	"github.com/hobbyfarm/gargantua/pkg/predefinedserviceserver"
+	predefinedservicesserver "github.com/hobbyfarm/gargantua/pkg/predefinedserviceserver"
 	"github.com/hobbyfarm/gargantua/pkg/progressserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
@@ -313,6 +314,7 @@ func main() {
 	// shell server does not serve webhook endpoint, so don't start it
 	if !shellServer {
 		user.Init()
+		scenario.Init()
 		conversionRouter := mux.NewRouter()
 		conversion.New(conversionRouter, apiExtensionsClient, string(ca))
 

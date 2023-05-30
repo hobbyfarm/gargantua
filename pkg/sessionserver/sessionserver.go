@@ -4,15 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
@@ -25,11 +27,11 @@ import (
 )
 
 const (
-	ssIndex             = "sss.hobbyfarm.io/session-id-index"
-	newSSTimeout        = "5m"
-	keepaliveSSTimeout  = "5m"
-	pauseSSTimeout      = "2h"
-	resourcePlural      = "sessions"
+	ssIndex            = "sss.hobbyfarm.io/session-id-index"
+	newSSTimeout       = "5m"
+	keepaliveSSTimeout = "5m"
+	pauseSSTimeout     = "2h"
+	resourcePlural     = "sessions"
 )
 
 type SessionServer struct {
@@ -122,7 +124,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	}
 	random := util.RandStringRunes(10)
 	var course hfv1.Course
-	var scenario hfv1.Scenario
+	var scenario hfv2.Scenario
 
 	// get the course and/or scenario objects
 	if courseid != "" {
@@ -215,8 +217,8 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	session.Spec.UserId = user.Name
 	session.Spec.KeepCourseVM = course.Spec.KeepVM
 	labels := make(map[string]string)
-	labels[util.AccessCodeLabel] = accessCode    // map accesscode to session
-	labels[util.UserLabel] = user.Name // map user to session
+	labels[util.AccessCodeLabel] = accessCode // map accesscode to session
+	labels[util.UserLabel] = user.Name        // map user to session
 	session.Labels = labels
 	var vms []map[string]string
 	if course.Spec.VirtualMachines != nil {
@@ -263,8 +265,8 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		virtualMachineClaim := hfv1.VirtualMachineClaim{}
 		vmcId := util.GenerateResourceName(baseName, util.RandStringRunes(10), 10)
 		labels := make(map[string]string)
-		labels[util.SessionLabel] = session.Name     // map vmc to session
-		labels[util.UserLabel] = user.Name // map session to user in a way that is searchable
+		labels[util.SessionLabel] = session.Name // map vmc to session
+		labels[util.UserLabel] = user.Name       // map session to user in a way that is searchable
 		labels[util.AccessCodeLabel] = session.Labels[util.AccessCodeLabel]
 		labels[util.ScheduledEventLabel] = schedEvent.Name
 		virtualMachineClaim.Labels = labels
@@ -380,8 +382,8 @@ func (sss SessionServer) CreateProgress(sessionId string, scheduledEventId strin
 	labels := make(map[string]string)
 	labels[util.SessionLabel] = sessionId               // map to session
 	labels[util.ScheduledEventLabel] = scheduledEventId // map to scheduledevent
-	labels[util.UserLabel] = userId              // map to scheduledevent
-	labels["finished"] = "false"                   // default is in progress, finished = false
+	labels[util.UserLabel] = userId                     // map to scheduledevent
+	labels["finished"] = "false"                        // default is in progress, finished = false
 	progress.Labels = labels
 
 	createdProgress, err := sss.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Create(sss.ctx, &progress, metav1.CreateOptions{})
@@ -518,7 +520,7 @@ func (sss SessionServer) KeepAliveSessionFunc(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	var scenario hfv1.Scenario
+	var scenario hfv2.Scenario
 	var course hfv1.Course
 
 	if ss.Spec.ScenarioId != "" {
@@ -598,7 +600,7 @@ func (sss SessionServer) PauseSessionFunc(w http.ResponseWriter, r *http.Request
 	}
 
 	var course hfv1.Course
-	var scenario hfv1.Scenario
+	var scenario hfv2.Scenario
 
 	if ss.Spec.CourseId != "" {
 		course, err = sss.courseClient.GetCourseById(ss.Spec.CourseId)
@@ -684,7 +686,7 @@ func (sss SessionServer) ResumeSessionFunc(w http.ResponseWriter, r *http.Reques
 	}
 
 	var course hfv1.Course
-	var scenario hfv1.Scenario
+	var scenario hfv2.Scenario
 
 	if ss.Spec.CourseId != "" {
 		course, err = sss.courseClient.GetCourseById(ss.Spec.CourseId)

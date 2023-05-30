@@ -19,22 +19,26 @@ limitations under the License.
 package v2
 
 import (
+	"net/http"
+
 	v2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
-	"net/http"
 )
 
-
 type HobbyfarmV2Interface interface {
-    RESTClient() rest.Interface
-     UsersGetter
-    
+	RESTClient() rest.Interface
+	ScenariosGetter
+	UsersGetter
 }
 
 // HobbyfarmV2Client is used to interact with features provided by the hobbyfarm.io group.
 type HobbyfarmV2Client struct {
 	restClient rest.Interface
+}
+
+func (c *HobbyfarmV2Client) Scenarios(namespace string) ScenarioInterface {
+	return newScenarios(c, namespace)
 }
 
 func (c *HobbyfarmV2Client) Users(namespace string) UserInterface {
@@ -87,7 +91,7 @@ func New(c rest.Interface) *HobbyfarmV2Client {
 
 func setConfigDefaults(config *rest.Config) error {
 	gv := v2.SchemeGroupVersion
-	config.GroupVersion =  &gv
+	config.GroupVersion = &gv
 	config.APIPath = "/apis"
 	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 

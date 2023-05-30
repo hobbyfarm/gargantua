@@ -542,7 +542,7 @@ func (c CourseServer) AppendDynamicScenariosByCategories(scenariosList []string,
 		categorySelector = metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s", categorySelectorString),
 		}
-		scenarios, err := c.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).List(c.ctx, categorySelector)
+		scenarios, err := c.hfClientSet.HobbyfarmV2().Scenarios(util.GetReleaseNamespace()).List(c.ctx, categorySelector)
 
 		if err != nil {
 			glog.Errorf("error while retrieving scenarios %v", err)
