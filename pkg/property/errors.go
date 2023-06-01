@@ -19,3 +19,17 @@ func NewValidationErrorf(msg string, value ...any) ValidationError {
 		message: fmt.Sprintf(msg, value...),
 	}
 }
+
+type TypeConversionError struct {
+	message string
+}
+
+func (t TypeConversionError) Error() string {
+	return t.message
+}
+
+func NewTypeConversionErrorf(v string, t string) TypeConversionError {
+	return TypeConversionError{
+		message: fmt.Sprintf("invalid value, cannot convert %s to %s", v, t),
+	}
+}
