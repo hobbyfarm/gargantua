@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"fmt"
 	"github.com/hobbyfarm/gargantua/pkg/settingserver"
+	"github.com/hobbyfarm/gargantua/pkg/webhook/validation"
 	"os"
 
 	"github.com/ebauman/crder"
@@ -16,7 +18,6 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion/user"
 	"golang.org/x/sync/errgroup"
-	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/leaderelection"
@@ -120,7 +121,7 @@ func main() {
 			glog.Fatalf("error reading ca certificate: %s", err.Error())
 		}
 
-		crds := crd.GenerateCRDs(string(ca), v1.ServiceReference{
+		crds := crd.GenerateCRDs(string(ca), crd.ServiceReference{
 			Namespace: namespace,
 			Name:      "hobbyfarm-webhook",
 		})
@@ -320,8 +321,18 @@ func main() {
 	// shell server does not serve webhook endpoint, so don't start it
 	if !shellServer {
 		user.Init()
-		conversionRouter := mux.NewRouter()
-		conversion.New(conversionRouter, apiExtensionsClient, string(ca))
+		webhookRouter := mux.NewRouter()
+		conversion.New(webhookRouter, apiExtensionsClient, string(ca))
+
+		validationEndpoints := webhookRouter.PathPrefix("/validation").Subrouter()
+		validation.RegisterRoutes(validationEndpoints)
+
+		webhookRouter.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+			tpl, err1 := route.GetPathTemplate()
+			met, err2 := route.GetMethods()
+			fmt.Println(tpl, err1, met, err2)
+			return nil
+		})
 
 		webhookPort := os.Getenv("WEBHOOK_PORT")
 		if webhookPort == "" {
@@ -343,7 +354,7 @@ func main() {
 					Certificates: []tls.Certificate{*cert},
 				},
 				Addr:    ":" + webhookPort,
-				Handler: handlers.CORS(corsHeaders, corsOrigins, corsMethods)(conversionRouter),
+				Handler: handlers.CORS(corsHeaders, corsOrigins, corsMethods)(webhookRouter),
 			}
 
 			glog.Fatal(server.ListenAndServeTLS("", ""))
