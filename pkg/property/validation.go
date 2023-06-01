@@ -11,18 +11,6 @@ import (
 
 type validator func(value any) error
 
-var (
-	supportedDataType = map[reflect.Kind]bool{
-		reflect.Int:     true,
-		reflect.Int64:   true,
-		reflect.Int32:   true,
-		reflect.String:  true,
-		reflect.Float64: true,
-		reflect.Float32: true,
-		reflect.Bool:    true,
-	}
-)
-
 type Iterable interface {
 	Items() []any
 }
@@ -42,27 +30,17 @@ func (p Property) getValidators() []validator {
 }
 
 // Validate executes validation of value given rules and definitions in Property
-func (p Property) Validate(value any) error {
+func (p Property) Validate(value string) error {
 	// return error value if validation fails
 	// else return nil
-
-	valueKind := reflect.TypeOf(value).Kind()
-	// first check that our data type is supported
-	if valueKind == reflect.Map || valueKind == reflect.Slice || valueKind == reflect.Array {
-		keyKind := reflect.TypeOf(value).Key().Kind()
-		if keyKind != reflect.String {
-			return NewValidationErrorf("keys of type %s not supported, string only", keyKind)
-		}
-
-		valueKind = reflect.TypeOf(value).Elem().Kind()
-	}
-
-	if _, ok := supportedDataType[valueKind]; !ok {
-		return NewValidationErrorf("values of type %s not supported", valueKind)
+	var val any
+	val, err := p.FromJSON(value)
+	if err != nil {
+		return err
 	}
 
 	for _, f := range p.getValidators() {
-		if err := f(value); err != nil {
+		if err := f(val); err != nil {
 			return err
 		}
 	}
@@ -108,7 +86,7 @@ func (p Property) validateMin(value any) error {
 			return NewValidationErrorf("value %d lower than minimum %d", v, int32(min))
 		}
 	default:
-		return NewValidationErrorf("minimum validation not supported for type %s", reflect.TypeOf(v))
+		return nil
 	}
 
 	return nil
@@ -140,7 +118,7 @@ func (p Property) validateMax(value any) error {
 			return NewValidationErrorf("value %d higher than maximum %d", v, int32(max))
 		}
 	default:
-		return NewValidationErrorf("maximum validation not supported for type %s", reflect.TypeOf(v))
+		return nil
 	}
 
 	return nil
