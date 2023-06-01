@@ -53,6 +53,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&DynamicBindConfigurationList{},
 		&Progress{},
 		&ProgressList{},
+		&Setting{},
+		&SettingList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
