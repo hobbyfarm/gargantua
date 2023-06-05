@@ -70,7 +70,7 @@ func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	kSettings, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", "hobbyfarm.io/setting-scope", scope),
+		LabelSelector: fmt.Sprintf("%s=%s", labels.SettingScope, scope),
 	})
 	if err != nil {
 		glog.Errorf("error listing settings: %s", err.Error())
