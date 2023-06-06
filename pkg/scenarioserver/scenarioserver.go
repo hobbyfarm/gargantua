@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+//	"github.com/gogo/protobuf/test/empty-issue70"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 
 	"github.com/golang/glog"
@@ -697,6 +698,19 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	scenario.Spec.Categories = categories
 	scenario.Spec.Tags = tags
 	scenario.Spec.KeepAliveDuration = keepaliveDuration
+//*****************************************************************
+	rawVMTasks := r.PostFormValue("vm_tasks")
+	if rawVMTasks != "" {
+		tasks := []hfv2.VirtualMachineTasks{}
+
+		err = json.Unmarshal([]byte(rawVMTasks), &tasks)
+		if err != nil {
+			glog.Errorf("error while unmarshaling tasks %v", err)
+			return 
+		}
+		scenario.Spec.Tasks = tasks
+	}
+//*****************************************************************
 
 	scenario.Spec.Pauseable = false
 	if pauseable != "" {
@@ -752,7 +766,9 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		rawVirtualMachines := r.PostFormValue("virtualmachines")
 		rawCategories := r.PostFormValue("categories")
 		rawTags := r.PostFormValue("tags")
-
+//*****************************************************************
+		rawVMTasks := r.PostFormValue("vm_tasks")
+//*****************************************************************
 		if name != "" {
 			scenario.Spec.Name = name
 		}
@@ -832,9 +848,41 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			}
 			scenario.Spec.Tags = tagsSlice
 		}
+//*****************************************************************
+//		scenario.Spec.Tasks = make([]hfv2.VirtualMachineTasks, 0)
+		if rawVMTasks != "" {
+			vm_tasks := []hfv2.VirtualMachineTasks{}
 
-		scenario.Spec.Tasks = make([]hfv2.VirtualMachineTasks, 0)
-
+			err = json.Unmarshal([]byte(rawVMTasks), &vm_tasks)
+			if err != nil {
+				glog.Errorf("error while unmarshaling tasks %v", err)
+				return fmt.Errorf("bad")
+			}
+//Verify that name, description, command must not empty, if exp code be empty(==0) 
+			for _, vm_task := range vm_tasks {
+				if vm_task.VMName == "" {
+					glog.Errorf("error while vm_name empty")
+					return fmt.Errorf("bad")
+				} 
+				for _, task := range vm_task.Tasks {
+					if task.Name == "" {
+						glog.Errorf("error while Name task empty")
+						return fmt.Errorf("bad")
+					} 
+					if task.Description == "" {
+						glog.Errorf("error while Description task empty")
+						return fmt.Errorf("bad")
+					} 
+					if task.Command == "" || task.Command == "[]" {
+						glog.Errorf("error while Command task empty")
+						return fmt.Errorf("bad")
+					} 
+					
+				}
+			}
+			scenario.Spec.Tasks = vm_tasks
+		}
+//*****************************************************************		
 		_, updateErr := s.hfClientSet.HobbyfarmV2().Scenarios(util.GetReleaseNamespace()).Update(s.ctx, scenario, metav1.UpdateOptions{})
 		return updateErr
 	})
