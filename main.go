@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
-	"fmt"
 	"github.com/hobbyfarm/gargantua/pkg/settingserver"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/validation"
 	"os"
@@ -326,13 +325,6 @@ func main() {
 
 		validationEndpoints := webhookRouter.PathPrefix("/validation").Subrouter()
 		validation.RegisterRoutes(validationEndpoints)
-
-		webhookRouter.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-			tpl, err1 := route.GetPathTemplate()
-			met, err2 := route.GetMethods()
-			fmt.Println(tpl, err1, met, err2)
-			return nil
-		})
 
 		webhookPort := os.Getenv("WEBHOOK_PORT")
 		if webhookPort == "" {
