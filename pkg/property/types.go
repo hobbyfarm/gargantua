@@ -30,6 +30,8 @@ type Property struct {
 	DataType  DataType  `json:"dataType"`
 	ValueType ValueType `json:"valueType"`
 
+	DisplayName string `json:"displayName"`
+
 	SettingValidation
 }
 

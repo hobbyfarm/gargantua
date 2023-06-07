@@ -34,6 +34,7 @@ type PreparedSetting struct {
 	property.Property
 	Value  any    `json:"value"`
 	Scope  string `json:"scope"`
+	Group  string `json:"group"`
 	Weight int    `json:"weight"`
 }
 
@@ -82,6 +83,7 @@ func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	for _, ks := range kSettings.Items {
 		scope, _ := ks.Labels[labels.SettingScope]
 		weight, _ := ks.Labels[labels.SettingWeight]
+		group, _ := ks.Labels[labels.SettingGroup]
 		iweight, _ := strconv.Atoi(weight)
 
 		val, err := ks.Property.FromJSON(ks.Value)
@@ -91,7 +93,8 @@ func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		settings = append(settings, PreparedSetting{Name: ks.Name, Property: ks.Property, Value: val, Scope: scope, Weight: iweight})
+		settings = append(settings, PreparedSetting{Name: ks.Name, Property: ks.Property,
+			Value: val, Scope: scope, Group: group, Weight: iweight})
 	}
 
 	encodedSettings, err := json.Marshal(settings)
