@@ -7,7 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/admitters"
-	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/setting"
+	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/validators/setting"
 	"github.com/pkg/errors"
 	"io"
 	v12 "k8s.io/api/admission/v1"
