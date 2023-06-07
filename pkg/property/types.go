@@ -36,16 +36,16 @@ type Property struct {
 // +k8s:deepcopy-gen=true
 
 type SettingValidation struct {
-	Required    bool
-	Maximum     *float64
-	Minimum     *float64
-	MaxLength   *int64
-	MinLength   *int64
-	Format      *string
-	Pattern     *string
-	Enum        []string
-	Default     *string
-	UniqueItems bool
+	Required    bool     `json:"required,omitempty"`
+	Maximum     *float64 `json:"maximum,omitempty"`
+	Minimum     *float64 `json:"minimum,omitempty"`
+	MaxLength   *int64   `json:"maxLength,omitempty"`
+	MinLength   *int64   `json:"minLength,omitempty"`
+	Format      *string  `json:"format,omitempty"`
+	Pattern     *string  `json:"pattern,omitempty"`
+	Enum        []string `json:"enum,omitempty"`
+	Default     *string  `json:"default,omitempty"`
+	UniqueItems bool     `json:"uniqueItems,omitempty"`
 }
 
 // is there a more elegant way to solve this problem using generics?
