@@ -63,11 +63,15 @@ func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resource := resourcePlural + "/" + scope
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resource, rbacclient.VerbList), w, r)
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list settings")
-		return
+	// public scope settings are just that - public
+	// so skip RBAC check for those
+	if scope != "public" {
+		resource := resourcePlural + "/" + scope
+		_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resource, rbacclient.VerbList), w, r)
+		if err != nil {
+			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list settings")
+			return
+		}
 	}
 
 	kSettings, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
