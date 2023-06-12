@@ -95,7 +95,7 @@ func (s *Server) V1Review(ctx context.Context, ar *v1.AdmissionRequest) *v1.Admi
 
 		var ok = false
 		for _, s := range scopes.Items {
-			if scope == s.Namespace {
+			if scope == s.Name {
 				ok = true
 				break
 			}
