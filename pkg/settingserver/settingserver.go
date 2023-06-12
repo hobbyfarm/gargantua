@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	resourcePlural = "settings"
+	resourcePlural      = "settings"
+	scopeResourcePlural = "scopes"
 )
 
 type SettingServer struct {
@@ -219,6 +220,42 @@ func (s SettingServer) update(w http.ResponseWriter, r *http.Request, setting Pr
 	return true
 }
 
-func (s SettingServer) ListScopeFunc(w http.ResponseWriter, r *http.Request) {
+type PreparedScope struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
+}
 
+func (s SettingServer) ListScopeFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(scopeResourcePlural, rbacclient.VerbList), w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "forbidden", "no access to list scopes")
+		return
+	}
+
+	scopes, err := s.hfClientSet.HobbyfarmV1().Scopes(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "error listing scopes")
+		glog.Errorf("error while listing scopes: %s", err.Error())
+		return
+	}
+
+	var preparedScopes = make([]PreparedScope, len(scopes.Items))
+
+	for i, s := range scopes.Items {
+		preparedScopes[i] = PreparedScope{
+			Name:        s.Name,
+			DisplayName: s.DisplayName,
+		}
+	}
+
+	encodedScopes, err := json.Marshal(preparedScopes)
+	if err != nil {
+		glog.Errorf("error marshalling prepared scopes: %s", err.Error())
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing scopes")
+		return
+	}
+
+	util.ReturnHTTPContent(w, r, 200, "success", encodedScopes)
+
+	glog.V(8).Info("listed scopes")
 }
