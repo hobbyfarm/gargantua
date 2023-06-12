@@ -59,7 +59,7 @@ func init() {
 }
 
 func RegisterRoutes(router *mux.Router) {
-	for k, _ := range handlers {
+	for k := range handlers {
 		router.Path(fmt.Sprintf("/%s/%s/%s", k.Group, k.Version, k.Kind)).
 			HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 				dispatch(k, writer, request)
