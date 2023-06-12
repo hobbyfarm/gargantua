@@ -82,6 +82,14 @@ type ScheduledEventListerExpansion interface{}
 // ScheduledEventNamespaceLister.
 type ScheduledEventNamespaceListerExpansion interface{}
 
+// ScopeListerExpansion allows custom methods to be added to
+// ScopeLister.
+type ScopeListerExpansion interface{}
+
+// ScopeNamespaceListerExpansion allows custom methods to be added to
+// ScopeNamespaceLister.
+type ScopeNamespaceListerExpansion interface{}
+
 // SessionListerExpansion allows custom methods to be added to
 // SessionLister.
 type SessionListerExpansion interface{}

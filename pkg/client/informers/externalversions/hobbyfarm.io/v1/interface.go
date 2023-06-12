@@ -40,6 +40,8 @@ type Interface interface {
 	Scenarios() ScenarioInformer
 	// ScheduledEvents returns a ScheduledEventInformer.
 	ScheduledEvents() ScheduledEventInformer
+	// Scopes returns a ScopeInformer.
+	Scopes() ScopeInformer
 	// Sessions returns a SessionInformer.
 	Sessions() SessionInformer
 	// Settings returns a SettingInformer.
@@ -105,6 +107,11 @@ func (v *version) Scenarios() ScenarioInformer {
 // ScheduledEvents returns a ScheduledEventInformer.
 func (v *version) ScheduledEvents() ScheduledEventInformer {
 	return &scheduledEventInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// Scopes returns a ScopeInformer.
+func (v *version) Scopes() ScopeInformer {
+	return &scopeInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Sessions returns a SessionInformer.
