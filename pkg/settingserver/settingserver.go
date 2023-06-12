@@ -52,7 +52,6 @@ func (s SettingServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/setting/list/{scope}", s.ListFunc).Methods(http.MethodGet)
 	r.HandleFunc("/setting/update/{setting_id}", s.UpdateFunc).Methods(http.MethodPut)
 	r.HandleFunc("/setting/updatecollection", s.UpdateCollection).Methods(http.MethodPut)
-	r.HandleFunc("/scope/list", s.ListScopeFunc).Methods(http.MethodGet)
 }
 
 func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
@@ -213,8 +212,4 @@ func (s SettingServer) update(w http.ResponseWriter, r *http.Request, setting Pr
 	}
 
 	return true
-}
-
-func (s SettingServer) ListScopeFunc(w http.ResponseWriter, r *http.Request) {
-
 }
