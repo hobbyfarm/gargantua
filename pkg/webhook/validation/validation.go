@@ -1,12 +1,14 @@
 package validation
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/admitters"
+	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/deserialize"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/validators/setting"
 	"github.com/pkg/errors"
 	"io"
@@ -15,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/client-go/kubernetes"
 	"net/http"
 )
 
@@ -28,18 +31,33 @@ var (
 	handlers = map[schema.GroupVersionKind]admitters.Admitters{}
 )
 
-type register func() (schema.GroupVersionKind, admitters.Admitters)
+type register func(kclient kubernetes.Clientset) (schema.GroupVersionKind, admitters.Admitters)
+
+type Validator interface {
+	V1Review(context.Context, *v12.AdmissionRequest) *v12.AdmissionResponse
+	V1beta1Review(context.Context, *v1beta1.AdmissionRequest) *v1beta1.AdmissionResponse
+	GVK() schema.GroupVersionKind
+	RegisterTypes() []runtime.Object
+}
+
+func SetupValidationServer(kclient *kubernetes.Clientset, router *mux.Router) {
+	settingServer := setting.New(kclient)
+
+	for _, f := range []Validator{settingServer} {
+		deserialize.RegisterScheme(f.GVK().GroupVersion(), f.RegisterTypes()...)
+
+		handlers[f.GVK()] = admitters.Admitters{
+			V1:      f.V1Review,
+			V1beta1: f.V1beta1Review,
+		}
+	}
+
+	RegisterRoutes(router)
+}
 
 func init() {
 	runtimeScheme.AddKnownTypes(v12.SchemeGroupVersion,
 		&v12.AdmissionReview{})
-
-	for _, f := range []register{
-		setting.Register,
-	} {
-		g, a := f()
-		handlers[g] = a
-	}
 }
 
 func RegisterRoutes(router *mux.Router) {

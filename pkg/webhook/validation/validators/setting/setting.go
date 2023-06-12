@@ -2,37 +2,53 @@ package setting
 
 import (
 	"context"
-	"fmt"
 	"github.com/golang/glog"
 	v12 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/admitters"
+	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/labels"
+	"github.com/hobbyfarm/gargantua/pkg/util"
+	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/response"
+	"k8s.io/apimachinery/pkg/api/errors"
+	v13 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+
 	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/conversion"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/deserialize"
 	v1 "k8s.io/api/admission/v1"
 	"k8s.io/api/admission/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func Register() (schema.GroupVersionKind, admitters.Admitters) {
-	deserialize.RegisterScheme(v12.SchemeGroupVersion, &v12.Setting{}, &v12.SettingList{})
-
-	return schema.GroupVersionKind{
-			Group:   v12.SchemeGroupVersion.Group,
-			Version: v12.SchemeGroupVersion.Version,
-			Kind:    "settings",
-		}, admitters.Admitters{
-			V1beta1: V1beta1Review,
-			V1:      V1Review,
-		}
+type Server struct {
+	hfclient *hfClientset.Clientset
 }
 
-func V1beta1Review(ctx context.Context, ar *v1beta1.AdmissionRequest) *v1beta1.AdmissionResponse {
-	resp := V1Review(ctx, conversion.ConvertAdmissionRequestToV1(ar))
+func New(hfclient *hfClientset.Clientset) *Server {
+	s := &Server{
+		hfclient: hfclient,
+	}
+
+	return s
+}
+
+func (s *Server) RegisterTypes() []runtime.Object {
+	return []runtime.Object{&v12.Setting{}, &v12.SettingList{}}
+}
+
+func (s *Server) GVK() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   v12.SchemeGroupVersion.Group,
+		Version: v12.SchemeGroupVersion.Version,
+		Kind:    "settings",
+	}
+}
+
+func (s *Server) V1beta1Review(ctx context.Context, ar *v1beta1.AdmissionRequest) *v1beta1.AdmissionResponse {
+	resp := s.V1Review(ctx, conversion.ConvertAdmissionRequestToV1(ar))
 	return conversion.ConvertAdmissionResponseToV1beta1(resp)
 }
 
-func V1Review(_ context.Context, ar *v1.AdmissionRequest) *v1.AdmissionResponse {
+func (s *Server) V1Review(ctx context.Context, ar *v1.AdmissionRequest) *v1.AdmissionResponse {
 	resp := &v1.AdmissionResponse{}
 
 	var newObj = &v12.Setting{}
@@ -43,7 +59,7 @@ func V1Review(_ context.Context, ar *v1.AdmissionRequest) *v1.AdmissionResponse 
 		_, _, err = deserialize.Decode(ar.OldObject.Raw, nil, oldObj)
 		if err != nil {
 			glog.Errorf("error deserializing hobbyfarm.io/setting: %s", err.Error())
-			return respDenied("could not cast old object into hobbyfarm.io/setting")
+			return response.RespDenied("could not cast old object into hobbyfarm.io/setting")
 		}
 		fallthrough
 	case v1.Create:
@@ -52,33 +68,48 @@ func V1Review(_ context.Context, ar *v1.AdmissionRequest) *v1.AdmissionResponse 
 		_, _, err = deserialize.Decode(ar.Object.Raw, nil, newObj)
 		if err != nil {
 			glog.Errorf("error deserializing hobbyfarm.io/setting: %s", err.Error())
-			return respDenied("could not cast new object into hobbyfarm.io/setting")
+			return response.RespDenied("could not cast new object into hobbyfarm.io/setting")
 		}
 	}
 
 	if ar.Operation == v1.Update {
 		if oldObj.DataType != newObj.DataType {
-			return respDenied("datatype field immutable")
+			return response.RespDenied("datatype field immutable")
 		}
 
 		if oldObj.ValueType != newObj.ValueType {
-			return respDenied("valuetype field immutable")
+			return response.RespDenied("valuetype field immutable")
+		}
+	}
+
+	// check if the scope label matches an existing scope
+	if scope, ok := newObj.Labels[labels.SettingScope]; ok && scope != "" {
+		scopes, err := s.hfclient.HobbyfarmV1().Scopes(util.GetReleaseNamespace()).List(ctx, v13.ListOptions{})
+		if errors.IsNotFound(err) {
+			return response.RespDenied("no matching v1.Scope found for labeled scope %s", scope)
+		}
+
+		if err != nil {
+			return response.RespDenied("unable to retrieve scopes from kubernetes: %s", err.Error())
+		}
+
+		var ok = false
+		for _, s := range scopes.Items {
+			if scope == s.Namespace {
+				ok = true
+				break
+			}
+		}
+
+		if !ok {
+			return response.RespDenied("no matching v1.Scope found for labeled scope %s", scope)
 		}
 	}
 
 	if err := newObj.Property.Validate(newObj.Value); err != nil {
-		return respDenied("invalid: %s", err.Error())
+		return response.RespDenied("invalid: %s", err.Error())
 	}
 
 	resp.Allowed = true
 	return resp
-}
-
-func respDenied(msg string, fields ...interface{}) *v1.AdmissionResponse {
-	return &v1.AdmissionResponse{
-		Allowed: false,
-		Result: &metav1.Status{
-			Message: fmt.Sprintf(msg, fields...),
-		},
-	}
 }
