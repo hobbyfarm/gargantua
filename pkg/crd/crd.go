@@ -156,6 +156,11 @@ func GenerateCRDs(caBundle string, reference ServiceReference) []crder.CRD {
 				IsNamespaced(true).
 				AddVersion("v1", &v1.DynamicBindConfiguration{}, nil)
 		}),
+		hobbyfarmCRD(&v1.Scope{}, func(c *crder.CRD) {
+			c.IsNamespaced(true).AddVersion("v1", &v1.Scope{}, func(cv *crder.Version) {
+				cv.WithColumn("Name", ".displayName").IsServed(true).IsStored(true)
+			})
+		}),
 		hobbyfarmCRD(&v1.Setting{}, func(c *crder.CRD) {
 			c.IsNamespaced(true).AddVersion("v1", &v1.Setting{}, func(cv *crder.Version) {
 				cv.
