@@ -856,25 +856,30 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			err = json.Unmarshal([]byte(rawVMTasks), &vm_tasks)
 			if err != nil {
 				glog.Errorf("error while unmarshaling tasks %v", err)
+			//	util.ReturnHTTPMessage(w, r, 400, "badrequest", "error parsing")
 				return fmt.Errorf("bad")
 			}
-//Verify that name, description, command must not empty, if exp code be empty(==0) 
+			//Verify that name, description, command must not empty 
 			for _, vm_task := range vm_tasks {
 				if vm_task.VMName == "" {
 					glog.Errorf("error while vm_name empty")
+				//	util.ReturnHTTPMessage(w, r, 400, "badrequest", "vm_name empty")
 					return fmt.Errorf("bad")
 				} 
 				for _, task := range vm_task.Tasks {
 					if task.Name == "" {
-						glog.Errorf("error while Name task empty")
+						glog.Errorf("error while Name of task empty")
+					//	util.ReturnHTTPMessage(w, r, 400, "badrequest", "Name of task empty")
 						return fmt.Errorf("bad")
 					} 
 					if task.Description == "" {
-						glog.Errorf("error while Description task empty")
+						glog.Errorf("error while Description of task empty")
+					//	util.ReturnHTTPMessage(w, r, 400, "badrequest", "Description of task empty")
 						return fmt.Errorf("bad")
 					} 
 					if task.Command == "" || task.Command == "[]" {
-						glog.Errorf("error while Command task empty")
+						glog.Errorf("error while Command of task empty")
+					//	util.ReturnHTTPMessage(w, r, 400, "badrequest", "Command of task empty")
 						return fmt.Errorf("bad")
 					} 
 					
