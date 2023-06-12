@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/admitters"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/deserialize"
@@ -17,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"k8s.io/client-go/kubernetes"
 	"net/http"
 )
 
@@ -31,8 +31,6 @@ var (
 	handlers = map[schema.GroupVersionKind]admitters.Admitters{}
 )
 
-type register func(kclient kubernetes.Clientset) (schema.GroupVersionKind, admitters.Admitters)
-
 type Validator interface {
 	V1Review(context.Context, *v12.AdmissionRequest) *v12.AdmissionResponse
 	V1beta1Review(context.Context, *v1beta1.AdmissionRequest) *v1beta1.AdmissionResponse
@@ -40,8 +38,8 @@ type Validator interface {
 	RegisterTypes() []runtime.Object
 }
 
-func SetupValidationServer(kclient *kubernetes.Clientset, router *mux.Router) {
-	settingServer := setting.New(kclient)
+func SetupValidationServer(hfclient *hfClientset.Clientset, router *mux.Router) {
+	settingServer := setting.New(hfclient)
 
 	for _, f := range []Validator{settingServer} {
 		deserialize.RegisterScheme(f.GVK().GroupVersion(), f.RegisterTypes()...)

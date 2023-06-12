@@ -324,7 +324,7 @@ func main() {
 		conversion.New(webhookRouter, apiExtensionsClient, string(ca))
 
 		validationEndpoints := webhookRouter.PathPrefix("/validation").Subrouter()
-		validation.SetupValidationServer(kubeClient, validationEndpoints)
+		validation.SetupValidationServer(hfClient, validationEndpoints)
 
 		webhookPort := os.Getenv("WEBHOOK_PORT")
 		if webhookPort == "" {
