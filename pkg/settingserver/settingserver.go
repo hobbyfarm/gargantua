@@ -17,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -196,6 +197,12 @@ func (s SettingServer) update(w http.ResponseWriter, r *http.Request, setting Pr
 	kSetting = kSetting.DeepCopy()
 
 	val, err := json.Marshal(setting.Value)
+
+	// json marshalled strings have quotes before & after, we don't need or want that
+	if setting.DataType == property.DataTypeString && setting.ValueType == property.ValueTypeScalar {
+		val = []byte(strings.Replace(string(val), "\"", "", 2))
+	}
+
 	if err != nil {
 		glog.Errorf("error marshalling setting value: %s", err.Error())
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error updating setting")
