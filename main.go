@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"flag"
 	"os"
 
@@ -11,12 +10,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/rbacserver"
-	tls2 "github.com/hobbyfarm/gargantua/pkg/tls"
-	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion"
-	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion/user"
 	"golang.org/x/sync/errgroup"
-	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	apiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -44,14 +38,13 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/pkg/courseserver"
 	"github.com/hobbyfarm/gargantua/pkg/environmentserver"
-	"github.com/hobbyfarm/gargantua/pkg/predefinedserviceserver"
+	predefinedservicesserver "github.com/hobbyfarm/gargantua/pkg/predefinedserviceserver"
 	"github.com/hobbyfarm/gargantua/pkg/progressserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
 	"github.com/hobbyfarm/gargantua/pkg/sessionserver"
 	"github.com/hobbyfarm/gargantua/pkg/shell"
 	"github.com/hobbyfarm/gargantua/pkg/signals"
-	"github.com/hobbyfarm/gargantua/pkg/userserver"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"github.com/hobbyfarm/gargantua/pkg/vmclaimserver"
 	"github.com/hobbyfarm/gargantua/pkg/vmclient"
@@ -75,9 +68,6 @@ var (
 	disableControllers bool
 	shellServer        bool
 	installRBACRoles   bool
-	webhookTLSCert     string
-	webhookTLSKey      string
-	webhookTLSCA       string
 )
 
 func init() {
@@ -86,9 +76,6 @@ func init() {
 	flag.BoolVar(&disableControllers, "disablecontrollers", false, "Disable the controllers")
 	flag.BoolVar(&shellServer, "shellserver", false, "Be a shell server")
 	flag.BoolVar(&installRBACRoles, "installrbacroles", false, "Install default RBAC Roles")
-	flag.StringVar(&webhookTLSCert, "webhook-tls-cert", "/webhook-secret/tls.crt", "Path to TLS certificate for webhook server")
-	flag.StringVar(&webhookTLSKey, "webhook-tls-key", "/webhook-secret/tls.key", "Path to TLS key for webhook server")
-	flag.StringVar(&webhookTLSCA, "webhook-tls-ca", "/webhook-secret/ca", "Path to CA cert for webhook server")
 }
 
 func main() {
@@ -112,17 +99,8 @@ func main() {
 
 	namespace := util.GetReleaseNamespace()
 
-	var ca string
 	if !shellServer {
-		ca, err := os.ReadFile(webhookTLSCA)
-		if err != nil {
-			glog.Fatalf("error reading ca certificate: %s", err.Error())
-		}
-
-		crds := crd.GenerateCRDs(string(ca), v1.ServiceReference{
-			Namespace: namespace,
-			Name:      "hobbyfarm-webhook",
-		})
+		crds := crd.GenerateCRDs()
 
 		glog.Info("installing/updating CRDs")
 		err = crder.InstallUpdateCRDs(cfg, crds...)
@@ -154,7 +132,7 @@ func main() {
 		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 
-	apiExtensionsClient, err := apiextensions.NewForConfig(cfg)
+	// apiExtensionsClient, err := apiextensions.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("error building apiextensions clientset: %s", err.Error())
 	}
@@ -246,10 +224,10 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	userServer, err := userserver.NewUserServer(authClient, hfClient, ctx)
-	if err != nil {
-		glog.Fatal(err)
-	}
+	// userServer, err := userserver.NewUserServer(authClient, hfClient, ctx)
+	// if err != nil {
+	// 	glog.Fatal(err)
+	// }
 
 	vmTemplateServer, err := vmtemplateserver.NewVirtualMachineTemplateServer(authClient, hfClient, ctx)
 	if err != nil {
@@ -280,7 +258,7 @@ func main() {
 		vmClaimServer.SetupRoutes(r)
 		environmentServer.SetupRoutes(r)
 		scheduledEventServer.SetupRoutes(r)
-		userServer.SetupRoutes(r)
+		// userServer.SetupRoutes(r)
 		vmTemplateServer.SetupRoutes(r)
 		progressServer.SetupRoutes(r)
 		rbacServer.SetupRoutes(r)
@@ -311,37 +289,37 @@ func main() {
 	var wg sync.WaitGroup
 
 	// shell server does not serve webhook endpoint, so don't start it
-	if !shellServer {
-		user.Init()
-		conversionRouter := mux.NewRouter()
-		conversion.New(conversionRouter, apiExtensionsClient, string(ca))
+	// if !shellServer {
+	// 	user.Init()
+	// 	conversionRouter := mux.NewRouter()
+	// 	conversion.New(conversionRouter, apiExtensionsClient, string(ca))
 
-		webhookPort := os.Getenv("WEBHOOK_PORT")
-		if webhookPort == "" {
-			webhookPort = "444"
-		}
-		glog.Info("webhook listening on " + webhookPort)
+	// 	webhookPort := os.Getenv("WEBHOOK_PORT")
+	// 	if webhookPort == "" {
+	// 		webhookPort = "444"
+	// 	}
+	// 	glog.Info("webhook listening on " + webhookPort)
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	// 	wg.Add(1)
+	// 	go func() {
+	// 		defer wg.Done()
 
-			cert, err := tls2.ReadKeyPair(webhookTLSCert, webhookTLSKey)
-			if err != nil {
-				glog.Fatalf("error generating x509keypair from conversion cert and key: %s", err)
-			}
+	// 		cert, err := tls2.ReadKeyPair(webhookTLSCert, webhookTLSKey)
+	// 		if err != nil {
+	// 			glog.Fatalf("error generating x509keypair from conversion cert and key: %s", err)
+	// 		}
 
-			server := http.Server{
-				TLSConfig: &tls.Config{
-					Certificates: []tls.Certificate{*cert},
-				},
-				Addr:    ":" + webhookPort,
-				Handler: handlers.CORS(corsHeaders, corsOrigins, corsMethods)(conversionRouter),
-			}
+	// 		server := http.Server{
+	// 			TLSConfig: &tls.Config{
+	// 				Certificates: []tls.Certificate{*cert},
+	// 			},
+	// 			Addr:    ":" + webhookPort,
+	// 			Handler: handlers.CORS(corsHeaders, corsOrigins, corsMethods)(conversionRouter),
+	// 		}
 
-			glog.Fatal(server.ListenAndServeTLS("", ""))
-		}()
-	}
+	// 		glog.Fatal(server.ListenAndServeTLS("", ""))
+	// 	}()
+	// }
 
 	wg.Add(1)
 

@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package rbac;
+
+option go_package = "github.com/hobbyfarm/gargantua/protos/rbac";
+
+import "authr/authr.proto";
+import "user/user.proto";
+
+// Service definition
+service RbacSvc {
+    rpc Grants (GrantRequest) returns (authr.AuthRResponse);
+    rpc GetAccessSet (user.UserId) returns (AccessSet);
+    rpc GetHobbyfarmRoleBindings (user.UserId) returns (RoleBindings);
+}
+
+message GrantRequest {
+    string userName = 1;
+    authr.Permission permission = 2;
+}
+
+message AccessSet {
+    string subject = 1;
+    map<string, bool> access = 2;
+}
+
+message RoleBindings {
+    repeated RoleBinding rolebindings = 1;
+}
+
+message RoleBinding {
+    string name = 1;
+    string role = 2;
+    repeated Subject subjects = 3;
+}
+
+message Subject {
+    string kind = 1;
+    string name = 2;
+}

@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/base32"
 	"encoding/json"
@@ -16,18 +17,26 @@ import (
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/protos/authn"
+	"github.com/hobbyfarm/gargantua/protos/authr"
+	v1 "github.com/hobbyfarm/gargantua/protos/k8s.io/apimachinery/pkg/apis/meta/v1"
+	userProto "github.com/hobbyfarm/gargantua/protos/user"
 	"golang.org/x/crypto/ssh"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/util/retry"
 
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
-	"sort"
 
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 )
@@ -321,25 +330,26 @@ func EnsureVMNotReady(hfClientset hfClientset.Interface, vmLister hfListers.Virt
 	return nil
 }
 
-
 // pending rename...
 type Maximus struct {
-	AvailableCount    map[string]int    `json:"available_count"`
+	AvailableCount map[string]int `json:"available_count"`
 }
 
 // Range with reserved virtual machine amounts for given time range
 type Range struct {
-	Start time.Time
-	End   time.Time
+	Start     time.Time
+	End       time.Time
 	VMMapping map[string]int
 }
+
 // These functions are used to sort arrays of time.Time
 type ByTime []time.Time
-func (t ByTime) Len() int { return len(t) }
-func (t ByTime) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
+
+func (t ByTime) Len() int           { return len(t) }
+func (t ByTime) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
 func (t ByTime) Less(i, j int) bool { return t[i].Before(t[j]) }
 func sortTime(timeArray []time.Time) {
-    sort.Sort(ByTime(timeArray))
+	sort.Sort(ByTime(timeArray))
 }
 
 func Max(x, y int) int {
@@ -351,15 +361,15 @@ func Max(x, y int) int {
 
 // Calculates available virtualMachineTemplates for a given period (startString, endString) and environment
 // Returns a map with timestamps and corresponding availability of virtualmachines. Also returns the maximum available count of virtualmachinetemplates over the whole duration.
-func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context)(map[time.Time]map[string]int, map[string]int, error){
+func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context) (map[time.Time]map[string]int, map[string]int, error) {
 	start, err := time.Parse(time.UnixDate, startString)
 	if err != nil {
 		return map[time.Time]map[string]int{}, map[string]int{}, fmt.Errorf("error parsing start time %v", err)
 	}
 
 	// We only want to calculate for the future. Otherwise old ( even finished ) events will be considered too.
-	if(start.Before(time.Now())){
-		start = time.Now();
+	if start.Before(time.Now()) {
+		start = time.Now()
 	}
 
 	end, err := time.Parse(time.UnixDate, endString)
@@ -373,9 +383,9 @@ func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environm
 	}
 
 	var timeRange []Range
-	var changingTimestamps []time.Time // All timestamps where number of virtualmachines changes (Begin or End of Scheduled Event)
+	var changingTimestamps []time.Time                        // All timestamps where number of virtualmachines changes (Begin or End of Scheduled Event)
 	virtualMachineCount := make(map[time.Time]map[string]int) // Count of virtualmachines per VMTemplate for any given timestamp where a change happened
-	maximumVirtualMachineCount := make(map[string]int) // Maximum VirtualMachine Count per VirtualMachineTemplate over all timestamps
+	maximumVirtualMachineCount := make(map[string]int)        // Maximum VirtualMachine Count per VirtualMachineTemplate over all timestamps
 
 	for _, se := range scheduledEvents.Items {
 		// Scheduled Event uses the environment we are checking
@@ -406,10 +416,10 @@ func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environm
 	for _, eventRange := range timeRange {
 		// For any given Scheduled Event check if the timestamp is during the duration of our event. Add required Virtualmachine Counts to this timestamp.
 		for _, timestamp := range changingTimestamps {
-			if(eventRange.Start.After(timestamp)){
+			if eventRange.Start.After(timestamp) {
 				continue
 			}
-			if(eventRange.End.Before(timestamp)){
+			if eventRange.End.Before(timestamp) {
 				break
 			}
 
@@ -437,8 +447,8 @@ func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environm
 
 func CountMachinesPerTemplateAndEnvironment(vmLister hfListers.VirtualMachineLister, template string, enviroment string) (int, error) {
 	vmLabels := labels.Set{
-		EnvironmentLabel: enviroment,
-		VirtualMachineTemplate:    template,
+		EnvironmentLabel:       enviroment,
+		VirtualMachineTemplate: template,
 	}
 
 	vms, err := vmLister.List(vmLabels.AsSelector())
@@ -447,10 +457,9 @@ func CountMachinesPerTemplateAndEnvironment(vmLister hfListers.VirtualMachineLis
 
 func CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(vmLister hfListers.VirtualMachineLister, template string, enviroment string, se string) (int, error) {
 	vmLabels := labels.Set{
-		EnvironmentLabel: enviroment,
-		VirtualMachineTemplate:    template,
-		ScheduledEventLabel: se,
-
+		EnvironmentLabel:       enviroment,
+		VirtualMachineTemplate: template,
+		ScheduledEventLabel:    se,
 	}
 
 	vms, err := vmLister.List(vmLabels.AsSelector())
@@ -458,9 +467,9 @@ func CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(vmLister hfListers.
 }
 
 func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context) (Maximus, error) {
-	_, maximumVirtualMachineCount, err := VirtualMachinesUsedDuringPeriod(hfClientset, environment, startString, endString, ctx);
+	_, maximumVirtualMachineCount, err := VirtualMachinesUsedDuringPeriod(hfClientset, environment, startString, endString, ctx)
 
-	if(err != nil) {
+	if err != nil {
 		return Maximus{}, err
 	}
 
@@ -468,7 +477,6 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 	if err != nil {
 		return Maximus{}, fmt.Errorf("error retrieving environment %v", err)
 	}
-
 
 	max := Maximus{}
 	max.AvailableCount = make(map[string]int)
@@ -498,7 +506,7 @@ func GetReleaseNamespace() string {
 func GetVMConfig(env *hfv1.Environment, vmt *hfv1.VirtualMachineTemplate) map[string]string {
 	envSpecificConfigFromEnv := env.Spec.EnvironmentSpecifics
 	envTemplateInfo, exists := env.Spec.TemplateMapping[vmt.Name]
-	
+
 	config := make(map[string]string)
 	config["image"] = vmt.Spec.Image
 
@@ -514,11 +522,224 @@ func GetVMConfig(env *hfv1.Environment, vmt *hfv1.VirtualMachineTemplate) map[st
 
 	//This environment has specifics for this vmt
 	if exists {
-			// Override with specific from VM on this environment
+		// Override with specific from VM on this environment
 		for k, v := range envTemplateInfo {
 			config[k] = v
 		}
 	}
 
 	return config
+}
+
+func GetK8sDnsServer() string {
+	provisionDNS := "10.43.0.10"
+	nameserver := os.Getenv("HF_K8S_NAMESERVER")
+	if nameserver != "" {
+		provisionDNS = nameserver
+	}
+	return provisionDNS
+}
+
+func CopyObjectMeta(obj *metav1.ObjectMeta) *v1.ObjectMeta {
+	objMeta := v1.ObjectMeta{}
+	userName := obj.GetName()
+	objMeta.Name = &userName
+	userGenerateName := obj.GetGenerateName()
+	objMeta.GenerateName = &userGenerateName
+	userNamespace := obj.GetNamespace()
+	objMeta.Namespace = &userNamespace
+	userUid := (string)(obj.GetUID())
+	objMeta.Uid = &userUid
+	userResourceVersion := obj.GetResourceVersion()
+	objMeta.ResourceVersion = &userResourceVersion
+	userGeneration := obj.GetGeneration()
+	objMeta.Generation = &userGeneration
+	userCreationTimestamp := obj.GetCreationTimestamp()
+	creationSeconds := userCreationTimestamp.Unix()
+	creationNanos := (int32)(userCreationTimestamp.Nanosecond())
+	objMeta.CreationTimestamp = &v1.Time{
+		Seconds: &creationSeconds,
+		Nanos:   &creationNanos,
+	}
+	userDeletionTimestamp := obj.GetDeletionTimestamp()
+	if userDeletionTimestamp != nil {
+		deletionSeconds := userDeletionTimestamp.Unix()
+		deletionNanos := (int32)(userDeletionTimestamp.Nanosecond())
+		objMeta.DeletionTimestamp = &v1.Time{
+			Seconds: &deletionSeconds,
+			Nanos:   &deletionNanos,
+		}
+	}
+	objMeta.DeletionGracePeriodSeconds = obj.GetDeletionGracePeriodSeconds()
+	objMeta.Labels = obj.GetLabels()
+	objMeta.Annotations = obj.GetAnnotations()
+	objMeta.OwnerReferences = make([]*v1.OwnerReference, 0)
+	objMeta.Finalizers = obj.GetFinalizers()
+	objMeta.ManagedFields = make([]*v1.ManagedFieldsEntry, 0)
+
+	for _, ownerReference := range obj.OwnerReferences {
+		objMeta.OwnerReferences = append(objMeta.OwnerReferences, &v1.OwnerReference{
+			ApiVersion:         &ownerReference.APIVersion,
+			Kind:               &ownerReference.Kind,
+			Name:               &ownerReference.Name,
+			Uid:                (*string)(&ownerReference.UID),
+			Controller:         ownerReference.Controller,
+			BlockOwnerDeletion: ownerReference.BlockOwnerDeletion,
+		})
+	}
+
+	for _, managedField := range obj.ManagedFields {
+		managedFieldSeconds := managedField.Time.Unix()
+		managedFieldNanos := (int32)(managedField.Time.Nanosecond())
+		objMeta.ManagedFields = append(objMeta.ManagedFields, &v1.ManagedFieldsEntry{
+			Manager:    &managedField.Manager,
+			Operation:  (*string)(&managedField.Operation),
+			ApiVersion: &managedField.APIVersion,
+			Time: &v1.Time{
+				Seconds: &managedFieldSeconds,
+				Nanos:   &managedFieldNanos,
+			},
+			FieldsType: &managedField.FieldsType,
+			FieldsV1: &v1.FieldsV1{
+				Raw: managedField.FieldsV1.Raw,
+			},
+			Subresource: &managedField.Subresource,
+		})
+	}
+	return &objMeta
+}
+
+type MicroService struct {
+	name string
+}
+
+var (
+	AuthN   = MicroService{"authn-service"}
+	AuthR   = MicroService{"authr-service"}
+	User    = MicroService{"user-service"}
+	Rbac    = MicroService{"rbac-service"}
+	Unknown = MicroService{""}
+)
+
+func (m MicroService) getUrl() (string, error) {
+	// Create a Kubernetes clientset
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return "", fmt.Errorf("error retrieving InClusterConfig")
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return "", fmt.Errorf("error creating kubernetes clientset")
+	}
+
+	ctx := context.Background()
+
+	// Get the endpoints object for the service
+	endpoints, err := clientset.CoreV1().Endpoints(GetReleaseNamespace()).Get(ctx, m.name, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("error retrieving endpoints")
+	}
+
+	var grpcPort int32 = 0
+
+	// Get the grpc port number
+	for _, subset := range endpoints.Subsets {
+		for _, port := range subset.Ports {
+			if port.Name == "grpc" {
+				grpcPort = port.Port
+			}
+		}
+	}
+
+	if grpcPort == 0 {
+		return "", fmt.Errorf("no grpc port found for service %s", m.name)
+	}
+
+	// if port < 1 || port > 65535 {
+	// 	return "", errors.New("Invalid port(" + strconv.Itoa(port) + ")! Port must be within the range 1 to 65535")
+	// }
+	return "dns://" + GetK8sDnsServer() + "/" + m.name + "." + GetReleaseNamespace() + ".svc.cluster.local:" + strconv.Itoa(int(grpcPort)), nil
+}
+
+func createMicroService(service string) (MicroService, error) {
+	switch service {
+	case AuthN.name:
+		return AuthN, nil
+	case AuthR.name:
+		return AuthR, nil
+	case User.name:
+		return User, nil
+	case Rbac.name:
+		return Rbac, nil
+	}
+
+	return Unknown, fmt.Errorf("unknown service: %s", service)
+}
+
+func EstablishConnection(svcName string, caCertPath string) (*grpc.ClientConn, error) {
+	svc, err := createMicroService(svcName)
+	if err != nil {
+		glog.Errorf("failed to create microservice %s", svcName)
+		return nil, err
+	}
+	url, err := svc.getUrl()
+
+	if err != nil {
+		glog.Errorf("could not establish connection, failed to retrieve url for service %s", svc.name)
+		return nil, fmt.Errorf("could not establish connection, failed to retrieve url for service %s", svc.name)
+	}
+	// Read the CA certificate from file
+	caCert, err := os.ReadFile(caCertPath)
+	if err != nil {
+		glog.Errorf("could not establish connection, failed to load CA certificate: %s", err)
+		return nil, fmt.Errorf("could not establish connection, failed to load CA certificate: %s", err)
+	}
+	caCertPool, err := x509.SystemCertPool()
+	if err != nil {
+		caCertPool = x509.NewCertPool()
+	}
+	if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
+		glog.Error("could not establish connection, failed to parse CA certificate")
+		return nil, fmt.Errorf("could not establish connection, failed to parse CA certificate")
+	}
+	// Create transport credentials with the client certificate and CA certificate pool
+	creds := credentials.NewTLS(&tls.Config{
+		RootCAs: caCertPool,
+	})
+	return grpc.Dial(url, grpc.WithTransportCredentials(creds))
+}
+
+func AuthenticateRequest(r *http.Request, caCertPath string) (*userProto.User, error) {
+	authnConn, err := EstablishConnection("authn-service", caCertPath)
+	if err != nil {
+		glog.Error("failed connecting to service authn-service")
+		return nil, err
+	}
+	defer authnConn.Close()
+
+	authnClient := authn.NewAuthNClient(authnConn)
+	token := r.Header.Get("Authorization")
+	return authnClient.AuthN(r.Context(), &authn.AuthNRequest{Token: token})
+}
+
+func AuthorizeRequest(r *http.Request, caCertPath string, username string, group string, resource string, verb string) (*authr.AuthRResponse, error) {
+	authrConn, err := EstablishConnection("authr-service", caCertPath)
+	if err != nil {
+		glog.Error("failed connecting to service authr-service")
+		return nil, err
+	}
+	defer authrConn.Close()
+
+	authrClient := authr.NewAuthRClient(authrConn)
+	rbacPermissions := []*authr.Permission{
+		{
+			ApiGroup: group,
+			Resource: resource,
+			Verb:     verb,
+		},
+	}
+	rbacRq := &authr.RbacRequest{
+		Permissions: rbacPermissions,
+	}
+	return authrClient.AuthR(r.Context(), &authr.AuthRRequest{UserName: username, Request: rbacRq})
 }

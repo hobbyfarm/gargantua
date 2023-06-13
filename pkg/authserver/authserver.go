@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
@@ -31,11 +31,11 @@ const (
 )
 
 type AuthServer struct {
-	auth        		*authclient.AuthClient
-	rbac        		*rbacclient.Client
-	hfClientSet 		hfClientset.Interface
-	accessCodeClient    *accesscode.AccessCodeClient
-	ctx         		context.Context
+	auth             *authclient.AuthClient
+	rbac             *rbacclient.Client
+	hfClientSet      hfClientset.Interface
+	accessCodeClient *accesscode.AccessCodeClient
+	ctx              context.Context
 }
 
 func NewAuthServer(authClient *authclient.AuthClient, hfClientSet hfClientset.Interface, ctx context.Context, acClient *accesscode.AccessCodeClient, rbac *rbacclient.Client) (AuthServer, error) {
@@ -168,7 +168,7 @@ func (a AuthServer) UpdateSettingsFunc(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
 	newSettings := make(map[string]string)
-	for key, _ := range r.Form {
+	for key := range r.Form {
 		newSettings[key] = r.FormValue(key) //Ignore when multiple values were set for one argument. Just take the first one
 	}
 
@@ -208,7 +208,7 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 	}
 
 	accessCodes, err := a.accessCodeClient.GetAccessCodes(user.Spec.AccessCodes)
-	
+
 	accessCodeScheduledEvent := make(map[string]string)
 
 	//Getting single SEs should be faster than listing all of them and iterating them in O(n^2), in most cases users only have a hand full of accessCodes.

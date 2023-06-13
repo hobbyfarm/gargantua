@@ -3,8 +3,8 @@ package courseserver
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"net/http"
 	"strconv"
 	"strings"
@@ -23,8 +23,14 @@ import (
 )
 
 const (
-	idIndex = "courseserver.hobbyfarm.io/id-index"
+	idIndex        = "courseserver.hobbyfarm.io/id-index"
 	resourcePlural = "courses"
+)
+
+var (
+	authTLSCert string
+	authTLSKey  string
+	authTLSCA   string
 )
 
 type CourseServer struct {
@@ -38,6 +44,12 @@ type CourseServer struct {
 type PreparedCourse struct {
 	Id string `json:"id"`
 	hfv1.CourseSpec
+}
+
+func init() {
+	flag.StringVar(&authTLSCert, "auth-tls-cert", "/etc/ssl/certs/tls.crt", "Path to TLS certificate for auth servers")
+	flag.StringVar(&authTLSKey, "auth-tls-key", "/etc/ssl/certs/tls.key", "Path to TLS key for auth servers")
+	flag.StringVar(&authTLSCA, "auth-tls-ca", "/etc/ssl/certs/ca.crt", "Path to CA cert for auth servers")
 }
 
 func NewCourseServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*CourseServer, error) {
@@ -83,8 +95,16 @@ func (c CourseServer) getPreparedCourseById(id string) (PreparedCourse, error) {
 }
 
 func (c CourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := c.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
+	user, err := util.AuthenticateRequest(r, authTLSCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := util.AuthorizeRequest(r, authTLSCA, impersonatedUserId, "hobbyfarm.io", "courses", "list")
+	if err != nil || !authrResponse.Success {
+		glog.Infof("Authr error: %s", err.Error())
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list courses")
 		return
 	}
@@ -114,8 +134,15 @@ func (c CourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) GetCourse(w http.ResponseWriter, r *http.Request) {
-	_, err := c.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
+	user, err := util.AuthenticateRequest(r, authTLSCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := util.AuthorizeRequest(r, authTLSCA, impersonatedUserId, "hobbyfarm.io", "courses", "get")
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to courses")
 		return
 	}
@@ -139,8 +166,15 @@ func (c CourseServer) GetCourse(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := c.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbCreate), w, r)
+	user, err := util.AuthenticateRequest(r, authTLSCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := util.AuthorizeRequest(r, authTLSCA, impersonatedUserId, "hobbyfarm.io", "courses", "create")
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create courses")
 		return
 	}
@@ -243,9 +277,16 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := c.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
+	user, err := util.AuthenticateRequest(r, authTLSCA)
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scenarios")
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := util.AuthorizeRequest(r, authTLSCA, impersonatedUserId, "hobbyfarm.io", "courses", "update")
+	if err != nil || !authrResponse.Success {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update courses")
 		return
 	}
 
@@ -364,9 +405,16 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := c.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbDelete), w, r)
+	user, err := util.AuthenticateRequest(r, authTLSCA)
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to toDelete scenarios")
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := util.AuthorizeRequest(r, authTLSCA, impersonatedUserId, "hobbyfarm.io", "courses", "delete")
+	if err != nil || !authrResponse.Success {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to to delete courses")
 		return
 	}
 
@@ -437,13 +485,12 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Request) {
-	user, err := c.auth.AuthN(w, r)
+	user, err := util.AuthenticateRequest(r, authTLSCA)
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list courses")
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
-	
 	vars := mux.Vars(r)
 	accessCode := vars["access_code"]
 
@@ -453,10 +500,10 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 	}
 
 	contains := false
-	for _, acc := range user.Spec.AccessCodes {
-		if(acc == accessCode){
+	for _, acc := range user.AccessCodes {
+		if acc == accessCode {
 			contains = true
-			break;
+			break
 		}
 	}
 
@@ -496,8 +543,15 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 }
 
 func (c CourseServer) previewDynamicScenarios(w http.ResponseWriter, r *http.Request) {
-	_, err := c.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission("scenarios", rbacclient.VerbList), w, r)
+	user, err := util.AuthenticateRequest(r, authTLSCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := util.AuthorizeRequest(r, authTLSCA, impersonatedUserId, "hobbyfarm.io", "scenarios", "list")
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to preview dynamic scenarios")
 		return
 	}
