@@ -199,7 +199,7 @@ func (s SettingServer) update(w http.ResponseWriter, r *http.Request, setting Pr
 	val, err := json.Marshal(setting.Value)
 
 	// json marshalled strings have quotes before & after, we don't need or want that
-	if setting.DataType == property.DataTypeString && setting.ValueType == property.ValueTypeScalar {
+	if kSetting.DataType == property.DataTypeString && kSetting.ValueType == property.ValueTypeScalar {
 		val = []byte(strings.Replace(string(val), "\"", "", 2))
 	}
 

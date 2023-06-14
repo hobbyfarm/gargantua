@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"github.com/hobbyfarm/gargantua/pkg/preinstall"
 	"github.com/hobbyfarm/gargantua/pkg/settingserver"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/validation"
 	"os"
@@ -158,6 +159,11 @@ func main() {
 	apiExtensionsClient, err := apiextensions.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatalf("error building apiextensions clientset: %s", err.Error())
+	}
+
+	if !shellServer {
+		// install resources
+		preinstall.Preinstall(ctx, hfClient)
 	}
 
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
