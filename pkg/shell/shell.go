@@ -88,7 +88,7 @@ func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.Virtual
 
 func (sp ShellProxy) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/shell/{vm_id}/connect", sp.ConnectSSHFunc)
-	r.HandleFunc("/shell/verify", sp.VerifyTasksFuncByVMIdGroup)
+	r.HandleFunc("/shell/verify", sp.VerifyTasksFuncByVMIdGroupWithChan)
 	r.HandleFunc("/guacShell/{vm_id}/connect", sp.ConnectGuacFunc)
 	r.HandleFunc("/p/{vm_id}/{port}/{rest:.*}", sp.checkCookieAndProxy)
 	r.HandleFunc("/pa/{token}/{vm_id}/{port}/{rest:.*}", sp.authAndProxyFunc)
@@ -580,15 +580,15 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithChan(w http.ResponseWriter, r
 	}
 	glog.Infof("vm_input_tasks: %+v", vm_input_tasks)
 
-	errorChan := make(chan error)
+	errorChan := make(chan error, 1)
 
-	// Goroutine to monitor the error channel
-	go func() {
-		for err := range errorChan {
-			// Handle the error (e.g., log, return HTTP error response, etc.)
-			glog.Errorf("Error in goroutine: %s", err)				
-		}
-	}()
+	// // Goroutine to monitor the error channel
+	// go func() {
+	// 	for err := range errorChan {
+	// 		// Handle the error (e.g., log, return HTTP error response, etc.)
+	// 		glog.Errorf("Error in goroutine: %s", err)				
+	// 	}
+	// }()
 
 	vm_output_tasks := make([]*VirtualMachineOutputTask, 0)
 	var vm_mutex = &sync.Mutex{}
@@ -604,8 +604,10 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithChan(w http.ResponseWriter, r
 
 			if err != nil {
 				glog.Errorf("did not find the right virtual machine ID")
-				util.ReturnHTTPMessage(w, r, 500, "error", "no vm found")
-				errChan <- err
+				//util.ReturnHTTPMessage(w, r, 500, "error", "no vm found")
+				if len(errorChan) < cap(errorChan) {
+					errChan <- err
+				}
 				return
 			}
 
@@ -620,8 +622,10 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithChan(w http.ResponseWriter, r
 					w, r)
 				if err != nil {
 					glog.Infof("Error doing authGrantWS %s", err)
-					util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to connect to ssh shell session")
-					errChan <- err
+					//util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to connect to ssh shell session")
+					if len(errorChan) < cap(errorChan) {
+						errChan <- err
+					}
 					return
 				}
 			}
@@ -630,8 +634,10 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithChan(w http.ResponseWriter, r
 			secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?
 			if err != nil {
 				glog.Errorf("did not find secret for virtual machine")
-				util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
-				errChan <- err
+				//util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
+				if len(errorChan) < cap(errorChan) {
+					errChan <- err
+				}
 				return
 			}
 
@@ -640,7 +646,9 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithChan(w http.ResponseWriter, r
 			if err != nil {
 				glog.Errorf("did not correctly parse private key")
 				util.ReturnHTTPMessage(w, r, 500, "error", "unable to parse private key")
-				errChan <- err
+				if len(errorChan) < cap(errorChan) {
+					errChan <- err
+				}
 				return
 			}
 
@@ -677,8 +685,10 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithChan(w http.ResponseWriter, r
 			sshConn, err := ssh.Dial("tcp", host+":"+port, config)
 			if err != nil {
 				glog.Errorf("did not connect ssh successfully: %s", err)
-				util.ReturnHTTPMessage(w, r, 500, "error", "could not establish ssh session to vm")
-				errChan <- err
+				//util.ReturnHTTPMessage(w, r, 500, "error", "could not establish ssh session to vm")
+				if len(errorChan) < cap(errorChan) {
+					errChan <- err
+				}
 				return
 			}
 
@@ -690,27 +700,40 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithChan(w http.ResponseWriter, r
 				commands_wg.Add(1)
 				go func(closure_task_command TaskInputCommand, errChan chan<- error) {
 					defer commands_wg.Done()
+					// try run command again when exit code == 141
+					command_run_count := 5
+					for command_run_count > 0 {					
 					sess, err = sshConn.NewSession()
 					if err != nil {
 						glog.Errorf("did not setup ssh session properly")
-						util.ReturnHTTPMessage(w, r, 500, "error", "could not setup ssh session")
-						errChan <- err
+						//util.ReturnHTTPMessage(w, r, 500, "error", "could not setup ssh session")
+						if len(errorChan) < cap(errorChan) {
+							errChan <- err
+						}
 						return
 					}
 					if err != nil {
 						glog.Infof("%s", err)
-					}
+					}					
 					vm_task_output, err := VMTaskCommandRun(&closure_task_command, sess)
-					if err != nil {
+									
+					if err != nil {						
 						glog.Infof("error sending command: %v", err)
-						util.ReturnHTTPMessage(w, r, 500, "error", "could not send command")
-						errChan <- err
-						return
-					}
-					commands_mutex.Lock()
-					commands_resp = append(commands_resp,*vm_task_output)
-					commands_mutex.Unlock()
+						//util.ReturnHTTPMessage(w, r, 500, "error", "could not send command")
+						if len(errorChan) < cap(errorChan) {
+							errChan <- err
+						}
+						return						
+					}				   			
 					sess.Close()
+					command_run_count -= 1
+					if vm_task_output.ActualReturnCode != 141 || command_run_count == 0	{
+						commands_mutex.Lock()
+						commands_resp = append(commands_resp,*vm_task_output)
+						commands_mutex.Unlock()		
+						break
+						}				
+				}
 				}(task_command, errorChan)
 			}
 			commands_wg.Wait()
@@ -728,19 +751,23 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithChan(w http.ResponseWriter, r
 	vm_wg.Wait()
 
 	// Check for errors in the errorChan
+	
 	select {
-	case err := <-errorChan:
-		glog.Errorf("Error in goroutine: %s", err)
-		util.ReturnHTTPMessage(w, r, 500, "error", "could not send command")
+	case err = <-errorChan:
+		close(errorChan)
+		glog.Infof("Error in goroutine: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "could send command to vm")
+		return
 		// Handle the error (e.g., log, return HTTP error response, etc.)
 		// ...
 	default:
 		// No error in the errorChan
+		glog.Infof("No Error in goroutine: %v", vm_output_tasks)
 		jsonStr, _ := json.Marshal(vm_output_tasks)
 		io.Copy(w, strings.NewReader(fmt.Sprintf("%v", string(jsonStr))))
 	}
 
-	close(errorChan)
+	
 
 	
 }

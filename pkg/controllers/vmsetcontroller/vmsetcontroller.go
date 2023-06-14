@@ -353,8 +353,6 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 				glog.Error(err)
 			}
 		}
-
-		//TODO handle case of scaling down VMSets
 	}
 //-----------------------handle case of scaling down VMSets
 	if len(currentVMs) > vmset.Spec.Count {
