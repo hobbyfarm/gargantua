@@ -9,22 +9,21 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
 const (
-	idIndex             = "vms.hobbyfarm.io/id-index"
-	resourcePlural		= "virtualmachinesets"
+	idIndex        = "vms.hobbyfarm.io/id-index"
+	resourcePlural = rbac.ResourcePluralVMSet
 )
 
 type VMSetServer struct {
-	auth        *authclient.AuthClient
+	tlsCA       string
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 	vmIndexer   cache.Indexer
@@ -36,11 +35,11 @@ type PreparedVirtualMachineSet struct {
 	hfv1.VirtualMachineSetStatus
 }
 
-func NewVMSetServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMSetServer, error) {
+func NewVMSetServer(tlsCA string, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMSetServer, error) {
 	vms := VMSetServer{}
 
 	vms.hfClientSet = hfClientset
-	vms.auth = authClient
+	vms.tlsCA = tlsCA
 	vms.ctx = ctx
 
 	inf := hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer()
@@ -77,8 +76,15 @@ func (vms VMSetServer) GetAllVMSetListFunc(w http.ResponseWriter, r *http.Reques
 }
 
 func (vms VMSetServer) GetVMSetListFunc(w http.ResponseWriter, r *http.Request, listOptions metav1.ListOptions) {
-	_, err := vms.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
+	user, err := rbac.AuthenticateRequest(r, vms.tlsCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, vms.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list vmsets")
 		return
 	}

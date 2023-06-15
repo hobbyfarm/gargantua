@@ -6,35 +6,36 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
-	"github.com/golang/glog"
-	"github.com/gorilla/mux"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
-	"github.com/hobbyfarm/gargantua/pkg/util"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/util/retry"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/golang/glog"
+	"github.com/gorilla/mux"
+	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/pkg/util"
+	"github.com/hobbyfarm/gargantua/protos/authr"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/retry"
 )
 
 const (
-	resourcePlural = "environments"
+	resourcePlural = rbac.ResourcePluralEnvironment
 )
 
 type EnvironmentServer struct {
-	auth        *authclient.AuthClient
+	tlsCA       string
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
 
-func NewEnvironmentServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, ctx context.Context) (*EnvironmentServer, error) {
+func NewEnvironmentServer(tlsCA string, hfClientset hfClientset.Interface, ctx context.Context) (*EnvironmentServer, error) {
 	es := EnvironmentServer{}
 
 	es.hfClientSet = hfClientset
-	es.auth = authClient
+	es.tlsCA = tlsCA
 	es.ctx = ctx
 
 	return &es, nil
@@ -72,15 +73,22 @@ type PreparedEnvironment struct {
 }
 
 type PreparedListEnvironment struct {
-	Name string 									`json:"name"`
-	DisplayName string 								`json:"display_name"`
-	Provider string 								`json:"provider"`
-	TemplateMapping  map[string]map[string]string 	`json:"template_mapping"`
+	Name            string                       `json:"name"`
+	DisplayName     string                       `json:"display_name"`
+	Provider        string                       `json:"provider"`
+	TemplateMapping map[string]map[string]string `json:"template_mapping"`
 }
 
 func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
+	user, err := rbac.AuthenticateRequest(r, e.tlsCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, e.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get environment")
 		return
 	}
@@ -114,8 +122,15 @@ func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
+	user, err := rbac.AuthenticateRequest(r, e.tlsCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, e.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list environments")
 		return
 	}
@@ -132,9 +147,9 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 
 	for _, e := range environments.Items {
 		keys := make(map[string]map[string]string)
-    	for k, _ := range e.Spec.TemplateMapping {
-        	keys[k] = map[string]string{}
-    	}
+		for k, _ := range e.Spec.TemplateMapping {
+			keys[k] = map[string]string{}
+		}
 		preparedEnvironments = append(preparedEnvironments, PreparedListEnvironment{e.Name, e.Spec.DisplayName, e.Spec.Provider, keys})
 	}
 
@@ -148,8 +163,15 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbCreate), w, r)
+	user, err := rbac.AuthenticateRequest(r, e.tlsCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, e.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbCreate))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create environments")
 		return
 	}
@@ -246,7 +268,6 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	environment.Spec.WsEndpoint = wsEndpoint
 	environment.Spec.CountCapacity = countCapacityUnmarshaled
 
-
 	environment, err = e.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Create(e.ctx, environment, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating environment %v", err)
@@ -259,8 +280,15 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
+	user, err := rbac.AuthenticateRequest(r, e.tlsCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, e.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update environment")
 		return
 	}
@@ -324,7 +352,7 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			environment.Spec.EnvironmentSpecifics = environmentSpecificsUnmarshaled
 		}
 
-		if(len(countCapacity) > 0){
+		if len(countCapacity) > 0 {
 			countCapacityUnmarshaled := map[string]int{}
 			err = json.Unmarshal([]byte(countCapacity), &countCapacityUnmarshaled)
 			if err != nil {
@@ -364,13 +392,19 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e EnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := e.auth.AuthGrant(
-		rbacclient.RbacRequest().
-			HobbyfarmPermission(resourcePlural, rbacclient.VerbList).
-			HobbyfarmPermission("virtualmachinetemplates", rbacclient.VerbList),
-		 w, r)
+	user, err := rbac.AuthenticateRequest(r, e.tlsCA)
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get environment")
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.Authorize(r, e.tlsCA, impersonatedUserId, []*authr.Permission{
+		rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList),
+		rbac.HobbyfarmPermission(rbac.ResourcePluralVMTemplate, rbac.VerbList),
+	}, rbac.OperatorAND)
+	if err != nil || !authrResponse.Success {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list environments")
 		return
 	}
 

@@ -3,7 +3,6 @@ package courseserver
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -13,9 +12,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -24,17 +23,11 @@ import (
 
 const (
 	idIndex        = "courseserver.hobbyfarm.io/id-index"
-	resourcePlural = "courses"
-)
-
-var (
-	authTLSCert string
-	authTLSKey  string
-	authTLSCA   string
+	resourcePlural = rbac.ResourcePluralCourse
 )
 
 type CourseServer struct {
-	auth          *authclient.AuthClient
+	tlsCA         string
 	hfClientSet   hfClientset.Interface
 	acClient      *accesscode.AccessCodeClient
 	courseIndexer cache.Indexer
@@ -46,18 +39,12 @@ type PreparedCourse struct {
 	hfv1.CourseSpec
 }
 
-func init() {
-	flag.StringVar(&authTLSCert, "auth-tls-cert", "/etc/ssl/certs/tls.crt", "Path to TLS certificate for auth servers")
-	flag.StringVar(&authTLSKey, "auth-tls-key", "/etc/ssl/certs/tls.key", "Path to TLS key for auth servers")
-	flag.StringVar(&authTLSCA, "auth-tls-ca", "/etc/ssl/certs/ca.crt", "Path to CA cert for auth servers")
-}
-
-func NewCourseServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*CourseServer, error) {
+func NewCourseServer(tlsCA string, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*CourseServer, error) {
 	course := CourseServer{}
 
+	course.tlsCA = tlsCA
 	course.hfClientSet = hfClientset
 	course.acClient = acClient
-	course.auth = authClient
 	inf := hfInformerFactory.Hobbyfarm().V1().Courses().Informer()
 	indexers := map[string]cache.IndexFunc{idIndex: idIndexer}
 
@@ -95,14 +82,14 @@ func (c CourseServer) getPreparedCourseById(id string) (PreparedCourse, error) {
 }
 
 func (c CourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := util.AuthenticateRequest(r, authTLSCA)
+	user, err := rbac.AuthenticateRequest(r, c.tlsCA)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := util.AuthorizeRequest(r, authTLSCA, impersonatedUserId, "hobbyfarm.io", "courses", "list")
+	authrResponse, err := rbac.AuthorizeSimple(r, c.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		glog.Infof("Authr error: %s", err.Error())
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list courses")
@@ -134,14 +121,14 @@ func (c CourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) GetCourse(w http.ResponseWriter, r *http.Request) {
-	user, err := util.AuthenticateRequest(r, authTLSCA)
+	user, err := rbac.AuthenticateRequest(r, c.tlsCA)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := util.AuthorizeRequest(r, authTLSCA, impersonatedUserId, "hobbyfarm.io", "courses", "get")
+	authrResponse, err := rbac.AuthorizeSimple(r, c.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to courses")
 		return
@@ -166,14 +153,14 @@ func (c CourseServer) GetCourse(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := util.AuthenticateRequest(r, authTLSCA)
+	user, err := rbac.AuthenticateRequest(r, c.tlsCA)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := util.AuthorizeRequest(r, authTLSCA, impersonatedUserId, "hobbyfarm.io", "courses", "create")
+	authrResponse, err := rbac.AuthorizeSimple(r, c.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbCreate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create courses")
 		return
@@ -277,14 +264,14 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := util.AuthenticateRequest(r, authTLSCA)
+	user, err := rbac.AuthenticateRequest(r, c.tlsCA)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := util.AuthorizeRequest(r, authTLSCA, impersonatedUserId, "hobbyfarm.io", "courses", "update")
+	authrResponse, err := rbac.AuthorizeSimple(r, c.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update courses")
 		return
@@ -405,14 +392,14 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := util.AuthenticateRequest(r, authTLSCA)
+	user, err := rbac.AuthenticateRequest(r, c.tlsCA)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := util.AuthorizeRequest(r, authTLSCA, impersonatedUserId, "hobbyfarm.io", "courses", "delete")
+	authrResponse, err := rbac.AuthorizeSimple(r, c.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbDelete))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to to delete courses")
 		return
@@ -485,7 +472,7 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Request) {
-	user, err := util.AuthenticateRequest(r, authTLSCA)
+	user, err := rbac.AuthenticateRequest(r, c.tlsCA)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
@@ -543,14 +530,14 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 }
 
 func (c CourseServer) previewDynamicScenarios(w http.ResponseWriter, r *http.Request) {
-	user, err := util.AuthenticateRequest(r, authTLSCA)
+	user, err := rbac.AuthenticateRequest(r, c.tlsCA)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := util.AuthorizeRequest(r, authTLSCA, impersonatedUserId, "hobbyfarm.io", "scenarios", "list")
+	authrResponse, err := rbac.AuthorizeSimple(r, c.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(rbac.ResourcePluralScenario, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to preview dynamic scenarios")
 		return
@@ -579,7 +566,6 @@ func (c CourseServer) previewDynamicScenarios(w http.ResponseWriter, r *http.Req
 }
 
 func (c CourseServer) AppendDynamicScenariosByCategories(scenariosList []string, categories []string) []string {
-	categorySelector := metav1.ListOptions{}
 	for _, categoryQuery := range categories {
 		categorySelectors := []string{}
 		categoryQueryParts := strings.Split(categoryQuery, "&")
@@ -593,8 +579,8 @@ func (c CourseServer) AppendDynamicScenariosByCategories(scenariosList []string,
 		}
 		categorySelectorString := strings.Join(categorySelectors, ",")
 		glog.Errorf("query scenarios by query: %s", categorySelectorString)
-		categorySelector = metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s", categorySelectorString),
+		categorySelector := metav1.ListOptions{
+			LabelSelector: categorySelectorString,
 		}
 		scenarios, err := c.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).List(c.ctx, categorySelector)
 

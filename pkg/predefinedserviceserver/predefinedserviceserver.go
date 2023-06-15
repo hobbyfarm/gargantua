@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -20,17 +20,16 @@ type AdminPreparedPredefinedService struct {
 }
 
 type PredefinedServiceServer struct {
-	auth        *authclient.AuthClient
+	tlsCA       string
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
 
-
-func NewPredefinedServiceServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, ctx context.Context) (*PredefinedServiceServer, error) {
+func NewPredefinedServiceServer(tlsCA string, hfClientset hfClientset.Interface, ctx context.Context) (*PredefinedServiceServer, error) {
 	pss := PredefinedServiceServer{}
 
 	pss.hfClientSet = hfClientset
-	pss.auth = authClient
+	pss.tlsCA = tlsCA
 	pss.ctx = ctx
 	return &pss, nil
 }
@@ -40,10 +39,16 @@ func (s PredefinedServiceServer) SetupRoutes(r *mux.Router) {
 	glog.V(2).Infof("set up routes for PredefinedServiceServer")
 }
 
-
 func (s PredefinedServiceServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission("virtualmachinetemplates", rbacclient.VerbList), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(rbac.ResourcePluralVMTemplate, rbac.VerbList))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list PredefinedServices")
 		return
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
+	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	userProto "github.com/hobbyfarm/gargantua/protos/user"
 	"google.golang.org/grpc/codes"
@@ -15,7 +16,7 @@ import (
 )
 
 const (
-	resourcePlural = "users"
+	resourcePlural = rbac.ResourcePluralUser
 )
 
 type PreparedUser struct {
@@ -24,14 +25,14 @@ type PreparedUser struct {
 }
 
 func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	authenticatedUser, err := util.AuthenticateRequest(r, u.tlsCaPath)
+	authenticatedUser, err := rbac.AuthenticateRequest(r, u.tlsCaPath)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := util.AuthorizeRequest(r, u.tlsCaPath, impersonatedUserId, "hobbyfarm.io", resourcePlural, "get")
+	authrResponse, err := rbac.AuthorizeSimple(r, u.tlsCaPath, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get User")
 		return
@@ -76,14 +77,14 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := util.AuthenticateRequest(r, u.tlsCaPath)
+	user, err := rbac.AuthenticateRequest(r, u.tlsCaPath)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := util.AuthorizeRequest(r, u.tlsCaPath, impersonatedUserId, "hobbyfarm.io", resourcePlural, "list")
+	authrResponse, err := rbac.AuthorizeSimple(r, u.tlsCaPath, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get User")
 		return
@@ -120,14 +121,14 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := util.AuthenticateRequest(r, u.tlsCaPath)
+	user, err := rbac.AuthenticateRequest(r, u.tlsCaPath)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := util.AuthorizeRequest(r, u.tlsCaPath, impersonatedUserId, "hobbyfarm.io", resourcePlural, "update")
+	authrResponse, err := rbac.AuthorizeSimple(r, u.tlsCaPath, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get User")
 		return
@@ -171,14 +172,14 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	// 1. must not have an active session
 	// that's about it.
 
-	user, err := util.AuthenticateRequest(r, u.tlsCaPath)
+	user, err := rbac.AuthenticateRequest(r, u.tlsCaPath)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := util.AuthorizeRequest(r, u.tlsCaPath, impersonatedUserId, "hobbyfarm.io", resourcePlural, "get")
+	authrResponse, err := rbac.AuthorizeSimple(r, u.tlsCaPath, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbDelete))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get User")
 		return

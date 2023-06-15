@@ -7,7 +7,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	"github.com/hobbyfarm/gargantua/pkg/microservices"
 	authnProto "github.com/hobbyfarm/gargantua/protos/authn"
 	userProto "github.com/hobbyfarm/gargantua/protos/user"
 	"google.golang.org/grpc/codes"
@@ -77,7 +77,7 @@ func (a *GrpcAuthnServer) validateToken(ctx context.Context, token string) (*use
 }
 
 func (a *GrpcAuthnServer) validate(ctx context.Context, tokenString string) (*userProto.User, error) {
-	userConn, err := util.EstablishConnection("user-service", a.tlsCaPath)
+	userConn, err := microservices.EstablishConnection("user-service", a.tlsCaPath)
 	if err != nil {
 		glog.Error("failed connecting to service user-service")
 		return &userProto.User{}, fmt.Errorf("user service unreachable")

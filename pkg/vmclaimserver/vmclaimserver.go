@@ -3,35 +3,35 @@ package vmclaimserver
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"k8s.io/client-go/tools/cache"
-	"net/http"
 )
 
 const (
-	idIndex 			= "vmcs.hobbyfarm.io/id-index"
-	resourcePlural      = "virtualmachineclaims"
+	idIndex        = "vmcs.hobbyfarm.io/id-index"
+	resourcePlural = rbac.ResourcePluralVMClaim
 )
 
 type VMClaimServer struct {
-	auth        *authclient.AuthClient
+	tlsCA       string
 	hfClientSet hfClientset.Interface
 
 	vmClaimIndexer cache.Indexer
 }
 
-func NewVMClaimServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*VMClaimServer, error) {
+func NewVMClaimServer(tlsCA string, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*VMClaimServer, error) {
 	vmcs := VMClaimServer{}
 
 	vmcs.hfClientSet = hfClientset
-	vmcs.auth = authClient
+	vmcs.tlsCA = tlsCA
 
 	inf := hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer()
 	indexers := map[string]cache.IndexFunc{idIndex: vmcIdIndexer}
@@ -80,7 +80,7 @@ type PreparedVirtualMachineClaim struct {
 }
 
 func (vmcs VMClaimServer) GetVMClaimFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := vmcs.auth.AuthN(w, r)
+	user, err := rbac.AuthenticateRequest(r, vmcs.tlsCA)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vmc")
 		return
@@ -103,9 +103,10 @@ func (vmcs VMClaimServer) GetVMClaimFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if vmc.Spec.UserId != user.Name {
-		_, err := vmcs.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
-		if err != nil {
+	if vmc.Spec.UserId != user.GetId() {
+		impersonatedUserId := user.GetId()
+		authrResponse, err := rbac.AuthorizeSimple(r, vmcs.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
+		if err != nil || !authrResponse.Success {
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to get vmclaim")
 			return
 		}

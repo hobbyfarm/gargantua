@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
+	"github.com/hobbyfarm/gargantua/pkg/microservices"
+	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	authrProto "github.com/hobbyfarm/gargantua/protos/authr"
 	rbacProto "github.com/hobbyfarm/gargantua/protos/rbac"
@@ -17,8 +19,8 @@ import (
 )
 
 const (
-	OperatorAnd = "AND"
-	OperatorOr  = "OR"
+	OperatorAnd = rbac.OperatorAND
+	OperatorOr  = rbac.OperatorOR
 )
 
 type GrpcAuthRServer struct {
@@ -31,6 +33,7 @@ func NewGrpcAuthRServer(tlsCaPath string) *GrpcAuthRServer {
 
 // This function authorizes the user by using impersonation as an additional security layer.
 // After impersonation, the user must also authorize himself against the rbac-service.
+// If the authorization fails, this method should always return an AuthRResponse with Success = false AND an error
 func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrProto.AuthRRequest) (*authrProto.AuthRResponse, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -44,7 +47,7 @@ func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrProto.AuthRRequest) 
 	}
 
 	// Establish connection to rbac service
-	rbacConn, err := util.EstablishConnection("rbac-service", a.tlsCaPath)
+	rbacConn, err := microservices.EstablishConnection("rbac-service", a.tlsCaPath)
 	if err != nil {
 		glog.Error("failed connecting to service rbac-service")
 		msg := "rbac-service unreachable: "
@@ -87,7 +90,7 @@ func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrProto.AuthRRequest) 
 				glog.Infof("User %s is not authorized to perform this request", iu)
 				return &authrProto.AuthRResponse{
 					Success: false,
-				}, nil
+				}, fmt.Errorf("permission denied")
 			}
 		}
 

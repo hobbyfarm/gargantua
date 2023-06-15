@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/base32"
 	"encoding/json"
@@ -17,18 +16,11 @@ import (
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/protos/authn"
-	"github.com/hobbyfarm/gargantua/protos/authr"
 	v1 "github.com/hobbyfarm/gargantua/protos/k8s.io/apimachinery/pkg/apis/meta/v1"
-	userProto "github.com/hobbyfarm/gargantua/protos/user"
 	"golang.org/x/crypto/ssh"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 
 	"net/http"
@@ -607,139 +599,4 @@ func CopyObjectMeta(obj *metav1.ObjectMeta) *v1.ObjectMeta {
 		})
 	}
 	return &objMeta
-}
-
-type MicroService struct {
-	name string
-}
-
-var (
-	AuthN   = MicroService{"authn-service"}
-	AuthR   = MicroService{"authr-service"}
-	User    = MicroService{"user-service"}
-	Rbac    = MicroService{"rbac-service"}
-	Unknown = MicroService{""}
-)
-
-func (m MicroService) getUrl() (string, error) {
-	// Create a Kubernetes clientset
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return "", fmt.Errorf("error retrieving InClusterConfig")
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return "", fmt.Errorf("error creating kubernetes clientset")
-	}
-
-	ctx := context.Background()
-
-	// Get the endpoints object for the service
-	endpoints, err := clientset.CoreV1().Endpoints(GetReleaseNamespace()).Get(ctx, m.name, metav1.GetOptions{})
-	if err != nil {
-		return "", fmt.Errorf("error retrieving endpoints")
-	}
-
-	var grpcPort int32 = 0
-
-	// Get the grpc port number
-	for _, subset := range endpoints.Subsets {
-		for _, port := range subset.Ports {
-			if port.Name == "grpc" {
-				grpcPort = port.Port
-			}
-		}
-	}
-
-	if grpcPort == 0 {
-		return "", fmt.Errorf("no grpc port found for service %s", m.name)
-	}
-
-	// if port < 1 || port > 65535 {
-	// 	return "", errors.New("Invalid port(" + strconv.Itoa(port) + ")! Port must be within the range 1 to 65535")
-	// }
-	return "dns://" + GetK8sDnsServer() + "/" + m.name + "." + GetReleaseNamespace() + ".svc.cluster.local:" + strconv.Itoa(int(grpcPort)), nil
-}
-
-func createMicroService(service string) (MicroService, error) {
-	switch service {
-	case AuthN.name:
-		return AuthN, nil
-	case AuthR.name:
-		return AuthR, nil
-	case User.name:
-		return User, nil
-	case Rbac.name:
-		return Rbac, nil
-	}
-
-	return Unknown, fmt.Errorf("unknown service: %s", service)
-}
-
-func EstablishConnection(svcName string, caCertPath string) (*grpc.ClientConn, error) {
-	svc, err := createMicroService(svcName)
-	if err != nil {
-		glog.Errorf("failed to create microservice %s", svcName)
-		return nil, err
-	}
-	url, err := svc.getUrl()
-
-	if err != nil {
-		glog.Errorf("could not establish connection, failed to retrieve url for service %s", svc.name)
-		return nil, fmt.Errorf("could not establish connection, failed to retrieve url for service %s", svc.name)
-	}
-	// Read the CA certificate from file
-	caCert, err := os.ReadFile(caCertPath)
-	if err != nil {
-		glog.Errorf("could not establish connection, failed to load CA certificate: %s", err)
-		return nil, fmt.Errorf("could not establish connection, failed to load CA certificate: %s", err)
-	}
-	caCertPool, err := x509.SystemCertPool()
-	if err != nil {
-		caCertPool = x509.NewCertPool()
-	}
-	if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
-		glog.Error("could not establish connection, failed to parse CA certificate")
-		return nil, fmt.Errorf("could not establish connection, failed to parse CA certificate")
-	}
-	// Create transport credentials with the client certificate and CA certificate pool
-	creds := credentials.NewTLS(&tls.Config{
-		RootCAs: caCertPool,
-	})
-	return grpc.Dial(url, grpc.WithTransportCredentials(creds))
-}
-
-func AuthenticateRequest(r *http.Request, caCertPath string) (*userProto.User, error) {
-	authnConn, err := EstablishConnection("authn-service", caCertPath)
-	if err != nil {
-		glog.Error("failed connecting to service authn-service")
-		return nil, err
-	}
-	defer authnConn.Close()
-
-	authnClient := authn.NewAuthNClient(authnConn)
-	token := r.Header.Get("Authorization")
-	return authnClient.AuthN(r.Context(), &authn.AuthNRequest{Token: token})
-}
-
-func AuthorizeRequest(r *http.Request, caCertPath string, username string, group string, resource string, verb string) (*authr.AuthRResponse, error) {
-	authrConn, err := EstablishConnection("authr-service", caCertPath)
-	if err != nil {
-		glog.Error("failed connecting to service authr-service")
-		return nil, err
-	}
-	defer authrConn.Close()
-
-	authrClient := authr.NewAuthRClient(authrConn)
-	rbacPermissions := []*authr.Permission{
-		{
-			ApiGroup: group,
-			Resource: resource,
-			Verb:     verb,
-		},
-	}
-	rbacRq := &authr.RbacRequest{
-		Permissions: rbacPermissions,
-	}
-	return authrClient.AuthR(r.Context(), &authr.AuthRRequest{UserName: username, Request: rbacRq})
 }
