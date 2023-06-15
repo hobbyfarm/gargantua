@@ -55,6 +55,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ProgressList{},
 		&Setting{},
 		&SettingList{},
+		&Scope{},
+		&ScopeList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
