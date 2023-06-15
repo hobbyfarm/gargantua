@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"github.com/hobbyfarm/gargantua/pkg/preinstall"
+	"github.com/hobbyfarm/gargantua/pkg/settingclient"
 	"github.com/hobbyfarm/gargantua/pkg/settingserver"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/validation"
 	"os"
@@ -161,11 +162,6 @@ func main() {
 		glog.Fatalf("error building apiextensions clientset: %s", err.Error())
 	}
 
-	if !shellServer {
-		// install resources
-		preinstall.Preinstall(ctx, hfClient)
-	}
-
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, informers.WithNamespace(namespace))
 
@@ -278,6 +274,8 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	settingclient.WatchSettings(ctx, hfClient, hfInformerFactory)
+
 	if shellServer {
 		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
@@ -357,6 +355,11 @@ func main() {
 
 			glog.Fatal(server.ListenAndServeTLS("", ""))
 		}()
+
+		if !shellServer {
+			// install resources
+			preinstall.Preinstall(ctx, hfClient)
+		}
 	}
 
 	wg.Add(1)
