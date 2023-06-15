@@ -22,7 +22,7 @@ func InstallResources(ctx context.Context, client *hfClientset.Clientset, wg *sy
 				Scopes(util.GetReleaseNamespace()).Create(ctx, scope, v12.CreateOptions{}); err != nil {
 				return err
 			}
-			return nil
+			continue
 		}
 
 		if err != nil {
@@ -37,7 +37,7 @@ func InstallResources(ctx context.Context, client *hfClientset.Clientset, wg *sy
 				Settings(util.GetReleaseNamespace()).Create(ctx, setting, v12.CreateOptions{}); err != nil {
 				return err
 			}
-			return nil
+			continue
 		}
 
 		if err != nil {
