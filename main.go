@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/ebauman/crder"
+	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	"github.com/hobbyfarm/gargantua/pkg/crd"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/informers"
@@ -129,6 +130,11 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	authServer, err := authserver.NewAuthServer(tlsCA, hfClient, ctx, acClient)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
 	courseServer, err := courseserver.NewCourseServer(tlsCA, acClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
@@ -208,6 +214,7 @@ func main() {
 		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
 	} else {
+		authServer.SetupRoutes(r)
 		sessionServer.SetupRoutes(r)
 		courseServer.SetupRoutes(r)
 		scenarioServer.SetupRoutes(r)
