@@ -61,7 +61,6 @@ func main() {
 	glog.Info("grpc auth server listening on " + grpcPort)
 
 	gs := grpc.NewServer(grpc.Creds(creds))
-	// gs := grpc.NewServer()
 	as := authnservice.NewGrpcAuthNServer(authTLSCA)
 	authn.RegisterAuthNServer(gs, as)
 	reflection.Register(gs)

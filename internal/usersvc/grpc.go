@@ -22,12 +22,16 @@ import (
 )
 
 type GrpcUserServer struct {
+	userProto.UnimplementedUserSvcServer
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
 
 func NewGrpcUserServer(hfClientSet hfClientset.Interface, ctx context.Context) *GrpcUserServer {
-	return &GrpcUserServer{hfClientSet, ctx}
+	return &GrpcUserServer{
+		hfClientSet: hfClientSet,
+		ctx:         ctx,
+	}
 }
 
 func (u *GrpcUserServer) CreateUser(c context.Context, cur *userProto.CreateUserRequest) (*userProto.UserId, error) {

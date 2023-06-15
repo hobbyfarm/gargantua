@@ -65,15 +65,16 @@ func (c *rbacSvcClient) GetHobbyfarmRoleBindings(ctx context.Context, in *user.U
 }
 
 // RbacSvcServer is the server API for RbacSvc service.
-// All implementations should embed UnimplementedRbacSvcServer
+// All implementations must embed UnimplementedRbacSvcServer
 // for forward compatibility
 type RbacSvcServer interface {
 	Grants(context.Context, *GrantRequest) (*authr.AuthRResponse, error)
 	GetAccessSet(context.Context, *user.UserId) (*AccessSet, error)
 	GetHobbyfarmRoleBindings(context.Context, *user.UserId) (*RoleBindings, error)
+	mustEmbedUnimplementedRbacSvcServer()
 }
 
-// UnimplementedRbacSvcServer should be embedded to have forward compatible implementations.
+// UnimplementedRbacSvcServer must be embedded to have forward compatible implementations.
 type UnimplementedRbacSvcServer struct {
 }
 
@@ -86,6 +87,7 @@ func (UnimplementedRbacSvcServer) GetAccessSet(context.Context, *user.UserId) (*
 func (UnimplementedRbacSvcServer) GetHobbyfarmRoleBindings(context.Context, *user.UserId) (*RoleBindings, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHobbyfarmRoleBindings not implemented")
 }
+func (UnimplementedRbacSvcServer) mustEmbedUnimplementedRbacSvcServer() {}
 
 // UnsafeRbacSvcServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to RbacSvcServer will

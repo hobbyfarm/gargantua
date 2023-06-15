@@ -43,19 +43,21 @@ func (c *authRClient) AuthR(ctx context.Context, in *AuthRRequest, opts ...grpc.
 }
 
 // AuthRServer is the server API for AuthR service.
-// All implementations should embed UnimplementedAuthRServer
+// All implementations must embed UnimplementedAuthRServer
 // for forward compatibility
 type AuthRServer interface {
 	AuthR(context.Context, *AuthRRequest) (*AuthRResponse, error)
+	mustEmbedUnimplementedAuthRServer()
 }
 
-// UnimplementedAuthRServer should be embedded to have forward compatible implementations.
+// UnimplementedAuthRServer must be embedded to have forward compatible implementations.
 type UnimplementedAuthRServer struct {
 }
 
 func (UnimplementedAuthRServer) AuthR(context.Context, *AuthRRequest) (*AuthRResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AuthR not implemented")
 }
+func (UnimplementedAuthRServer) mustEmbedUnimplementedAuthRServer() {}
 
 // UnsafeAuthRServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to AuthRServer will

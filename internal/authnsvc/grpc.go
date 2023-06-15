@@ -15,11 +15,12 @@ import (
 )
 
 type GrpcAuthnServer struct {
+	authnProto.UnimplementedAuthNServer
 	tlsCaPath string
 }
 
 func NewGrpcAuthNServer(tlsCaPath string) *GrpcAuthnServer {
-	return &GrpcAuthnServer{tlsCaPath}
+	return &GrpcAuthnServer{tlsCaPath: tlsCaPath}
 }
 
 func (a *GrpcAuthnServer) AuthN(c context.Context, ar *authnProto.AuthNRequest) (*userProto.User, error) {

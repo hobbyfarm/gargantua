@@ -44,19 +44,21 @@ func (c *authNClient) AuthN(ctx context.Context, in *AuthNRequest, opts ...grpc.
 }
 
 // AuthNServer is the server API for AuthN service.
-// All implementations should embed UnimplementedAuthNServer
+// All implementations must embed UnimplementedAuthNServer
 // for forward compatibility
 type AuthNServer interface {
 	AuthN(context.Context, *AuthNRequest) (*user.User, error)
+	mustEmbedUnimplementedAuthNServer()
 }
 
-// UnimplementedAuthNServer should be embedded to have forward compatible implementations.
+// UnimplementedAuthNServer must be embedded to have forward compatible implementations.
 type UnimplementedAuthNServer struct {
 }
 
 func (UnimplementedAuthNServer) AuthN(context.Context, *AuthNRequest) (*user.User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AuthN not implemented")
 }
+func (UnimplementedAuthNServer) mustEmbedUnimplementedAuthNServer() {}
 
 // UnsafeAuthNServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to AuthNServer will

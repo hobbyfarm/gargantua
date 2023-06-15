@@ -24,11 +24,12 @@ const (
 )
 
 type GrpcAuthRServer struct {
+	authrProto.UnimplementedAuthRServer
 	tlsCaPath string
 }
 
 func NewGrpcAuthRServer(tlsCaPath string) *GrpcAuthRServer {
-	return &GrpcAuthRServer{tlsCaPath}
+	return &GrpcAuthRServer{tlsCaPath: tlsCaPath}
 }
 
 // This function authorizes the user by using impersonation as an additional security layer.

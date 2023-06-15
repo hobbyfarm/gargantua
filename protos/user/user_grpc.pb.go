@@ -94,7 +94,7 @@ func (c *userSvcClient) ListUser(ctx context.Context, in *emptypb.Empty, opts ..
 }
 
 // UserSvcServer is the server API for UserSvc service.
-// All implementations should embed UnimplementedUserSvcServer
+// All implementations must embed UnimplementedUserSvcServer
 // for forward compatibility
 type UserSvcServer interface {
 	CreateUser(context.Context, *CreateUserRequest) (*UserId, error)
@@ -103,9 +103,10 @@ type UserSvcServer interface {
 	UpdateUser(context.Context, *User) (*User, error)
 	DeleteUser(context.Context, *UserId) (*emptypb.Empty, error)
 	ListUser(context.Context, *emptypb.Empty) (*ListUsersResponse, error)
+	mustEmbedUnimplementedUserSvcServer()
 }
 
-// UnimplementedUserSvcServer should be embedded to have forward compatible implementations.
+// UnimplementedUserSvcServer must be embedded to have forward compatible implementations.
 type UnimplementedUserSvcServer struct {
 }
 
@@ -127,6 +128,7 @@ func (UnimplementedUserSvcServer) DeleteUser(context.Context, *UserId) (*emptypb
 func (UnimplementedUserSvcServer) ListUser(context.Context, *emptypb.Empty) (*ListUsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListUser not implemented")
 }
+func (UnimplementedUserSvcServer) mustEmbedUnimplementedUserSvcServer() {}
 
 // UnsafeUserSvcServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to UserSvcServer will

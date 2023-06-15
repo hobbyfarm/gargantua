@@ -22,6 +22,7 @@ const (
 )
 
 type GrpcRbacServer struct {
+	rbacProto.UnimplementedRbacSvcServer
 	userIndex  *Index
 	groupIndex *Index
 }
