@@ -770,7 +770,8 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWrit
 		// No error in the errorChan
 		glog.Infof("No Error in goroutine: %v", vm_output_tasks)
 		jsonStr, _ := json.Marshal(vm_output_tasks)
-		io.Copy(w, strings.NewReader(fmt.Sprintf("%v", string(jsonStr))))
+		util.ReturnHTTPContent(w, r, 200, "success", jsonStr)
+	//	io.Copy(w, strings.NewReader(fmt.Sprintf("%v", string(jsonStr))))
 	}
 
 	
