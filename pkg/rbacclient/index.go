@@ -34,11 +34,8 @@ type Index struct {
 func NewIndex(
 	kind string,
 	namespace string,
-	//	rbInformer v12.RoleBindingInformer,
 	roleBindingInformer cache.SharedIndexInformer,
-	// crbInformer v12.ClusterRoleBindingInformer,
 	clusterRoleBindingInformer cache.SharedIndexInformer,
-	// rInformer v12.RoleInformer,
 	roleInformer cache.SharedIndexInformer,
 	clusterRoleInformer cache.SharedIndexInformer) (*Index, error) {
 	i := &Index{
