@@ -311,18 +311,13 @@ func (p Property) validateEnum(value any) error {
 }
 
 func validateStringEnum(value string, enum []string) error {
-	var ok = false
 	for _, e := range enum {
 		if value == e {
-			ok = true
+			return nil
 		}
 	}
 
-	if !ok {
-		return NewValidationErrorf("value %s not found in enum", value)
-	}
-
-	return nil
+	return NewValidationErrorf("value %s not found in enum", value)
 }
 
 func validateIntEnum(value int, enum []string) error {
