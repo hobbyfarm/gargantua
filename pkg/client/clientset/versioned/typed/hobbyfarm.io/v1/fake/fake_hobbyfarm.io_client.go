@@ -60,8 +60,16 @@ func (c *FakeHobbyfarmV1) ScheduledEvents(namespace string) v1.ScheduledEventInt
 	return &FakeScheduledEvents{c, namespace}
 }
 
+func (c *FakeHobbyfarmV1) Scopes(namespace string) v1.ScopeInterface {
+	return &FakeScopes{c, namespace}
+}
+
 func (c *FakeHobbyfarmV1) Sessions(namespace string) v1.SessionInterface {
 	return &FakeSessions{c, namespace}
+}
+
+func (c *FakeHobbyfarmV1) Settings(namespace string) v1.SettingInterface {
+	return &FakeSettings{c, namespace}
 }
 
 func (c *FakeHobbyfarmV1) Users(namespace string) v1.UserInterface {

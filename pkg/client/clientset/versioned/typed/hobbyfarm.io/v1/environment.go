@@ -40,7 +40,6 @@ type EnvironmentsGetter interface {
 type EnvironmentInterface interface {
 	Create(ctx context.Context, environment *v1.Environment, opts metav1.CreateOptions) (*v1.Environment, error)
 	Update(ctx context.Context, environment *v1.Environment, opts metav1.UpdateOptions) (*v1.Environment, error)
-	UpdateStatus(ctx context.Context, environment *v1.Environment, opts metav1.UpdateOptions) (*v1.Environment, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
 	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Environment, error)
@@ -129,22 +128,6 @@ func (c *environments) Update(ctx context.Context, environment *v1.Environment, 
 		Namespace(c.ns).
 		Resource("environments").
 		Name(environment.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(environment).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *environments) UpdateStatus(ctx context.Context, environment *v1.Environment, opts metav1.UpdateOptions) (result *v1.Environment, err error) {
-	result = &v1.Environment{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("environments").
-		Name(environment.Name).
-		SubResource("status").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(environment).
 		Do(ctx).

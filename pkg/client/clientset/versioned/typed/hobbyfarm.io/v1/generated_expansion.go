@@ -34,7 +34,11 @@ type ScenarioExpansion interface{}
 
 type ScheduledEventExpansion interface{}
 
+type ScopeExpansion interface{}
+
 type SessionExpansion interface{}
+
+type SettingExpansion interface{}
 
 type UserExpansion interface{}
 

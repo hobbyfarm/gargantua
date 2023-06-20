@@ -1,14 +1,22 @@
 package crd
 
 import (
+	"fmt"
 	"github.com/ebauman/crder"
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	v2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	terraformv1 "github.com/hobbyfarm/gargantua/pkg/apis/terraformcontroller.cattle.io/v1"
-	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"github.com/hobbyfarm/gargantua/pkg/labels"
+	"github.com/hobbyfarm/gargantua/pkg/util"
+	v12 "k8s.io/api/admissionregistration/v1"
+	v13 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.CRD {
+const (
+	namespaceNameLabel = "kubernetes.io/metadata.name"
+)
+
+func GenerateCRDs(caBundle string, reference ServiceReference) []crder.CRD {
 	return []crder.CRD{
 		hobbyfarmCRD(&v1.VirtualMachine{}, func(c *crder.CRD) {
 			c.
@@ -119,7 +127,7 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 					cc.
 						StrategyWebhook().
 						WithCABundle(caBundle).
-						WithService(serviceReferenceWithPath(reference, "/conversion/users.hobbyfarm.io")).
+						WithService(reference.Toapiextv1WithPath("/conversion/users.hobbyfarm.io")).
 						WithVersions("v2", "v1")
 				})
 		}),
@@ -147,6 +155,43 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.DynamicBindConfiguration{}, nil)
+		}),
+		hobbyfarmCRD(&v1.Scope{}, func(c *crder.CRD) {
+			c.IsNamespaced(true).AddVersion("v1", &v1.Scope{}, func(cv *crder.Version) {
+				cv.WithColumn("DisplayName", ".displayName").IsServed(true).IsStored(true)
+			})
+		}),
+		hobbyfarmCRD(&v1.Setting{}, func(c *crder.CRD) {
+			c.IsNamespaced(true).AddVersion("v1", &v1.Setting{}, func(cv *crder.Version) {
+				cv.
+					WithColumn("DisplayName", ".displayName").
+					WithColumn("Scope", fmt.Sprintf(".metadata.labels.%s", labels.DotEscapeLabel(labels.SettingScope))).
+					WithColumn("Value", ".value").
+					IsServed(true).
+					IsStored(true)
+			})
+			c.AddValidation("settings.hobbyfarm.io", func(vv *crder.Validation) {
+				vv.AddRules(v12.RuleWithOperations{
+					Operations: []v12.OperationType{
+						v12.Create,
+						v12.Update,
+					},
+					Rule: v12.Rule{
+						APIGroups:   []string{v1.SchemeGroupVersion.Group},
+						APIVersions: []string{v1.SchemeGroupVersion.Version},
+						Resources:   []string{"settings"},
+					},
+				})
+				vv.WithCABundle(caBundle)
+				vv.WithService(reference.ToadmissionRegistrationv1WithPath("/validation/hobbyfarm.io/v1/settings"))
+				vv.WithVersions("v1")
+				vv.SetNamespaceSelector(v13.LabelSelector{
+					MatchLabels: map[string]string{
+						namespaceNameLabel: util.GetReleaseNamespace(), // only process settings in our namespace
+					},
+				})
+				vv.MatchPolicyExact()
+			})
 		}),
 		terraformCRD(&terraformv1.Module{}, func(c *crder.CRD) {
 			c.
@@ -176,12 +221,6 @@ func GenerateCRDs(caBundle string, reference apiextv1.ServiceReference) []crder.
 				})
 		}),
 	}
-}
-
-func serviceReferenceWithPath(reference apiextv1.ServiceReference, path string) apiextv1.ServiceReference {
-	ref := reference.DeepCopy()
-	ref.Path = &path
-	return *ref
 }
 
 func hobbyfarmCRD(obj interface{}, customize func(c *crder.CRD)) crder.CRD {

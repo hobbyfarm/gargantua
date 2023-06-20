@@ -102,22 +102,10 @@ func (c *FakeEnvironments) Update(ctx context.Context, environment *hobbyfarmiov
 	return obj.(*hobbyfarmiov1.Environment), err
 }
 
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeEnvironments) UpdateStatus(ctx context.Context, environment *hobbyfarmiov1.Environment, opts v1.UpdateOptions) (*hobbyfarmiov1.Environment, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(environmentsResource, "status", c.ns, environment), &hobbyfarmiov1.Environment{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*hobbyfarmiov1.Environment), err
-}
-
 // Delete takes name of the environment and deletes it. Returns an error if one occurs.
 func (c *FakeEnvironments) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(environmentsResource, c.ns, name), &hobbyfarmiov1.Environment{})
+		Invokes(testing.NewDeleteActionWithOptions(environmentsResource, c.ns, name, opts), &hobbyfarmiov1.Environment{})
 
 	return err
 }

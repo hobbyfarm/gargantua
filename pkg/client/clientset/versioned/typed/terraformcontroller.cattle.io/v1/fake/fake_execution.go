@@ -117,7 +117,7 @@ func (c *FakeExecutions) UpdateStatus(ctx context.Context, execution *terraformc
 // Delete takes name of the execution and deletes it. Returns an error if one occurs.
 func (c *FakeExecutions) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(executionsResource, c.ns, name), &terraformcontrollercattleiov1.Execution{})
+		Invokes(testing.NewDeleteActionWithOptions(executionsResource, c.ns, name, opts), &terraformcontrollercattleiov1.Execution{})
 
 	return err
 }

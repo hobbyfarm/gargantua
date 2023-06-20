@@ -19,19 +19,18 @@ limitations under the License.
 package v1
 
 import (
+	"net/http"
+
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/terraformcontroller.cattle.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
-	"net/http"
 )
 
-
 type TerraformcontrollerV1Interface interface {
-    RESTClient() rest.Interface
-     ExecutionsGetter
-     ModulesGetter
-     StatesGetter
-    
+	RESTClient() rest.Interface
+	ExecutionsGetter
+	ModulesGetter
+	StatesGetter
 }
 
 // TerraformcontrollerV1Client is used to interact with features provided by the terraformcontroller.cattle.io group.
@@ -97,7 +96,7 @@ func New(c rest.Interface) *TerraformcontrollerV1Client {
 
 func setConfigDefaults(config *rest.Config) error {
 	gv := v1.SchemeGroupVersion
-	config.GroupVersion =  &gv
+	config.GroupVersion = &gv
 	config.APIPath = "/apis"
 	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 

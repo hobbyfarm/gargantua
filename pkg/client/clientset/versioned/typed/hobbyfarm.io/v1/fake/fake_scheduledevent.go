@@ -117,7 +117,7 @@ func (c *FakeScheduledEvents) UpdateStatus(ctx context.Context, scheduledEvent *
 // Delete takes name of the scheduledEvent and deletes it. Returns an error if one occurs.
 func (c *FakeScheduledEvents) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(scheduledeventsResource, c.ns, name), &hobbyfarmiov1.ScheduledEvent{})
+		Invokes(testing.NewDeleteActionWithOptions(scheduledeventsResource, c.ns, name, opts), &hobbyfarmiov1.ScheduledEvent{})
 
 	return err
 }
