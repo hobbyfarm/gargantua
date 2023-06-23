@@ -6,32 +6,37 @@ import (
 )
 
 const (
-	VerbList = "list"
-	VerbGet = "get"
+	VerbList   = "list"
+	VerbGet    = "get"
 	VerbCreate = "create"
 	VerbUpdate = "update"
 	VerbDelete = "delete"
-	VerbWatch = "watch"
+	VerbWatch  = "watch"
 )
 
 type Client struct {
-	userIndex *Index
+	userIndex  *Index
 	groupIndex *Index
 }
 
 func NewRbacClient(namespace string, kubeInformerFactory informers.SharedInformerFactory) (*Client, error) {
-	userIndex, err := NewIndex("User", namespace, kubeInformerFactory)
+	rbInformer := kubeInformerFactory.Rbac().V1().RoleBindings().Informer()
+	crbInformer := kubeInformerFactory.Rbac().V1().ClusterRoleBindings().Informer()
+	rInformer := kubeInformerFactory.Rbac().V1().Roles().Informer()
+	crInformer := kubeInformerFactory.Rbac().V1().ClusterRoles().Informer()
+
+	userIndex, err := NewIndex("User", namespace, rbInformer, crbInformer, rInformer, crInformer)
 	if err != nil {
 		return nil, err
 	}
 
-	groupIndex, err := NewIndex("Group", namespace, kubeInformerFactory)
+	groupIndex, err := NewIndex("Group", namespace, rbInformer, crbInformer, rInformer, crInformer)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Client{
-		userIndex: userIndex,
+		userIndex:  userIndex,
 		groupIndex: groupIndex,
 	}, nil
 }
@@ -52,4 +57,3 @@ func (rs *Client) GetAccessSet(user string) (*AccessSet, error) {
 func (rs *Client) GetHobbyfarmRoleBindings(user string) ([]*rbacv1.RoleBinding, error) {
 	return rs.userIndex.getRoleBindings(user)
 }
-

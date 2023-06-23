@@ -591,6 +591,7 @@ func filterScheduledEvents(course string, seList *hfv1.ScheduledEventList) *[]hf
 		for _, c := range se.Spec.Courses {
 			if c == course {
 				outList = append(outList, se)
+				break;
 			}
 		}
 	}

@@ -1,16 +1,17 @@
 package v1
 
 import (
+	"github.com/hobbyfarm/gargantua/pkg/property"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type VmStatus string
 
 const (
-	VmStatusRFP         VmStatus     = "readyforprovisioning"
-	VmStatusProvisioned VmStatus     = "provisioned"
-	VmStatusRunning     VmStatus     = "running"
-	VmStatusTerminating VmStatus     = "terminating"
+	VmStatusRFP         VmStatus = "readyforprovisioning"
+	VmStatusProvisioned VmStatus = "provisioned"
+	VmStatusRunning     VmStatus = "running"
+	VmStatusTerminating VmStatus = "terminating"
 )
 
 // +genclient
@@ -82,11 +83,11 @@ type VirtualMachineClaimSpec struct {
 }
 
 type VirtualMachineClaimStatus struct {
-	BindMode             string `json:"bind_mode"`
-	StaticBindAttempts   int    `json:"static_bind_attempts"`
-	Bound                bool   `json:"bound"`
-	Ready                bool   `json:"ready"`
-	Tainted              bool   `json:"tainted"` // If tainted, we should delete the VM's underneath then delete ourself...
+	BindMode           string `json:"bind_mode"`
+	StaticBindAttempts int    `json:"static_bind_attempts"`
+	Bound              bool   `json:"bound"`
+	Ready              bool   `json:"ready"`
+	Tainted            bool   `json:"tainted"` // If tainted, we should delete the VM's underneath then delete ourself...
 }
 
 type VirtualMachineClaimVM struct {
@@ -137,16 +138,16 @@ type PredefinedServiceList struct {
 }
 
 type ServiceSpec struct {
-	Name      			string	`json:"name"`  // IDE, Jupyter etc.
-	Port     			int		`json:"port"` // 80, 8888 etc.
-	HasWebinterface 	bool	`json:"has_webinterface"` // Has a webservice that can be proxies via http/wss
-	HasTab 				bool	`json:"has_tab"` // Is displayed in its own tab rather than in a submenu
-	Path 				string	`json:"path"` // Default path to be called e.g. /dashboard
-	NoRewriteRootPath 	bool	`json:"no_rewrite_root_path"` // Path is rewritten to application root, can be disabled with this flag
-	RewriteHostHeader 	bool	`json:"rewrite_host_header"` // Rewrite Host header to proxy host
-	RewriteOriginHeader bool	`json:"rewrite_origin_header"` // Rewrite Origin to localhost
-	DisallowIFrame 		bool	`json:"disallow_iframe"` // Application can only be accessed in a new tab
-	CloudConfig		 	string	`json:"cloud_config"` // Cloud config data, used to install applications etc.
+	Name                string `json:"name"`                  // IDE, Jupyter etc.
+	Port                int    `json:"port"`                  // 80, 8888 etc.
+	HasWebinterface     bool   `json:"has_webinterface"`      // Has a webservice that can be proxies via http/wss
+	HasTab              bool   `json:"has_tab"`               // Is displayed in its own tab rather than in a submenu
+	Path                string `json:"path"`                  // Default path to be called e.g. /dashboard
+	NoRewriteRootPath   bool   `json:"no_rewrite_root_path"`  // Path is rewritten to application root, can be disabled with this flag
+	RewriteHostHeader   bool   `json:"rewrite_host_header"`   // Rewrite Host header to proxy host
+	RewriteOriginHeader bool   `json:"rewrite_origin_header"` // Rewrite Origin to localhost
+	DisallowIFrame      bool   `json:"disallow_iframe"`       // Application can only be accessed in a new tab
+	CloudConfig         string `json:"cloud_config"`          // Cloud config data, used to install applications etc.
 }
 
 // +genclient
@@ -155,7 +156,7 @@ type ServiceSpec struct {
 type Environment struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              EnvironmentSpec   `json:"spec"`
+	Spec              EnvironmentSpec `json:"spec"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -375,6 +376,8 @@ type AccessCodeList struct {
 	Items           []AccessCode `json:"items"`
 }
 
+// +k8s:deepcopy-gen:true
+
 type AccessCodeSpec struct {
 	Code                string   `json:"code"`
 	Description         string   `json:"description"`
@@ -484,4 +487,46 @@ type DynamicBindConfigurationSpec struct {
 	RestrictedBind      bool           `json:"restricted_bind"`
 	RestrictedBindValue string         `json:"restricted_bind_value"`
 	BurstCountCapacity  map[string]int `json:"burst_count_capacity"`
+}
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type Setting struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	property.Property `json:",inline"`
+
+	Value string `json:"value"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type SettingList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []Setting `json:"items"`
+}
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type Scope struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	DisplayName string `json:"displayName"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ScopeList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []Scope `json:"items"`
 }

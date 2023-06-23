@@ -3,20 +3,19 @@ package rbacclient
 import (
 	"fmt"
 	v1 "k8s.io/api/rbac/v1"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
 )
 
 const (
-	rbIndex = "rbac.hobbyfarm.io/rb-index"
+	rbIndex   = "rbac.hobbyfarm.io/rb-index"
 	RbacGroup = "rbac.authorization.k8s.io"
-	All = "*"
-	APIGroup = "hobbyfarm.io"
+	All       = "*"
+	APIGroup  = "hobbyfarm.io"
 )
 
 var (
-	KindUser = "User"
-	KindGroup = "Group"
+	KindUser           = "User"
+	KindGroup          = "Group"
 	KindServiceAccount = "ServiceAccount"
 )
 
@@ -25,42 +24,44 @@ type Index struct {
 
 	namespace string
 
-	roleBindingIndexer cache.Indexer
+	roleBindingIndexer        cache.Indexer
 	clusterRoleBindingIndexer cache.Indexer
 
-	roleIndexer cache.Indexer
+	roleIndexer        cache.Indexer
 	clusterRoleIndexer cache.Indexer
 }
 
-func NewIndex(kind string, namespace string, informerFactory informers.SharedInformerFactory) (*Index, error) {
+func NewIndex(
+	kind string,
+	namespace string,
+	roleBindingInformer cache.SharedIndexInformer,
+	clusterRoleBindingInformer cache.SharedIndexInformer,
+	roleInformer cache.SharedIndexInformer,
+	clusterRoleInformer cache.SharedIndexInformer) (*Index, error) {
 	i := &Index{
-		kind: kind,
+		kind:      kind,
 		namespace: namespace,
 	}
-
-	// build an informer for each of rolebinding and clusterrolebinding
-	rbInformer := informerFactory.Rbac().V1().RoleBindings().Informer()
-	crbInformer := informerFactory.Rbac().V1().ClusterRoleBindings().Informer()
 
 	// add the indexers to a map...
 	rbIndexers := map[string]cache.IndexFunc{rbIndex + "-" + kind: i.roleBindingSubjectIndexer}
 	crbIndexers := map[string]cache.IndexFunc{rbIndex + "-" + kind: i.clusterRoleBindingSubjectIndexer}
 
 	// ... then tell the informers to use those indexers
-	if err := rbInformer.AddIndexers(rbIndexers); err != nil {
+	if err := roleBindingInformer.AddIndexers(rbIndexers); err != nil {
 		return nil, err
 	}
 
-	if err := crbInformer.AddIndexers(crbIndexers); err != nil {
+	if err := clusterRoleBindingInformer.AddIndexers(crbIndexers); err != nil {
 		return nil, err
 	}
 
 	// finally, generate the indexers and store in the index struct
-	i.roleBindingIndexer = rbInformer.GetIndexer()
-	i.clusterRoleBindingIndexer = crbInformer.GetIndexer()
+	i.roleBindingIndexer = roleBindingInformer.GetIndexer()
+	i.clusterRoleBindingIndexer = clusterRoleBindingInformer.GetIndexer()
 
-	i.roleIndexer = informerFactory.Rbac().V1().Roles().Informer().GetIndexer()
-	i.clusterRoleIndexer = informerFactory.Rbac().V1().ClusterRoles().Informer().GetIndexer()
+	i.roleIndexer = roleInformer.GetIndexer()
+	i.clusterRoleIndexer = clusterRoleInformer.GetIndexer()
 
 	return i, nil
 }
@@ -72,7 +73,7 @@ if the index type (i.kind) is user, we index user subjects of rolebindings. if g
 for both types, we index serviceaccounts as well as they are special
 
 this lets us perform quick lookups of the rolebindings for a subject
- */
+*/
 func (i *Index) roleBindingSubjectIndexer(obj interface{}) (result []string, err error) {
 	rb, ok := obj.(*v1.RoleBinding)
 	if !ok {
@@ -97,7 +98,7 @@ if the index type (i.kind) is user, we index user subjects of clusterrolebinding
 for both types, we index serviceaccounts as well as they are special
 
 this lets us perform quick lookups of the clusterrolebindings for a subject
- */
+*/
 func (i *Index) clusterRoleBindingSubjectIndexer(obj interface{}) (result []string, err error) {
 	crb, ok := obj.(*v1.ClusterRoleBinding)
 	if !ok {

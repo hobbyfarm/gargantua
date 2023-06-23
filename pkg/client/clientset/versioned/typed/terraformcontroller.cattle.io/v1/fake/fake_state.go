@@ -117,7 +117,7 @@ func (c *FakeStates) UpdateStatus(ctx context.Context, state *terraformcontrolle
 // Delete takes name of the state and deletes it. Returns an error if one occurs.
 func (c *FakeStates) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(statesResource, c.ns, name), &terraformcontrollercattleiov1.State{})
+		Invokes(testing.NewDeleteActionWithOptions(statesResource, c.ns, name, opts), &terraformcontrollercattleiov1.State{})
 
 	return err
 }

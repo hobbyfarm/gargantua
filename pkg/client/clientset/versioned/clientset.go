@@ -20,6 +20,7 @@ package versioned
 
 import (
 	"fmt"
+	"net/http"
 
 	hobbyfarmv1 "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
 	hobbyfarmv2 "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/typed/hobbyfarm.io/v2"
@@ -27,7 +28,6 @@ import (
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
-	"net/http"
 )
 
 type Interface interface {
@@ -70,7 +70,7 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 }
 
 // NewForConfig creates a new Clientset for the given config.
-// If config's RateLimiter is not set and QPS and Burst are acceptable, 
+// If config's RateLimiter is not set and QPS and Burst are acceptable,
 // NewForConfig will generate a rate-limiter in configShallowCopy.
 // NewForConfig is equivalent to NewForConfigAndClient(c, httpClient),
 // where httpClient was generated with rest.HTTPClientFor(c).
@@ -105,21 +105,21 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 
 	var cs Clientset
 	var err error
-    cs.hobbyfarmV1, err =hobbyfarmv1.NewForConfigAndClient(&configShallowCopy, httpClient)
-	if err!=nil {
+	cs.hobbyfarmV1, err = hobbyfarmv1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
 		return nil, err
 	}
-    cs.hobbyfarmV2, err =hobbyfarmv2.NewForConfigAndClient(&configShallowCopy, httpClient)
-	if err!=nil {
+	cs.hobbyfarmV2, err = hobbyfarmv2.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
 		return nil, err
 	}
-    cs.terraformcontrollerV1, err =terraformcontrollerv1.NewForConfigAndClient(&configShallowCopy, httpClient)
-	if err!=nil {
+	cs.terraformcontrollerV1, err = terraformcontrollerv1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
 		return nil, err
 	}
 
 	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfigAndClient(&configShallowCopy, httpClient)
-	if err!=nil {
+	if err != nil {
 		return nil, err
 	}
 	return &cs, nil
@@ -129,7 +129,7 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	cs, err := NewForConfig(c)
-	if err!=nil {
+	if err != nil {
 		panic(err)
 	}
 	return cs

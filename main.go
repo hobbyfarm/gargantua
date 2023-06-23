@@ -6,6 +6,11 @@ import (
 	"flag"
 	"os"
 
+	"github.com/hobbyfarm/gargantua/pkg/preinstall"
+	"github.com/hobbyfarm/gargantua/pkg/settingclient"
+	"github.com/hobbyfarm/gargantua/pkg/settingserver"
+	"github.com/hobbyfarm/gargantua/pkg/webhook/validation"
+
 	"github.com/ebauman/crder"
 	"github.com/hobbyfarm/gargantua/pkg/crd"
 	"github.com/hobbyfarm/gargantua/pkg/rbac"
@@ -16,7 +21,6 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion/scenario"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion/user"
 	"golang.org/x/sync/errgroup"
-	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/leaderelection"
@@ -120,7 +124,7 @@ func main() {
 			glog.Fatalf("error reading ca certificate: %s", err.Error())
 		}
 
-		crds := crd.GenerateCRDs(string(ca), v1.ServiceReference{
+		crds := crd.GenerateCRDs(string(ca), crd.ServiceReference{
 			Namespace: namespace,
 			Name:      "hobbyfarm-webhook",
 		})
@@ -267,6 +271,13 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	settingServer, err := settingserver.NewSettingServer(hfClient, authClient, ctx)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	settingclient.WatchSettings(ctx, hfClient, hfInformerFactory)
+
 	if shellServer {
 		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
@@ -286,6 +297,7 @@ func main() {
 		progressServer.SetupRoutes(r)
 		rbacServer.SetupRoutes(r)
 		predefinedServiceServer.SetupRoutes(r)
+		settingServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
@@ -315,8 +327,12 @@ func main() {
 	if !shellServer {
 		user.Init()
 		scenario.Init()
-		conversionRouter := mux.NewRouter()
-		conversion.New(conversionRouter, apiExtensionsClient, string(ca))
+
+		webhookRouter := mux.NewRouter()
+		conversion.New(webhookRouter, apiExtensionsClient, string(ca))
+
+		validationEndpoints := webhookRouter.PathPrefix("/validation").Subrouter()
+		validation.SetupValidationServer(hfClient, validationEndpoints)
 
 		webhookPort := os.Getenv("WEBHOOK_PORT")
 		if webhookPort == "" {
@@ -338,11 +354,16 @@ func main() {
 					Certificates: []tls.Certificate{*cert},
 				},
 				Addr:    ":" + webhookPort,
-				Handler: handlers.CORS(corsHeaders, corsOrigins, corsMethods)(conversionRouter),
+				Handler: handlers.CORS(corsHeaders, corsOrigins, corsMethods)(webhookRouter),
 			}
 
 			glog.Fatal(server.ListenAndServeTLS("", ""))
 		}()
+
+		if !shellServer {
+			// install resources
+			preinstall.Preinstall(ctx, hfClient)
+		}
 	}
 
 	wg.Add(1)

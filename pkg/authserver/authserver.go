@@ -6,12 +6,13 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
+	"github.com/hobbyfarm/gargantua/pkg/settingclient"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
@@ -31,11 +32,11 @@ const (
 )
 
 type AuthServer struct {
-	auth        		*authclient.AuthClient
-	rbac        		*rbacclient.Client
-	hfClientSet 		hfClientset.Interface
-	accessCodeClient    *accesscode.AccessCodeClient
-	ctx         		context.Context
+	auth             *authclient.AuthClient
+	rbac             *rbacclient.Client
+	hfClientSet      hfClientset.Interface
+	accessCodeClient *accesscode.AccessCodeClient
+	ctx              context.Context
 }
 
 func NewAuthServer(authClient *authclient.AuthClient, hfClientSet hfClientset.Interface, ctx context.Context, acClient *accesscode.AccessCodeClient, rbac *rbacclient.Client) (AuthServer, error) {
@@ -208,7 +209,7 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 	}
 
 	accessCodes, err := a.accessCodeClient.GetAccessCodes(user.Spec.AccessCodes)
-	
+
 	accessCodeScheduledEvent := make(map[string]string)
 
 	//Getting single SEs should be faster than listing all of them and iterating them in O(n^2), in most cases users only have a hand full of accessCodes.
@@ -455,6 +456,16 @@ func (a AuthServer) UpdateSettings(userId string, newSettings map[string]string)
 }
 
 func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
+	if set := settingclient.GetSetting(settingclient.SettingRegistrationDisabled); set == nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
+		return
+	} else {
+		if set.(bool) {
+			util.ReturnHTTPMessage(w, r, http.StatusConflict, "disabled", "registration disabled")
+			return
+		}
+	}
+
 	r.ParseForm()
 
 	email := r.PostFormValue("email")

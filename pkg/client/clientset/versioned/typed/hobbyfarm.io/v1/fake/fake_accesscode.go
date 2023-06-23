@@ -105,7 +105,7 @@ func (c *FakeAccessCodes) Update(ctx context.Context, accessCode *hobbyfarmiov1.
 // Delete takes name of the accessCode and deletes it. Returns an error if one occurs.
 func (c *FakeAccessCodes) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(accesscodesResource, c.ns, name), &hobbyfarmiov1.AccessCode{})
+		Invokes(testing.NewDeleteActionWithOptions(accesscodesResource, c.ns, name, opts), &hobbyfarmiov1.AccessCode{})
 
 	return err
 }
