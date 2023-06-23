@@ -796,14 +796,19 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 
 	rawVMTasks := r.PostFormValue("vm_tasks")
 	if rawVMTasks != "" {
-		tasks := []hfv2.VirtualMachineTasks{}
+		vm_tasks := []hfv2.VirtualMachineTasks{}
 
-		err = json.Unmarshal([]byte(rawVMTasks), &tasks)
+		err = json.Unmarshal([]byte(rawVMTasks), &vm_tasks)
 		if err != nil {
 			glog.Errorf("error while unmarshaling tasks %v", err)
 			return
 		}
-		scenario.Spec.Tasks = tasks
+		err = VerifyTaskContent(vm_tasks)
+		if err != nil {
+			glog.Errorf("error tasks content %v", err)
+			return 
+		}
+		scenario.Spec.Tasks = vm_tasks
 	}
 
 	scenario.Spec.Pauseable = false
@@ -950,26 +955,11 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 				glog.Errorf("error while unmarshaling tasks %v", err)
 				return fmt.Errorf("bad")
 			}
-			//Verify that name, description, command must not empty
-			for _, vm_task := range vm_tasks {
-				if vm_task.VMName == "" {
-					glog.Errorf("error while vm_name empty")
-					return fmt.Errorf("bad")
-				}
-				for _, task := range vm_task.Tasks {
-					if task.Name == "" {
-						glog.Errorf("error while Name of task empty")
-						return fmt.Errorf("bad")
-					}
-					if task.Description == "" {
-						glog.Errorf("error while Description of task empty")
-						return fmt.Errorf("bad")
-					}
-					if task.Command == "" || task.Command == "[]" {
-						glog.Errorf("error while Command of task empty")
-						return fmt.Errorf("bad")
-					}
-				}
+			
+			err = VerifyTaskContent(vm_tasks)
+			if err != nil {
+				glog.Errorf("error tasks content %v", err)
+				return err
 			}
 			scenario.Spec.Tasks = vm_tasks
 		}
@@ -986,6 +976,31 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 
 	util.ReturnHTTPMessage(w, r, 200, "updated", "")
 	return
+}
+
+func VerifyTaskContent(vm_tasks []hfv2.VirtualMachineTasks) error {
+	//Verify that name, description, command must not empty
+	for _, vm_task := range vm_tasks {
+		if vm_task.VMName == "" {
+			glog.Errorf("error while vm_name empty")
+			return fmt.Errorf("bad")
+		}
+		for _, task := range vm_task.Tasks {
+			if task.Name == "" {
+				glog.Errorf("error while Name of task empty")
+				return fmt.Errorf("bad")
+			}
+			if task.Description == "" {
+				glog.Errorf("error while Description of task empty")
+				return fmt.Errorf("bad")
+			}
+			if task.Command == "" || task.Command == "[]" {
+				glog.Errorf("error while Command of task empty")
+				return fmt.Errorf("bad")
+			}
+		}
+	}
+	return nil
 }
 
 func (s ScenarioServer) GetScenarioById(id string) (hfv2.Scenario, error) {
