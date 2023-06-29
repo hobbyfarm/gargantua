@@ -89,6 +89,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().VirtualMachineTemplates().Informer()}, nil
 
 		// Group=hobbyfarm.io, Version=v2
+	case v2.SchemeGroupVersion.WithResource("scheduledevents"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V2().ScheduledEvents().Informer()}, nil
 	case v2.SchemeGroupVersion.WithResource("users"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V2().Users().Informer()}, nil
 

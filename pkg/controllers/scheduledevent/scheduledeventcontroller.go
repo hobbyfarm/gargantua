@@ -268,6 +268,9 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 
 		// TODO: actually check for capacity usage
 
+		//TODO: create shared VM for ScheduledEvent
+		
+
 		// create virtualmachinesets if not on demand
 		if !se.Spec.OnDemand {
 			for templateName, count := range vmtMap {

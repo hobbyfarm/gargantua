@@ -24,6 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// ScheduledEvents returns a ScheduledEventInformer.
+	ScheduledEvents() ScheduledEventInformer
 	// Users returns a UserInformer.
 	Users() UserInformer
 }
@@ -37,6 +39,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// ScheduledEvents returns a ScheduledEventInformer.
+func (v *version) ScheduledEvents() ScheduledEventInformer {
+	return &scheduledEventInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Users returns a UserInformer.

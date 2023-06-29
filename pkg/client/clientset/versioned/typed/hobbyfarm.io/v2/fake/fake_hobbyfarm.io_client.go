@@ -28,6 +28,10 @@ type FakeHobbyfarmV2 struct {
 	*testing.Fake
 }
 
+func (c *FakeHobbyfarmV2) ScheduledEvents(namespace string) v2.ScheduledEventInterface {
+	return &FakeScheduledEvents{c, namespace}
+}
+
 func (c *FakeHobbyfarmV2) Users(namespace string) v2.UserInterface {
 	return &FakeUsers{c, namespace}
 }
