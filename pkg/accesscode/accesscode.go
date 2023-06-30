@@ -36,9 +36,28 @@ func (acc AccessCodeClient) GetAccessCodes(codes []string) ([]hfv1.AccessCode, e
 		return nil, fmt.Errorf("code list passed in was less than 0")
 	}
 
-	acReq, err := labels.NewRequirement(util.AccessCodeLabel, selection.In, codes)
+	otacReq, err := labels.NewRequirement(util.OneTimeAccessCodeLabel, selection.In, codes)
 
 	selector := labels.NewSelector()
+	selector = selector.Add(*otacReq)
+
+	// First get the oneTimeAccessCodes
+	otacList, err := acc.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).List(acc.ctx, metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("error while retrieving one time access codes %v", err)
+	}
+
+	//Append the value of onetime access codes to the list
+	for _, otac := range otacList.Items {
+		codes = append(codes, otac.Spec.AccessCode)
+	}
+
+	acReq, err := labels.NewRequirement(util.AccessCodeLabel, selection.In, codes)
+
+	selector = labels.NewSelector()
 	selector = selector.Add(*acReq)
 
 	accessCodeList, err := acc.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).List(acc.ctx, metav1.ListOptions{

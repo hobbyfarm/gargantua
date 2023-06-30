@@ -106,7 +106,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 
 	// we should validate the user can use this access code
 	// let's figure out the restricted bind value
-	accessCodeObj, err := sss.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Get(sss.ctx, accessCode, metav1.GetOptions{})
+	accessCodeObj, err := sss.accessCodeClient.GetAccessCode(accessCode)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "could not retrieve access code")
 		return

@@ -260,6 +260,8 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Printf("%+v\n", user)
+
 	r.ParseForm()
 
 	accessCode := strings.ToLower(r.PostFormValue("access_code"))
@@ -307,6 +309,29 @@ func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 	}
 
 	accessCode = strings.ToLower(accessCode)
+
+	// check if this is an otac
+	otac, err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Get(a.ctx, accessCode, metav1.GetOptions{})
+	if err != nil{
+		//otac does not exist. normal access code
+	}else{
+		fmt.Printf("%+v\n", otac)
+		//otac does exist, check if already redeemed
+		if otac.Spec.RedeemedTimestamp != "" && otac.Spec.User != userId {
+			return fmt.Errorf("one time access code already in use")
+		}
+		if otac.Spec.RedeemedTimestamp == "" {
+			//otac not in use, redeem now
+			otac.Spec.User = userId
+			otac.Spec.RedeemedTimestamp = time.Now().Format(time.UnixDate)
+			otac.Labels[util.UserLabel] = userId
+			_, err = a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Update(a.ctx, otac, metav1.UpdateOptions{})
+			if err != nil {
+				return fmt.Errorf("error redeeming one time access code %v", err)
+			}
+		}
+		// when we are here the user had the otac added previously
+	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		user, err := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
@@ -498,9 +523,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	err = a.AddAccessCode(userId, accessCode)
 
 	if err != nil {
-		glog.Errorf("error creating user %s %v", email, err)
-		util.ReturnHTTPMessage(w, r, 400, "error", "error creating user")
-		return
+		glog.Errorf("error adding accessCode to newly created user %s %v", email, err)
 	}
 
 	glog.V(2).Infof("created user %s", email)

@@ -202,7 +202,7 @@ func (s ScheduledEventController) deleteVMSetsFromScheduledEvent(se *hfv1.Schedu
 
 
 func (s ScheduledEventController) deleteAccessCode(se *hfv1.ScheduledEvent) error {
-	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
+	// delete the access code for the corresponding ScheduledEvent
 	err := s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
 	})
@@ -501,9 +501,7 @@ func (s ScheduledEventController) verifyScheduledEvent(se *hfv1.ScheduledEvent) 
 		}
 
 	} else if ac.Labels[util.AccessCodeLabel] != ac.Spec.Code {
-		err = s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
-		})
+		err = s.deleteAccessCode(se)
 		if err != nil {
 			return err
 		}
