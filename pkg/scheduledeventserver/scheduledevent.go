@@ -63,6 +63,7 @@ func (s ScheduledEventServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/scheduledevent/{id}", s.GetFunc).Methods("GET")
 	r.HandleFunc("/a/scheduledevent/{id}", s.UpdateFunc).Methods("PUT")
 	r.HandleFunc("/a/scheduledevent/{id}/otacs/add/{count}", s.GenerateOTACsFunc).Methods("GET")
+	r.HandleFunc("/a/scheduledevent/{id}/otacs/delete/{otac}", s.DeleteOTACFunc).Methods("GET")
 	r.HandleFunc("/a/scheduledevent/{id}/otacs/list", s.GetOTACsFunc).Methods("GET")
 	r.HandleFunc("/a/scheduledevent/delete/{id}", s.DeleteFunc).Methods("DELETE")
 	glog.V(2).Infof("set up routes for admin scheduledevent server")
@@ -588,6 +589,31 @@ func (s ScheduledEventServer) GetOTACsFunc(w http.ResponseWriter, r *http.Reques
 	util.ReturnHTTPContent(w, r, 200, "success", encoded)
 
 	glog.V(4).Infof("listed OTACs for SE %s", id)
+}
+
+func (s ScheduledEventServer) DeleteOTACFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scheduledevents")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	otac := vars["otac"]
+	if otac == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID passed in")
+		return
+	}
+
+	err = s.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Delete(s.ctx, otac, metav1.DeleteOptions{})
+	if err != nil {
+		glog.Error(err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting OTACs")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "success", "deleted OTAC")
 }
 
 func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.Request) {
