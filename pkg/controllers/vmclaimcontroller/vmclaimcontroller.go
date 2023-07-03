@@ -11,6 +11,7 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,11 +41,14 @@ type VMClaimController struct {
 	vmClaimHasSynced cache.InformerSynced
 	vmHasSynced      cache.InformerSynced
 	ctx              context.Context
+
+	accessCodeClient *accesscode.AccessCodeClient
 }
 
-func NewVMClaimController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMClaimController, error) {
+func NewVMClaimController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, acClient *accesscode.AccessCodeClient, ctx context.Context) (*VMClaimController, error) {
 	vmClaimController := VMClaimController{}
 	vmClaimController.hfClientSet = hfClientSet
+	vmClaimController.accessCodeClient = acClient
 
 	vmClaimController.vmLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Lister()
 	vmClaimController.vmClaimLister = hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Lister()
@@ -634,23 +638,18 @@ func (v *VMClaimController) checkVMStatus(vmc *hfv1.VirtualMachineClaim) (ready 
 }
 
 func (v *VMClaimController) findScheduledEvent(accessCode string) (schedEvent string, environments map[string]map[string]int, err error) {
-	seList, err := v.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{})
+	ac, err := v.accessCodeClient.GetAccessCodeWithOTACs(accessCode)
+	if (err != nil){
+		return schedEvent, environments, err
+	}
+
+	se, err := v.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(v.ctx, ac.Labels[util.ScheduledEventLabel], metav1.GetOptions{})
 	if err != nil {
 		return schedEvent, environments, err
 	}
 
-	for _, se := range seList.Items {
-		if se.Spec.AccessCode == accessCode {
-			schedEvent = se.Name
-			environments = se.Spec.RequiredVirtualMachines
-			break
-		}
-	}
-
-	if schedEvent == "" {
-		return schedEvent, environments, fmt.Errorf("no scheduled event matching access code %s found", accessCode)
-	}
-
+	schedEvent = se.Name
+	environments = se.Spec.RequiredVirtualMachines
 	return schedEvent, environments, nil
 }
 

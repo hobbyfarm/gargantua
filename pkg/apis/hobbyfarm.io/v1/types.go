@@ -412,7 +412,6 @@ type OneTimeAccessCodeList struct {
 type OneTimeAccessCodeSpec struct {
 	User           		string `json:"user"`
 	RedeemedTimestamp   string `json:"redeemed_timestamp"`
-	AccessCode			string `json:"access_code"`
 }
 
 // +genclient

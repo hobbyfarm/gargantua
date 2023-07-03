@@ -112,7 +112,6 @@ func GenerateCRDs(caBundle string, reference ServiceReference) []crder.CRD {
 				IsNamespaced(true).
 				AddVersion("v1", &v1.OneTimeAccessCode{}, func(cv *crder.Version) {
 					cv.
-						WithColumn("AccessCode", ".spec.access_code").
 						WithColumn("User", ".spec.user").
 						WithColumn("Redeemed", ".spec.redeemed_timestamp")
 				})

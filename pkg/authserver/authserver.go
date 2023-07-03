@@ -25,6 +25,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 const (
@@ -208,9 +210,31 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	accessCodes, err := a.accessCodeClient.GetAccessCodes(user.Spec.AccessCodes)
-
+	// This holds a map of AC -> SE
 	accessCodeScheduledEvent := make(map[string]string)
+
+	// First we add ScheduledEvents based on OneTimeAccessCodes
+	otacReq, err := labels.NewRequirement(util.OneTimeAccessCodeLabel, selection.In, user.Spec.AccessCodes)
+	selector := labels.NewSelector()
+	selector = selector.Add(*otacReq)
+
+	otacList, err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).List(a.ctx, metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+
+	if err == nil {
+		for _, otac := range otacList.Items {
+			se, err := a.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(a.ctx, otac.Labels[util.ScheduledEventLabel], metav1.GetOptions{})
+			if err != nil {
+				continue
+			}
+			accessCodeScheduledEvent[otac.Name] = se.Spec.Name
+		}
+	}
+
+
+	// Afterwards we retreive the normal AccessCodes
+	accessCodes, err := a.accessCodeClient.GetAccessCodes(user.Spec.AccessCodes)
 
 	//Getting single SEs should be faster than listing all of them and iterating them in O(n^2), in most cases users only have a hand full of accessCodes.
 	for _, ac := range accessCodes {
@@ -259,8 +283,6 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get accesscode")
 		return
 	}
-
-	fmt.Printf("%+v\n", user)
 
 	r.ParseForm()
 
@@ -315,7 +337,6 @@ func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 	if err != nil{
 		//otac does not exist. normal access code
 	}else{
-		fmt.Printf("%+v\n", otac)
 		//otac does exist, check if already redeemed
 		if otac.Spec.RedeemedTimestamp != "" && otac.Spec.User != userId {
 			return fmt.Errorf("one time access code already in use")
