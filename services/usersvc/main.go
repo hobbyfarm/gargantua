@@ -33,12 +33,13 @@ import (
 )
 
 var (
-	userTLSCert     string
-	userTLSKey      string
-	userTLSCA       string
-	localMasterUrl  string
-	localKubeconfig string
-	webhookTLSCA    string
+	userTLSCert      string
+	userTLSKey       string
+	userTLSCA        string
+	localMasterUrl   string
+	localKubeconfig  string
+	webhookTLSCA     string
+	enableReflection bool
 )
 
 func init() {
@@ -48,6 +49,7 @@ func init() {
 	flag.StringVar(&userTLSKey, "user-tls-key", "/etc/ssl/certs/tls.key", "Path to TLS key for user server")
 	flag.StringVar(&userTLSCA, "user-tls-ca", "/etc/ssl/certs/ca.crt", "Path to CA cert for user server")
 	flag.StringVar(&webhookTLSCA, "webhook-tls-ca", "/webhook-secret/ca.crt", "Path to CA cert for webhook server")
+	flag.BoolVar(&enableReflection, "enableReflection", true, "Enable reflection")
 }
 
 func main() {
@@ -150,7 +152,9 @@ func main() {
 	gs := grpc.NewServer(grpc.Creds(creds))
 	us := userservice.NewGrpcUserServer(hfClient, hfInformerFactory, ctx)
 	usr.RegisterUserSvcServer(gs, us)
-	reflection.Register(gs)
+	if enableReflection {
+		reflection.Register(gs)
+	}
 
 	go func() {
 		glog.Info("grpc user server listening on " + grpcPort)

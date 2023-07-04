@@ -35,6 +35,7 @@ var (
 	localMasterUrl   string
 	localKubeconfig  string
 	installRBACRoles bool
+	enableReflection bool
 )
 
 func init() {
@@ -44,6 +45,7 @@ func init() {
 	flag.StringVar(&tlsKey, "user-tls-key", "/etc/ssl/certs/tls.key", "Path to TLS key for user server")
 	flag.StringVar(&tlsCA, "user-tls-ca", "/etc/ssl/certs/ca.crt", "Path to CA cert for user server")
 	flag.BoolVar(&installRBACRoles, "installrbacroles", false, "Install default RBAC Roles")
+	flag.BoolVar(&enableReflection, "enableReflection", true, "Enable reflection")
 }
 
 func main() {
@@ -134,7 +136,9 @@ func main() {
 		glog.Fatalf("Failed to start rbac grpc server: %s", err)
 	}
 	rbacProto.RegisterRbacSvcServer(gs, rs)
-	reflection.Register(gs)
+	if enableReflection {
+		reflection.Register(gs)
+	}
 
 	go func() {
 		glog.Info("grpc rbac server listening on " + grpcPort)

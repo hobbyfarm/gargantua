@@ -28,6 +28,7 @@ var (
 	authTLSCert      string
 	authTLSKey       string
 	authTLSCA        string
+	enableReflection bool
 )
 
 func init() {
@@ -37,6 +38,7 @@ func init() {
 	flag.StringVar(&authTLSCert, "auth-tls-cert", "/etc/ssl/certs/tls.crt", "Path to TLS certificate for authn server")
 	flag.StringVar(&authTLSKey, "auth-tls-key", "/etc/ssl/certs/tls.key", "Path to TLS key for authn server")
 	flag.StringVar(&authTLSCA, "auth-tls-ca", "/etc/ssl/certs/ca.crt", "Path to CA cert for authn server")
+	flag.BoolVar(&enableReflection, "enableReflection", true, "Enable reflection")
 }
 
 // TODO: Remove rbacClient, hfClientSet etc.
@@ -63,7 +65,9 @@ func main() {
 	gs := grpc.NewServer(grpc.Creds(creds))
 	as := authnservice.NewGrpcAuthNServer(authTLSCA)
 	authn.RegisterAuthNServer(gs, as)
-	reflection.Register(gs)
+	if enableReflection {
+		reflection.Register(gs)
+	}
 
 	go func() {
 		l, errr := net.Listen("tcp", ":"+grpcPort)

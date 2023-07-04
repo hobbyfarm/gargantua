@@ -19,15 +19,17 @@ import (
 )
 
 var (
-	authTLSCert string
-	authTLSKey  string
-	authTLSCA   string
+	authTLSCert      string
+	authTLSKey       string
+	authTLSCA        string
+	enableReflection bool
 )
 
 func init() {
 	flag.StringVar(&authTLSCert, "auth-tls-cert", "/etc/ssl/certs/tls.crt", "Path to TLS certificate for authr server")
 	flag.StringVar(&authTLSKey, "auth-tls-key", "/etc/ssl/certs/tls.key", "Path to TLS key for authr server")
 	flag.StringVar(&authTLSCA, "auth-tls-ca", "/etc/ssl/certs/ca.crt", "Path to CA cert for authr server")
+	flag.BoolVar(&enableReflection, "enableReflection", true, "Enable reflection")
 }
 
 func main() {
@@ -51,7 +53,9 @@ func main() {
 	gs := grpc.NewServer(grpc.Creds(creds))
 	as := authrservice.NewGrpcAuthRServer(authTLSCA)
 	authr.RegisterAuthRServer(gs, as)
-	reflection.Register(gs)
+	if enableReflection {
+		reflection.Register(gs)
+	}
 
 	l, errr := net.Listen("tcp", ":"+grpcPort)
 
