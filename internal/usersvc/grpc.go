@@ -11,6 +11,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	userProto "github.com/hobbyfarm/gargantua/protos/user"
 	"golang.org/x/crypto/bcrypt"
@@ -18,20 +19,38 @@ import (
 	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
+)
+
+const (
+	emailIndex = "authc.hobbyfarm.io/user-email-index"
 )
 
 type GrpcUserServer struct {
 	userProto.UnimplementedUserSvcServer
 	hfClientSet hfClientset.Interface
+	userIndexer cache.Indexer
 	ctx         context.Context
 }
 
-func NewGrpcUserServer(hfClientSet hfClientset.Interface, ctx context.Context) *GrpcUserServer {
+func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) *GrpcUserServer {
+	inf := hfInformerFactory.Hobbyfarm().V2().Users().Informer()
+	indexers := map[string]cache.IndexFunc{emailIndex: emailIndexer}
+	inf.AddIndexers(indexers)
 	return &GrpcUserServer{
 		hfClientSet: hfClientSet,
+		userIndexer: inf.GetIndexer(),
 		ctx:         ctx,
 	}
+}
+
+func emailIndexer(obj interface{}) ([]string, error) {
+	user, ok := obj.(*hfv2.User)
+	if !ok {
+		return []string{}, nil
+	}
+	return []string{user.Spec.Email}, nil
 }
 
 func (u *GrpcUserServer) CreateUser(c context.Context, cur *userProto.CreateUserRequest) (*userProto.UserId, error) {
@@ -270,12 +289,13 @@ func (u *GrpcUserServer) GetUserByEmail(c context.Context, gur *userProto.GetUse
 		return &userProto.User{}, newErr.Err()
 	}
 
-	users, err := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).List(u.ctx, metav1.ListOptions{})
-
+	obj, err := u.userIndexer.ByIndex(emailIndex, gur.GetEmail())
 	if err != nil {
 		newErr := status.Newf(
 			codes.Internal,
-			"error while retrieving user list",
+			"error while retrieving user by e-mail: %s with error: %v",
+			gur.GetEmail(),
+			err,
 		)
 		newErr, wde := newErr.WithDetails(gur)
 		if wde != nil {
@@ -284,28 +304,41 @@ func (u *GrpcUserServer) GetUserByEmail(c context.Context, gur *userProto.GetUse
 		return &userProto.User{}, newErr.Err()
 	}
 
-	for _, user := range users.Items {
-		if user.Spec.Email == gur.GetEmail() {
-			return &userProto.User{
-				Id:          user.Name,
-				Email:       user.Spec.Email,
-				Password:    user.Spec.Password,
-				AccessCodes: user.Spec.AccessCodes,
-				Settings:    user.Spec.Settings,
-			}, nil
+	if len(obj) < 1 {
+		newErr := status.Newf(
+			codes.NotFound,
+			"user not found by email: %s",
+			gur.GetEmail(),
+		)
+		newErr, wde := newErr.WithDetails(gur)
+		if wde != nil {
+			return &userProto.User{}, wde
 		}
+		return &userProto.User{}, newErr.Err()
 	}
 
-	newErr := status.Newf(
-		codes.NotFound,
-		"user %s not found",
-		gur.GetEmail(),
-	)
-	newErr, wde := newErr.WithDetails(gur)
-	if wde != nil {
-		return &userProto.User{}, wde
+	user, ok := obj[0].(*hfv2.User)
+
+	if !ok {
+		newErr := status.Newf(
+			codes.Internal,
+			"error while converting user found by email to object: %s",
+			gur.GetEmail(),
+		)
+		newErr, wde := newErr.WithDetails(gur)
+		if wde != nil {
+			return &userProto.User{}, wde
+		}
+		return &userProto.User{}, newErr.Err()
 	}
-	return &userProto.User{}, newErr.Err()
+
+	return &userProto.User{
+		Id:          user.Name,
+		Email:       user.Spec.Email,
+		Password:    user.Spec.Password,
+		AccessCodes: user.Spec.AccessCodes,
+		Settings:    user.Spec.Settings,
+	}, nil
 }
 
 func (u *GrpcUserServer) DeleteUser(c context.Context, userId *userProto.UserId) (*empty.Empty, error) {

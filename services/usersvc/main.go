@@ -7,15 +7,18 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/ebauman/crder"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/signals"
 	tls2 "github.com/hobbyfarm/gargantua/pkg/tls"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/leaderelection"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -23,6 +26,7 @@ import (
 
 	"github.com/golang/glog"
 	userservice "github.com/hobbyfarm/gargantua/internal/usersvc"
+	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 
 	usr "github.com/hobbyfarm/gargantua/protos/user"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -47,6 +51,7 @@ func init() {
 }
 
 func main() {
+	stopCh := signals.SetupSignalHandler()
 	flag.Parse()
 
 	const (
@@ -63,9 +68,46 @@ func main() {
 	cfg.QPS = ClientGoQPS
 	cfg.Burst = ClientGoBurst
 
+	namespace := util.GetReleaseNamespace()
+
 	hfClient, err := hfClientset.NewForConfig(cfg)
 	if err != nil {
 		glog.Fatal(err)
+	}
+
+	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
+
+	lock, err := util.GetLock("controller-manager", cfg)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	// Creating the leader election config
+	leaderElectionConfig := leaderelection.LeaderElectionConfig{
+		Lock:            lock,
+		ReleaseOnCancel: true,
+		LeaseDuration:   10 * time.Second,
+		RenewDeadline:   5 * time.Second,
+		RetryPeriod:     2 * time.Second,
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(ctx context.Context) {
+				// Start informer
+				hfInformerFactory.Start(stopCh)
+			},
+			OnStoppedLeading: func() {
+				// Need to start informer factory since even when not leader to ensure api layer
+				// keeps working.
+				hfInformerFactory.Start(stopCh)
+			},
+			OnNewLeader: func(current_id string) {
+				hfInformerFactory.Start(stopCh)
+				if current_id == lock.Identity() {
+					glog.Info("currently the leader")
+					return
+				}
+				glog.Infof("current leader is %s", current_id)
+			},
+		},
 	}
 
 	ca, err := os.ReadFile(webhookTLSCA)
@@ -106,7 +148,7 @@ func main() {
 	}
 
 	gs := grpc.NewServer(grpc.Creds(creds))
-	us := userservice.NewGrpcUserServer(hfClient, ctx)
+	us := userservice.NewGrpcUserServer(hfClient, hfInformerFactory, ctx)
 	usr.RegisterUserSvcServer(gs, us)
 	reflection.Register(gs)
 
@@ -133,5 +175,10 @@ func main() {
 	}
 	glog.Info("http user server listening on " + apiPort)
 
-	glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
+	go func() {
+		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
+	}()
+
+	// Run leader election
+	leaderelection.RunOrDie(ctx, leaderElectionConfig)
 }

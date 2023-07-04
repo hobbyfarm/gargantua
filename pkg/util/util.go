@@ -16,11 +16,12 @@ import (
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
-	v1 "github.com/hobbyfarm/gargantua/protos/k8s.io/apimachinery/pkg/apis/meta/v1"
 	"golang.org/x/crypto/ssh"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/util/retry"
 
 	"net/http"
@@ -532,71 +533,12 @@ func GetK8sDnsServer() string {
 	return provisionDNS
 }
 
-func CopyObjectMeta(obj *metav1.ObjectMeta) *v1.ObjectMeta {
-	objMeta := v1.ObjectMeta{}
-	userName := obj.GetName()
-	objMeta.Name = &userName
-	userGenerateName := obj.GetGenerateName()
-	objMeta.GenerateName = &userGenerateName
-	userNamespace := obj.GetNamespace()
-	objMeta.Namespace = &userNamespace
-	userUid := (string)(obj.GetUID())
-	objMeta.Uid = &userUid
-	userResourceVersion := obj.GetResourceVersion()
-	objMeta.ResourceVersion = &userResourceVersion
-	userGeneration := obj.GetGeneration()
-	objMeta.Generation = &userGeneration
-	userCreationTimestamp := obj.GetCreationTimestamp()
-	creationSeconds := userCreationTimestamp.Unix()
-	creationNanos := (int32)(userCreationTimestamp.Nanosecond())
-	objMeta.CreationTimestamp = &v1.Time{
-		Seconds: &creationSeconds,
-		Nanos:   &creationNanos,
-	}
-	userDeletionTimestamp := obj.GetDeletionTimestamp()
-	if userDeletionTimestamp != nil {
-		deletionSeconds := userDeletionTimestamp.Unix()
-		deletionNanos := (int32)(userDeletionTimestamp.Nanosecond())
-		objMeta.DeletionTimestamp = &v1.Time{
-			Seconds: &deletionSeconds,
-			Nanos:   &deletionNanos,
-		}
-	}
-	objMeta.DeletionGracePeriodSeconds = obj.GetDeletionGracePeriodSeconds()
-	objMeta.Labels = obj.GetLabels()
-	objMeta.Annotations = obj.GetAnnotations()
-	objMeta.OwnerReferences = make([]*v1.OwnerReference, 0)
-	objMeta.Finalizers = obj.GetFinalizers()
-	objMeta.ManagedFields = make([]*v1.ManagedFieldsEntry, 0)
-
-	for _, ownerReference := range obj.OwnerReferences {
-		objMeta.OwnerReferences = append(objMeta.OwnerReferences, &v1.OwnerReference{
-			ApiVersion:         &ownerReference.APIVersion,
-			Kind:               &ownerReference.Kind,
-			Name:               &ownerReference.Name,
-			Uid:                (*string)(&ownerReference.UID),
-			Controller:         ownerReference.Controller,
-			BlockOwnerDeletion: ownerReference.BlockOwnerDeletion,
-		})
+func GetLock(lockName string, cfg *rest.Config) (resourcelock.Interface, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, err
 	}
 
-	for _, managedField := range obj.ManagedFields {
-		managedFieldSeconds := managedField.Time.Unix()
-		managedFieldNanos := (int32)(managedField.Time.Nanosecond())
-		objMeta.ManagedFields = append(objMeta.ManagedFields, &v1.ManagedFieldsEntry{
-			Manager:    &managedField.Manager,
-			Operation:  (*string)(&managedField.Operation),
-			ApiVersion: &managedField.APIVersion,
-			Time: &v1.Time{
-				Seconds: &managedFieldSeconds,
-				Nanos:   &managedFieldNanos,
-			},
-			FieldsType: &managedField.FieldsType,
-			FieldsV1: &v1.FieldsV1{
-				Raw: managedField.FieldsV1.Raw,
-			},
-			Subresource: &managedField.Subresource,
-		})
-	}
-	return &objMeta
+	ns := GetReleaseNamespace()
+	return resourcelock.NewFromKubeconfig(resourcelock.ConfigMapsLeasesResourceLock, ns, lockName, resourcelock.ResourceLockConfig{Identity: hostname}, cfg, 15*time.Second)
 }
