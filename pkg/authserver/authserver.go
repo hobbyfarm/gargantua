@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"regexp"
 
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
@@ -288,6 +289,17 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 
 	accessCode := strings.ToLower(r.PostFormValue("access_code"))
 
+	// Validate that the AccessCode
+	// starts and ends with an alphanumeric character.
+	// Only contains '.' and '-' special characters in the middle.
+	// Must be at least 5 Characters long (1 Start + At least 3 in the middle + 1 End)
+	validator, _ := regexp.Compile(`^[a-z0-9]+[a-z0-9\-\.]{3,}[a-z0-9]+$`)
+	validAccessCode := validator.MatchString(accessCode)
+	if !validAccessCode {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "AccessCode does not meet criteria.")
+		return
+	}
+
 	err = a.AddAccessCode(user.Name, accessCode)
 
 	if err != nil {
@@ -520,7 +532,18 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	// should we reconcile based on the access code posted in? nah
 
 	if len(email) == 0 || len(accessCode) == 0 || len(password) == 0 {
-		util.ReturnHTTPMessage(w, r, 400, "error", "invalid input. required fields: email, access_code, password")
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid input. required fields: email, access_code, password")
+		return
+	}
+
+	// Validate that the AccessCode
+	// starts and ends with an alphanumeric character.
+	// Only contains '.' and '-' special characters in the middle.
+	// Must be at least 5 Characters long (1 Start + At least 3 in the middle + 1 End)
+	validator, _ := regexp.Compile(`^[a-z0-9]+[a-z0-9\-\.]{3,}[a-z0-9]+$`)
+	validAccessCode := validator.MatchString(accessCode)
+	if !validAccessCode {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "AccessCode does not meet criteria.")
 		return
 	}
 
