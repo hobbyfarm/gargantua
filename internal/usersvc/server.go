@@ -22,5 +22,6 @@ func (u UserServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/user/{id}", u.GetFunc).Methods("GET")
 	r.HandleFunc("/a/user", u.UpdateFunc).Methods("PUT")
 	r.HandleFunc("/a/user/{id}", u.DeleteFunc).Methods("DELETE")
+	r.HandleFunc("/a/user/{user}/rolebindings", u.ListRoleBindingsForUser).Methods("GET")
 	glog.V(2).Infof("set up routes for User server")
 }

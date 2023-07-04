@@ -35,4 +35,6 @@ const (
 	ResourcePluralEnvironment = "environments"
 	ResourcePluralEvent       = "scheduledevents"
 	ResourcePluralProgress    = "progresses"
+	ResourcePluralRole        = "roles"
+	ResourcePluralRolebinding = "rolebindings"
 )

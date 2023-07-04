@@ -130,8 +130,7 @@ func main() {
 	}
 
 	gs := grpc.NewServer(grpc.Creds(creds))
-	// rs := userservice.NewGrpcUserServer(hfClient, ctx)
-	rs, err := rbacservice.NewGrpcRbacServer(namespace, kubeInformerFactory)
+	rs, err := rbacservice.NewGrpcRbacServer(kubeClient, namespace, kubeInformerFactory)
 	if err != nil {
 		glog.Fatalf("Failed to start rbac grpc server: %s", err)
 	}
@@ -152,7 +151,7 @@ func main() {
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
 	corsOrigins := handlers.AllowedOrigins([]string{"*"})
 	corsMethods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"})
-	rbacServer := rbacservice.NewRbacServer(kubeClient, rs, tlsCA)
+	rbacServer := rbacservice.NewRbacServer(rs, tlsCA)
 	rbacServer.SetupRoutes(r)
 	http.Handle("/", r)
 	apiPort := os.Getenv("PORT")

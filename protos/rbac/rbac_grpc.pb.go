@@ -13,6 +13,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -27,6 +28,18 @@ type RbacSvcClient interface {
 	Grants(ctx context.Context, in *GrantRequest, opts ...grpc.CallOption) (*authr.AuthRResponse, error)
 	GetAccessSet(ctx context.Context, in *user.UserId, opts ...grpc.CallOption) (*AccessSet, error)
 	GetHobbyfarmRoleBindings(ctx context.Context, in *user.UserId, opts ...grpc.CallOption) (*RoleBindings, error)
+	// Resource oriented RPCs for roles:
+	CreateRole(ctx context.Context, in *Role, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetRole(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*Role, error)
+	UpdateRole(ctx context.Context, in *Role, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DeleteRole(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListRole(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Roles, error)
+	// Resource oriented RPCs for rolebindings:
+	CreateRolebinding(ctx context.Context, in *RoleBinding, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetRolebinding(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*RoleBinding, error)
+	UpdateRolebinding(ctx context.Context, in *RoleBinding, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DeleteRolebinding(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListRolebinding(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RoleBindings, error)
 }
 
 type rbacSvcClient struct {
@@ -64,6 +77,96 @@ func (c *rbacSvcClient) GetHobbyfarmRoleBindings(ctx context.Context, in *user.U
 	return out, nil
 }
 
+func (c *rbacSvcClient) CreateRole(ctx context.Context, in *Role, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/rbac.RbacSvc/CreateRole", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rbacSvcClient) GetRole(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*Role, error) {
+	out := new(Role)
+	err := c.cc.Invoke(ctx, "/rbac.RbacSvc/GetRole", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rbacSvcClient) UpdateRole(ctx context.Context, in *Role, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/rbac.RbacSvc/UpdateRole", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rbacSvcClient) DeleteRole(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/rbac.RbacSvc/DeleteRole", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rbacSvcClient) ListRole(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Roles, error) {
+	out := new(Roles)
+	err := c.cc.Invoke(ctx, "/rbac.RbacSvc/ListRole", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rbacSvcClient) CreateRolebinding(ctx context.Context, in *RoleBinding, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/rbac.RbacSvc/CreateRolebinding", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rbacSvcClient) GetRolebinding(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*RoleBinding, error) {
+	out := new(RoleBinding)
+	err := c.cc.Invoke(ctx, "/rbac.RbacSvc/GetRolebinding", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rbacSvcClient) UpdateRolebinding(ctx context.Context, in *RoleBinding, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/rbac.RbacSvc/UpdateRolebinding", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rbacSvcClient) DeleteRolebinding(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/rbac.RbacSvc/DeleteRolebinding", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *rbacSvcClient) ListRolebinding(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RoleBindings, error) {
+	out := new(RoleBindings)
+	err := c.cc.Invoke(ctx, "/rbac.RbacSvc/ListRolebinding", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RbacSvcServer is the server API for RbacSvc service.
 // All implementations must embed UnimplementedRbacSvcServer
 // for forward compatibility
@@ -71,6 +174,18 @@ type RbacSvcServer interface {
 	Grants(context.Context, *GrantRequest) (*authr.AuthRResponse, error)
 	GetAccessSet(context.Context, *user.UserId) (*AccessSet, error)
 	GetHobbyfarmRoleBindings(context.Context, *user.UserId) (*RoleBindings, error)
+	// Resource oriented RPCs for roles:
+	CreateRole(context.Context, *Role) (*emptypb.Empty, error)
+	GetRole(context.Context, *ResourceId) (*Role, error)
+	UpdateRole(context.Context, *Role) (*emptypb.Empty, error)
+	DeleteRole(context.Context, *ResourceId) (*emptypb.Empty, error)
+	ListRole(context.Context, *emptypb.Empty) (*Roles, error)
+	// Resource oriented RPCs for rolebindings:
+	CreateRolebinding(context.Context, *RoleBinding) (*emptypb.Empty, error)
+	GetRolebinding(context.Context, *ResourceId) (*RoleBinding, error)
+	UpdateRolebinding(context.Context, *RoleBinding) (*emptypb.Empty, error)
+	DeleteRolebinding(context.Context, *ResourceId) (*emptypb.Empty, error)
+	ListRolebinding(context.Context, *emptypb.Empty) (*RoleBindings, error)
 	mustEmbedUnimplementedRbacSvcServer()
 }
 
@@ -86,6 +201,36 @@ func (UnimplementedRbacSvcServer) GetAccessSet(context.Context, *user.UserId) (*
 }
 func (UnimplementedRbacSvcServer) GetHobbyfarmRoleBindings(context.Context, *user.UserId) (*RoleBindings, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHobbyfarmRoleBindings not implemented")
+}
+func (UnimplementedRbacSvcServer) CreateRole(context.Context, *Role) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateRole not implemented")
+}
+func (UnimplementedRbacSvcServer) GetRole(context.Context, *ResourceId) (*Role, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRole not implemented")
+}
+func (UnimplementedRbacSvcServer) UpdateRole(context.Context, *Role) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateRole not implemented")
+}
+func (UnimplementedRbacSvcServer) DeleteRole(context.Context, *ResourceId) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteRole not implemented")
+}
+func (UnimplementedRbacSvcServer) ListRole(context.Context, *emptypb.Empty) (*Roles, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRole not implemented")
+}
+func (UnimplementedRbacSvcServer) CreateRolebinding(context.Context, *RoleBinding) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateRolebinding not implemented")
+}
+func (UnimplementedRbacSvcServer) GetRolebinding(context.Context, *ResourceId) (*RoleBinding, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRolebinding not implemented")
+}
+func (UnimplementedRbacSvcServer) UpdateRolebinding(context.Context, *RoleBinding) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateRolebinding not implemented")
+}
+func (UnimplementedRbacSvcServer) DeleteRolebinding(context.Context, *ResourceId) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteRolebinding not implemented")
+}
+func (UnimplementedRbacSvcServer) ListRolebinding(context.Context, *emptypb.Empty) (*RoleBindings, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRolebinding not implemented")
 }
 func (UnimplementedRbacSvcServer) mustEmbedUnimplementedRbacSvcServer() {}
 
@@ -154,6 +299,186 @@ func _RbacSvc_GetHobbyfarmRoleBindings_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RbacSvc_CreateRole_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Role)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RbacSvcServer).CreateRole(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rbac.RbacSvc/CreateRole",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RbacSvcServer).CreateRole(ctx, req.(*Role))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RbacSvc_GetRole_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResourceId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RbacSvcServer).GetRole(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rbac.RbacSvc/GetRole",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RbacSvcServer).GetRole(ctx, req.(*ResourceId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RbacSvc_UpdateRole_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Role)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RbacSvcServer).UpdateRole(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rbac.RbacSvc/UpdateRole",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RbacSvcServer).UpdateRole(ctx, req.(*Role))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RbacSvc_DeleteRole_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResourceId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RbacSvcServer).DeleteRole(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rbac.RbacSvc/DeleteRole",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RbacSvcServer).DeleteRole(ctx, req.(*ResourceId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RbacSvc_ListRole_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RbacSvcServer).ListRole(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rbac.RbacSvc/ListRole",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RbacSvcServer).ListRole(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RbacSvc_CreateRolebinding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RoleBinding)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RbacSvcServer).CreateRolebinding(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rbac.RbacSvc/CreateRolebinding",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RbacSvcServer).CreateRolebinding(ctx, req.(*RoleBinding))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RbacSvc_GetRolebinding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResourceId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RbacSvcServer).GetRolebinding(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rbac.RbacSvc/GetRolebinding",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RbacSvcServer).GetRolebinding(ctx, req.(*ResourceId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RbacSvc_UpdateRolebinding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RoleBinding)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RbacSvcServer).UpdateRolebinding(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rbac.RbacSvc/UpdateRolebinding",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RbacSvcServer).UpdateRolebinding(ctx, req.(*RoleBinding))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RbacSvc_DeleteRolebinding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResourceId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RbacSvcServer).DeleteRolebinding(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rbac.RbacSvc/DeleteRolebinding",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RbacSvcServer).DeleteRolebinding(ctx, req.(*ResourceId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _RbacSvc_ListRolebinding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RbacSvcServer).ListRolebinding(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/rbac.RbacSvc/ListRolebinding",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RbacSvcServer).ListRolebinding(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // RbacSvc_ServiceDesc is the grpc.ServiceDesc for RbacSvc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -172,6 +497,46 @@ var RbacSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetHobbyfarmRoleBindings",
 			Handler:    _RbacSvc_GetHobbyfarmRoleBindings_Handler,
+		},
+		{
+			MethodName: "CreateRole",
+			Handler:    _RbacSvc_CreateRole_Handler,
+		},
+		{
+			MethodName: "GetRole",
+			Handler:    _RbacSvc_GetRole_Handler,
+		},
+		{
+			MethodName: "UpdateRole",
+			Handler:    _RbacSvc_UpdateRole_Handler,
+		},
+		{
+			MethodName: "DeleteRole",
+			Handler:    _RbacSvc_DeleteRole_Handler,
+		},
+		{
+			MethodName: "ListRole",
+			Handler:    _RbacSvc_ListRole_Handler,
+		},
+		{
+			MethodName: "CreateRolebinding",
+			Handler:    _RbacSvc_CreateRolebinding_Handler,
+		},
+		{
+			MethodName: "GetRolebinding",
+			Handler:    _RbacSvc_GetRolebinding_Handler,
+		},
+		{
+			MethodName: "UpdateRolebinding",
+			Handler:    _RbacSvc_UpdateRolebinding_Handler,
+		},
+		{
+			MethodName: "DeleteRolebinding",
+			Handler:    _RbacSvc_DeleteRolebinding_Handler,
+		},
+		{
+			MethodName: "ListRolebinding",
+			Handler:    _RbacSvc_ListRolebinding_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

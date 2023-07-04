@@ -7,8 +7,10 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
+	"github.com/hobbyfarm/gargantua/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/util"
+	rbacProto "github.com/hobbyfarm/gargantua/protos/rbac"
 	userProto "github.com/hobbyfarm/gargantua/protos/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -211,4 +213,51 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.ReturnHTTPMessage(w, r, 200, "success", "user deleted")
+}
+
+func (u UserServer) ListRoleBindingsForUser(w http.ResponseWriter, r *http.Request) {
+	authenticatedUser, err := rbac.AuthenticateRequest(r, u.tlsCaPath)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := authenticatedUser.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, u.tlsCaPath, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRolebinding, rbac.VerbList))
+	if err != nil || !authrResponse.Success {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list rolebindings")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	user := vars["user"]
+
+	rbacConn, err := microservices.EstablishConnection("rbac-service", u.tlsCaPath)
+	if err != nil {
+		glog.Error("failed connecting to service rbac-service")
+		util.ReturnHTTPMessage(w, r, 500, "error", "rbac service unreachable")
+		return
+	}
+	rbacClient := rbacProto.NewRbacSvcClient(rbacConn)
+	defer rbacConn.Close()
+
+	bindings, err := rbacClient.GetHobbyfarmRoleBindings(r.Context(), &userProto.UserId{
+		Id: user,
+	})
+
+	if err != nil {
+		glog.Errorf("error getting hobbyfarm rolebindings for user %s: %v", user, err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "internal error")
+		return
+	}
+
+	data, err := json.Marshal(bindings.GetRolebindings())
+	if err != nil {
+		glog.Errorf("error while marshalling json for rolebindings: %v", err)
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
+		return
+	}
+
+	util.ReturnHTTPContent(w, r, http.StatusOK, "content", data)
 }

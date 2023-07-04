@@ -2,16 +2,16 @@ package rbac
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/util"
-	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	rbacProto "github.com/hobbyfarm/gargantua/protos/rbac"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type PreparedRole struct {
@@ -33,33 +33,26 @@ func (s Server) ListRoles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(roleResourcePlural, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list roles")
 		return
 	}
 
-	listOptions := metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%t", util.RBACManagedLabel, true),
-	}
-
-	roles, err := s.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).List(r.Context(), listOptions)
+	preparedRoles, err := s.internalRbacServer.ListRole(r.Context(), &emptypb.Empty{})
 	if err != nil {
-		if errors.IsNotFound(err) {
-			util.ReturnHTTPMessage(w, r, 404, "notfound", "roles not found")
-		} else {
-			util.ReturnHTTPMessage(w, r, 500, "internalerror", "internal error")
+		if s, ok := status.FromError(err); ok {
+			switch s.Code() {
+			case codes.NotFound:
+				util.ReturnHTTPMessage(w, r, http.StatusNotFound, "notfound", s.Message())
+				return
+			}
 		}
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
 	}
 
-	var preparedRoles = make([]PreparedRole, 0)
-	for _, r := range roles.Items {
-		pr := s.unmarshalRole(&r)
-		preparedRoles = append(preparedRoles, *pr)
-	}
-
-	data, err := json.Marshal(preparedRoles)
+	data, err := json.Marshal(preparedRoles.GetRoles())
 	if err != nil {
 		glog.Errorf("error while marshalling json for roles: %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "internal error")
@@ -77,18 +70,33 @@ func (s Server) GetRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(roleResourcePlural, rbac.VerbGet))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbGet))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get role")
 		return
 	}
 
-	role, err := s.getRole(w, r)
+	vars := mux.Vars(r)
+	roleId := vars["id"]
+
+	preparedRole, err := s.internalRbacServer.GetRole(r.Context(), &rbacProto.ResourceId{Id: roleId})
 	if err != nil {
+		if s, ok := status.FromError(err); ok {
+			switch s.Code() {
+			case codes.InvalidArgument:
+				util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", s.Message())
+				return
+			case codes.NotFound:
+				util.ReturnHTTPMessage(w, r, http.StatusNotFound, "notfound", s.Message())
+				return
+			case codes.PermissionDenied:
+				util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", s.Message())
+				return
+			}
+		}
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
 	}
-
-	preparedRole := s.unmarshalRole(role)
 
 	data, err := json.Marshal(preparedRole)
 	if err != nil {
@@ -108,13 +116,13 @@ func (s Server) CreateRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(roleResourcePlural, rbac.VerbCreate))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbCreate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create role")
 		return
 	}
 
-	var preparedRole PreparedRole
+	var preparedRole *rbacProto.Role
 	err = json.NewDecoder(r.Body).Decode(&preparedRole)
 	if err != nil {
 		glog.Errorf("error decoding json from create role request: %v", err)
@@ -122,16 +130,14 @@ func (s Server) CreateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	role, err := s.marshalRole(&preparedRole)
+	_, err = s.internalRbacServer.CreateRole(r.Context(), preparedRole)
 	if err != nil {
-		glog.Errorf("invalid role: %v", err)
-		util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid role")
-		return
-	}
-
-	role, err = s.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Create(r.Context(), role, metav1.CreateOptions{})
-	if err != nil {
-		glog.Errorf("error creating role in kubernetes: %v", err)
+		if s, ok := status.FromError(err); ok {
+			if s.Code() == codes.InvalidArgument {
+				util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid role")
+				return
+			}
+		}
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
 	}
@@ -147,30 +153,28 @@ func (s Server) UpdateRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(roleResourcePlural, rbac.VerbUpdate))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbUpdate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", "no access to update role")
 		return
 	}
 
-	var preparedRole PreparedRole
+	var preparedRole *rbacProto.Role
 	err = json.NewDecoder(r.Body).Decode(&preparedRole)
 	if err != nil {
-		glog.Errorf("error decoding json from create role request: %v", err)
-		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "badrequest", "malformed json")
+		glog.Errorf("error decoding json from update role request: %v", err)
+		util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "malformed json")
 		return
 	}
 
-	role, err := s.marshalRole(&preparedRole)
+	_, err = s.internalRbacServer.UpdateRole(r.Context(), preparedRole)
 	if err != nil {
-		glog.Errorf("invalid role: %v", err)
-		util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid role")
-		return
-	}
-
-	role, err = s.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Update(r.Context(), role, metav1.UpdateOptions{})
-	if err != nil {
-		glog.Errorf("error while updating role in kubernetes: %v", err)
+		if s, ok := status.FromError(err); ok {
+			if s.Code() == codes.InvalidArgument {
+				util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid role")
+				return
+			}
+		}
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
 	}
@@ -186,111 +190,26 @@ func (s Server) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(roleResourcePlural, rbac.VerbDelete))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbDelete))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", "no access to delete role")
 		return
 	}
 
-	// we want to get the role first as this allows us to run it through the various checks before we attempt deletion
-	// most important of which is checking that we have labeled it correctly
-	// but it doesn't hurt to check if it exists before
-	role, err := s.getRole(w, r)
-	if err != nil {
-		return
-	}
+	vars := mux.Vars(r)
+	roleId := vars["id"]
 
-	err = s.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Delete(r.Context(), role.Name, metav1.DeleteOptions{})
+	_, err = s.internalRbacServer.DeleteRole(r.Context(), &rbacProto.ResourceId{Id: roleId})
 	if err != nil {
-		glog.Errorf("error deleting role in kubernetes: %v", err)
+		if s, ok := status.FromError(err); ok {
+			if s.Code() == codes.InvalidArgument {
+				util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid role")
+				return
+			}
+		}
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
 	}
 
 	util.ReturnHTTPMessage(w, r, http.StatusOK, "deleted", "deleted")
-}
-
-func (s Server) getRole(w http.ResponseWriter, r *http.Request) (*rbacv1.Role, error) {
-	vars := mux.Vars(r)
-
-	roleId := vars["id"]
-	if roleId == "" {
-		util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "invalidid", "invalid id")
-		return nil, fmt.Errorf("invalid id")
-	}
-
-	role, err := s.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Get(r.Context(), roleId, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "notfound", "role not found")
-			return nil, err
-		}
-		glog.Errorf("kubernetes error while getting role: %v", err)
-		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal server error")
-		return nil, err
-	}
-
-	if _, ok := role.Labels[util.RBACManagedLabel]; !ok {
-		// this isn't a hobbyfarm role. we don't serve your kind here
-		util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", "role not managed by hobbyfarm")
-		return nil, fmt.Errorf("role not managed by hobbyfarm")
-	}
-
-	return role, nil
-}
-
-func (s Server) sanitizeRules(rules []PreparedRule) error {
-	for _, rule := range rules {
-		for _, group := range rule.APIGroups {
-			if group != "hobbyfarm.io" && group != "rbac.authorization.k8s.io" {
-				return fmt.Errorf("invalid api group specified: %v", group)
-			}
-		}
-	}
-
-	return nil
-}
-
-func (s Server) unmarshalRole(role *rbacv1.Role) (preparedRole *PreparedRole) {
-	preparedRole = &PreparedRole{}
-	preparedRole.Name = role.Name
-
-	for _, r := range role.Rules {
-		preparedRole.Rules = append(preparedRole.Rules, PreparedRule{
-			Resources: r.Resources,
-			Verbs:     r.Verbs,
-			APIGroups: r.APIGroups,
-		})
-	}
-
-	return
-}
-
-func (s Server) marshalRole(preparedRole *PreparedRole) (*rbacv1.Role, error) {
-	role := rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      preparedRole.Name,
-			Namespace: util.GetReleaseNamespace(),
-			Labels: map[string]string{
-				util.RBACManagedLabel: "true",
-			},
-		},
-		Rules: []rbacv1.PolicyRule{},
-	}
-
-	for _, r := range preparedRole.Rules {
-		for _, group := range r.APIGroups {
-			if group != "hobbyfarm.io" && group != "rbac.authorization.k8s.io" {
-				return nil, fmt.Errorf("invalid api group specified: %v", group)
-			}
-		}
-
-		role.Rules = append(role.Rules, rbacv1.PolicyRule{
-			Verbs:     r.Verbs,
-			APIGroups: r.APIGroups,
-			Resources: r.Resources,
-		})
-	}
-
-	return &role, nil
 }
