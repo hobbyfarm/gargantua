@@ -19,6 +19,7 @@ const (
 	SettingRegistrationDisabled SettingName = "registration-disabled"
 	SettingAdminUIMOTD          SettingName = "motd-admin-ui"
 	SettingUIMOTD               SettingName = "motd-ui"
+	ScheduledEventRetentionTime SettingName = "scheduledevent-retention-time"
 )
 
 type SettingName string
