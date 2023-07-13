@@ -256,6 +256,8 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 	provision (for some reason), but at least we'll tell the user about it
 		e.g. --> glog.Errorf("we are overprovisioning this environment %s by CPU...
 	*/
+	
+	//TODO: create shared VM for ScheduledEvent
 
 	// begin by calculating what is currently being used in the environment
 	for envName, vmtMap := range se.Spec.RequiredVirtualMachines {
@@ -267,9 +269,6 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 		}
 
 		// TODO: actually check for capacity usage
-
-		//TODO: create shared VM for ScheduledEvent
-		
 
 		// create virtualmachinesets if not on demand
 		if !se.Spec.OnDemand {
