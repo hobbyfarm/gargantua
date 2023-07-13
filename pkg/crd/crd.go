@@ -140,6 +140,26 @@ func GenerateCRDs(caBundle string, reference ServiceReference) []crder.CRD {
 						WithColumn("Active", ".status.active").
 						WithColumn("Finished", ".status.finished").
 						WithStatus()
+
+					cv.IsServed(true)
+					cv.IsStored(false)	
+				}).
+				AddVersion("v2", &v2.ScheduledEvent{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("AccessCode", ".spec.access_code").
+						WithColumn("Active", ".status.active").
+						WithColumn("Finished", ".status.finished").
+						WithStatus()
+
+					cv.IsServed(true)
+					cv.IsStored(true)	
+				}).
+				WithConversion(func(cc *crder.Conversion) {
+					cc.
+						StrategyWebhook().
+						WithCABundle(caBundle).
+						WithService(reference.Toapiextv1WithPath("/conversion/scheduledevents.hobbyfarm.io")).
+						WithVersions("v2", "v1")
 				})
 		}),
 		hobbyfarmCRD(&v1.PredefinedService{}, func(c *crder.CRD) {

@@ -31,7 +31,7 @@ type VMClaimController struct {
 
 	vmLister      hfListers.VirtualMachineLister
 	vmClaimLister hfListers.VirtualMachineClaimLister
-	vmtLister 	  hfListers.VirtualMachineTemplateLister
+	vmtLister     hfListers.VirtualMachineTemplateLister
 
 	vmClaimWorkqueue workqueue.Interface
 
@@ -258,14 +258,14 @@ func (v *VMClaimController) processVMClaim(vmc *hfv1.VirtualMachineClaim) (err e
 			if err != nil {
 				// VirtualMachines could not be submitted. Delete Session
 				glog.Errorf("error processing vmc %s, taint session: %v", vmc.Name, err)
-				return v.taintSession(vmc.Labels[util.SessionLabel]);
+				return v.taintSession(vmc.Labels[util.SessionLabel])
 			}
 		} else if vmc.Status.BindMode == "static" {
 			err = v.findVirtualMachines(vmc)
 			if err != nil {
 				// VirtualMachines could not be bound. Delete Session
 				glog.Errorf("error processing vmc %s, taint session: %v", vmc.Name, err)
-				return v.taintSession(vmc.Labels[util.SessionLabel]);
+				return v.taintSession(vmc.Labels[util.SessionLabel])
 			}
 		} else {
 			glog.Errorf("vmc bind mode needs to be either dynamic or static.. ignoring this object %s", vmc.Name)
@@ -296,7 +296,7 @@ func (v *VMClaimController) processVMClaim(vmc *hfv1.VirtualMachineClaim) (err e
 	return nil
 }
 
-func (v *VMClaimController) taintSession(session string) (err error){
+func (v *VMClaimController) taintSession(session string) (err error) {
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := v.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Get(v.ctx, session, metav1.GetOptions{})
 		if getErr != nil {
@@ -313,7 +313,7 @@ func (v *VMClaimController) taintSession(session string) (err error){
 		return updateErr
 	})
 
-	if(retryErr != nil){
+	if retryErr != nil {
 		return retryErr
 	}
 
@@ -321,11 +321,11 @@ func (v *VMClaimController) taintSession(session string) (err error){
 	err = v.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).DeleteCollection(v.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s,finished=false", util.SessionLabel, session)})
 
-	return err;
+	return err
 }
 
 type VMEnvironment struct {
- 	Environment hfv1.Environment
+	Environment              hfv1.Environment
 	DynamicBindConfiguration hfv1.DynamicBindConfiguration
 }
 
@@ -347,15 +347,15 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 	for _, vmDetails := range vmc.Spec.VirtualMachines {
 		if count, found := requiredTemplateCount[vmDetails.Template]; found {
 			requiredTemplateCount[vmDetails.Template] = count + 1
-		}else{
+		} else {
 			requiredTemplateCount[vmDetails.Template] = 1
 		}
 	}
 
-	environmentMap := make(map[string]VMEnvironment) // Maps node to the environment it should use
+	environmentMap := make(map[string]VMEnvironment)                                                          // Maps node to the environment it should use
 	bestDBC, err := v.findBestDBCForVMs(dbcList, requiredTemplateCount, vmc.Labels[util.ScheduledEventLabel]) // Try to find if one environment can provision all VMs
 
-	if(err != nil) {
+	if err != nil {
 		// We can not provision all VirtualMachines in one environment. Figure out which environments we want to use
 
 		reservedCapacity := make(map[string]map[string]int) // EnvironmentID -> TemplateID -> Count
@@ -369,17 +369,17 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 		}
 		for vmName, vmDetails := range vmc.Spec.VirtualMachines {
 			env, dbc, err := v.findSuitableEnvironmentForVMTemplate(environments, dbcList, vmDetails.Template, reservedCapacity, vmc.Labels[util.ScheduledEventLabel])
-			if err != nil{
+			if err != nil {
 				glog.Errorf("no suitable environment for %s (%s): %v", vmName, vmDetails.Template, err)
 				return err
 			}
 			environmentMap[vmName] = VMEnvironment{env, dbc}
 			reservedCapacity[env.Name][vmDetails.Template] += 1
 		}
-	}else{
+	} else {
 		// One DBC for them all
 		enviroment := hfv1.Environment{}
-		for _, e := range environments{
+		for _, e := range environments {
 			if e.Name == bestDBC.Spec.Environment {
 				enviroment = e
 				break
@@ -407,19 +407,19 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 					},
 				},
 				Labels: map[string]string{
-					"dynamic":                          "true",
-					"vmc":                              vmc.Name,
-					util.EnvironmentLabel:              environment.Name,
-					"bound":                            "true",
-					"ready":                            "false",
-					util.VirtualMachineTemplate: 		vmDetails.Template,
-					util.ScheduledEventLabel: seName,
+					"dynamic":                   "true",
+					"vmc":                       vmc.Name,
+					util.EnvironmentLabel:       environment.Name,
+					"bound":                     "true",
+					"ready":                     "false",
+					util.VirtualMachineTemplate: vmDetails.Template,
+					util.ScheduledEventLabel:    seName,
 				},
 			},
 			Spec: hfv1.VirtualMachineSpec{
 				VirtualMachineTemplateId: vmDetails.Template,
 				SecretName:               "",
-				Protocol: 				  "ssh",  //default protocol is ssh
+				Protocol:                 "ssh", //default protocol is ssh
 				VirtualMachineClaimId:    vmc.Name,
 				UserId:                   vmc.Spec.UserId,
 				Provision:                true,
@@ -438,14 +438,14 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 			return err
 		}
 
-		config := util.GetVMConfig(&environment,vmt)
-     
-    protocol, exists := config["protocol"]
-    if exists {
-		  vm.Spec.Protocol = protocol
+		config := util.GetVMConfig(&environment, vmt)
+
+		protocol, exists := config["protocol"]
+		if exists {
+			vm.Spec.Protocol = protocol
 		}
-		
-    sshUser, exists := config["ssh_username"]
+
+		sshUser, exists := config["ssh_username"]
 		if exists {
 			vm.Spec.SshUsername = sshUser
 		}
@@ -510,7 +510,7 @@ func (v *VMClaimController) findEnvironmentsForVM(accessCode string, vmc *hfv1.V
 		return environments, seName, dbc, err
 	}
 
-	for _ , dbc := range dbcList.Items {
+	for _, dbc := range dbcList.Items {
 		env, err := v.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Get(v.ctx, dbc.Spec.Environment, metav1.GetOptions{})
 
 		if err != nil {
@@ -537,12 +537,12 @@ func (v *VMClaimController) findBestDBCForVMs(dbcList []hfv1.DynamicBindConfigur
 			return hfv1.DynamicBindConfiguration{}, fmt.Errorf("error fetching environment")
 		}
 		for requiredTemplate, requiredCount := range requiredTemplateCount {
-			dbcCapacity, foundDBC := dbc.Spec.BurstCountCapacity[requiredTemplate];
-			envCapacity, foundEnv := env.Spec.CountCapacity[requiredTemplate];
+			dbcCapacity, foundDBC := dbc.Spec.BurstCountCapacity[requiredTemplate]
+			envCapacity, foundEnv := env.Spec.CountCapacity[requiredTemplate]
 			if foundDBC && foundEnv {
 				// Does the DBC satisfy this amount?
 				count, err := util.CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(v.vmLister, requiredTemplate, dbc.Spec.Environment, scheduledEvent)
-				if(err != nil){
+				if err != nil {
 					satisfiedDBC = false
 					break
 				}
@@ -553,7 +553,7 @@ func (v *VMClaimController) findBestDBCForVMs(dbcList []hfv1.DynamicBindConfigur
 
 				// Does the environment satisfy this amount?
 				count, err = util.CountMachinesPerTemplateAndEnvironment(v.vmLister, requiredTemplate, dbc.Spec.Environment)
-				if(err != nil){
+				if err != nil {
 					satisfiedDBC = false
 					break
 				}
@@ -562,7 +562,7 @@ func (v *VMClaimController) findBestDBCForVMs(dbcList []hfv1.DynamicBindConfigur
 					break
 				}
 
-			}else{
+			} else {
 				satisfiedDBC = false
 				break
 			}
@@ -580,19 +580,19 @@ func (v *VMClaimController) findBestDBCForVMs(dbcList []hfv1.DynamicBindConfigur
 func (v *VMClaimController) findSuitableEnvironmentForVMTemplate(environments []hfv1.Environment, dbcList []hfv1.DynamicBindConfiguration, template string, reservedCapacity map[string]map[string]int, scheduledEvent string) (hfv1.Environment, hfv1.DynamicBindConfiguration, error) {
 	for _, environment := range environments {
 		countEnv, err := util.CountMachinesPerTemplateAndEnvironment(v.vmLister, template, environment.Name)
-		if(err != nil){
+		if err != nil {
 			continue
 		}
 		// We have also reserved capacity for other VMs
 		countEnv += reservedCapacity[environment.Name][template]
 
-		if(countEnv >= environment.Spec.CountCapacity[template]){
+		if countEnv >= environment.Spec.CountCapacity[template] {
 			// Environment is at limit
 			continue
 		}
 
 		countDBC, err := util.CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(v.vmLister, template, environment.Name, scheduledEvent)
-		if(err != nil){
+		if err != nil {
 			continue
 		}
 		// We have also reserved capacity for other VMs
@@ -600,11 +600,11 @@ func (v *VMClaimController) findSuitableEnvironmentForVMTemplate(environments []
 
 		// found environment that satisfies capacity for this template
 		for _, dbc := range dbcList {
-			if(dbc.Spec.Environment == environment.Name){
+			if dbc.Spec.Environment == environment.Name {
 				if capacity, found := dbc.Spec.BurstCountCapacity[template]; found {
-					if(countDBC < capacity){
+					if countDBC < capacity {
 						// Capacity also satisfied for environment + scheduledEvent via DBC
-						return environment, dbc,  nil
+						return environment, dbc, nil
 					}
 				}
 				break
@@ -634,7 +634,7 @@ func (v *VMClaimController) checkVMStatus(vmc *hfv1.VirtualMachineClaim) (ready 
 }
 
 func (v *VMClaimController) findScheduledEvent(accessCode string) (schedEvent string, environments map[string]map[string]int, err error) {
-	seList, err := v.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{})
+	seList, err := v.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{})
 	if err != nil {
 		return schedEvent, environments, err
 	}
@@ -692,17 +692,15 @@ func (v *VMClaimController) findVirtualMachines(vmc *hfv1.VirtualMachineClaim) (
 		return err
 	}
 
-	
 	return nil
 }
 
-func  (v *VMClaimController) assignVM(vmClaimId string, user string, vmId string) (error) {
+func (v *VMClaimController) assignVM(vmClaimId string, user string, vmId string) error {
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Get(v.ctx, vmId, metav1.GetOptions{})
 		if getErr != nil {
 			return fmt.Errorf("error retrieving latest version of Virtual Machine %s: %v", vmId, getErr)
 		}
-
 
 		result.Labels["bound"] = "true"
 		result.Spec.VirtualMachineClaimId = vmClaimId
@@ -736,7 +734,7 @@ func  (v *VMClaimController) assignVM(vmClaimId string, user string, vmId string
 	return nil
 }
 
-func  (v *VMClaimController) unassignVM(vmId string) (string, error) {
+func (v *VMClaimController) unassignVM(vmId string) (string, error) {
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, getErr := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Get(v.ctx, vmId, metav1.GetOptions{})
 		if getErr != nil {
@@ -775,8 +773,8 @@ func  (v *VMClaimController) unassignVM(vmId string) (string, error) {
 
 func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, environments map[string]map[string]int, template string, restrictedBind bool, restrictedBindValue string) (string, error) {
 	vmLabels := labels.Set{
-		"bound":       "false",
-		util.VirtualMachineTemplate:    template,
+		"bound":                     "false",
+		util.VirtualMachineTemplate: template,
 	}
 
 	if restrictedBind {
@@ -792,7 +790,7 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, envi
 		return "", fmt.Errorf("error while listing all vms %v", err)
 	}
 
-	if(len(vms) == 0){
+	if len(vms) == 0 {
 		return "", fmt.Errorf("No static VMs matching template: %s. All static VMs are in use.", template)
 	}
 
@@ -806,17 +804,17 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, envi
 				// ... but this environment does not support this virtualmachinetemplate
 				continue
 			}
-		}else{
+		} else {
 			// This virtualmachine is in a non supported environment
-			continue;
+			continue
 		}
 		if !vm.Status.Allocated && !vm.Status.Tainted {
 			// we can assign this vm
 			assigned = true
 			vmId = vm.Name
-		
+
 			// Prefer running machines
-			if( vm.Status.Status == hfv1.VmStatusRunning){
+			if vm.Status.Status == hfv1.VmStatusRunning {
 				break
 			}
 		}

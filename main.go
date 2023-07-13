@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"flag"
+	"os"
+
 	"github.com/hobbyfarm/gargantua/pkg/preinstall"
 	"github.com/hobbyfarm/gargantua/pkg/settingclient"
 	"github.com/hobbyfarm/gargantua/pkg/settingserver"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/validation"
-	"os"
 
 	"github.com/ebauman/crder"
 	"github.com/hobbyfarm/gargantua/pkg/crd"
@@ -17,6 +18,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/rbacserver"
 	tls2 "github.com/hobbyfarm/gargantua/pkg/tls"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion"
+	schedev "github.com/hobbyfarm/gargantua/pkg/webhook/conversion/scheduledevent"
 	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion/user"
 	"golang.org/x/sync/errgroup"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -47,7 +49,7 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/pkg/courseserver"
 	"github.com/hobbyfarm/gargantua/pkg/environmentserver"
-	"github.com/hobbyfarm/gargantua/pkg/predefinedserviceserver"
+	predefinedservicesserver "github.com/hobbyfarm/gargantua/pkg/predefinedserviceserver"
 	"github.com/hobbyfarm/gargantua/pkg/progressserver"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/pkg/scenarioserver"
@@ -214,7 +216,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	vmServer, err := vmserver.NewVMServer(authClient, hfClient, hfInformerFactory, ctx)
+	vmServer, err := vmserver.NewVMServer(authClient, acClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -324,6 +326,8 @@ func main() {
 	// shell server does not serve webhook endpoint, so don't start it
 	if !shellServer {
 		user.Init()
+		schedev.Init()
+
 		webhookRouter := mux.NewRouter()
 		conversion.New(webhookRouter, apiExtensionsClient, string(ca))
 

@@ -69,8 +69,8 @@ type ScheduledEventSpec struct {
 }
 
 type SharedVirtualMachine struct {
-	Environment string
-	VMTemplate  string
-	Name        string
-	VMId        string
+	VMId        string `json:"vmId"`
+	Name        string `json:"name"`	
+	Environment string `json:"environment"`
+	VMTemplate  string `json:"vmTemplate"`
 }

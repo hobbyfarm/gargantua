@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
@@ -20,8 +21,8 @@ import (
 )
 
 const (
-	idIndex             = "vms.hobbyfarm.io/id-index"
-	resourcePlural		= "virtualmachines"
+	idIndex        = "vms.hobbyfarm.io/id-index"
+	resourcePlural = "virtualmachines"
 )
 
 type VMServer struct {
@@ -29,20 +30,28 @@ type VMServer struct {
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 	vmIndexer   cache.Indexer
+	acClient    *accesscode.AccessCodeClient
 }
 
 type PreparedVirtualMachine struct {
 	ID string `json:"id"`
 	hfv1.VirtualMachineSpec
 	hfv1.VirtualMachineStatus
+	IsShared bool `json:"is_shared"`
 }
 
-func NewVMServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMServer, error) {
+type PreparedSharedVirtualMachine struct {
+	Name string `json:"name"`
+	VM   PreparedVirtualMachine
+}
+
+func NewVMServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMServer, error) {
 	vms := VMServer{}
 
 	vms.hfClientSet = hfClientset
 	vms.auth = authClient
 	vms.ctx = ctx
+	vms.acClient = acClient
 
 	inf := hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer()
 	indexers := map[string]cache.IndexFunc{idIndex: vmIdIndexer}
@@ -55,6 +64,7 @@ func NewVMServer(authClient *authclient.AuthClient, hfClientset hfClientset.Inte
 func (vms VMServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/vm/{vm_id}", vms.GetVMFunc).Methods("GET")
 	r.HandleFunc("/vm/getwebinterfaces/{vm_id}", vms.getWebinterfaces).Methods("GET")
+	r.HandleFunc("/sharedVMs/{access_code}", vms.GetSharedVirtualMachinesFunc).Methods("GET")
 	r.HandleFunc("/a/vm/list", vms.GetAllVMListFunc).Methods("GET")
 	r.HandleFunc("/a/vm/scheduledevent/{se_id}", vms.GetVMListByScheduledEventFunc).Methods("GET")
 	r.HandleFunc("/a/vm/count", vms.CountByScheduledEvent).Methods("GET")
@@ -102,14 +112,14 @@ func (vms VMServer) getWebinterfaces(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 404, "error", "no vm template found")
 		return
-	}	
+	}
 
-	services, found := vmt.Spec.ConfigMap["webinterfaces"] 
+	services, found := vmt.Spec.ConfigMap["webinterfaces"]
 	if !found {
 		util.ReturnHTTPMessage(w, r, 404, "error", "No Webinterfaces found for this VM")
 		return
 	}
-	
+
 	encodedWebinterfaceDefinitions, err := json.Marshal(services)
 	if err != nil {
 		glog.Error(err)
@@ -142,6 +152,57 @@ func (vms VMServer) GetVirtualMachineById(id string) (hfv1.VirtualMachine, error
 
 	return *result, nil
 
+}
+
+func (vms VMServer) GetSharedVirtualMachinesFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := vms.auth.AuthN(w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	accessCode := vars["access_code"]
+
+	if len(accessCode) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no accessCode id passed in")
+		return
+	}
+
+	accessCodeResource, err := vms.acClient.GetAccessCode(accessCode)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no accessCode found for given accessCode")
+		return
+	}
+
+	scheduledEventID := accessCodeResource.Labels[util.ScheduledEventLabel]
+	scheduledEvent, err := vms.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Get(vms.ctx, scheduledEventID, v1.GetOptions{})
+	sharedVMs := scheduledEvent.Spec.SharedVirtualMachines
+	preparedSharedVMs := []PreparedSharedVirtualMachine{}
+	// LOOP over all sharedVMs
+	for _, sharedVM := range sharedVMs {
+		// FROM sharedVM
+		vmId := sharedVM.VMId
+		// Get VM Resource from Kubernetes
+		vm, err := vms.GetVirtualMachineById(vmId)
+		if err != nil {
+			glog.Errorf("did not find the right virtual machine ID")
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "error", "no vm found")
+			return
+		}
+		preparedVM := PreparedVirtualMachine{vm.Name, vm.Spec, vm.Status, vm.Labels["shared"] == "true"}
+		preparedSharedVM := PreparedSharedVirtualMachine{sharedVM.Name, preparedVM}
+		// append VM to a list
+		preparedSharedVMs = append(preparedSharedVMs, preparedSharedVM)
+		glog.V(2).Infof("retrieved vm %s", vm.Name)
+	}
+
+	encodedVM, err := json.Marshal(preparedSharedVMs)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedVM)
 }
 
 func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
@@ -177,7 +238,7 @@ func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	preparedVM := PreparedVirtualMachine{vm.Name, vm.Spec, vm.Status}
+	preparedVM := PreparedVirtualMachine{vm.Name, vm.Spec, vm.Status, vm.Labels["shared"] == "true"}
 
 	encodedVM, err := json.Marshal(preparedVM)
 	if err != nil {
@@ -205,7 +266,7 @@ func (vms VMServer) GetVMListFunc(w http.ResponseWriter, r *http.Request, listOp
 
 	preparedVMs := []PreparedVirtualMachine{}
 	for _, vm := range vmList.Items {
-		pVM := PreparedVirtualMachine{vm.Name, vm.Spec, vm.Status}
+		pVM := PreparedVirtualMachine{vm.Name, vm.Spec, vm.Status, vm.Labels["shared"] == "true"}
 		preparedVMs = append(preparedVMs, pVM)
 	}
 
@@ -225,7 +286,7 @@ func (vms VMServer) GetVMListByScheduledEventFunc(w http.ResponseWriter, r *http
 		util.ReturnHTTPMessage(w, r, 500, "error", "no scheduledEvent id passed in")
 		return
 	}
-
+	// TODO: Filter for sharedVM
 	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, id)}
 
 	vms.GetVMListFunc(w, r, lo)

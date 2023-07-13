@@ -4,15 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
@@ -23,7 +25,7 @@ import (
 )
 
 const (
-	idIndex = "courseserver.hobbyfarm.io/id-index"
+	idIndex        = "courseserver.hobbyfarm.io/id-index"
 	resourcePlural = "courses"
 )
 
@@ -382,7 +384,7 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	// 1. when there are no active scheduled events using the course
 	// 2. when there are no sessions using the course
 
-	seList, err := c.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).List(c.ctx, metav1.ListOptions{})
+	seList, err := c.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).List(c.ctx, metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("error retrieving scheduledevent list: %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting course")
@@ -443,7 +445,6 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	
 	vars := mux.Vars(r)
 	accessCode := vars["access_code"]
 
@@ -454,9 +455,9 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 
 	contains := false
 	for _, acc := range user.Spec.AccessCodes {
-		if(acc == accessCode){
+		if acc == accessCode {
 			contains = true
-			break;
+			break
 		}
 	}
 
@@ -581,8 +582,8 @@ func (c CourseServer) GetCourseById(id string) (hfv1.Course, error) {
 }
 
 // Filter a ScheduledEventList to find SEs that are a) active and b) using the course specified
-func filterScheduledEvents(course string, seList *hfv1.ScheduledEventList) *[]hfv1.ScheduledEvent {
-	outList := make([]hfv1.ScheduledEvent, 0)
+func filterScheduledEvents(course string, seList *hfv2.ScheduledEventList) *[]hfv2.ScheduledEvent {
+	outList := make([]hfv2.ScheduledEvent, 0)
 	for _, se := range seList.Items {
 		if se.Status.Finished == true {
 			continue
@@ -591,7 +592,7 @@ func filterScheduledEvents(course string, seList *hfv1.ScheduledEventList) *[]hf
 		for _, c := range se.Spec.Courses {
 			if c == course {
 				outList = append(outList, se)
-				break;
+				break
 			}
 		}
 	}

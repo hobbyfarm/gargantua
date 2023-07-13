@@ -283,7 +283,7 @@ func (s ScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 // 		scheduledEvent.Spec.RestrictedBindValue = scheduledEvent.Name
 // 	}
 
-// 	scheduledEvent, err = s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Create(s.ctx, scheduledEvent, metav1.CreateOptions{})
+// 	scheduledEvent, err = s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Create(s.ctx, scheduledEvent, metav1.CreateOptions{})
 // 	if err != nil {
 // 		glog.Errorf("error creating scheduled event %v", err)
 // 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scheduled event")
@@ -296,7 +296,7 @@ func (s ScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 // 	scheduledEvent.Status.Provisioned = false
 // 	scheduledEvent.Status.VirtualMachineSets = []string{}
 
-// 	_, err = s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, scheduledEvent, metav1.UpdateOptions{})
+// 	_, err = s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, scheduledEvent, metav1.UpdateOptions{})
 
 // 	if err != nil {
 // 		glog.Errorf("error updating status subresource for scheduled event %v", err)
@@ -324,7 +324,7 @@ func (s ScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 // 	}
 
 // 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-// 		scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
+// 		scheduledEvent, err := s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
 // 		if err != nil {
 // 			glog.Error(err)
 // 			util.ReturnHTTPMessage(w, r, 404, "badrequest", "no scheduledEvent found with given ID")
@@ -463,7 +463,7 @@ func (s ScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 // 			}
 // 		}
 
-// 		updateSE, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, scheduledEvent, metav1.UpdateOptions{})
+// 		updateSE, updateErr := s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, scheduledEvent, metav1.UpdateOptions{})
 // 		if(updateErr != nil){
 // 			return updateErr
 // 		}
@@ -472,7 +472,7 @@ func (s ScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 // 		updateSE.Status.Ready = false
 // 		updateSE.Status.Finished = false
 
-// 		_, updateErr = s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, updateSE, metav1.UpdateOptions{})
+// 		_, updateErr = s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, updateSE, metav1.UpdateOptions{})
 // 		return updateErr
 // 	})
 
@@ -610,6 +610,7 @@ func (s ScheduledEventServer) CreateFuncSharedVM(w http.ResponseWriter, r *http.
 			return
 		}
 	}
+	glog.Infof("Create new shared_vms in CreateFuncSharedVM %v", err)
 
 	scheduledEvent := &hfv2.ScheduledEvent{}
 	random := util.RandStringRunes(16)
@@ -705,7 +706,7 @@ func (s ScheduledEventServer) UpdateFuncSharedVM(w http.ResponseWriter, r *http.
 		printableRaw := r.PostFormValue("printable")
 		/****************************/
 		shared_vmsRaw := r.PostFormValue("shared_vms")
-
+		glog.Infof("raw shared_vms post read %v", shared_vmsRaw)
 		if name != "" {
 			scheduledEvent.Spec.Name = name
 		}
@@ -745,15 +746,59 @@ func (s ScheduledEventServer) UpdateFuncSharedVM(w http.ResponseWriter, r *http.
 		}
 		/************/
 		if shared_vmsRaw != "" {
-			shared_vms := []hfv2.SharedVirtualMachine{} // must be declared this way so as to JSON marshal into [] instead of null
-			err = json.Unmarshal([]byte(shared_vmsRaw), &shared_vms)
+			upd_shared_vms := []hfv2.SharedVirtualMachine{} // must be declared this way so as to JSON marshal into [] instead of null
+
+			err = json.Unmarshal([]byte(shared_vmsRaw), &upd_shared_vms)
 			if err != nil {
 				glog.Errorf("error while unmarshalling shared_vms %v", err)
 				//	util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
 				return fmt.Errorf("bad")
 			}
-			scheduledEvent.Spec.SharedVirtualMachines = shared_vms
+			glog.Infof("raw shared_vms %v", shared_vmsRaw)
+			glog.Infof("unmarshalling shared_vms %v", upd_shared_vms)
+
+			//-----------------------delete shared VMs
+			//================TODO diffirence del from provisionedVM that in sharedVM not present and add new from sharedVM
+			provisioned_shared_vms := scheduledEvent.Spec.SharedVirtualMachines
+			actual_shared_vms := []hfv2.SharedVirtualMachine{}
+			if len(provisioned_shared_vms) > 0 {
+				for _, provisioned_shared_vm := range provisioned_shared_vms {
+					isDelVM := true
+					for _, upd_shared_vm := range upd_shared_vms {
+						if provisioned_shared_vm.Name == upd_shared_vm.Name {
+							isDelVM = false
+							break
+						}
+					}
+						if isDelVM {
+							glog.Infof("del shared_vms %v", provisioned_shared_vm.Name)
+							s.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Delete(s.ctx, provisioned_shared_vm.VMId, metav1.DeleteOptions{})
+						} else {
+							actual_shared_vms = append(actual_shared_vms, provisioned_shared_vm)
+							glog.Infof("add provisioned shared_vms %v", provisioned_shared_vm.Name)
+						}
+					
+				}
+				for _, upd_shared_vm := range upd_shared_vms {
+					isAddVM := true
+					for _, actual_shared_vm := range actual_shared_vms {
+						if actual_shared_vm.Name == upd_shared_vm.Name {
+							isAddVM = false
+							break
+						}
+					}
+					if isAddVM {
+						actual_shared_vms = append(actual_shared_vms, upd_shared_vm)
+						glog.Infof("add upd shared_vms %v", upd_shared_vm.Name)
+					}
+				}
+				scheduledEvent.Spec.SharedVirtualMachines = actual_shared_vms
+			} else {
+				scheduledEvent.Spec.SharedVirtualMachines = upd_shared_vms
+			}
+			glog.Infof("update shared_vms %v", scheduledEvent.Spec.SharedVirtualMachines)
 		}
+		//----------------------------------------
 
 		if scenariosRaw != "" {
 			scenarios := []string{} // must be declared this way so as to JSON marshal into [] instead of null
@@ -836,12 +881,12 @@ func (s ScheduledEventServer) UpdateFuncSharedVM(w http.ResponseWriter, r *http.
 				return err
 			}
 		}
-
+		glog.Infof("scheduledEvent: %v", scheduledEvent)
 		updateSE, updateErr := s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, scheduledEvent, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
-
+		glog.Infof("updateSE: %v", updateSE)
 		updateSE.Status.Provisioned = false
 		updateSE.Status.Ready = false
 		updateSE.Status.Finished = false
@@ -909,7 +954,7 @@ func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err = s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Delete(s.ctx, scheduledEvent.Name, metav1.DeleteOptions{})
+	err = s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Delete(s.ctx, scheduledEvent.Name, metav1.DeleteOptions{})
 
 	if err != nil {
 		glog.Errorf("error deleting scheduled event %v", err)
