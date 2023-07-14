@@ -170,7 +170,7 @@ func (vms VMServer) GetSharedVirtualMachinesFunc(w http.ResponseWriter, r *http.
 		return
 	}
 
-	accessCodeResource, err := vms.acClient.GetAccessCode(accessCode)
+	accessCodeResource, err := vms.acClient.GetAccessCodeWithOTACs(accessCode)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "no accessCode found for given accessCode")
 		return
