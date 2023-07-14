@@ -284,7 +284,6 @@ func (vms VMServer) GetVMListByScheduledEventFunc(w http.ResponseWriter, r *http
 		util.ReturnHTTPMessage(w, r, 500, "error", "no scheduledEvent id passed in")
 		return
 	}
-	// TODO: Filter for sharedVM
 	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, id)}
 
 	vms.GetVMListFunc(w, r, lo)
