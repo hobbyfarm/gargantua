@@ -50,6 +50,14 @@ type EnvironmentListerExpansion interface{}
 // EnvironmentNamespaceLister.
 type EnvironmentNamespaceListerExpansion interface{}
 
+// OneTimeAccessCodeListerExpansion allows custom methods to be added to
+// OneTimeAccessCodeLister.
+type OneTimeAccessCodeListerExpansion interface{}
+
+// OneTimeAccessCodeNamespaceListerExpansion allows custom methods to be added to
+// OneTimeAccessCodeNamespaceLister.
+type OneTimeAccessCodeNamespaceListerExpansion interface{}
+
 // PredefinedServiceListerExpansion allows custom methods to be added to
 // PredefinedServiceLister.
 type PredefinedServiceListerExpansion interface{}

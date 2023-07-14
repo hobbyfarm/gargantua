@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"regexp"
 
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
@@ -25,6 +26,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 const (
@@ -208,9 +211,31 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	accessCodes, err := a.accessCodeClient.GetAccessCodes(user.Spec.AccessCodes)
-
+	// This holds a map of AC -> SE
 	accessCodeScheduledEvent := make(map[string]string)
+
+	// First we add ScheduledEvents based on OneTimeAccessCodes
+	otacReq, err := labels.NewRequirement(util.OneTimeAccessCodeLabel, selection.In, user.Spec.AccessCodes)
+	selector := labels.NewSelector()
+	selector = selector.Add(*otacReq)
+
+	otacList, err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).List(a.ctx, metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+
+	if err == nil {
+		for _, otac := range otacList.Items {
+			se, err := a.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(a.ctx, otac.Labels[util.ScheduledEventLabel], metav1.GetOptions{})
+			if err != nil {
+				continue
+			}
+			accessCodeScheduledEvent[otac.Name] = se.Spec.Name
+		}
+	}
+
+
+	// Afterwards we retreive the normal AccessCodes
+	accessCodes, err := a.accessCodeClient.GetAccessCodes(user.Spec.AccessCodes)
 
 	//Getting single SEs should be faster than listing all of them and iterating them in O(n^2), in most cases users only have a hand full of accessCodes.
 	for _, ac := range accessCodes {
@@ -264,6 +289,17 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 
 	accessCode := strings.ToLower(r.PostFormValue("access_code"))
 
+	// Validate that the AccessCode
+	// starts and ends with an alphanumeric character.
+	// Only contains '.' and '-' special characters in the middle.
+	// Must be at least 5 Characters long (1 Start + At least 3 in the middle + 1 End)
+	validator, _ := regexp.Compile(`^[a-z0-9]+[a-z0-9\-\.]{3,}[a-z0-9]+$`)
+	validAccessCode := validator.MatchString(accessCode)
+	if !validAccessCode {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "AccessCode does not meet criteria.")
+		return
+	}
+
 	err = a.AddAccessCode(user.Name, accessCode)
 
 	if err != nil {
@@ -307,6 +343,28 @@ func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 	}
 
 	accessCode = strings.ToLower(accessCode)
+
+	// check if this is an otac
+	otac, err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Get(a.ctx, accessCode, metav1.GetOptions{})
+	if err != nil{
+		//otac does not exist. normal access code
+	}else{
+		//otac does exist, check if already redeemed
+		if otac.Spec.RedeemedTimestamp != "" && otac.Spec.User != userId {
+			return fmt.Errorf("one time access code already in use")
+		}
+		if otac.Spec.RedeemedTimestamp == "" {
+			//otac not in use, redeem now
+			otac.Spec.User = userId
+			otac.Spec.RedeemedTimestamp = time.Now().Format(time.UnixDate)
+			otac.Labels[util.UserLabel] = userId
+			_, err = a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Update(a.ctx, otac, metav1.UpdateOptions{})
+			if err != nil {
+				return fmt.Errorf("error redeeming one time access code %v", err)
+			}
+		}
+		// when we are here the user had the otac added previously
+	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		user, err := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
@@ -474,7 +532,18 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	// should we reconcile based on the access code posted in? nah
 
 	if len(email) == 0 || len(accessCode) == 0 || len(password) == 0 {
-		util.ReturnHTTPMessage(w, r, 400, "error", "invalid input. required fields: email, access_code, password")
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid input. required fields: email, access_code, password")
+		return
+	}
+
+	// Validate that the AccessCode
+	// starts and ends with an alphanumeric character.
+	// Only contains '.' and '-' special characters in the middle.
+	// Must be at least 5 Characters long (1 Start + At least 3 in the middle + 1 End)
+	validator, _ := regexp.Compile(`^[a-z0-9]+[a-z0-9\-\.]{3,}[a-z0-9]+$`)
+	validAccessCode := validator.MatchString(accessCode)
+	if !validAccessCode {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "AccessCode does not meet criteria.")
 		return
 	}
 
@@ -498,9 +567,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	err = a.AddAccessCode(userId, accessCode)
 
 	if err != nil {
-		glog.Errorf("error creating user %s %v", email, err)
-		util.ReturnHTTPMessage(w, r, 400, "error", "error creating user")
-		return
+		glog.Errorf("error adding accessCode to newly created user %s %v", email, err)
 	}
 
 	glog.V(2).Infof("created user %s", email)

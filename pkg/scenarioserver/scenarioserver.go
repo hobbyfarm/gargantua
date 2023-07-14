@@ -132,7 +132,7 @@ func (s ScenarioServer) getPrintableScenarioIds(accessCodes []string) []string {
 	var printableScenarioIds []string
 	var printableCourseIds []string
 	for _, acString := range accessCodes {
-		ac, err := s.acClient.GetAccessCode(acString)
+		ac, err := s.acClient.GetAccessCodeWithOTACs(acString)
 		if err != nil {
 			glog.Errorf("error retrieving access code: %s %v", acString, err)
 			continue
@@ -404,7 +404,7 @@ func (s ScenarioServer) ListScenarioForAccessCode(w http.ResponseWriter, r *http
 	//var courseScenarios []string
 	var scenarioIds []string
 	var printableScenarioIds []string
-	ac, err := s.acClient.GetAccessCode(accessCode)
+	ac, err := s.acClient.GetAccessCodeWithOTACs(accessCode)
 	if err != nil {
 		glog.Errorf("error retrieving access code: %s %v", accessCode, err)
 	}

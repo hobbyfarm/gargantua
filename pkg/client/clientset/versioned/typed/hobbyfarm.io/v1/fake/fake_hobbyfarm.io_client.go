@@ -44,6 +44,10 @@ func (c *FakeHobbyfarmV1) Environments(namespace string) v1.EnvironmentInterface
 	return &FakeEnvironments{c, namespace}
 }
 
+func (c *FakeHobbyfarmV1) OneTimeAccessCodes(namespace string) v1.OneTimeAccessCodeInterface {
+	return &FakeOneTimeAccessCodes{c, namespace}
+}
+
 func (c *FakeHobbyfarmV1) PredefinedServices(namespace string) v1.PredefinedServiceInterface {
 	return &FakePredefinedServices{c, namespace}
 }
