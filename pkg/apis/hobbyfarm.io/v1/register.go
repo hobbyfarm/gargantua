@@ -57,6 +57,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&SettingList{},
 		&Scope{},
 		&ScopeList{},
+		&OneTimeAccessCode{},
+		&OneTimeAccessCodeList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

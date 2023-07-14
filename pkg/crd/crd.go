@@ -107,6 +107,15 @@ func GenerateCRDs(caBundle string, reference ServiceReference) []crder.CRD {
 						WithColumn("Expiration", ".spec.expiration")
 				})
 		}),
+		hobbyfarmCRD(&v1.OneTimeAccessCode{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.OneTimeAccessCode{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("User", ".spec.user").
+						WithColumn("Redeemed", ".spec.redeemed_timestamp")
+				})
+		}),
 		hobbyfarmCRD(&v1.User{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
