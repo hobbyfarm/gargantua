@@ -394,7 +394,7 @@ func main() {
 			RetryPeriod:     2 * time.Second,
 			Callbacks: leaderelection.LeaderCallbacks{
 				OnStartedLeading: func(c context.Context) {
-					err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, kubeInformerFactory, rbacControllerFactory, ctx, stopCh)
+					err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, kubeInformerFactory, rbacControllerFactory, acClient, ctx, stopCh)
 					if err != nil {
 						glog.Fatal(err)
 					}
@@ -424,7 +424,7 @@ func main() {
 }
 
 func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientset.Clientset,
-	hfInformerFactory hfInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, rbacControllerFactory *wranglerRbac.Factory,
+	hfInformerFactory hfInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, rbacControllerFactory *wranglerRbac.Factory, acClient *accesscode.AccessCodeClient, 
 	ctx context.Context, stopCh <-chan struct{}) error {
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -437,7 +437,7 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	if err != nil {
 		return err
 	}
-	vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory, gctx)
+	vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory, acClient, gctx)
 	if err != nil {
 		return err
 	}

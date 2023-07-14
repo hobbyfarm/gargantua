@@ -32,6 +32,8 @@ type Interface interface {
 	DynamicBindConfigurations() DynamicBindConfigurationInformer
 	// Environments returns a EnvironmentInformer.
 	Environments() EnvironmentInformer
+	// OneTimeAccessCodes returns a OneTimeAccessCodeInformer.
+	OneTimeAccessCodes() OneTimeAccessCodeInformer
 	// PredefinedServices returns a PredefinedServiceInformer.
 	PredefinedServices() PredefinedServiceInformer
 	// Progresses returns a ProgressInformer.
@@ -87,6 +89,11 @@ func (v *version) DynamicBindConfigurations() DynamicBindConfigurationInformer {
 // Environments returns a EnvironmentInformer.
 func (v *version) Environments() EnvironmentInformer {
 	return &environmentInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// OneTimeAccessCodes returns a OneTimeAccessCodeInformer.
+func (v *version) OneTimeAccessCodes() OneTimeAccessCodeInformer {
+	return &oneTimeAccessCodeInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // PredefinedServices returns a PredefinedServiceInformer.

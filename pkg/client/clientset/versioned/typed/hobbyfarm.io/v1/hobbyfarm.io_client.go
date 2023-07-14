@@ -32,6 +32,7 @@ type HobbyfarmV1Interface interface {
 	CoursesGetter
 	DynamicBindConfigurationsGetter
 	EnvironmentsGetter
+	OneTimeAccessCodesGetter
 	PredefinedServicesGetter
 	ProgressesGetter
 	ScenariosGetter
@@ -65,6 +66,10 @@ func (c *HobbyfarmV1Client) DynamicBindConfigurations(namespace string) DynamicB
 
 func (c *HobbyfarmV1Client) Environments(namespace string) EnvironmentInterface {
 	return newEnvironments(c, namespace)
+}
+
+func (c *HobbyfarmV1Client) OneTimeAccessCodes(namespace string) OneTimeAccessCodeInterface {
+	return newOneTimeAccessCodes(c, namespace)
 }
 
 func (c *HobbyfarmV1Client) PredefinedServices(namespace string) PredefinedServiceInterface {

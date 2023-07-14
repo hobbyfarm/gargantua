@@ -14,6 +14,7 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/util"
+	"github.com/hobbyfarm/gargantua/pkg/settingclient"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -189,6 +190,27 @@ func (s ScheduledEventController) completeScheduledEvent(se *hfv2.ScheduledEvent
 	return nil // break (return) here because we're done with this SE.
 }
 
+func (s ScheduledEventController) deleteScheduledEvent(se *hfv2.ScheduledEvent) error {
+	glog.V(6).Infof("ScheduledEvent %s is done and retention time is over, deleting SE finally", se.Name)
+
+	if !se.Status.Finished {
+		return fmt.Errorf("error attempting to delete SE that is not finished")
+	}
+
+	// Delete Progress
+	err := s.deleteProgressFromScheduledEvent(se)
+	if err != nil {
+		return err
+	}
+
+	err = s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Delete(s.ctx, se.Name, metav1.DeleteOptions{})
+
+	if err != nil {
+		return err
+	}
+	return nil // break (return) here because we're done with this SE.
+}
+
 func (s ScheduledEventController) deleteVMSetsFromScheduledEvent(se *hfv2.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
 	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
@@ -201,8 +223,21 @@ func (s ScheduledEventController) deleteVMSetsFromScheduledEvent(se *hfv2.Schedu
 	return nil
 }
 
-func (s ScheduledEventController) deleteAccessCode(se *hfv2.ScheduledEvent) error {
+func (s ScheduledEventController) deleteProgressFromScheduledEvent(se *hfv2.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
+	err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+
+func (s ScheduledEventController) deleteAccessCode(se *hfv2.ScheduledEvent) error {
+	// delete the access code for the corresponding ScheduledEvent
 	err := s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
 	})
@@ -599,9 +634,7 @@ func (s ScheduledEventController) verifyScheduledEvent(se *hfv2.ScheduledEvent) 
 		}
 
 	} else if ac.Labels[util.AccessCodeLabel] != ac.Spec.Code {
-		err = s.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
-		})
+		err = s.deleteAccessCode(se)
 		if err != nil {
 			return err
 		}
@@ -686,6 +719,17 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 
 	if endTime.Before(now) && se.Status.Finished {
 		// scheduled event is finished and nothing to do
+		
+		if set := settingclient.GetSetting(settingclient.ScheduledEventRetentionTime); set == nil {
+			// Could not get retention time setting. Just keep the SE
+			return fmt.Errorf("Error retreiving retention Time setting")
+		} else {
+			retentionTime := endTime.Add(time.Hour * time.Duration(set.(int)))
+			if retentionTime.Before(now) {
+				// Really finish the ScheduledEvent
+				return s.deleteScheduledEvent(se)
+			}
+		}
 	}
 
 	// The ScheduledEvent is set to OnDemand but still has VMSets

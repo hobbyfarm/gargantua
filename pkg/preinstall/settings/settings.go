@@ -4,6 +4,7 @@ import (
 	"context"
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/settingclient"
 	"github.com/hobbyfarm/gargantua/pkg/labels"
 	"github.com/hobbyfarm/gargantua/pkg/property"
 	"github.com/hobbyfarm/gargantua/pkg/util"
@@ -71,6 +72,13 @@ func scopes() []*v1.Scope {
 			},
 			DisplayName: "User UI",
 		},
+		{
+			ObjectMeta: v12.ObjectMeta{
+				Name:      "gargantua",
+				Namespace: util.GetReleaseNamespace(),
+			},
+			DisplayName: "Gargantua",
+		},
 	}
 }
 
@@ -78,7 +86,7 @@ func settings() []*v1.Setting {
 	return []*v1.Setting{
 		{
 			ObjectMeta: v12.ObjectMeta{
-				Name:      "motd-admin-ui",
+				Name:      string(settingclient.SettingAdminUIMOTD),
 				Namespace: util.GetReleaseNamespace(),
 				Labels: map[string]string{
 					labels.SettingScope: "admin-ui",
@@ -93,7 +101,7 @@ func settings() []*v1.Setting {
 		},
 		{
 			ObjectMeta: v12.ObjectMeta{
-				Name:      "motd-ui",
+				Name:      string(settingclient.SettingUIMOTD),
 				Namespace: util.GetReleaseNamespace(),
 				Labels: map[string]string{
 					labels.SettingScope: "public",
@@ -108,7 +116,7 @@ func settings() []*v1.Setting {
 		},
 		{
 			ObjectMeta: v12.ObjectMeta{
-				Name:      "registration-disabled",
+				Name:      string(settingclient.SettingRegistrationDisabled),
 				Namespace: util.GetReleaseNamespace(),
 				Labels: map[string]string{
 					labels.SettingScope: "public",
@@ -119,6 +127,21 @@ func settings() []*v1.Setting {
 				DataType:    property.DataTypeBoolean,
 				ValueType:   property.ValueTypeScalar,
 				DisplayName: "Registration Disabled",
+			},
+		},
+		{
+			ObjectMeta: v12.ObjectMeta{
+				Name:      string(settingclient.ScheduledEventRetentionTime),
+				Namespace: util.GetReleaseNamespace(),
+				Labels: map[string]string{
+					labels.SettingScope: "gargantua",
+				},
+			},
+			Value: "24",
+			Property: property.Property{
+				DataType:    property.DataTypeInteger,
+				ValueType:   property.ValueTypeScalar,
+				DisplayName: "ScheduledEvent retention time (h)",
 			},
 		},
 	}
