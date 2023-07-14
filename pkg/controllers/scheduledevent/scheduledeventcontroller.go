@@ -246,10 +246,9 @@ func (s ScheduledEventController) finishSessionsFromScheduledEvent(se *hfv2.Sche
 }
 
 func (s ScheduledEventController) CreateSharedVM(se *hfv2.ScheduledEvent) error {
-	glog.Infof("ScheduledEvent %v", se)
-	glog.Infof("scheduledVM %v", se.Spec.SharedVirtualMachines)
 	for i := 0; i < len(se.Spec.SharedVirtualMachines); i++ {
 		sharedVM := &se.Spec.SharedVirtualMachines[i]
+		// if sharedVM are provision (have VMId) continue, if new(empty VMId) create VM
 		if sharedVM.VMId != "" {
 			continue
 		}
@@ -335,8 +334,6 @@ func (s ScheduledEventController) CreateSharedVM(se *hfv2.ScheduledEvent) error 
 		if err != nil {
 			return err
 		}
-		glog.Infof("createVM %v", createdVM)
-		glog.Infof("scheduledVM in CreateSharedVM %v", se)
 	}
 	return nil
 }
@@ -353,13 +350,12 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 		e.g. --> glog.Errorf("we are overprovisioning this environment %s by CPU...
 	*/
 
-	//TODO: create shared VM for ScheduledEvent
-
+	//create shared VM for ScheduledEvent
 	err_vm := s.CreateSharedVM(se)
 	if err_vm != nil {
 		return err_vm
 	}
-	glog.Infof("scheduledVM in provisionScheduledEvent %v", se)
+
 	// begin by calculating what is currently being used in the environment
 	for envName, vmtMap := range se.Spec.RequiredVirtualMachines {
 		// get the environment we're provisioning into (envName)
@@ -526,7 +522,7 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 	if retryErr != nil {
 		return retryErr
 	}
-	glog.Infof("scheduledVM in provisionScheduledEvent end %v", se)
+
 	return nil
 }
 

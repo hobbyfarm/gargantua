@@ -180,9 +180,8 @@ func (vms VMServer) GetSharedVirtualMachinesFunc(w http.ResponseWriter, r *http.
 	scheduledEvent, err := vms.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Get(vms.ctx, scheduledEventID, v1.GetOptions{})
 	sharedVMs := scheduledEvent.Spec.SharedVirtualMachines
 	preparedSharedVMs := []PreparedSharedVirtualMachine{}
-	// LOOP over all sharedVMs
-	for _, sharedVM := range sharedVMs {
-		// FROM sharedVM
+	
+	for _, sharedVM := range sharedVMs {		
 		vmId := sharedVM.VMId
 		// Get VM Resource from Kubernetes
 		vm, err := vms.GetVirtualMachineById(vmId)
@@ -192,8 +191,7 @@ func (vms VMServer) GetSharedVirtualMachinesFunc(w http.ResponseWriter, r *http.
 			return
 		}
 		preparedVM := PreparedVirtualMachine{vm.Name, vm.Spec, vm.Status, vm.Labels["shared"] == "true"}
-		preparedSharedVM := PreparedSharedVirtualMachine{sharedVM.Name, preparedVM}
-		// append VM to a list
+		preparedSharedVM := PreparedSharedVirtualMachine{sharedVM.Name, preparedVM}		
 		preparedSharedVMs = append(preparedSharedVMs, preparedSharedVM)
 		glog.V(2).Infof("retrieved vm %s", vm.Name)
 	}
