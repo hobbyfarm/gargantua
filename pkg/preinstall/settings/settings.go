@@ -156,7 +156,7 @@ func settings() []*v1.Setting {
 			Property: property.Property{
 				DataType:    property.DataTypeBoolean,
 				ValueType:   property.ValueTypeScalar,
-				DisplayName: "Strict AccessCodes validation",
+				DisplayName: "Strict AccessCode validation",
 			},
 		},
 	}
