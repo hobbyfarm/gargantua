@@ -300,6 +300,20 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate that the AccessCode exists if strict setting enabled
+	if set := settingclient.GetSetting(settingclient.AccessCodeValidation); set == nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
+		return
+	} else {
+		if set.(bool) {
+			err := a.ValidateAccessCodeFunc(accessCode)
+			if err != nil {
+				util.ReturnHTTPMessage(w, r, 400, "badrequest", "AccessCode is invalid.")
+		return
+			}
+		}
+	}
+
 	err = a.AddAccessCode(user.Name, accessCode)
 
 	if err != nil {
@@ -311,6 +325,16 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPMessage(w, r, 200, "success", accessCode)
 
 	glog.V(2).Infof("added accesscode %s to user %s", accessCode, user.Spec.Email)
+}
+
+func (a AuthServer) ValidateAccessCodeFunc(accessCode string) error {
+	_, err := a.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Get(a.ctx, accessCode, metav1.GetOptions{})
+	if err != nil {
+		// If AccessCode does not exist check if this might be an OTAC
+		_, err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Get(a.ctx, accessCode, metav1.GetOptions{})
+		return err
+	}
+	return nil
 }
 
 func (a AuthServer) RemoveAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
@@ -365,6 +389,8 @@ func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 		}
 		// when we are here the user had the otac added previously
 	}
+
+
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		user, err := a.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(a.ctx, userId, metav1.GetOptions{})
@@ -545,6 +571,20 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	if !validAccessCode {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "AccessCode does not meet criteria.")
 		return
+	}
+
+	// Validate that the AccessCode exists if strict setting enabled
+	if set := settingclient.GetSetting(settingclient.AccessCodeValidation); set == nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
+		return
+	} else {
+		if set.(bool) {
+			err := a.ValidateAccessCodeFunc(accessCode)
+			if err != nil {
+				util.ReturnHTTPMessage(w, r, 400, "badrequest", "AccessCode is invalid.")
+		return
+			}
+		}
 	}
 
 	userId, err := a.NewUser(email, password)

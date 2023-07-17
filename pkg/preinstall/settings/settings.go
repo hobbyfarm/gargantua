@@ -144,5 +144,20 @@ func settings() []*v1.Setting {
 				DisplayName: "ScheduledEvent retention time (h)",
 			},
 		},
+		{
+			ObjectMeta: v12.ObjectMeta{
+				Name:      string(settingclient.AccessCodeValidation),
+				Namespace: util.GetReleaseNamespace(),
+				Labels: map[string]string{
+					labels.SettingScope: "gargantua",
+				},
+			},
+			Value: "false",
+			Property: property.Property{
+				DataType:    property.DataTypeBoolean,
+				ValueType:   property.ValueTypeScalar,
+				DisplayName: "Strict AccessCodes validation",
+			},
+		},
 	}
 }

@@ -20,6 +20,7 @@ const (
 	SettingAdminUIMOTD          SettingName = "motd-admin-ui"
 	SettingUIMOTD               SettingName = "motd-ui"
 	ScheduledEventRetentionTime SettingName = "scheduledevent-retention-time"
+	AccessCodeValidation		SettingName = "accesscode-validation"
 )
 
 type SettingName string
