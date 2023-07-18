@@ -254,8 +254,12 @@ func (u *GrpcUserServer) UpdateUser(ctx context.Context, userRequest *userProto.
 			glog.Infof("The new hash is: %s", string(passwordHash))
 		}
 
-		user.Spec.AccessCodes = userRequest.GetAccessCodes()
-		user.Spec.Settings = userRequest.GetSettings()
+		if userRequest.GetAccessCodes() != nil {
+			user.Spec.AccessCodes = userRequest.GetAccessCodes()
+		}
+		if userRequest.GetSettings() != nil {
+			user.Spec.Settings = userRequest.GetSettings()
+		}
 
 		_, updateErr := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Update(u.ctx, user, metav1.UpdateOptions{})
 		return updateErr
