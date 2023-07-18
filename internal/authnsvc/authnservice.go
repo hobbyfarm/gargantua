@@ -320,7 +320,10 @@ func (a AuthServer) UpdateSettings(user *userProto.User, newSettings map[string]
 	userClient := userProto.NewUserSvcClient(userConn)
 	defer userConn.Close()
 
-	user.Settings = newSettings
+	user = &userProto.User{
+		Id:       user.GetId(),
+		Settings: newSettings,
+	}
 
 	_, err = userClient.UpdateUser(ctx, user)
 
