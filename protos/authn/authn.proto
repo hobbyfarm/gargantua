@@ -4,7 +4,6 @@ package authn;
 
 option go_package = "github.com/hobbyfarm/gargantua/protos/authn";
 
-// import "k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto";
 import "user/user.proto";
 
 // Service definition
@@ -15,10 +14,3 @@ service AuthN {
 message AuthNRequest {
     string token = 1;
 }
-
-// message AuthNResponse {
-//     string kind = 1;
-//     string apiVersion = 2;
-//     k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 3;
-//     user.User user = 4;
-// }
