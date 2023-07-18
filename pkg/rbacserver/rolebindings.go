@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,8 +15,8 @@ import (
 )
 
 type PreparedRoleBinding struct {
-	Name string `json:"name"`
-	Role string `json:"role"`
+	Name     string `json:"name"`
+	Role     string `json:"role"`
 	Subjects []PreparedSubject
 }
 
@@ -250,8 +250,8 @@ func (s Server) getRoleBinding(w http.ResponseWriter, r *http.Request) (*rbacv1.
 
 func (s Server) prepareRoleBinding(roleBinding rbacv1.RoleBinding) PreparedRoleBinding {
 	prb := PreparedRoleBinding{
-		Name: roleBinding.Name,
-		Role: roleBinding.RoleRef.Name,
+		Name:     roleBinding.Name,
+		Role:     roleBinding.RoleRef.Name,
 		Subjects: []PreparedSubject{},
 	}
 
@@ -267,14 +267,14 @@ func (s Server) prepareRoleBinding(roleBinding rbacv1.RoleBinding) PreparedRoleB
 
 func (s Server) unmarshalRoleBinding(ctx context.Context, preparedRoleBinding *PreparedRoleBinding) (*rbacv1.RoleBinding, error) {
 	// first validation, the role it is referencing has to exist
-	role, err := s.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Get(ctx, preparedRoleBinding.Role, metav1.GetOptions{});
+	role, err := s.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Get(ctx, preparedRoleBinding.Role, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("invalid role ref")
 	}
 
 	rb := rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: preparedRoleBinding.Name,
+			Name:      preparedRoleBinding.Name,
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
 				util.RBACManagedLabel: "true",
@@ -284,14 +284,14 @@ func (s Server) unmarshalRoleBinding(ctx context.Context, preparedRoleBinding *P
 					APIVersion: "rbac.authorization.k8s.io/v1",
 					Kind:       "Role",
 					Name:       role.Name,
-					UID: 		role.UID,
+					UID:        role.UID,
 				},
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: k8sRbacGroup,
-			Name: preparedRoleBinding.Role,
-			Kind: "Role",
+			Name:     preparedRoleBinding.Role,
+			Kind:     "Role",
 		},
 		Subjects: []rbacv1.Subject{},
 	}
@@ -302,8 +302,8 @@ func (s Server) unmarshalRoleBinding(ctx context.Context, preparedRoleBinding *P
 		}
 
 		rb.Subjects = append(rb.Subjects, rbacv1.Subject{
-			Kind: s.Kind,
-			Name: s.Name,
+			Kind:     s.Kind,
+			Name:     s.Name,
 			APIGroup: k8sRbacGroup,
 		})
 	}

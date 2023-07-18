@@ -21,8 +21,8 @@ package v1
 import (
 	"net/http"
 
-	v1 "github.com/hobbyfarm/gargantua/pkg/apis/terraformcontroller.cattle.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/scheme"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 

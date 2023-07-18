@@ -19,13 +19,13 @@ limitations under the License.
 package fake
 
 import (
-	clientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	hobbyfarmv1 "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
-	fakehobbyfarmv1 "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1/fake"
-	hobbyfarmv2 "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/typed/hobbyfarm.io/v2"
-	fakehobbyfarmv2 "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/typed/hobbyfarm.io/v2/fake"
-	terraformcontrollerv1 "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/typed/terraformcontroller.cattle.io/v1"
-	faketerraformcontrollerv1 "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned/typed/terraformcontroller.cattle.io/v1/fake"
+	clientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hobbyfarmv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	fakehobbyfarmv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1/fake"
+	hobbyfarmv2 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v2"
+	fakehobbyfarmv2 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v2/fake"
+	terraformcontrollerv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/terraformcontroller.cattle.io/v1"
+	faketerraformcontrollerv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/terraformcontroller.cattle.io/v1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

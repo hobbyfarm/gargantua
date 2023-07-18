@@ -19,7 +19,7 @@ limitations under the License.
 package v2
 
 import (
-	v2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
+	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"

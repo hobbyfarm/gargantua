@@ -14,22 +14,22 @@ import (
 	mrand "math/rand"
 
 	"github.com/golang/glog"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfListers "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	"golang.org/x/crypto/ssh"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/util/retry"
 
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
-	"sort"
 
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 )
 
 type HTTPMessage struct {
@@ -321,25 +321,26 @@ func EnsureVMNotReady(hfClientset hfClientset.Interface, vmLister hfListers.Virt
 	return nil
 }
 
-
 // pending rename...
 type Maximus struct {
-	AvailableCount    map[string]int    `json:"available_count"`
+	AvailableCount map[string]int `json:"available_count"`
 }
 
 // Range with reserved virtual machine amounts for given time range
 type Range struct {
-	Start time.Time
-	End   time.Time
+	Start     time.Time
+	End       time.Time
 	VMMapping map[string]int
 }
+
 // These functions are used to sort arrays of time.Time
 type ByTime []time.Time
-func (t ByTime) Len() int { return len(t) }
-func (t ByTime) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
+
+func (t ByTime) Len() int           { return len(t) }
+func (t ByTime) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
 func (t ByTime) Less(i, j int) bool { return t[i].Before(t[j]) }
 func sortTime(timeArray []time.Time) {
-    sort.Sort(ByTime(timeArray))
+	sort.Sort(ByTime(timeArray))
 }
 
 func Max(x, y int) int {
@@ -351,15 +352,15 @@ func Max(x, y int) int {
 
 // Calculates available virtualMachineTemplates for a given period (startString, endString) and environment
 // Returns a map with timestamps and corresponding availability of virtualmachines. Also returns the maximum available count of virtualmachinetemplates over the whole duration.
-func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context)(map[time.Time]map[string]int, map[string]int, error){
+func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context) (map[time.Time]map[string]int, map[string]int, error) {
 	start, err := time.Parse(time.UnixDate, startString)
 	if err != nil {
 		return map[time.Time]map[string]int{}, map[string]int{}, fmt.Errorf("error parsing start time %v", err)
 	}
 
 	// We only want to calculate for the future. Otherwise old ( even finished ) events will be considered too.
-	if(start.Before(time.Now())){
-		start = time.Now();
+	if start.Before(time.Now()) {
+		start = time.Now()
 	}
 
 	end, err := time.Parse(time.UnixDate, endString)
@@ -373,9 +374,9 @@ func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environm
 	}
 
 	var timeRange []Range
-	var changingTimestamps []time.Time // All timestamps where number of virtualmachines changes (Begin or End of Scheduled Event)
+	var changingTimestamps []time.Time                        // All timestamps where number of virtualmachines changes (Begin or End of Scheduled Event)
 	virtualMachineCount := make(map[time.Time]map[string]int) // Count of virtualmachines per VMTemplate for any given timestamp where a change happened
-	maximumVirtualMachineCount := make(map[string]int) // Maximum VirtualMachine Count per VirtualMachineTemplate over all timestamps
+	maximumVirtualMachineCount := make(map[string]int)        // Maximum VirtualMachine Count per VirtualMachineTemplate over all timestamps
 
 	for _, se := range scheduledEvents.Items {
 		// Scheduled Event uses the environment we are checking
@@ -406,10 +407,10 @@ func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environm
 	for _, eventRange := range timeRange {
 		// For any given Scheduled Event check if the timestamp is during the duration of our event. Add required Virtualmachine Counts to this timestamp.
 		for _, timestamp := range changingTimestamps {
-			if(eventRange.Start.After(timestamp)){
+			if eventRange.Start.After(timestamp) {
 				continue
 			}
-			if(eventRange.End.Before(timestamp)){
+			if eventRange.End.Before(timestamp) {
 				break
 			}
 
@@ -437,8 +438,8 @@ func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environm
 
 func CountMachinesPerTemplateAndEnvironment(vmLister hfListers.VirtualMachineLister, template string, enviroment string) (int, error) {
 	vmLabels := labels.Set{
-		EnvironmentLabel: enviroment,
-		VirtualMachineTemplate:    template,
+		EnvironmentLabel:       enviroment,
+		VirtualMachineTemplate: template,
 	}
 
 	vms, err := vmLister.List(vmLabels.AsSelector())
@@ -447,10 +448,9 @@ func CountMachinesPerTemplateAndEnvironment(vmLister hfListers.VirtualMachineLis
 
 func CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(vmLister hfListers.VirtualMachineLister, template string, enviroment string, se string) (int, error) {
 	vmLabels := labels.Set{
-		EnvironmentLabel: enviroment,
-		VirtualMachineTemplate:    template,
-		ScheduledEventLabel: se,
-
+		EnvironmentLabel:       enviroment,
+		VirtualMachineTemplate: template,
+		ScheduledEventLabel:    se,
 	}
 
 	vms, err := vmLister.List(vmLabels.AsSelector())
@@ -458,9 +458,9 @@ func CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(vmLister hfListers.
 }
 
 func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context) (Maximus, error) {
-	_, maximumVirtualMachineCount, err := VirtualMachinesUsedDuringPeriod(hfClientset, environment, startString, endString, ctx);
+	_, maximumVirtualMachineCount, err := VirtualMachinesUsedDuringPeriod(hfClientset, environment, startString, endString, ctx)
 
-	if(err != nil) {
+	if err != nil {
 		return Maximus{}, err
 	}
 
@@ -468,7 +468,6 @@ func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment str
 	if err != nil {
 		return Maximus{}, fmt.Errorf("error retrieving environment %v", err)
 	}
-
 
 	max := Maximus{}
 	max.AvailableCount = make(map[string]int)
@@ -498,7 +497,7 @@ func GetReleaseNamespace() string {
 func GetVMConfig(env *hfv1.Environment, vmt *hfv1.VirtualMachineTemplate) map[string]string {
 	envSpecificConfigFromEnv := env.Spec.EnvironmentSpecifics
 	envTemplateInfo, exists := env.Spec.TemplateMapping[vmt.Name]
-	
+
 	config := make(map[string]string)
 	config["image"] = vmt.Spec.Image
 
@@ -514,7 +513,7 @@ func GetVMConfig(env *hfv1.Environment, vmt *hfv1.VirtualMachineTemplate) map[st
 
 	//This environment has specifics for this vmt
 	if exists {
-			// Override with specific from VM on this environment
+		// Override with specific from VM on this environment
 		for k, v := range envTemplateInfo {
 			config[k] = v
 		}

@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/hobbyfarm/gargantua/pkg/accesscode"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	hfListers "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -455,7 +455,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 		}
 
 		// extra label to indicate external provisioning so tfpcontroller ignores this request //
-		if provisionMethod, ok := environment.Annotations["hobbyfarm.io/provisioner"]; ok && provisionMethod != "" {
+		if provisionMethod, ok := environment.Annotations["hobbyfarm.io/provisioner"]; ok {
 			vm.Labels["hobbyfarm.io/provisioner"] = provisionMethod
 			vm.Spec.Provision = false
 		}
@@ -472,7 +472,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 			return err
 		}
 
-		vmStatus := hfv1.VirtualMachineStatus{
+		createdVM.Status = hfv1.VirtualMachineStatus{
 			Status:        hfv1.VmStatusRFP,
 			Allocated:     true,
 			Tainted:       false,
@@ -482,25 +482,9 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 			PrivateIP:     "",
 		}
 
-		// retry loop here
-		retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
-			createdVM, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Get(v.ctx, createdVM.Name, metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
-
-			createdVM.Status = vmStatus
-
-			_, err = v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(v.ctx, createdVM, metav1.UpdateOptions{})
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
-
-		if retryErr != nil {
-			return retryErr
+		_, err = v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(v.ctx, createdVM, metav1.UpdateOptions{})
+		if err != nil {
+			return err
 		}
 	}
 

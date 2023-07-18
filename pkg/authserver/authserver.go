@@ -6,28 +6,28 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/settingclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/settingclient"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
-	"regexp"
 
-	"github.com/hobbyfarm/gargantua/pkg/accesscode"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/errors"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	hfv2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
+	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"golang.org/x/crypto/bcrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -233,7 +233,6 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-
 	// Afterwards we retreive the normal AccessCodes
 	accessCodes, err := a.accessCodeClient.GetAccessCodes(user.Spec.AccessCodes)
 
@@ -346,9 +345,9 @@ func (a AuthServer) AddAccessCode(userId string, accessCode string) error {
 
 	// check if this is an otac
 	otac, err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Get(a.ctx, accessCode, metav1.GetOptions{})
-	if err != nil{
+	if err != nil {
 		//otac does not exist. normal access code
-	}else{
+	} else {
 		//otac does exist, check if already redeemed
 		if otac.Spec.RedeemedTimestamp != "" && otac.Spec.User != userId {
 			return fmt.Errorf("one time access code already in use")
