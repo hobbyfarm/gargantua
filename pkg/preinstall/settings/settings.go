@@ -2,12 +2,12 @@ package settings
 
 import (
 	"context"
-	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/settingclient"
-	"github.com/hobbyfarm/gargantua/pkg/labels"
-	"github.com/hobbyfarm/gargantua/pkg/property"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
+	"github.com/hobbyfarm/gargantua/v3/pkg/property"
+	"github.com/hobbyfarm/gargantua/v3/pkg/settingclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sync"

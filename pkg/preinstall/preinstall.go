@@ -3,8 +3,8 @@ package preinstall
 import (
 	"context"
 	"github.com/golang/glog"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/preinstall/settings"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/pkg/preinstall/settings"
 	"sync"
 )
 

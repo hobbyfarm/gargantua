@@ -4,26 +4,26 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/pkg/accesscode"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 const (
-	idIndex = "courseserver.hobbyfarm.io/id-index"
+	idIndex        = "courseserver.hobbyfarm.io/id-index"
 	resourcePlural = "courses"
 )
 
@@ -443,7 +443,6 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	
 	vars := mux.Vars(r)
 	accessCode := vars["access_code"]
 
@@ -454,9 +453,9 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 
 	contains := false
 	for _, acc := range user.Spec.AccessCodes {
-		if(acc == accessCode){
+		if acc == accessCode {
 			contains = true
-			break;
+			break
 		}
 	}
 
@@ -591,7 +590,7 @@ func filterScheduledEvents(course string, seList *hfv1.ScheduledEventList) *[]hf
 		for _, c := range se.Spec.Courses {
 			if c == course {
 				outList = append(outList, se)
-				break;
+				break
 			}
 		}
 	}

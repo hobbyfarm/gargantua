@@ -1,4 +1,4 @@
-module github.com/hobbyfarm/gargantua
+module github.com/hobbyfarm/gargantua/v3
 
 go 1.20
 
