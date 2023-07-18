@@ -3,6 +3,7 @@ package rbac
 import (
 	"fmt"
 
+	"github.com/hobbyfarm/gargantua/pkg/util"
 	authrProto "github.com/hobbyfarm/gargantua/protos/authr"
 	rbacProto "github.com/hobbyfarm/gargantua/protos/rbac"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -160,20 +161,25 @@ func (i *Index) getPreparedRoleBindings(subj string) (*rbacProto.RoleBindings, e
 
 	for _, v := range obj {
 		rb, ok := v.(*rbacv1.RoleBinding)
-		if ok {
-			tmpRoleBinding := &rbacProto.RoleBinding{
-				Name:     rb.Name,
-				Role:     rb.RoleRef.Name,
-				Subjects: []*rbacProto.Subject{},
-			}
-			for _, s := range rb.Subjects {
-				tmpRoleBinding.Subjects = append(tmpRoleBinding.Subjects, &rbacProto.Subject{
-					Kind: s.Kind,
-					Name: s.Name,
-				})
-			}
-			roleBindings = append(roleBindings, tmpRoleBinding)
+		if !ok {
+			continue // rb is not of type *rbacv1.RoleBinding, don't return it
 		}
+
+		if _, ok := rb.Labels[util.RBACManagedLabel]; !ok {
+			continue // we aren't managing this role, don't return it
+		}
+		tmpRoleBinding := &rbacProto.RoleBinding{
+			Name:     rb.Name,
+			Role:     rb.RoleRef.Name,
+			Subjects: []*rbacProto.Subject{},
+		}
+		for _, s := range rb.Subjects {
+			tmpRoleBinding.Subjects = append(tmpRoleBinding.Subjects, &rbacProto.Subject{
+				Kind: s.Kind,
+				Name: s.Name,
+			})
+		}
+		roleBindings = append(roleBindings, tmpRoleBinding)
 	}
 
 	return &rbacProto.RoleBindings{Rolebindings: roleBindings}, nil
