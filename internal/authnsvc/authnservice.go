@@ -198,9 +198,7 @@ func (a AuthServer) AddAccessCode(user *userProto.User, accessCode string, ctx c
 	// To not update the password, we therefore need to provide an empty string or a user object without password.
 	user = &userProto.User{
 		Id:          user.Id,
-		Email:       user.Email,
 		AccessCodes: append(user.AccessCodes, accessCode),
-		Settings:    user.Settings,
 	}
 
 	userConn, err := microservices.EstablishConnection("user-service", a.tlsCaPath)
@@ -254,9 +252,7 @@ func (a AuthServer) RemoveAccessCode(user *userProto.User, accessCode string, ct
 	// To not update the password, we therefore need to provide an empty string or a user object without password.
 	user = &userProto.User{
 		Id:          user.Id,
-		Email:       user.Email,
 		AccessCodes: newAccessCodes,
-		Settings:    user.Settings,
 	}
 
 	userConn, err := microservices.EstablishConnection("user-service", a.tlsCaPath)
