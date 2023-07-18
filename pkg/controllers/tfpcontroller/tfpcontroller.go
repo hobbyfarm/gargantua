@@ -175,11 +175,9 @@ func (t *TerraformProvisionerController) processNextVM() bool {
 func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine) (error, bool) {
 	// VM shall not be provisioned by internal terraform controller
 	if !vm.Spec.Provision {
-		if provisionMethod, ok := vm.ObjectMeta.Labels["hobbyfarm.io/provisioner"]; ok {
-			if provisionMethod != "internal" {
-				glog.V(8).Infof("vm %s ignored due to external provisioning label", vm.Name)
-				t.vmWorkqueue.Done(vm.Name)
-			}
+		if prov, ok := vm.ObjectMeta.Labels["hobbyfarm.io/provisioner"]; ok && prov != "" {
+			glog.V(8).Infof("vm %s ignored by internal provisioner due to 3rd party provisioning label", vm.Name)
+			t.vmWorkqueue.Done(vm.Name)
 		}
 		glog.V(8).Infof("vm %s was not a provisioned vm", vm.Name)
 		return nil, false

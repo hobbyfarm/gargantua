@@ -253,10 +253,8 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		env, err := v.envLister.Environments(util.GetReleaseNamespace()).Get(vmset.Spec.Environment)
 		var provision bool
 		provision = true
-		if provisionMethod, ok := env.Annotations["hobbyfarm.io/provisioner"]; ok {
-			if provisionMethod != "internal" {
-				provision = false
-			}
+		if provisionMethod, ok := env.Annotations["hobbyfarm.io/provisioner"]; ok && provisionMethod != "" {
+			provision = false
 		}
 		if err != nil {
 			if apierrors.IsNotFound(err) {
