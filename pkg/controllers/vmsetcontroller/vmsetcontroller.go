@@ -254,7 +254,7 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		var provision bool
 		provision = true
 		if provisionMethod, ok := env.Annotations["hobbyfarm.io/provisioner"]; ok {
-			if provisionMethod == "external" {
+			if provisionMethod != "internal" {
 				provision = false
 			}
 		}
@@ -354,18 +354,20 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			}
 		}
 	}
-//-----------------------handle case of scaling down VMSets
+	//-----------------------handle case of scaling down VMSets
 	if len(currentVMs) > vmset.Spec.Count {
 		needed_delete := len(currentVMs) - vmset.Spec.Count
 		for _, cur_vm := range currentVMs {
 			if !cur_vm.Status.Allocated {
-				v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Delete(v.ctx, cur_vm.Name, metav1.DeleteOptions{} )
+				v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Delete(v.ctx, cur_vm.Name, metav1.DeleteOptions{})
 				needed_delete--
-				if needed_delete == 0 {break}
+				if needed_delete == 0 {
+					break
+				}
 			}
 		}
-	}	
-//-----------------------------------------------------
+	}
+	//-----------------------------------------------------
 	vms, err := v.vmLister.List(labels.Set{
 		"vmset": string(vmset.Name),
 	}.AsSelector())
