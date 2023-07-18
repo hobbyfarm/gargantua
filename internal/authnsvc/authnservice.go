@@ -497,7 +497,7 @@ func (a *AuthServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	encodedAS, err := json.Marshal(as)
+	encodedAS, err := util.GetProtoMarshaller().Marshal(as)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error encoding access set")
 		glog.Error(err)

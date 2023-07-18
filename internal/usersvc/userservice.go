@@ -26,6 +26,17 @@ type PreparedUser struct {
 	hfv2.UserSpec
 }
 
+type PreparedSubject struct {
+	Kind string `json:"kind"`
+	Name string `json:"name"`
+}
+
+type PreparedRoleBinding struct {
+	Name     string `json:"name"`
+	Role     string `json:"role"`
+	Subjects []PreparedSubject
+}
+
 func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 	authenticatedUser, err := rbac.AuthenticateRequest(r, u.tlsCaPath)
 	if err != nil {
@@ -59,19 +70,11 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 		util.ReturnHTTPMessage(w, r, 500, "error", "no user found")
 	}
 
-	preparedUser := PreparedUser{
-		ID: user.Id,
-		UserSpec: hfv2.UserSpec{
-			Email:       user.Email,
-			Password:    user.Password,
-			AccessCodes: user.AccessCodes,
-			Settings:    user.Settings,
-		},
-	}
-
-	encodedUser, err := json.Marshal(preparedUser)
+	encodedUser, err := util.GetProtoMarshaller().Marshal(user)
 	if err != nil {
-		glog.Error(err)
+		glog.Errorf("error while marshalling json for user: %v", err)
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
+		return
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedUser)
 
@@ -103,12 +106,12 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	preparedUsers := []PreparedUser{} // must be declared this way so as to JSON marshal into [] instead of null
 	for _, s := range users.Users {
 		preparedUsers = append(preparedUsers, PreparedUser{
-			ID: s.Id,
+			ID: s.GetId(),
 			UserSpec: hfv2.UserSpec{
-				Email:       s.Email,
-				Password:    s.Password,
-				AccessCodes: s.AccessCodes,
-				Settings:    s.Settings,
+				Email:       s.GetEmail(),
+				Password:    s.GetPassword(),
+				AccessCodes: s.GetAccessCodes(),
+				Settings:    s.GetSettings(),
 			},
 		})
 	}
@@ -116,6 +119,8 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	encodedUsers, err := json.Marshal(preparedUsers)
 	if err != nil {
 		glog.Error(err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "internal error")
+		return
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedUsers)
 
@@ -166,7 +171,6 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.ReturnHTTPMessage(w, r, 200, "updated", "")
-	return
 }
 
 func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
@@ -252,7 +256,12 @@ func (u UserServer) ListRoleBindingsForUser(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	data, err := json.Marshal(bindings.GetRolebindings())
+	preparedRoleBindings := []PreparedRoleBinding{}
+	for _, rb := range bindings.GetRolebindings() {
+		preparedRoleBindings = append(preparedRoleBindings, u.prepareRoleBinding(rb))
+	}
+
+	data, err := json.Marshal(preparedRoleBindings)
 	if err != nil {
 		glog.Errorf("error while marshalling json for rolebindings: %v", err)
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
@@ -260,4 +269,21 @@ func (u UserServer) ListRoleBindingsForUser(w http.ResponseWriter, r *http.Reque
 	}
 
 	util.ReturnHTTPContent(w, r, http.StatusOK, "content", data)
+}
+
+func (s UserServer) prepareRoleBinding(roleBinding *rbacProto.RoleBinding) PreparedRoleBinding {
+	prb := PreparedRoleBinding{
+		Name:     roleBinding.GetName(),
+		Role:     roleBinding.GetRole(),
+		Subjects: []PreparedSubject{},
+	}
+
+	for _, s := range roleBinding.GetSubjects() {
+		prb.Subjects = append(prb.Subjects, PreparedSubject{
+			Kind: s.GetKind(),
+			Name: s.GetName(),
+		})
+	}
+
+	return prb
 }

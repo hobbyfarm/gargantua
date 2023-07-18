@@ -39,7 +39,7 @@ func (s Server) ListRoleBindings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preparedRolebindings, err := s.internalRbacServer.ListRolebinding(r.Context(), &emptypb.Empty{})
+	bindings, err := s.internalRbacServer.ListRolebinding(r.Context(), &emptypb.Empty{})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			switch s.Code() {
@@ -52,7 +52,12 @@ func (s Server) ListRoleBindings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(preparedRolebindings.GetRolebindings())
+	preparedRoleBindings := []PreparedRoleBinding{}
+	for _, rb := range bindings.GetRolebindings() {
+		preparedRoleBindings = append(preparedRoleBindings, s.prepareRoleBinding(rb))
+	}
+
+	data, err := json.Marshal(preparedRoleBindings)
 	if err != nil {
 		glog.Errorf("error while marshalling json for rolebindings: %v", err)
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
@@ -98,7 +103,7 @@ func (s Server) GetRoleBinding(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(preparedRoleBinding)
+	data, err := util.GetProtoMarshaller().Marshal(preparedRoleBinding)
 	if err != nil {
 		glog.Errorf("error while marshalling json for rolebinding: %v", err)
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
@@ -212,4 +217,21 @@ func (s Server) DeleteRoleBinding(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.ReturnHTTPMessage(w, r, http.StatusOK, "deleted", "deleted")
+}
+
+func (s Server) prepareRoleBinding(roleBinding *rbacProto.RoleBinding) PreparedRoleBinding {
+	prb := PreparedRoleBinding{
+		Name:     roleBinding.GetName(),
+		Role:     roleBinding.GetRole(),
+		Subjects: []PreparedSubject{},
+	}
+
+	for _, s := range roleBinding.GetSubjects() {
+		prb.Subjects = append(prb.Subjects, PreparedSubject{
+			Kind: s.GetKind(),
+			Name: s.GetName(),
+		})
+	}
+
+	return prb
 }

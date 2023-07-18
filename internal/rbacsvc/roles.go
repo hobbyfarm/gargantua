@@ -39,7 +39,7 @@ func (s Server) ListRoles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preparedRoles, err := s.internalRbacServer.ListRole(r.Context(), &emptypb.Empty{})
+	roles, err := s.internalRbacServer.ListRole(r.Context(), &emptypb.Empty{})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			switch s.Code() {
@@ -52,7 +52,12 @@ func (s Server) ListRoles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(preparedRoles.GetRoles())
+	preparedRoles := []PreparedRole{}
+	for _, r := range roles.GetRoles() {
+		preparedRoles = append(preparedRoles, s.prepareRole(r))
+	}
+
+	data, err := json.Marshal(preparedRoles)
 	if err != nil {
 		glog.Errorf("error while marshalling json for roles: %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "internal error")
@@ -98,7 +103,7 @@ func (s Server) GetRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(preparedRole)
+	data, err := util.GetProtoMarshaller().Marshal(preparedRole)
 	if err != nil {
 		glog.Errorf("error while marshalling json for role: %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "internal error")
@@ -212,4 +217,21 @@ func (s Server) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.ReturnHTTPMessage(w, r, http.StatusOK, "deleted", "deleted")
+}
+
+func (s Server) prepareRole(role *rbacProto.Role) (preparedRole PreparedRole) {
+	pr := PreparedRole{
+		Name:  role.GetName(),
+		Rules: []PreparedRule{},
+	}
+
+	for _, r := range role.GetRules() {
+		pr.Rules = append(preparedRole.Rules, PreparedRule{
+			Resources: r.GetResources(),
+			Verbs:     r.GetVerbs(),
+			APIGroups: r.GetApiGroups(),
+		})
+	}
+
+	return pr
 }
