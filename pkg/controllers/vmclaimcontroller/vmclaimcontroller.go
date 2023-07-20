@@ -472,7 +472,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 			return err
 		}
 
-		createdVM.Status = hfv1.VirtualMachineStatus{
+		vmStatus := hfv1.VirtualMachineStatus{
 			Status:        hfv1.VmStatusRFP,
 			Allocated:     true,
 			Tainted:       false,
@@ -482,9 +482,25 @@ func (v *VMClaimController) submitVirtualMachines(vmc *hfv1.VirtualMachineClaim)
 			PrivateIP:     "",
 		}
 
-		_, err = v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(v.ctx, createdVM, metav1.UpdateOptions{})
-		if err != nil {
-			return err
+		// retry loop here
+		retryErr := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			createdVM, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Get(v.ctx, createdVM.Name, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+
+			createdVM.Status = vmStatus
+
+			_, err = v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(v.ctx, createdVM, metav1.UpdateOptions{})
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+
+		if retryErr != nil {
+			return retryErr
 		}
 	}
 
