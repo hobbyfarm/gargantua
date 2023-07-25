@@ -4,10 +4,10 @@ import (
 	"github.com/ebauman/crder"
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	v2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
-	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"github.com/hobbyfarm/gargantua/pkg/crd"
 )
 
-func GenerateUserCRD(caBundle string, reference apiextv1.ServiceReference) []crder.CRD {
+func GenerateUserCRD(caBundle string, reference crd.ServiceReference) []crder.CRD {
 	return []crder.CRD{
 		hobbyfarmCRD(&v1.User{}, func(c *crder.CRD) {
 			c.
@@ -29,17 +29,11 @@ func GenerateUserCRD(caBundle string, reference apiextv1.ServiceReference) []crd
 					cc.
 						StrategyWebhook().
 						WithCABundle(caBundle).
-						WithService(serviceReferenceWithPath(reference, "/conversion/users.hobbyfarm.io")).
+						WithService(reference.Toapiextv1WithPath("/conversion/users.hobbyfarm.io")).
 						WithVersions("v2", "v1")
 				})
 		}),
 	}
-}
-
-func serviceReferenceWithPath(reference apiextv1.ServiceReference, path string) apiextv1.ServiceReference {
-	ref := reference.DeepCopy()
-	ref.Path = &path
-	return *ref
 }
 
 func hobbyfarmCRD(obj interface{}, customize func(c *crder.CRD)) crder.CRD {

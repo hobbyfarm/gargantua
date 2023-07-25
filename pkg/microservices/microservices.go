@@ -22,11 +22,12 @@ type MicroService struct {
 }
 
 var (
-	AuthN   = MicroService{"authn-service"}
-	AuthR   = MicroService{"authr-service"}
-	User    = MicroService{"user-service"}
-	Rbac    = MicroService{"rbac-service"}
-	Unknown = MicroService{""}
+	AuthN      = MicroService{"authn-service"}
+	AuthR      = MicroService{"authr-service"}
+	User       = MicroService{"user-service"}
+	Rbac       = MicroService{"rbac-service"}
+	AccessCode = MicroService{"accesscode-service"}
+	Unknown    = MicroService{""}
 )
 
 func (m MicroService) getUrl() (string, error) {
@@ -79,6 +80,8 @@ func createMicroService(service string) (MicroService, error) {
 		return User, nil
 	case Rbac.name:
 		return Rbac, nil
+	case AccessCode.name:
+		return AccessCode, nil
 	}
 
 	return Unknown, fmt.Errorf("unknown service: %s", service)

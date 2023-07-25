@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/crd"
 	"github.com/hobbyfarm/gargantua/pkg/signals"
 	tls2 "github.com/hobbyfarm/gargantua/pkg/tls"
 	"github.com/hobbyfarm/gargantua/pkg/util"
@@ -29,7 +30,6 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 
 	usr "github.com/hobbyfarm/gargantua/protos/user"
-	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
 var (
@@ -117,7 +117,7 @@ func main() {
 		glog.Fatalf("error reading ca certificate: %s", err.Error())
 	}
 
-	crds := userservice.GenerateUserCRD(string(ca), v1.ServiceReference{
+	crds := userservice.GenerateUserCRD(string(ca), crd.ServiceReference{
 		Namespace: util.GetReleaseNamespace(),
 		Name:      "hobbyfarm-webhook",
 	})

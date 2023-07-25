@@ -37,4 +37,5 @@ const (
 	ResourcePluralProgress    = "progresses"
 	ResourcePluralRole        = "roles"
 	ResourcePluralRolebinding = "rolebindings"
+	ResourcePluralOTAC        = "onetimeaccesscodes"
 )

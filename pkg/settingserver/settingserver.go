@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	labels "github.com/hobbyfarm/gargantua/pkg/labels"
 	"github.com/hobbyfarm/gargantua/pkg/property"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"io"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -27,7 +26,7 @@ const (
 
 type SettingServer struct {
 	ctx         context.Context
-	auth        *authclient.AuthClient
+	tlsCA       string
 	hfClientSet hfClientset.Interface
 }
 
@@ -40,12 +39,12 @@ type PreparedSetting struct {
 	Weight int    `json:"weight"`
 }
 
-func NewSettingServer(clientset hfClientset.Interface, authClient *authclient.AuthClient, ctx context.Context) (*SettingServer, error) {
+func NewSettingServer(clientset hfClientset.Interface, tlsCa string, ctx context.Context) (*SettingServer, error) {
 	setting := SettingServer{}
 
 	setting.ctx = ctx
 	setting.hfClientSet = clientset
-	setting.auth = authClient
+	setting.tlsCA = tlsCa
 
 	return &setting, nil
 }
@@ -70,8 +69,15 @@ func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	// so skip RBAC check for those
 	if scope != "public" {
 		resource := resourcePlural + "/" + scope
-		_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resource, rbacclient.VerbList), w, r)
+		user, err := rbac.AuthenticateRequest(r, s.tlsCA)
 		if err != nil {
+			util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+			return
+		}
+
+		impersonatedUserId := user.GetId()
+		authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resource, rbac.VerbList))
+		if err != nil || !authrResponse.Success {
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list settings")
 			return
 		}
@@ -188,8 +194,15 @@ func (s SettingServer) update(w http.ResponseWriter, r *http.Request, setting Pr
 	}
 
 	var resource = resourcePlural + "/" + scope
-	_, err = s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resource, rbacclient.VerbUpdate), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return false
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resource, rbac.VerbUpdate))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 401, "forbidden", "no access to update setting")
 		return false
 	}
@@ -233,8 +246,15 @@ type PreparedScope struct {
 }
 
 func (s SettingServer) ListScopeFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(scopeResourcePlural, rbacclient.VerbList), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(scopeResourcePlural, rbac.VerbList))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 401, "forbidden", "no access to list scopes")
 		return
 	}

@@ -11,7 +11,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/internal/webhook/conversion"
 	"github.com/hobbyfarm/gargantua/internal/webhook/conversion/user"
+	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	tls2 "github.com/hobbyfarm/gargantua/pkg/tls"
+	"github.com/hobbyfarm/gargantua/pkg/webhook/validation"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -50,6 +52,11 @@ func main() {
 	cfg.QPS = ClientGoQPS
 	cfg.Burst = ClientGoBurst
 
+	hfClient, err := hfClientset.NewForConfig(cfg)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
 	ca, err := os.ReadFile(webhookTLSCA)
 	if err != nil {
 		glog.Fatalf("error reading ca certificate: %s", err.Error())
@@ -67,6 +74,9 @@ func main() {
 	user.Init()
 	conversionRouter := mux.NewRouter()
 	conversion.New(conversionRouter, apiExtensionsClient, string(ca))
+
+	validationEndpoints := conversionRouter.PathPrefix("/validation").Subrouter()
+	validation.SetupValidationServer(hfClient, validationEndpoints)
 
 	webhookPort := os.Getenv("WEBHOOK_PORT")
 	if webhookPort == "" {

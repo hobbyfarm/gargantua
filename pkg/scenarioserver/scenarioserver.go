@@ -258,8 +258,15 @@ func (s ScenarioServer) AdminGetFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ScenarioServer) AdminDeleteFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbDelete), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbDelete))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete Scenario")
 		return
 	}
@@ -273,12 +280,10 @@ func (s ScenarioServer) AdminDeleteFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-
 	// when can we safely a scenario?
 	// 1. when there are no active scheduled events using the scenario
 	// 2. when there are no sessions using the scenario
 	// 3. when there is no course using the scenario
-
 
 	seList, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
 	if err != nil {
@@ -1024,7 +1029,7 @@ func filterScheduledEvents(scenario string, seList *hfv1.ScheduledEventList) *[]
 		for _, s := range se.Spec.Scenarios {
 			if s == scenario {
 				outList = append(outList, se)
-				break;
+				break
 			}
 		}
 	}

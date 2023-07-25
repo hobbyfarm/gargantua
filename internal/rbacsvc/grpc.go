@@ -14,12 +14,16 @@ type GrpcRbacServer struct {
 }
 
 func NewGrpcRbacServer(kubeClientSet *kubernetes.Clientset, namespace string, kubeInformerFactory informers.SharedInformerFactory) (*GrpcRbacServer, error) {
-	userIndex, err := NewIndex("User", namespace, kubeInformerFactory)
+	rbInformer := kubeInformerFactory.Rbac().V1().RoleBindings().Informer()
+	crbInformer := kubeInformerFactory.Rbac().V1().ClusterRoleBindings().Informer()
+	rInformer := kubeInformerFactory.Rbac().V1().Roles().Informer()
+	crInformer := kubeInformerFactory.Rbac().V1().ClusterRoles().Informer()
+	userIndex, err := NewIndex("User", namespace, rbInformer, crbInformer, rInformer, crInformer)
 	if err != nil {
 		return nil, err
 	}
 
-	groupIndex, err := NewIndex("Group", namespace, kubeInformerFactory)
+	groupIndex, err := NewIndex("Group", namespace, rbInformer, crbInformer, rInformer, crInformer)
 	if err != nil {
 		return nil, err
 	}

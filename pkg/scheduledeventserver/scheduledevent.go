@@ -582,9 +582,16 @@ func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request)
 }
 
 func (s ScheduledEventServer) GetOTACsFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scheduledevents")
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	if err != nil || !authrResponse.Success {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scheduledevents")
 		return
 	}
 
@@ -624,8 +631,15 @@ func (s ScheduledEventServer) GetOTACsFunc(w http.ResponseWriter, r *http.Reques
 }
 
 func (s ScheduledEventServer) DeleteOTACFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scheduledevents")
 		return
 	}
@@ -649,8 +663,15 @@ func (s ScheduledEventServer) DeleteOTACFunc(w http.ResponseWriter, r *http.Requ
 }
 
 func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scheduledevents")
 		return
 	}
@@ -669,11 +690,11 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 		return
 	}
 	count, err := strconv.Atoi(countFormValue)
-    if err != nil {
+	if err != nil {
 		glog.Error(err)
 		util.ReturnHTTPMessage(w, r, 404, "badrequest", "invalid count given")
 		return
-    }
+	}
 
 	scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
 	if err != nil {
@@ -684,10 +705,10 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 
 	var otacs []PreparedOTAC
 
-	for i:=0; i < count; i++ {
+	for i := 0; i < count; i++ {
 		// Generate an access code that can not be guessed
 		genName := ""
-		for genParts:=0; genParts < 3; genParts++ {
+		for genParts := 0; genParts < 3; genParts++ {
 			genName += util.GenerateResourceName("", util.RandStringRunes(16), 4)
 		}
 		genName = genName[1:]
@@ -703,14 +724,14 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 					},
 				},
 				Labels: map[string]string{
-					util.UserLabel: "",
-					util.ScheduledEventLabel: scheduledEvent.Name,
+					util.UserLabel:              "",
+					util.ScheduledEventLabel:    scheduledEvent.Name,
 					util.OneTimeAccessCodeLabel: genName,
 				},
 			},
 			Spec: hfv1.OneTimeAccessCodeSpec{
-				User: 				"",
-				RedeemedTimestamp: 	"",
+				User:              "",
+				RedeemedTimestamp: "",
 			},
 		}
 		otac, err = s.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Create(s.ctx, otac, metav1.CreateOptions{})
@@ -719,7 +740,7 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 			continue
 		}
 		otacs = append(otacs, PreparedOTAC{otac.Name, otac.Spec})
-	} 
+	}
 
 	encoded, err := json.Marshal(otacs)
 	if err != nil {

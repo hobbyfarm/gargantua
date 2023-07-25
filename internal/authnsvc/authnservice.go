@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -13,7 +14,9 @@ import (
 	"github.com/gorilla/mux"
 	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/pkg/microservices"
+	"github.com/hobbyfarm/gargantua/pkg/settingclient"
 	"github.com/hobbyfarm/gargantua/pkg/util"
+	accessCodeProto "github.com/hobbyfarm/gargantua/protos/accesscode"
 	"github.com/hobbyfarm/gargantua/protos/authn"
 	rbacProto "github.com/hobbyfarm/gargantua/protos/rbac"
 	userProto "github.com/hobbyfarm/gargantua/protos/user"
@@ -136,6 +139,17 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 
 	accessCode := strings.ToLower(r.PostFormValue("access_code"))
 
+	// Validate that the AccessCode
+	// starts and ends with an alphanumeric character.
+	// Only contains '.' and '-' special characters in the middle.
+	// Must be at least 5 Characters long (1 Start + At least 3 in the middle + 1 End)
+	validator, _ := regexp.Compile(`^[a-z0-9]+[a-z0-9\-\.]{3,}[a-z0-9]+$`)
+	validAccessCode := validator.MatchString(accessCode)
+	if !validAccessCode {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "AccessCode does not meet criteria.")
+		return
+	}
+
 	err = a.AddAccessCode(user, accessCode, r.Context())
 
 	if err != nil {
@@ -182,6 +196,35 @@ func (a AuthServer) AddAccessCode(user *userProto.User, accessCode string, ctx c
 	}
 
 	accessCode = strings.ToLower(accessCode)
+
+	acConn, err := microservices.EstablishConnection("accesscode-service", a.tlsCaPath)
+	if err != nil {
+		glog.Error("failed connecting to service accesscode-service")
+		return err
+	}
+	acClient := accessCodeProto.NewAccessCodeSvcClient(acConn)
+	defer acConn.Close()
+
+	// check if this is an otac
+	otac, err := acClient.GetOtac(ctx, &accessCodeProto.ResourceId{Id: accessCode})
+	if err != nil {
+		//otac does not exist. normal access code
+	} else {
+		//otac does exist, check if already redeemed
+		if otac.GetRedeemedTimestamp() != "" && otac.GetUser() != user.GetId() {
+			return fmt.Errorf("one time access code already in use")
+		}
+		if otac.GetRedeemedTimestamp() == "" {
+			//otac not in use, redeem now
+			otac.User = user.GetId()
+			otac.RedeemedTimestamp = time.Now().Format(time.UnixDate)
+			_, err = acClient.UpdateOtac(ctx, otac)
+			if err != nil {
+				return fmt.Errorf("error redeeming one time access code %v", err)
+			}
+		}
+		// when we are here the user had the otac added previously
+	}
 
 	if len(user.GetAccessCodes()) == 0 {
 		user.AccessCodes = []string{}
@@ -331,6 +374,15 @@ func (a AuthServer) UpdateSettings(user *userProto.User, newSettings map[string]
 }
 
 func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
+	if set := settingclient.GetSetting(settingclient.SettingRegistrationDisabled); set == nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
+		return
+	} else {
+		if set.(bool) {
+			util.ReturnHTTPMessage(w, r, http.StatusConflict, "disabled", "registration disabled")
+			return
+		}
+	}
 	r.ParseForm()
 
 	email := r.PostFormValue("email")
@@ -339,7 +391,18 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	// should we reconcile based on the access code posted in? nah
 
 	if len(email) == 0 || len(accessCode) == 0 || len(password) == 0 {
-		util.ReturnHTTPMessage(w, r, 400, "error", "invalid input. required fields: email, access_code, password")
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid input. required fields: email, access_code, password")
+		return
+	}
+
+	// Validate that the AccessCode
+	// starts and ends with an alphanumeric character.
+	// Only contains '.' and '-' special characters in the middle.
+	// Must be at least 5 Characters long (1 Start + At least 3 in the middle + 1 End)
+	validator, _ := regexp.Compile(`^[a-z0-9]+[a-z0-9\-\.]{3,}[a-z0-9]+$`)
+	validAccessCode := validator.MatchString(accessCode)
+	if !validAccessCode {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "AccessCode does not meet criteria.")
 		return
 	}
 
@@ -401,9 +464,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	err = a.AddAccessCode(user, accessCode, r.Context())
 
 	if err != nil {
-		glog.Errorf("error creating user %s %v", email, err)
-		util.ReturnHTTPMessage(w, r, 500, "error", "error creating user with accesscode")
-		return
+		glog.Errorf("error adding accessCode to newly created user %s %v", email, err)
 	}
 
 	glog.V(2).Infof("created user %s", email)

@@ -2,6 +2,7 @@ package crd
 
 import (
 	"fmt"
+
 	"github.com/ebauman/crder"
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	terraformv1 "github.com/hobbyfarm/gargantua/pkg/apis/terraformcontroller.cattle.io/v1"
@@ -15,7 +16,7 @@ const (
 	namespaceNameLabel = "kubernetes.io/metadata.name"
 )
 
-func GenerateCRDs() []crder.CRD {
+func GenerateCRDs(caBundle string, reference ServiceReference) []crder.CRD {
 	return []crder.CRD{
 		hobbyfarmCRD(&v1.VirtualMachine{}, func(c *crder.CRD) {
 			c.
@@ -95,24 +96,6 @@ func GenerateCRDs() []crder.CRD {
 						WithColumn("User", ".spec.user").
 						WithColumn("Started", ".spec.started").
 						WithColumn("LastUpdate", ".spec.last_update")
-				})
-		}),
-		hobbyfarmCRD(&v1.AccessCode{}, func(c *crder.CRD) {
-			c.
-				IsNamespaced(true).
-				AddVersion("v1", &v1.AccessCode{}, func(cv *crder.Version) {
-					cv.
-						WithColumn("AccessCode", ".spec.code").
-						WithColumn("Expiration", ".spec.expiration")
-				})
-		}),
-		hobbyfarmCRD(&v1.OneTimeAccessCode{}, func(c *crder.CRD) {
-			c.
-				IsNamespaced(true).
-				AddVersion("v1", &v1.OneTimeAccessCode{}, func(cv *crder.Version) {
-					cv.
-						WithColumn("User", ".spec.user").
-						WithColumn("Redeemed", ".spec.redeemed_timestamp")
 				})
 		}),
 		hobbyfarmCRD(&v1.ScheduledEvent{}, func(c *crder.CRD) {
