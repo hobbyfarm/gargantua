@@ -105,7 +105,7 @@ func (c *FakeCourses) Update(ctx context.Context, course *hobbyfarmiov1.Course, 
 // Delete takes name of the course and deletes it. Returns an error if one occurs.
 func (c *FakeCourses) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(coursesResource, c.ns, name), &hobbyfarmiov1.Course{})
+		Invokes(testing.NewDeleteActionWithOptions(coursesResource, c.ns, name, opts), &hobbyfarmiov1.Course{})
 
 	return err
 }

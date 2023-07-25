@@ -3,6 +3,10 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/hobbyfarm/gargantua/pkg/preinstall"
+	"github.com/hobbyfarm/gargantua/pkg/settingclient"
+	"github.com/hobbyfarm/gargantua/pkg/settingserver"
+	"github.com/hobbyfarm/gargantua/pkg/webhook/validation"
 	"os"
 
 	"github.com/ebauman/crder"
@@ -118,10 +122,6 @@ func main() {
 		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 
-	if err != nil {
-		glog.Fatalf("error building apiextensions clientset: %s", err.Error())
-	}
-
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, informers.WithNamespace(namespace))
 
@@ -210,6 +210,13 @@ func main() {
 		glog.Fatal(err)
 	}
 
+	settingServer, err := settingserver.NewSettingServer(hfClient, authClient, ctx)
+	if err != nil {
+		glog.Fatal(err)
+	}
+
+	settingclient.WatchSettings(ctx, hfClient, hfInformerFactory)
+
 	if shellServer {
 		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
@@ -227,6 +234,7 @@ func main() {
 		vmTemplateServer.SetupRoutes(r)
 		progressServer.SetupRoutes(r)
 		predefinedServiceServer.SetupRoutes(r)
+		settingServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
@@ -251,6 +259,11 @@ func main() {
 	*/
 
 	var wg sync.WaitGroup
+
+	if !shellServer {
+		// install resources
+		preinstall.Preinstall(ctx, hfClient)
+	}
 
 	wg.Add(1)
 
@@ -280,7 +293,7 @@ func main() {
 			RetryPeriod:     2 * time.Second,
 			Callbacks: leaderelection.LeaderCallbacks{
 				OnStartedLeading: func(c context.Context) {
-					err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, kubeInformerFactory, ctx, stopCh)
+					err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, kubeInformerFactory, acClient, ctx, stopCh)
 					if err != nil {
 						glog.Fatal(err)
 					}
@@ -310,7 +323,7 @@ func main() {
 }
 
 func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientset.Clientset,
-	hfInformerFactory hfInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory,
+	hfInformerFactory hfInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, acClient *accesscode.AccessCodeClient,
 	ctx context.Context, stopCh <-chan struct{}) error {
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -323,7 +336,7 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	if err != nil {
 		return err
 	}
-	vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory, gctx)
+	vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory, acClient, gctx)
 	if err != nil {
 		return err
 	}

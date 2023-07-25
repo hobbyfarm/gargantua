@@ -106,7 +106,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 
 	// we should validate the user can use this access code
 	// let's figure out the restricted bind value
-	accessCodeObj, err := sss.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Get(sss.ctx, accessCode, metav1.GetOptions{})
+	accessCodeObj, err := sss.accessCodeClient.GetAccessCodeWithOTACs(accessCode)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "could not retrieve access code")
 		return
@@ -215,8 +215,8 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	session.Spec.UserId = user.GetId()
 	session.Spec.KeepCourseVM = course.Spec.KeepVM
 	labels := make(map[string]string)
-	labels[util.AccessCodeLabel] = accessCode // map accesscode to session
-	labels[util.UserLabel] = user.GetId()     // map user to session
+	labels[util.AccessCodeLabel] = accessCodeObj.Name // map accesscode to session
+	labels[util.UserLabel] = user.GetId()             // map user to session
 	session.Labels = labels
 	var vms []map[string]string
 	if course.Spec.VirtualMachines != nil {

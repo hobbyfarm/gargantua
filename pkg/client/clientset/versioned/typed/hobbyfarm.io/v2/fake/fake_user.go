@@ -105,7 +105,7 @@ func (c *FakeUsers) Update(ctx context.Context, user *v2.User, opts v1.UpdateOpt
 // Delete takes name of the user and deletes it. Returns an error if one occurs.
 func (c *FakeUsers) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(usersResource, c.ns, name), &v2.User{})
+		Invokes(testing.NewDeleteActionWithOptions(usersResource, c.ns, name, opts), &v2.User{})
 
 	return err
 }

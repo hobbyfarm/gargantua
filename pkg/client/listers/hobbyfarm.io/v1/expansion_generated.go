@@ -50,6 +50,14 @@ type EnvironmentListerExpansion interface{}
 // EnvironmentNamespaceLister.
 type EnvironmentNamespaceListerExpansion interface{}
 
+// OneTimeAccessCodeListerExpansion allows custom methods to be added to
+// OneTimeAccessCodeLister.
+type OneTimeAccessCodeListerExpansion interface{}
+
+// OneTimeAccessCodeNamespaceListerExpansion allows custom methods to be added to
+// OneTimeAccessCodeNamespaceLister.
+type OneTimeAccessCodeNamespaceListerExpansion interface{}
+
 // PredefinedServiceListerExpansion allows custom methods to be added to
 // PredefinedServiceLister.
 type PredefinedServiceListerExpansion interface{}
@@ -82,6 +90,14 @@ type ScheduledEventListerExpansion interface{}
 // ScheduledEventNamespaceLister.
 type ScheduledEventNamespaceListerExpansion interface{}
 
+// ScopeListerExpansion allows custom methods to be added to
+// ScopeLister.
+type ScopeListerExpansion interface{}
+
+// ScopeNamespaceListerExpansion allows custom methods to be added to
+// ScopeNamespaceLister.
+type ScopeNamespaceListerExpansion interface{}
+
 // SessionListerExpansion allows custom methods to be added to
 // SessionLister.
 type SessionListerExpansion interface{}
@@ -89,6 +105,14 @@ type SessionListerExpansion interface{}
 // SessionNamespaceListerExpansion allows custom methods to be added to
 // SessionNamespaceLister.
 type SessionNamespaceListerExpansion interface{}
+
+// SettingListerExpansion allows custom methods to be added to
+// SettingLister.
+type SettingListerExpansion interface{}
+
+// SettingNamespaceListerExpansion allows custom methods to be added to
+// SettingNamespaceLister.
+type SettingNamespaceListerExpansion interface{}
 
 // UserListerExpansion allows custom methods to be added to
 // UserLister.

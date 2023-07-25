@@ -26,6 +26,8 @@ type DynamicBindConfigurationExpansion interface{}
 
 type EnvironmentExpansion interface{}
 
+type OneTimeAccessCodeExpansion interface{}
+
 type PredefinedServiceExpansion interface{}
 
 type ProgressExpansion interface{}
@@ -34,7 +36,11 @@ type ScenarioExpansion interface{}
 
 type ScheduledEventExpansion interface{}
 
+type ScopeExpansion interface{}
+
 type SessionExpansion interface{}
+
+type SettingExpansion interface{}
 
 type UserExpansion interface{}
 

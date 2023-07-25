@@ -32,6 +32,8 @@ type Interface interface {
 	DynamicBindConfigurations() DynamicBindConfigurationInformer
 	// Environments returns a EnvironmentInformer.
 	Environments() EnvironmentInformer
+	// OneTimeAccessCodes returns a OneTimeAccessCodeInformer.
+	OneTimeAccessCodes() OneTimeAccessCodeInformer
 	// PredefinedServices returns a PredefinedServiceInformer.
 	PredefinedServices() PredefinedServiceInformer
 	// Progresses returns a ProgressInformer.
@@ -40,8 +42,12 @@ type Interface interface {
 	Scenarios() ScenarioInformer
 	// ScheduledEvents returns a ScheduledEventInformer.
 	ScheduledEvents() ScheduledEventInformer
+	// Scopes returns a ScopeInformer.
+	Scopes() ScopeInformer
 	// Sessions returns a SessionInformer.
 	Sessions() SessionInformer
+	// Settings returns a SettingInformer.
+	Settings() SettingInformer
 	// Users returns a UserInformer.
 	Users() UserInformer
 	// VirtualMachines returns a VirtualMachineInformer.
@@ -85,6 +91,11 @@ func (v *version) Environments() EnvironmentInformer {
 	return &environmentInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
+// OneTimeAccessCodes returns a OneTimeAccessCodeInformer.
+func (v *version) OneTimeAccessCodes() OneTimeAccessCodeInformer {
+	return &oneTimeAccessCodeInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
 // PredefinedServices returns a PredefinedServiceInformer.
 func (v *version) PredefinedServices() PredefinedServiceInformer {
 	return &predefinedServiceInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
@@ -105,9 +116,19 @@ func (v *version) ScheduledEvents() ScheduledEventInformer {
 	return &scheduledEventInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
+// Scopes returns a ScopeInformer.
+func (v *version) Scopes() ScopeInformer {
+	return &scopeInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
 // Sessions returns a SessionInformer.
 func (v *version) Sessions() SessionInformer {
 	return &sessionInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// Settings returns a SettingInformer.
+func (v *version) Settings() SettingInformer {
+	return &settingInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Users returns a UserInformer.

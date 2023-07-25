@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/hobbyfarm/gargantua/pkg/accesscode"
-	"github.com/hobbyfarm/gargantua/pkg/rbac"
-
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 type AuthServer struct {
@@ -43,13 +44,30 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	accessCodes, err := a.accessCodeClient.GetAccessCodes(user.GetAccessCodes())
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, 500, "error", "error while retrieving access codes")
-		return
+	// This holds a map of AC -> SE
+	accessCodeScheduledEvent := make(map[string]string)
+
+	// First we add ScheduledEvents based on OneTimeAccessCodes
+	otacReq, _ := labels.NewRequirement(util.OneTimeAccessCodeLabel, selection.In, user.GetAccessCodes())
+	selector := labels.NewSelector()
+	selector = selector.Add(*otacReq)
+
+	otacList, err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).List(a.ctx, metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+
+	if err == nil {
+		for _, otac := range otacList.Items {
+			se, err := a.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(a.ctx, otac.Labels[util.ScheduledEventLabel], metav1.GetOptions{})
+			if err != nil {
+				continue
+			}
+			accessCodeScheduledEvent[otac.Name] = se.Spec.Name
+		}
 	}
 
-	accessCodeScheduledEvent := make(map[string]string)
+	// Afterwards we retreive the normal AccessCodes
+	accessCodes, _ := a.accessCodeClient.GetAccessCodes(user.GetAccessCodes())
 
 	//Getting single SEs should be faster than listing all of them and iterating them in O(n^2), in most cases users only have a hand full of accessCodes.
 	for _, ac := range accessCodes {

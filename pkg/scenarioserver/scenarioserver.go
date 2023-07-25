@@ -86,6 +86,7 @@ func (s ScenarioServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/scenario/list/{category}", s.ListByCategoryFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/list", s.ListAllFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}", s.AdminGetFunc).Methods("GET")
+	r.HandleFunc("/a/scenario/{id}", s.AdminDeleteFunc).Methods("DELETE")
 	r.HandleFunc("/scenario/{scenario_id}", s.GetScenarioFunc).Methods("GET")
 	r.HandleFunc("/scenario/{id}/printable", s.PrintFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/{id}/printable", s.AdminPrintFunc).Methods("GET")
@@ -128,7 +129,7 @@ func (s ScenarioServer) getPrintableScenarioIds(accessCodes []string) []string {
 	var printableScenarioIds []string
 	var printableCourseIds []string
 	for _, acString := range accessCodes {
-		ac, err := s.acClient.GetAccessCode(acString)
+		ac, err := s.acClient.GetAccessCodeWithOTACs(acString)
 		if err != nil {
 			glog.Errorf("error retrieving access code: %s %v", acString, err)
 			continue
@@ -256,6 +257,100 @@ func (s ScenarioServer) AdminGetFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infof("retrieved scenario %s", scenario.Name)
 }
 
+func (s ScenarioServer) AdminDeleteFunc(w http.ResponseWriter, r *http.Request) {
+	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbDelete), w, r)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete Scenario")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	id := vars["id"]
+
+	if len(id) == 0 {
+		util.ReturnHTTPMessage(w, r, 400, "error", "no id passed in")
+		return
+	}
+
+
+	// when can we safely a scenario?
+	// 1. when there are no active scheduled events using the scenario
+	// 2. when there are no sessions using the scenario
+	// 3. when there is no course using the scenario
+
+
+	seList, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("error retrieving scheduledevent list: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting scenario")
+		return
+	}
+
+	seInUse := filterScheduledEvents(id, seList)
+
+	sessList, err := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("error retrieving session list: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting scenario")
+		return
+	}
+
+	sessInUse := filterSessions(id, sessList)
+
+	courseList, err := s.hfClientSet.HobbyfarmV1().Courses(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("error retrieving course list: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting scenario")
+		return
+	}
+
+	coursesInUse := filterCourses(id, courseList)
+
+	var msg = ""
+	toDelete := true
+
+	if len(*seInUse) > 0 {
+		// cannot toDelete, in use. alert the user
+		msg += "In use by scheduled events:"
+		for _, se := range *seInUse {
+			msg += " " + se.Name
+		}
+		toDelete = false
+	}
+
+	if len(*sessInUse) > 0 {
+		msg += "In use by sessions:"
+		for _, sess := range *sessInUse {
+			msg += " " + sess.Name
+		}
+		toDelete = false
+	}
+
+	if len(*coursesInUse) > 0 {
+		msg += "In use by courses:"
+		for _, course := range *coursesInUse {
+			msg += " " + course.Name
+		}
+		toDelete = false
+	}
+
+	if !toDelete {
+		util.ReturnHTTPMessage(w, r, 403, "badrequest", msg)
+		return
+	}
+
+	err = s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).Delete(s.ctx, id, metav1.DeleteOptions{})
+
+	if err != nil {
+		glog.Errorf("error while deleting scenario %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "scenario could not be deleted")
+		return
+	}
+	util.ReturnHTTPMessage(w, r, 200, "success", "scenario deleted")
+	glog.V(2).Infof("deleted scenario %s", id)
+}
+
 func (s ScenarioServer) GetScenarioStepFunc(w http.ResponseWriter, r *http.Request) {
 	_, err := rbac.AuthenticateRequest(r, s.tlsCA)
 	if err != nil {
@@ -315,7 +410,7 @@ func (s ScenarioServer) ListScenarioForAccessCode(w http.ResponseWriter, r *http
 	//var courseScenarios []string
 	var scenarioIds []string
 	var printableScenarioIds []string
-	ac, err := s.acClient.GetAccessCode(accessCode)
+	ac, err := s.acClient.GetAccessCodeWithOTACs(accessCode)
 	if err != nil {
 		glog.Errorf("error retrieving access code: %s %v", accessCode, err)
 	}
@@ -916,6 +1011,50 @@ func (s ScenarioServer) GetScenarioById(id string) (hfv1.Scenario, error) {
 
 	return *scenario, nil
 
+}
+
+// Filter a ScheduledEventList to find SEs that are a) active and b) using the course specified
+func filterScheduledEvents(scenario string, seList *hfv1.ScheduledEventList) *[]hfv1.ScheduledEvent {
+	outList := make([]hfv1.ScheduledEvent, 0)
+	for _, se := range seList.Items {
+		if se.Status.Finished == true {
+			continue
+		}
+
+		for _, s := range se.Spec.Scenarios {
+			if s == scenario {
+				outList = append(outList, se)
+				break;
+			}
+		}
+	}
+
+	return &outList
+}
+
+func filterSessions(scenario string, list *hfv1.SessionList) *[]hfv1.Session {
+	outList := make([]hfv1.Session, 0)
+	for _, sess := range list.Items {
+		if sess.Spec.ScenarioId == scenario {
+			outList = append(outList, sess)
+		}
+	}
+
+	return &outList
+}
+
+func filterCourses(scenario string, list *hfv1.CourseList) *[]hfv1.Course {
+	outList := make([]hfv1.Course, 0)
+	for _, course := range list.Items {
+		for _, s := range course.Spec.Scenarios {
+			if s == scenario {
+				outList = append(outList, course)
+				break
+			}
+		}
+	}
+
+	return &outList
 }
 
 func idIndexer(obj interface{}) ([]string, error) {

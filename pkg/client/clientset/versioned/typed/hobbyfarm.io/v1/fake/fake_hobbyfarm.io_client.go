@@ -44,6 +44,10 @@ func (c *FakeHobbyfarmV1) Environments(namespace string) v1.EnvironmentInterface
 	return &FakeEnvironments{c, namespace}
 }
 
+func (c *FakeHobbyfarmV1) OneTimeAccessCodes(namespace string) v1.OneTimeAccessCodeInterface {
+	return &FakeOneTimeAccessCodes{c, namespace}
+}
+
 func (c *FakeHobbyfarmV1) PredefinedServices(namespace string) v1.PredefinedServiceInterface {
 	return &FakePredefinedServices{c, namespace}
 }
@@ -60,8 +64,16 @@ func (c *FakeHobbyfarmV1) ScheduledEvents(namespace string) v1.ScheduledEventInt
 	return &FakeScheduledEvents{c, namespace}
 }
 
+func (c *FakeHobbyfarmV1) Scopes(namespace string) v1.ScopeInterface {
+	return &FakeScopes{c, namespace}
+}
+
 func (c *FakeHobbyfarmV1) Sessions(namespace string) v1.SessionInterface {
 	return &FakeSessions{c, namespace}
+}
+
+func (c *FakeHobbyfarmV1) Settings(namespace string) v1.SettingInterface {
+	return &FakeSettings{c, namespace}
 }
 
 func (c *FakeHobbyfarmV1) Users(namespace string) v1.UserInterface {

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	v1 "k8s.io/api/rbac/v1"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -33,35 +32,37 @@ type Index struct {
 	clusterRoleIndexer cache.Indexer
 }
 
-func NewIndex(kind string, namespace string, informerFactory informers.SharedInformerFactory) (*Index, error) {
+func NewIndex(
+	kind string,
+	namespace string,
+	roleBindingInformer cache.SharedIndexInformer,
+	clusterRoleBindingInformer cache.SharedIndexInformer,
+	roleInformer cache.SharedIndexInformer,
+	clusterRoleInformer cache.SharedIndexInformer) (*Index, error) {
 	i := &Index{
 		kind:      kind,
 		namespace: namespace,
 	}
-
-	// build an informer for each of rolebinding and clusterrolebinding
-	rbInformer := informerFactory.Rbac().V1().RoleBindings().Informer()
-	crbInformer := informerFactory.Rbac().V1().ClusterRoleBindings().Informer()
 
 	// add the indexers to a map...
 	rbIndexers := map[string]cache.IndexFunc{rbIndex + "-" + kind: i.roleBindingSubjectIndexer}
 	crbIndexers := map[string]cache.IndexFunc{rbIndex + "-" + kind: i.clusterRoleBindingSubjectIndexer}
 
 	// ... then tell the informers to use those indexers
-	if err := rbInformer.AddIndexers(rbIndexers); err != nil {
+	if err := roleBindingInformer.AddIndexers(rbIndexers); err != nil {
 		return nil, err
 	}
 
-	if err := crbInformer.AddIndexers(crbIndexers); err != nil {
+	if err := clusterRoleBindingInformer.AddIndexers(crbIndexers); err != nil {
 		return nil, err
 	}
 
 	// finally, generate the indexers and store in the index struct
-	i.roleBindingIndexer = rbInformer.GetIndexer()
-	i.clusterRoleBindingIndexer = crbInformer.GetIndexer()
+	i.roleBindingIndexer = roleBindingInformer.GetIndexer()
+	i.clusterRoleBindingIndexer = clusterRoleBindingInformer.GetIndexer()
 
-	i.roleIndexer = informerFactory.Rbac().V1().Roles().Informer().GetIndexer()
-	i.clusterRoleIndexer = informerFactory.Rbac().V1().ClusterRoles().Informer().GetIndexer()
+	i.roleIndexer = roleInformer.GetIndexer()
+	i.clusterRoleIndexer = clusterRoleInformer.GetIndexer()
 
 	return i, nil
 }

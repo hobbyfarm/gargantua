@@ -32,11 +32,14 @@ type HobbyfarmV1Interface interface {
 	CoursesGetter
 	DynamicBindConfigurationsGetter
 	EnvironmentsGetter
+	OneTimeAccessCodesGetter
 	PredefinedServicesGetter
 	ProgressesGetter
 	ScenariosGetter
 	ScheduledEventsGetter
+	ScopesGetter
 	SessionsGetter
+	SettingsGetter
 	UsersGetter
 	VirtualMachinesGetter
 	VirtualMachineClaimsGetter
@@ -65,6 +68,10 @@ func (c *HobbyfarmV1Client) Environments(namespace string) EnvironmentInterface 
 	return newEnvironments(c, namespace)
 }
 
+func (c *HobbyfarmV1Client) OneTimeAccessCodes(namespace string) OneTimeAccessCodeInterface {
+	return newOneTimeAccessCodes(c, namespace)
+}
+
 func (c *HobbyfarmV1Client) PredefinedServices(namespace string) PredefinedServiceInterface {
 	return newPredefinedServices(c, namespace)
 }
@@ -81,8 +88,16 @@ func (c *HobbyfarmV1Client) ScheduledEvents(namespace string) ScheduledEventInte
 	return newScheduledEvents(c, namespace)
 }
 
+func (c *HobbyfarmV1Client) Scopes(namespace string) ScopeInterface {
+	return newScopes(c, namespace)
+}
+
 func (c *HobbyfarmV1Client) Sessions(namespace string) SessionInterface {
 	return newSessions(c, namespace)
+}
+
+func (c *HobbyfarmV1Client) Settings(namespace string) SettingInterface {
+	return newSettings(c, namespace)
 }
 
 func (c *HobbyfarmV1Client) Users(namespace string) UserInterface {

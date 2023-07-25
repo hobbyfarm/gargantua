@@ -31,6 +31,34 @@ func (acc AccessCodeClient) GetSomething(code string) error {
 	return nil
 }
 
+func (acc AccessCodeClient) GetAccessCodesWithOTACs(codes []string) ([]hfv1.AccessCode, error) {
+	otacReq, err := labels.NewRequirement(util.OneTimeAccessCodeLabel, selection.In, codes)
+
+	selector := labels.NewSelector()
+	selector = selector.Add(*otacReq)
+
+	// First get the oneTimeAccessCodes
+	otacList, err := acc.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).List(acc.ctx, metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("error while retrieving one time access codes %v", err)
+	}
+
+	//Append the value of onetime access codes to the list
+	for _, otac := range otacList.Items {
+		se, err := acc.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(acc.ctx, otac.Labels[util.ScheduledEventLabel], metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("error while retrieving one time access codes %v", err)
+		}
+		codes = append(codes, se.Spec.AccessCode)
+	}
+
+	accessCodes, err := acc.GetAccessCodes(codes)
+	return accessCodes, err
+}
+
 func (acc AccessCodeClient) GetAccessCodes(codes []string) ([]hfv1.AccessCode, error) {
 	if len(codes) == 0 {
 		return nil, fmt.Errorf("code list passed in was less than 0")
@@ -73,6 +101,24 @@ func (acc AccessCodeClient) GetAccessCodes(codes []string) ([]hfv1.AccessCode, e
 
 }
 
+func (acc AccessCodeClient) GetAccessCodeWithOTACs(code string) (hfv1.AccessCode, error) {
+	if len(code) == 0 {
+		return hfv1.AccessCode{}, fmt.Errorf("code was empty")
+	}
+
+	accessCodes, err := acc.GetAccessCodesWithOTACs([]string{code})
+
+	if err != nil {
+		return hfv1.AccessCode{}, fmt.Errorf("access code (%s) not found: %v", code, err)
+	}
+
+	if len(accessCodes) != 1 {
+		return hfv1.AccessCode{}, fmt.Errorf("insane result found")
+	}
+
+	return accessCodes[0], nil
+}
+
 func (acc AccessCodeClient) GetAccessCode(code string) (hfv1.AccessCode, error) {
 	if len(code) == 0 {
 		return hfv1.AccessCode{}, fmt.Errorf("code was empty")
@@ -98,7 +144,7 @@ func (acc AccessCodeClient) GetScenarioIds(code string) ([]string, error) {
 		return ids, fmt.Errorf("code was empty")
 	}
 
-	accessCode, err := acc.GetAccessCode(code)
+	accessCode, err := acc.GetAccessCodeWithOTACs(code)
 
 	if err != nil {
 		return ids, fmt.Errorf("error finding access code %s: %v", code, err)
@@ -114,7 +160,7 @@ func (acc AccessCodeClient) GetCourseIds(code string) ([]string, error) {
 		return ids, fmt.Errorf("code was empty")
 	}
 
-	accessCode, err := acc.GetAccessCode(code)
+	accessCode, err := acc.GetAccessCodeWithOTACs(code)
 
 	if err != nil {
 		return ids, fmt.Errorf("error finding access code %s: %v", code, err)
@@ -132,7 +178,7 @@ func (acc AccessCodeClient) GetClosestAccessCode(userID string, scenarioOrCourse
 		return "", fmt.Errorf("error retrieving user: %v", err)
 	}
 
-	rawAccessCodes, err := acc.GetAccessCodes(user.Spec.AccessCodes)
+	rawAccessCodes, err := acc.GetAccessCodesWithOTACs(user.Spec.AccessCodes)
 
 	if err != nil {
 		return "", fmt.Errorf("access codes were not found %v", err)
