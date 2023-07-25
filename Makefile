@@ -20,12 +20,10 @@ test: generate fmt vet
 # Build manager binary
 manager: generate fmt vet
 	go build -o bin/gargantua main.go
-	go build -o bin/gargantua/services/authservice services/authservice/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
 	go run ./main.go
-	go run ./services/authservice/main.go
 
 # Run go fmt against code
 fmt:
@@ -46,7 +44,3 @@ docker-build: fmt vet
 # Push the docker image
 docker-push:
 	docker push ${IMG}
-
-protos:
-	protoc -I ./protos protos/authn/authn.proto --go_out ./protos --go_opt paths=source_relative --go-grpc_out=require_unimplemented_servers=false:./protos protos/authn/authn.proto --go-grpc_opt paths=source_relative
-	protoc -I ./protos protos/k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto --go_out ./protos --go_opt paths=source_relative --go-grpc_out=require_unimplemented_servers=false:./protos protos/k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto --go-grpc_opt paths=source_relative
