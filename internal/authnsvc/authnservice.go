@@ -96,7 +96,13 @@ func (a AuthServer) ListAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	encodedACList, err := json.Marshal(user.GetAccessCodes())
+	accessCodes := user.GetAccessCodes()
+	// If "accessCodes" variable is nil -> convert it to an empty slice
+	if accessCodes == nil {
+		accessCodes = []string{}
+	}
+
+	encodedACList, err := json.Marshal(accessCodes)
 	if err != nil {
 		glog.Error(err)
 	}
@@ -115,7 +121,13 @@ func (a AuthServer) RetreiveSettingsFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	encodedSettings, err := json.Marshal(user.GetSettings())
+	settings := user.GetSettings()
+	// If "settings" variable is nil -> convert it to an empty map
+	if settings == nil {
+		settings = make(map[string]string)
+	}
+
+	encodedSettings, err := json.Marshal(settings)
 
 	if err != nil {
 		glog.Error(err)

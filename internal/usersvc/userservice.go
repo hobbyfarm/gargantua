@@ -105,13 +105,23 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 
 	preparedUsers := []PreparedUser{} // must be declared this way so as to JSON marshal into [] instead of null
 	for _, s := range users.Users {
+		accessCodes := s.GetAccessCodes()
+		// If "accessCodes" variable is nil -> convert it to an empty slice
+		if accessCodes == nil {
+			accessCodes = []string{}
+		}
+		settings := s.GetSettings()
+		// If "settings" variable is nil -> convert it to an empty map
+		if settings == nil {
+			settings = make(map[string]string)
+		}
 		preparedUsers = append(preparedUsers, PreparedUser{
 			ID: s.GetId(),
 			UserSpec: hfv2.UserSpec{
 				Email:       s.GetEmail(),
 				Password:    s.GetPassword(),
-				AccessCodes: s.GetAccessCodes(),
-				Settings:    s.GetSettings(),
+				AccessCodes: accessCodes,
+				Settings:    settings,
 			},
 		})
 	}
