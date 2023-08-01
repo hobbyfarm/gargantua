@@ -83,7 +83,7 @@ func main() {
 	}
 	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, informers.WithNamespace(namespace))
 
-	lock, err := util.GetLock("controller-manager", cfg)
+	lock, err := util.GetLock("controller-manager-rbac", cfg)
 	if err != nil {
 		glog.Fatal(err)
 	}

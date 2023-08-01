@@ -79,7 +79,7 @@ func main() {
 
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 
-	lock, err := util.GetLock("controller-manager", cfg)
+	lock, err := util.GetLock("controller-manager-user", cfg)
 	if err != nil {
 		glog.Fatal(err)
 	}

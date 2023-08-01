@@ -291,7 +291,7 @@ func main() {
 	}()
 
 	if !disableControllers {
-		lock, err := getLock("controller-manager", cfg)
+		lock, err := getLock("controller-manager-gargantua", cfg)
 		if err != nil {
 			glog.Fatal(err)
 		}
