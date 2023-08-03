@@ -36,6 +36,7 @@ func NewGrpcAuthRServer(tlsCaPath string) *GrpcAuthRServer {
 // After impersonation, the user must also authorize himself against the rbac-service.
 // If the authorization fails, this method should always return an AuthRResponse with Success = false AND an error
 func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrProto.AuthRRequest) (*authrProto.AuthRResponse, error) {
+	glog.Info("Authorizing (gRPC)...")
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		glog.Fatalf("error with in cluster config: %s", err)

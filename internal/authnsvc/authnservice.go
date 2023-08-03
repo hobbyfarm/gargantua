@@ -506,8 +506,6 @@ func (a AuthServer) LoginFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	glog.Infof("unhashed PW - authnsvc: %s", password)
-	glog.Infof("hashed PW - authnsvc: %s", user.GetPassword())
 	err = bcrypt.CompareHashAndPassword([]byte(user.GetPassword()), []byte(password))
 
 	if err != nil {

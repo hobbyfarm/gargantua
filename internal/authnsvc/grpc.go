@@ -24,7 +24,7 @@ func NewGrpcAuthNServer(tlsCaPath string) *GrpcAuthnServer {
 }
 
 func (a *GrpcAuthnServer) AuthN(c context.Context, ar *authnProto.AuthNRequest) (*userProto.User, error) {
-	glog.Info("grpc Auth...")
+	glog.Info("Authenticating (gRPC)...")
 	token := ar.GetToken()
 	if len(token) == 0 {
 		err := status.Newf(

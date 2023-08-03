@@ -96,9 +96,7 @@ func (u *GrpcUserServer) CreateUser(c context.Context, cur *userProto.CreateUser
 
 	newUser.Spec.Settings = settings
 
-	glog.Infof("unhashed PW - usersvc: %s", cur.GetPassword())
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(cur.GetPassword()), bcrypt.DefaultCost)
-	glog.Infof("hashed PW - usersvc: %s", string(passwordHash))
 	if err != nil {
 		newErr := status.Newf(
 			codes.Internal,
@@ -242,16 +240,13 @@ func (u *GrpcUserServer) UpdateUser(ctx context.Context, userRequest *userProto.
 		if userRequest.GetEmail() != "" {
 			user.Spec.Email = userRequest.GetEmail()
 		}
-		glog.Infof("The password hash before updating is: %s", user.Spec.Password)
-		glog.Infof("The provided pw is: %s", userRequest.GetPassword())
+
 		if userRequest.GetPassword() != "" {
-			glog.Info("Updating the pw ...")
 			passwordHash, err := bcrypt.GenerateFromPassword([]byte(userRequest.GetPassword()), bcrypt.DefaultCost)
 			if err != nil {
 				return fmt.Errorf("bad")
 			}
 			user.Spec.Password = string(passwordHash)
-			glog.Infof("The new hash is: %s", string(passwordHash))
 		}
 
 		if userRequest.GetAccessCodes() != nil {
