@@ -321,6 +321,11 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			} else {
 				vm.ObjectMeta.Labels["restrictedbind"] = "false"
 			}
+
+			if provisionMethod, ok := env.Annotations["hobbyfarm.io/provisioner"]; ok && provisionMethod != "" {
+				vm.ObjectMeta.Labels["hobbyfarm.io/provisioner"] = provisionMethod
+			}
+
 			// adding a custom finalizer for reconcile of vmsets
 			vm.SetFinalizers([]string{vmSetFinalizer})
 			vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Create(v.ctx, vm, metav1.CreateOptions{})
