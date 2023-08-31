@@ -28,7 +28,9 @@ jobs:
           startsWith(github.event.ref, 'refs/tags/')
           || endsWith(github.event.ref, '/master')
         )
-      run: docker build -t hobbyfarm/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} -f cicd/Dockerfile .
+      run: | 
+        docker buildx create --use
+        docker buildx build --platform linux/amd64,linux/arm64 -t seboknt/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} -f cicd/Dockerfile .
 
     - name: Compute Docker Tag
       if: |
@@ -69,8 +71,8 @@ jobs:
         )
       run: |
         docker tag \
-          hobbyfarm/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} \
-          hobbyfarm/gargantua:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }}
+          seboknt/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} \
+          seboknt/gargantua:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }}
 
     - name: Docker Push
       if: |
@@ -80,7 +82,7 @@ jobs:
         )
       run: |
         docker push \
-          hobbyfarm/gargantua:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }}
+          seboknt/gargantua:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }}
 
     - name: Docker Tag Latest
       if: |
@@ -89,8 +91,8 @@ jobs:
         )
       run: |
         docker tag \
-          hobbyfarm/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} \
-          hobbyfarm/gargantua:latest
+          seboknt/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} \
+          seboknt/gargantua:latest
 
     - name: Docker Push Latest
       if: |
@@ -99,4 +101,4 @@ jobs:
         )
       run: |
         docker push \
-          hobbyfarm/gargantua:latest
+          seboknt/gargantua:latest
