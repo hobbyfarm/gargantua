@@ -1,5 +1,15 @@
 name: Main
 on: [push, pull_request]
+env:
+  app_image: seboknt/gargantua
+  should_push_image: |-
+    ${{
+      github.event_name == 'push' && (
+        startsWith(github.event.ref, 'refs/tags/')
+        || endsWith(github.event.ref, '/master')
+      )
+    }}
+
 jobs:
   build:
     name: Build
@@ -22,22 +32,14 @@ jobs:
         CGO_ENABLED: 0
       run: go build -v -o gargantua
 
-    - name: Build Release
-      if: |
-        github.event_name == 'push' && (
-          startsWith(github.event.ref, 'refs/tags/')
-          || endsWith(github.event.ref, '/master')
-        )
+    - name: Build container in cache
+      if: fromJSON(env.should_push_image)
       run: | 
         docker buildx create --use
-        docker buildx build --platform linux/amd64,linux/arm64 -t seboknt/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} -f cicd/Dockerfile .
+        docker buildx build --platform linux/amd64,linux/arm64 -t $app_image:${GIT_COMMIT_SHORT_HASH:-dev} -f cicd/Dockerfile .
 
     - name: Compute Docker Tag
-      if: |
-        github.event_name == 'push' && (
-          startsWith(github.event.ref, 'refs/tags/')
-          || endsWith(github.event.ref, '/master')
-        )
+      if: fromJSON(env.should_push_image)
       id: compute_docker_tag
       run: |
         tag=${GITHUB_REF#refs/tags/}
@@ -54,32 +56,24 @@ jobs:
         fi
 
     - name: Docker Login
-      if: |
-        github.event_name == 'push' && (
-          startsWith(github.event.ref, 'refs/tags/')
-          || endsWith(github.event.ref, '/master')
-        )
+      if: fromJSON(env.should_push_image)
       run: |
         echo "${{ secrets.DOCKER_HUB_PASSWORD }}" \
           | docker login -u "${{ secrets.DOCKER_HUB_USER }}" --password-stdin
 
-    - name: Docker Tag
-      if: |
-        github.event_name == 'push' && (
-          startsWith(github.event.ref, 'refs/tags/')
-          || endsWith(github.event.ref, '/master')
-        )
+    - name: Docker build from cache and push
+      if: fromJSON(env.should_push_image)
       run: |
         docker buildx build --push --platform linux/amd64,linux/arm64 \
-          -t seboknt/gargantua:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }} \
+          -t $app_image:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }} \
           -f cicd/Dockerfile .
 
-    - name: Docker Tag Latest
+    - name: Docker build from cache & push latest
       if: |
         github.event_name == 'push' && (
           startsWith(github.event.ref, 'refs/tags/')
         )
       run: |
         docker buildx build --push --platform linux/amd64,linux/arm64 \
-          -t seboknt/gargantua:latest \
+          -t $app_image:latest \
           -f cicd/Dockerfile .
