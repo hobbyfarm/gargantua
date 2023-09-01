@@ -18,6 +18,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@master
 
+    - name: Cache docker buildx
+      uses: actions/cache@v2
+      with:
+        path: |
+          /home/runner/tmp
+        key: docker-tmp
+
     - name: Compute Docker Tag
       if: fromJSON(env.should_push_image)
       id: compute_docker_tag
@@ -41,20 +48,45 @@ jobs:
         echo "${{ secrets.DOCKER_HUB_PASSWORD }}" \
           | docker login -u "${{ secrets.DOCKER_HUB_USER }}" --password-stdin
         docker buildx create --use
+        docker buildx inspect --bootstrap
 
-    - name: Docker build and push
+    - name: Fill AMD64 cache
+      run: |
+        docker buildx build \
+        --platform linux/amd64 \
+        --cache-from type=local,src=/home/runner/tmp/amd64 \
+        --cache-to type=local,dest=/home/runner/tmp/amd64 \
+        --tag ${GITHUB_REPOSITORY,,}:amd64 \
+        --file cicd/Dockerfile .
+    
+    - name: Fill ARM64 cache
+      run: |
+        docker buildx build \
+        --platform linux/arm64 \
+        --cache-from type=local,src=/home/runner/tmp/arm64 \
+        --cache-to type=local,dest=/home/runner/tmp/arm64 \
+        --tag ${GITHUB_REPOSITORY,,}:arm64 \
+        --file cicd/Dockerfile .
+
+    - name: Docker build from cache and push
       if: fromJSON(env.should_push_image)
       run: |
-        docker buildx build --push --platform linux/amd64,linux/arm64 \
-          -t ${GITHUB_REPOSITORY,,}:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }} \
-          -f cicd/Dockerfile .
+        docker buildx build --push \
+          --platform linux/amd64,linux/arm64 \
+          --cache-from type=local,src=/home/runner/tmp/amd64 \
+          --cache-from type=local,src=/home/runner/tmp/arm64 \
+          --tag ${GITHUB_REPOSITORY,,}:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }} \
+          --file cicd/Dockerfile .
 
-    - name: Docker build & push latest
+    - name: Docker build from cache & push latest
       if: |
         github.event_name == 'push' && (
           startsWith(github.event.ref, 'refs/tags/')
         )
       run: |
-        docker buildx build --push --platform linux/amd64,linux/arm64 \
-          -t ${GITHUB_REPOSITORY,,}:latest \
-          -f cicd/Dockerfile .
+        docker buildx build --push \
+          --platform linux/amd64,linux/arm64 \
+          --cache-from type=local,src=/home/runner/tmp/amd64 \
+          --cache-from type=local,src=/home/runner/tmp/arm64 \
+          --tag ${GITHUB_REPOSITORY,,}:latest \
+          --file cicd/Dockerfile .
