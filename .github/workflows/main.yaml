@@ -1,7 +1,6 @@
 name: Main
 on: [push, pull_request]
 env:
-  app_image: seboknt/gargantua
   should_push_image: |-
     ${{
       github.event_name == 'push' && (
@@ -47,7 +46,7 @@ jobs:
       if: fromJSON(env.should_push_image)
       run: |
         docker buildx build --push --platform linux/amd64,linux/arm64 \
-          -t $app_image:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }} \
+          -t ${GITHUB_REPOSITORY,,}:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }} \
           -f cicd/Dockerfile .
 
     - name: Docker build & push latest
@@ -57,5 +56,5 @@ jobs:
         )
       run: |
         docker buildx build --push --platform linux/amd64,linux/arm64 \
-          -t $app_image:latest \
+          -t ${GITHUB_REPOSITORY,,}:latest \
           -f cicd/Dockerfile .
