@@ -51,6 +51,7 @@ jobs:
         docker buildx inspect --bootstrap
 
     - name: Fill AMD64 cache
+      if: fromJSON(env.should_push_image)
       run: |
         docker buildx build \
         --platform linux/amd64 \
@@ -60,6 +61,7 @@ jobs:
         --file cicd/Dockerfile .
     
     - name: Fill ARM64 cache
+      if: fromJSON(env.should_push_image)
       run: |
         docker buildx build \
         --platform linux/arm64 \
