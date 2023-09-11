@@ -66,15 +66,14 @@ jobs:
         docker buildx create --use
         docker buildx inspect --bootstrap
 
-      - name: Fill AMD64 cache
-        run: |
-          ${{ env.build_and_cache }} 
-          build_and_cache amd64
-
-      - name: Fill ARM64 cache
-        run: |
-          ${{ env.build_and_cache }} 
-          build_and_cache arm64
+    - name: Fill AMD64 cache
+      run: |
+        ${{ env.build_and_cache }} 
+        build_and_cache amd64
+    - name: Fill ARM64 cache
+      run: |
+        ${{ env.build_and_cache }} 
+        build_and_cache arm64
 
     - name: Docker build from cache and push
       if: fromJSON(env.should_push_image)
