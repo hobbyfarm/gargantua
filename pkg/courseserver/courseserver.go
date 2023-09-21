@@ -16,10 +16,12 @@ import (
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -28,11 +30,12 @@ const (
 )
 
 type CourseServer struct {
-	auth          *authclient.AuthClient
-	hfClientSet   hfClientset.Interface
-	acClient      *accesscode.AccessCodeClient
-	courseIndexer cache.Indexer
-	ctx           context.Context
+	auth          	*authclient.AuthClient
+	hfClientSet   	hfClientset.Interface
+	acClient      	*accesscode.AccessCodeClient
+	courseIndexer 	cache.Indexer
+	ctx            	context.Context
+	scenariosLister  hfListers.ScenarioLister
 }
 
 type PreparedCourse struct {
@@ -54,6 +57,7 @@ func NewCourseServer(authClient *authclient.AuthClient, acClient *accesscode.Acc
 		glog.Errorf("error adding indexer %s for courses", idIndex)
 	}
 	course.courseIndexer = inf.GetIndexer()
+	course.scenariosLister = hfInformerFactory.Hobbyfarm().V1().Scenarios().Lister()
 	course.ctx = ctx
 
 	return &course, nil
@@ -525,7 +529,6 @@ func (c CourseServer) previewDynamicScenarios(w http.ResponseWriter, r *http.Req
 }
 
 func (c CourseServer) AppendDynamicScenariosByCategories(scenariosList []string, categories []string) []string {
-	categorySelector := metav1.ListOptions{}
 	for _, categoryQuery := range categories {
 		categorySelectors := []string{}
 		categoryQueryParts := strings.Split(categoryQuery, "&")
@@ -538,17 +541,20 @@ func (c CourseServer) AppendDynamicScenariosByCategories(scenariosList []string,
 			categorySelectors = append(categorySelectors, fmt.Sprintf("category-%s %s (true)", categoryQueryPart, operator))
 		}
 		categorySelectorString := strings.Join(categorySelectors, ",")
-		glog.Errorf("query scenarios by query: %s", categorySelectorString)
-		categorySelector = metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s", categorySelectorString),
+
+		selector, err := labels.Parse(categorySelectorString)
+		if err != nil {
+			glog.Errorf("error while parsing label selector %s: %v", categorySelectorString, err)
+			continue
 		}
-		scenarios, err := c.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).List(c.ctx, categorySelector)
+		//scenarios, err := c.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).List(c.ctx, categorySelector)
+		scenarios, err := c.scenariosLister.Scenarios(util.GetReleaseNamespace()).List(selector)
 
 		if err != nil {
 			glog.Errorf("error while retrieving scenarios %v", err)
 			continue
 		}
-		for _, scenario := range scenarios.Items {
+		for _, scenario := range scenarios {
 			scenariosList = append(scenariosList, scenario.Name)
 		}
 	}
