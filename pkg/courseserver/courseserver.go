@@ -547,7 +547,7 @@ func (c CourseServer) AppendDynamicScenariosByCategories(scenariosList []string,
 			glog.Errorf("error while parsing label selector %s: %v", categorySelectorString, err)
 			continue
 		}
-		//scenarios, err := c.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).List(c.ctx, categorySelector)
+		
 		scenarios, err := c.scenariosLister.Scenarios(util.GetReleaseNamespace()).List(selector)
 
 		if err != nil {
