@@ -7,16 +7,18 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
@@ -28,7 +30,7 @@ import (
 )
 
 const (
-	idIndex = "scenarioserver.hobbyfarm.io/id-index"
+	idIndex        = "scenarioserver.hobbyfarm.io/id-index"
 	resourcePlural = "scenarios"
 )
 
@@ -265,14 +267,12 @@ func (s ScenarioServer) AdminDeleteFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-
 	// when can we safely a scenario?
 	// 1. when there are no active scheduled events using the scenario
 	// 2. when there are no sessions using the scenario
 	// 3. when there is no course using the scenario
 
-
-	seList, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
+	seList, err := s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("error retrieving scheduledevent list: %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting scenario")
@@ -387,9 +387,9 @@ func (s ScenarioServer) ListScenarioForAccessCode(w http.ResponseWriter, r *http
 
 	contains := false
 	for _, acc := range user.Spec.AccessCodes {
-		if(acc == accessCode){
+		if acc == accessCode {
 			contains = true
-			break;
+			break
 		}
 	}
 
@@ -965,8 +965,8 @@ func (s ScenarioServer) GetScenarioById(id string) (hfv1.Scenario, error) {
 }
 
 // Filter a ScheduledEventList to find SEs that are a) active and b) using the course specified
-func filterScheduledEvents(scenario string, seList *hfv1.ScheduledEventList) *[]hfv1.ScheduledEvent {
-	outList := make([]hfv1.ScheduledEvent, 0)
+func filterScheduledEvents(scenario string, seList *hfv2.ScheduledEventList) *[]hfv2.ScheduledEvent {
+	outList := make([]hfv2.ScheduledEvent, 0)
 	for _, se := range seList.Items {
 		if se.Status.Finished == true {
 			continue
@@ -975,7 +975,7 @@ func filterScheduledEvents(scenario string, seList *hfv1.ScheduledEventList) *[]
 		for _, s := range se.Spec.Scenarios {
 			if s == scenario {
 				outList = append(outList, se)
-				break;
+				break
 			}
 		}
 	}

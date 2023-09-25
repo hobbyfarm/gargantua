@@ -4,15 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
@@ -40,15 +42,15 @@ func NewScheduledEventServer(authClient *authclient.AuthClient, hfClientset hfCl
 	return &es, nil
 }
 
-func (s ScheduledEventServer) getScheduledEvent(id string) (hfv1.ScheduledEvent, error) {
+func (s ScheduledEventServer) getScheduledEvent(id string) (hfv2.ScheduledEvent, error) {
 
-	empty := hfv1.ScheduledEvent{}
+	empty := hfv2.ScheduledEvent{}
 
 	if len(id) == 0 {
 		return empty, fmt.Errorf("scheduledevent passed in was empty")
 	}
 
-	obj, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
+	obj, err := s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		return empty, fmt.Errorf("error while retrieving ScheduledEvent by id: %s with error: %v", id, err)
 	}
@@ -71,8 +73,8 @@ func (s ScheduledEventServer) SetupRoutes(r *mux.Router) {
 
 type PreparedScheduledEvent struct {
 	ID string `json:"id"`
-	hfv1.ScheduledEventSpec
-	hfv1.ScheduledEventStatus
+	hfv2.ScheduledEventSpec
+	hfv2.ScheduledEventStatus
 }
 
 type PreparedOTAC struct {
@@ -123,7 +125,7 @@ func (s ScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scheduledEvents, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
+	scheduledEvents, err := s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while retrieving scheduledevents %v", err)
@@ -256,8 +258,19 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-
-	scheduledEvent := &hfv1.ScheduledEvent{}
+	
+	shared_vmsRaw := r.PostFormValue("shared_vms")
+	shared_vms := []hfv2.SharedVirtualMachine{} // must be declared this way so as to JSON marshal into [] instead of null
+	if shared_vmsRaw != "" {
+		err = json.Unmarshal([]byte(shared_vmsRaw), &shared_vms)
+		if err != nil {
+			glog.Errorf("error while unmarshalling shared_vms %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+	
+	scheduledEvent := &hfv2.ScheduledEvent{}
 	random := util.RandStringRunes(16)
 	scheduledEvent.Name = "se-" + util.GenerateResourceName("se", random, 10)
 
@@ -279,6 +292,9 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		scheduledEvent.Spec.Courses = courses
 	}
 
+	if shared_vmsRaw != "" {
+		scheduledEvent.Spec.SharedVirtualMachines = shared_vms
+	}
 
 	if restrictionDisabled {
 		scheduledEvent.Spec.RestrictedBind = false
@@ -287,7 +303,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		scheduledEvent.Spec.RestrictedBindValue = scheduledEvent.Name
 	}
 
-	scheduledEvent, err = s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Create(s.ctx, scheduledEvent, metav1.CreateOptions{})
+	scheduledEvent, err = s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Create(s.ctx, scheduledEvent, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating scheduled event %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scheduled event")
@@ -300,7 +316,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 	scheduledEvent.Status.Provisioned = false
 	scheduledEvent.Status.VirtualMachineSets = []string{}
 
-	_, err = s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, scheduledEvent, metav1.UpdateOptions{})
+	_, err = s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, scheduledEvent, metav1.UpdateOptions{})
 
 	if err != nil {
 		glog.Errorf("error updating status subresource for scheduled event %v", err)
@@ -328,7 +344,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
+		scheduledEvent, err := s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			util.ReturnHTTPMessage(w, r, 404, "badrequest", "no scheduledEvent found with given ID")
@@ -346,7 +362,9 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 		onDemandRaw := r.PostFormValue("on_demand")
 		restrictionDisabledRaw := r.PostFormValue("disable_restriction")
 		printableRaw := r.PostFormValue("printable")
-
+		
+		shared_vmsRaw := r.PostFormValue("shared_vms")
+		
 		if name != "" {
 			scheduledEvent.Spec.Name = name
 		}
@@ -384,7 +402,57 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 			}
 			scheduledEvent.Spec.Courses = courses
 		}
+		
+		if shared_vmsRaw != "" {
+			upd_shared_vms := []hfv2.SharedVirtualMachine{} // must be declared this way so as to JSON marshal into [] instead of null
 
+			err = json.Unmarshal([]byte(shared_vmsRaw), &upd_shared_vms)
+			if err != nil {
+				glog.Errorf("error while unmarshalling shared_vms %v", err)
+				//	util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+				return fmt.Errorf("bad")
+			}
+			
+			//del from provisionedVM that in upd_sharedVM not present and add new from sharedVM
+			provisioned_shared_vms := scheduledEvent.Spec.SharedVirtualMachines
+			actual_shared_vms := []hfv2.SharedVirtualMachine{}
+			if len(provisioned_shared_vms) > 0 {
+				for _, provisioned_shared_vm := range provisioned_shared_vms {
+					isDelVM := true
+					for _, upd_shared_vm := range upd_shared_vms {
+						if provisioned_shared_vm.Name == upd_shared_vm.Name {
+							isDelVM = false
+							break
+						}
+					}
+						if isDelVM {
+							glog.Infof("del shared_vms %v", provisioned_shared_vm.Name)
+							s.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Delete(s.ctx, provisioned_shared_vm.VMId, metav1.DeleteOptions{})
+						} else {
+							actual_shared_vms = append(actual_shared_vms, provisioned_shared_vm)
+							glog.Infof("add provisioned shared_vms %v", provisioned_shared_vm.Name)
+						}
+					
+				}
+				for _, upd_shared_vm := range upd_shared_vms {
+					isAddVM := true
+					for _, actual_shared_vm := range actual_shared_vms {
+						if actual_shared_vm.Name == upd_shared_vm.Name {
+							isAddVM = false
+							break
+						}
+					}
+					if isAddVM {
+						actual_shared_vms = append(actual_shared_vms, upd_shared_vm)
+						glog.Infof("add upd shared_vms %v", upd_shared_vm.Name)
+					}
+				}
+				scheduledEvent.Spec.SharedVirtualMachines = actual_shared_vms
+			} else {
+				scheduledEvent.Spec.SharedVirtualMachines = upd_shared_vms
+			}			
+		}
+		
 		if scenariosRaw != "" {
 			scenarios := []string{} // must be declared this way so as to JSON marshal into [] instead of null
 			err = json.Unmarshal([]byte(scenariosRaw), &scenarios)
@@ -466,17 +534,17 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 				return err
 			}
 		}
-
-		updateSE, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, scheduledEvent, metav1.UpdateOptions{})
-		if(updateErr != nil){
+		glog.Infof("scheduledEvent: %v", scheduledEvent)
+		updateSE, updateErr := s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, scheduledEvent, metav1.UpdateOptions{})
+		if updateErr != nil {
 			return updateErr
 		}
-
+		glog.Infof("updateSE: %v", updateSE)
 		updateSE.Status.Provisioned = false
 		updateSE.Status.Ready = false
 		updateSE.Status.Finished = false
 
-		_, updateErr = s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, updateSE, metav1.UpdateOptions{})
+		_, updateErr = s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).UpdateStatus(s.ctx, updateSE, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -489,6 +557,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 	util.ReturnHTTPMessage(w, r, 200, "updated", "")
 	return
 }
+
 
 func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbDelete), w, r)
@@ -505,7 +574,7 @@ func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
+	scheduledEvent, err := s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		glog.Error(err)
 		util.ReturnHTTPMessage(w, r, 404, "badrequest", "no scheduledEvent found with given ID")
@@ -537,7 +606,7 @@ func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err = s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Delete(s.ctx, scheduledEvent.Name, metav1.DeleteOptions{})
+	err = s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Delete(s.ctx, scheduledEvent.Name, metav1.DeleteOptions{})
 
 	if err != nil {
 		glog.Errorf("error deleting scheduled event %v", err)
@@ -643,7 +712,7 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 		return
     }
 
-	scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
+	scheduledEvent, err := s.hfClientSet.HobbyfarmV2().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		glog.Error(err)
 		util.ReturnHTTPMessage(w, r, 404, "badrequest", "no scheduledEvent found with given ID")
@@ -701,7 +770,7 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 	glog.V(4).Infof("generated %d new OTACs for SE %s", count, id)
 }
 
-func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent) error {
+func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv2.ScheduledEvent) error {
 	glog.V(6).Infof("ScheduledEvent %s is updated or deleted, deleting corresponding access code(s) and DBC(s)", se.Name)
 
 	// delete all DBCs corresponding to this scheduled event
@@ -723,7 +792,7 @@ func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent
 	return nil // break (return) here because we're done with this SE.
 }
 
-func (s ScheduledEventServer) deleteProgressFromScheduledEvent(se *hfv1.ScheduledEvent) error {
+func (s ScheduledEventServer) deleteProgressFromScheduledEvent(se *hfv2.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
 	err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
@@ -735,7 +804,7 @@ func (s ScheduledEventServer) deleteProgressFromScheduledEvent(se *hfv1.Schedule
 	return nil
 }
 
-func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
+func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv2.ScheduledEvent) error {
 	// delete all vmsets corresponding to this scheduled event
 	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", util.ScheduledEventLabel, se.Name),
@@ -747,7 +816,7 @@ func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledE
 	return nil
 }
 
-func (s ScheduledEventServer) finishSessions(se *hfv1.ScheduledEvent) error {
+func (s ScheduledEventServer) finishSessions(se *hfv2.ScheduledEvent) error {
 	// get a list of sessions for the user
 	sessionList, err := s.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", util.AccessCodeLabel, se.Spec.AccessCode),
