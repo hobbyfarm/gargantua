@@ -1,7 +1,7 @@
 package user
 
 import (
-	"github.com/hobbyfarm/gargantua/pkg/webhook/conversion"
+	"github.com/hobbyfarm/gargantua/v3/pkg/webhook/conversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
