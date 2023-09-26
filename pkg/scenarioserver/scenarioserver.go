@@ -372,15 +372,7 @@ func (s ScenarioServer) ListScenariosForAccessCode(w http.ResponseWriter, r *htt
 		return
 	}
 
-	contains := false
-	for _, acc := range user.Spec.AccessCodes {
-		if(acc == accessCode){
-			contains = true
-			break;
-		}
-	}
-
-	if !contains {
+	if !util.StringInSlice(accessCode, user.Spec.AccessCodes) {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios for this AccessCode")
 		return
 	}
@@ -392,11 +384,7 @@ func (s ScenarioServer) ListScenariosForAccessCode(w http.ResponseWriter, r *htt
 	if err != nil {
 		glog.Errorf("error retrieving access code: %s %v", accessCode, err)
 	}
-	tempScenarioIds, err := s.acClient.GetScenarioIds(accessCode)
-	if err != nil {
-		glog.Errorf("error retrieving scenario ids for access code: %s %v", accessCode, err)
-	}
-	scenarioIds = append(scenarioIds, tempScenarioIds...)
+	scenarioIds = append(scenarioIds, ac.Spec.Scenarios...)
 
 	var scenarios []PreparedScenario
 	for _, scenarioId := range scenarioIds {
