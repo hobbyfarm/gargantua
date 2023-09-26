@@ -10,18 +10,18 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
 
 const (
-	idIndex             = "progressserver.hobbyfarm.io/id-index"
-	resourcePlural      = "progresses"
+	idIndex        = "progressserver.hobbyfarm.io/id-index"
+	resourcePlural = "progresses"
 )
 
 type ProgressServer struct {
@@ -31,13 +31,13 @@ type ProgressServer struct {
 }
 
 type AdminPreparedProgress struct {
-	ID string `json:"id"`
+	ID      string `json:"id"`
 	Session string `json:"session"`
 	hfv1.ProgressSpec
 }
 
 type AdminPreparedProgressWithScheduledEvent struct {
-	ID string `json:"id"`
+	ID      string `json:"id"`
 	Session string `json:"session"`
 	hfv1.ProgressSpec
 	ScheduledEvent string `json:"scheduled_event"`
@@ -67,9 +67,10 @@ func (s ProgressServer) SetupRoutes(r *mux.Router) {
 }
 
 /*
-	List Progress by Scheduled Event
-		Vars:
-		- id : The scheduled event id
+List Progress by Scheduled Event
+
+	Vars:
+	- id : The scheduled event id
 */
 func (s ProgressServer) ListByScheduledEventFunc(w http.ResponseWriter, r *http.Request) {
 	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
@@ -137,7 +138,7 @@ func (s ProgressServer) ListByRangeFunc(w http.ResponseWriter, r *http.Request) 
 }
 
 /*
-	List Progress for the authenticated user
+List Progress for the authenticated user
 */
 func (s ProgressServer) ListForUserFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := s.auth.AuthN(w, r)
@@ -150,9 +151,10 @@ func (s ProgressServer) ListForUserFunc(w http.ResponseWriter, r *http.Request) 
 }
 
 /*
-	List Progress by User
-		Vars:
-		- id : The user id
+List Progress by User
+
+	Vars:
+	- id : The user id
 */
 func (s ProgressServer) ListByUserFunc(w http.ResponseWriter, r *http.Request) {
 	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
@@ -269,9 +271,10 @@ func (s ProgressServer) ListByLabel(w http.ResponseWriter, r *http.Request, labe
 }
 
 /*
-	Update Progress
-		Vars:
-		- id : Session linked to the progress resource
+Update Progress
+
+	Vars:
+	- id : Session linked to the progress resource
 */
 func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()

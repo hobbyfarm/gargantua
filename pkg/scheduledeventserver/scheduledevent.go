@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,10 +12,10 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
@@ -279,7 +279,6 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		scheduledEvent.Spec.Courses = courses
 	}
 
-
 	if restrictionDisabled {
 		scheduledEvent.Spec.RestrictedBind = false
 	} else {
@@ -468,7 +467,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 		}
 
 		updateSE, updateErr := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Update(s.ctx, scheduledEvent, metav1.UpdateOptions{})
-		if(updateErr != nil){
+		if updateErr != nil {
 			return updateErr
 		}
 
@@ -637,11 +636,11 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 		return
 	}
 	count, err := strconv.Atoi(countFormValue)
-    if err != nil {
+	if err != nil {
 		glog.Error(err)
 		util.ReturnHTTPMessage(w, r, 404, "badrequest", "invalid count given")
 		return
-    }
+	}
 
 	scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
 	if err != nil {
@@ -652,10 +651,10 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 
 	var otacs []PreparedOTAC
 
-	for i:=0; i < count; i++ {
+	for i := 0; i < count; i++ {
 		// Generate an access code that can not be guessed
 		genName := ""
-		for genParts:=0; genParts < 3; genParts++ {
+		for genParts := 0; genParts < 3; genParts++ {
 			genName += util.GenerateResourceName("", util.RandStringRunes(16), 4)
 		}
 		genName = genName[1:]
@@ -671,14 +670,14 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 					},
 				},
 				Labels: map[string]string{
-					util.UserLabel: "",
-					util.ScheduledEventLabel: scheduledEvent.Name,
+					util.UserLabel:              "",
+					util.ScheduledEventLabel:    scheduledEvent.Name,
 					util.OneTimeAccessCodeLabel: genName,
 				},
 			},
 			Spec: hfv1.OneTimeAccessCodeSpec{
-				User: 				"",
-				RedeemedTimestamp: 	"",
+				User:              "",
+				RedeemedTimestamp: "",
 			},
 		}
 		otac, err = s.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Create(s.ctx, otac, metav1.CreateOptions{})
@@ -687,7 +686,7 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 			continue
 		}
 		otacs = append(otacs, PreparedOTAC{otac.Name, otac.Spec})
-	} 
+	}
 
 	encoded, err := json.Marshal(otacs)
 	if err != nil {

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,12 +14,12 @@ import (
 )
 
 type PreparedRole struct {
-	Name string `json:"name"`
+	Name  string         `json:"name"`
 	Rules []PreparedRule `json:"rules"`
 }
 
 type PreparedRule struct {
-	Verbs []string 	`json:"verbs"`
+	Verbs     []string `json:"verbs"`
 	APIGroups []string `json:"apiGroups"`
 	Resources []string `json:"resources"`
 }
@@ -40,7 +40,7 @@ func (s Server) ListRoles(w http.ResponseWriter, r *http.Request) {
 		if errors.IsNotFound(err) {
 			util.ReturnHTTPMessage(w, r, 404, "notfound", "roles not found")
 		} else {
-			util.ReturnHTTPMessage(w, r, 500, "internalerror","internal error")
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "internal error")
 		}
 		return
 	}
@@ -167,7 +167,7 @@ func (s Server) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	err = s.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Delete(r.Context(), role.Name, metav1.DeleteOptions{})
 	if err != nil {
 		glog.Errorf("error deleting role in kubernetes: %v", err)
-		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror","internal error")
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
 	}
 
@@ -222,7 +222,7 @@ func (s Server) unmarshalRole(role *rbacv1.Role) (preparedRole *PreparedRole) {
 	for _, r := range role.Rules {
 		preparedRole.Rules = append(preparedRole.Rules, PreparedRule{
 			Resources: r.Resources,
-			Verbs: r.Verbs,
+			Verbs:     r.Verbs,
 			APIGroups: r.APIGroups,
 		})
 	}
@@ -250,7 +250,7 @@ func (s Server) marshalRole(preparedRole *PreparedRole) (*rbacv1.Role, error) {
 		}
 
 		role.Rules = append(role.Rules, rbacv1.PolicyRule{
-			Verbs: r.Verbs,
+			Verbs:     r.Verbs,
 			APIGroups: r.APIGroups,
 			Resources: r.Resources,
 		})

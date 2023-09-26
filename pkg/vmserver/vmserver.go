@@ -8,20 +8,20 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
 const (
-	idIndex             = "vms.hobbyfarm.io/id-index"
-	resourcePlural		= "virtualmachines"
+	idIndex        = "vms.hobbyfarm.io/id-index"
+	resourcePlural = "virtualmachines"
 )
 
 type VMServer struct {
@@ -102,14 +102,14 @@ func (vms VMServer) getWebinterfaces(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 404, "error", "no vm template found")
 		return
-	}	
+	}
 
-	services, found := vmt.Spec.ConfigMap["webinterfaces"] 
+	services, found := vmt.Spec.ConfigMap["webinterfaces"]
 	if !found {
 		util.ReturnHTTPMessage(w, r, 404, "error", "No Webinterfaces found for this VM")
 		return
 	}
-	
+
 	encodedWebinterfaceDefinitions, err := json.Marshal(services)
 	if err != nil {
 		glog.Error(err)
