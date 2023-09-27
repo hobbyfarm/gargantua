@@ -80,7 +80,7 @@ func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.A
 }
 
 func (s ScenarioServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/scenario/list/{access_code}", s.ListScenarioForAccessCode).Methods("GET")
+	r.HandleFunc("/scenario/list/{access_code}", s.ListScenariosForAccessCode).Methods("GET")
 	r.HandleFunc("/a/scenario/categories", s.ListCategories).Methods("GET")
 	r.HandleFunc("/a/scenario/list/{category}", s.ListByCategoryFunc).Methods("GET")
 	r.HandleFunc("/a/scenario/list", s.ListAllFunc).Methods("GET")
@@ -127,37 +127,17 @@ func (s ScenarioServer) getPreparedScenarioStepById(id string, step int) (Prepar
 func (s ScenarioServer) getPrintableScenarioIds(accessCodes []string) []string {
 	var printableScenarioIds []string
 	var printableCourseIds []string
-	for _, acString := range accessCodes {
-		ac, err := s.acClient.GetAccessCodeWithOTACs(acString)
-		if err != nil {
-			glog.Errorf("error retrieving access code: %s %v", acString, err)
+	accessCodeObjs, err := s.acClient.GetAccessCodesWithOTACs(accessCodes)
+	if err != nil {
+		glog.Errorf("error retrieving access codes %v", err)
+		return []string{}
+	}
+	for _, accessCode  := range accessCodeObjs {
+		if !accessCode.Spec.Printable {
 			continue
 		}
-		if !ac.Spec.Printable {
-			continue
-		}
-
-		tempScenarioIds, err1 := s.acClient.GetScenarioIds(acString)
-		tempCourseIds, err2 := s.acClient.GetCourseIds(acString)
-
-		if err1 != nil && err2 != nil {
-			glog.Errorf("error retrieving scenario ids for access code: %s %v", acString, err)
-			glog.Errorf("error retrieving course ids for access code: %s %v", ac, err)
-			continue
-		}
-		if err1 != nil {
-			glog.Errorf("error retrieving scenario ids for access code: %s %v", acString, err)
-			printableCourseIds = append(printableCourseIds, tempCourseIds...)
-			continue
-		}
-		if err2 != nil {
-			glog.Errorf("error retrieving course ids for access code: %s %v", ac, err)
-			printableScenarioIds = append(printableScenarioIds, tempScenarioIds...)
-			continue
-		}
-
-		printableScenarioIds = append(printableScenarioIds, tempScenarioIds...)
-		printableCourseIds = append(printableCourseIds, tempCourseIds...)
+		printableScenarioIds = append(printableScenarioIds, accessCode.Spec.Scenarios...)
+		printableCourseIds = append(printableCourseIds, accessCode.Spec.Courses...)
 	}
 	printableCourseIds = util.UniqueStringSlice(printableCourseIds)
 
@@ -202,7 +182,14 @@ func (s ScenarioServer) GetScenarioFunc(w http.ResponseWriter, r *http.Request) 
 
 	vars := mux.Vars(r)
 
-	scenario, err := s.getPreparedScenarioById(vars["scenario_id"], user.Spec.AccessCodes)
+	scenario_id := vars["scenario_id"]
+
+	if len(scenario_id) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no scenario id passed in")
+		return
+	}
+
+	scenario, err := s.getPreparedScenarioById(scenario_id, user.Spec.AccessCodes)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf("scenario %s not found", vars["scenario_id"]))
 		return
@@ -368,7 +355,7 @@ func (s ScenarioServer) GetScenarioStepFunc(w http.ResponseWriter, r *http.Reque
 
 }
 
-func (s ScenarioServer) ListScenarioForAccessCode(w http.ResponseWriter, r *http.Request) {
+func (s ScenarioServer) ListScenariosForAccessCode(w http.ResponseWriter, r *http.Request) {
 	user, err := s.auth.AuthN(w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios")
@@ -383,15 +370,7 @@ func (s ScenarioServer) ListScenarioForAccessCode(w http.ResponseWriter, r *http
 		return
 	}
 
-	contains := false
-	for _, acc := range user.Spec.AccessCodes {
-		if acc == accessCode {
-			contains = true
-			break
-		}
-	}
-
-	if !contains {
+	if !util.StringInSlice(accessCode, user.Spec.AccessCodes) {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios for this AccessCode")
 		return
 	}
@@ -399,30 +378,20 @@ func (s ScenarioServer) ListScenarioForAccessCode(w http.ResponseWriter, r *http
 	// store a list of scenarios linked to courses for filtering
 	//var courseScenarios []string
 	var scenarioIds []string
-	var printableScenarioIds []string
 	ac, err := s.acClient.GetAccessCodeWithOTACs(accessCode)
 	if err != nil {
 		glog.Errorf("error retrieving access code: %s %v", accessCode, err)
 	}
-	tempScenarioIds, err := s.acClient.GetScenarioIds(accessCode)
-	if err != nil {
-		glog.Errorf("error retrieving scenario ids for access code: %s %v", accessCode, err)
-	}
-	if ac.Spec.Printable {
-		printableScenarioIds = append(printableScenarioIds, tempScenarioIds...)
-	}
-	scenarioIds = append(scenarioIds, tempScenarioIds...)
-	scenarioIds = util.UniqueStringSlice(append(scenarioIds, printableScenarioIds...))
+	scenarioIds = append(scenarioIds, ac.Spec.Scenarios...)
 
 	var scenarios []PreparedScenario
 	for _, scenarioId := range scenarioIds {
-		tempPrintable := util.StringInSlice(scenarioId, printableScenarioIds)
 		scenario, err := s.GetScenarioById(scenarioId)
 		if err != nil {
 			glog.Errorf("error retrieving scenario %v", err)
 			continue
 		}
-		pScenario, err := s.prepareScenario(scenario, tempPrintable)
+		pScenario, err := s.prepareScenario(scenario, ac.Spec.Printable)
 		if err != nil {
 			glog.Errorf("error preparing scenario %v", err)
 			continue
