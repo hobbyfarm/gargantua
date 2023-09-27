@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"slices"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -162,7 +163,7 @@ func (s ScenarioServer) getPreparedScenarioById(id string, accessCodes []string)
 	}
 
 	printableScenarioIds := s.getPrintableScenarioIds(accessCodes)
-	printable := util.StringInSlice(scenario.Name, printableScenarioIds)
+	printable := slices.Contains(printableScenarioIds, scenario.Name)
 
 	preparedScenario, err := s.prepareScenario(scenario, printable)
 
@@ -370,7 +371,7 @@ func (s ScenarioServer) ListScenariosForAccessCode(w http.ResponseWriter, r *htt
 		return
 	}
 
-	if !util.StringInSlice(accessCode, user.Spec.AccessCodes) {
+	if !slices.Contains(user.Spec.AccessCodes, accessCode) {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios for this AccessCode")
 		return
 	}
@@ -573,7 +574,7 @@ func (s ScenarioServer) PrintFunc(w http.ResponseWriter, r *http.Request) {
 
 	printableScenarioIds := s.getPrintableScenarioIds(user.Spec.AccessCodes)
 
-	if !util.StringInSlice(id, printableScenarioIds) {
+	if !slices.Contains(printableScenarioIds, id) {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get this Scenario")
 		return
 	}
