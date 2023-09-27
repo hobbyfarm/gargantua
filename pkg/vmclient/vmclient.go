@@ -2,8 +2,8 @@ package vmclient
 
 import (
 	"github.com/golang/glog"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/vmserver"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/vmserver"
 )
 
 type VirtualMachineClient struct {

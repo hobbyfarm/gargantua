@@ -7,7 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
 	"net/http"
 	"sort"
 	"strconv"
@@ -15,20 +15,20 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/pkg/accesscode"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/pkg/courseclient"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/v3/pkg/courseclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 const (
-	idIndex = "scenarioserver.hobbyfarm.io/id-index"
+	idIndex        = "scenarioserver.hobbyfarm.io/id-index"
 	resourcePlural = "scenarios"
 )
 
@@ -252,12 +252,10 @@ func (s ScenarioServer) AdminDeleteFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-
 	// when can we safely a scenario?
 	// 1. when there are no active scheduled events using the scenario
 	// 2. when there are no sessions using the scenario
 	// 3. when there is no course using the scenario
-
 
 	seList, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
 	if err != nil {
@@ -944,7 +942,7 @@ func filterScheduledEvents(scenario string, seList *hfv1.ScheduledEventList) *[]
 		for _, s := range se.Spec.Scenarios {
 			if s == scenario {
 				outList = append(outList, se)
-				break;
+				break
 			}
 		}
 	}
