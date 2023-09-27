@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
 	"slices"
@@ -485,8 +484,9 @@ func (s ScenarioServer) ListCategories(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	categories = util.UniqueStringSlice(categories)
-	sort.Strings(categories)
+	// Sort + Compact creates a unique sorted slice
+	slices.Sort(categories)
+	slices.Compact(categories)
 
 	encodedCategories, err := json.Marshal(categories)
 	if err != nil {
