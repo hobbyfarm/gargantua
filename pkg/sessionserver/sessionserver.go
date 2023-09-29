@@ -4,32 +4,32 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/pkg/accesscode"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/pkg/courseclient"
-	"github.com/hobbyfarm/gargantua/pkg/scenarioclient"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/v3/pkg/courseclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/scenarioclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 const (
-	ssIndex             = "sss.hobbyfarm.io/session-id-index"
-	newSSTimeout        = "5m"
-	keepaliveSSTimeout  = "5m"
-	pauseSSTimeout      = "2h"
-	resourcePlural      = "sessions"
+	ssIndex            = "sss.hobbyfarm.io/session-id-index"
+	newSSTimeout       = "5m"
+	keepaliveSSTimeout = "5m"
+	pauseSSTimeout     = "2h"
+	resourcePlural     = "sessions"
 )
 
 type SessionServer struct {
@@ -215,8 +215,8 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	session.Spec.UserId = user.Name
 	session.Spec.KeepCourseVM = course.Spec.KeepVM
 	labels := make(map[string]string)
-	labels[util.AccessCodeLabel] = accessCodeObj.Name    // map accesscode to session
-	labels[util.UserLabel] = user.Name // map user to session
+	labels[util.AccessCodeLabel] = accessCodeObj.Name // map accesscode to session
+	labels[util.UserLabel] = user.Name                // map user to session
 	session.Labels = labels
 	var vms []map[string]string
 	if course.Spec.VirtualMachines != nil {
@@ -263,8 +263,8 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		virtualMachineClaim := hfv1.VirtualMachineClaim{}
 		vmcId := util.GenerateResourceName(baseName, util.RandStringRunes(10), 10)
 		labels := make(map[string]string)
-		labels[util.SessionLabel] = session.Name     // map vmc to session
-		labels[util.UserLabel] = user.Name // map session to user in a way that is searchable
+		labels[util.SessionLabel] = session.Name // map vmc to session
+		labels[util.UserLabel] = user.Name       // map session to user in a way that is searchable
 		labels[util.AccessCodeLabel] = session.Labels[util.AccessCodeLabel]
 		labels[util.ScheduledEventLabel] = schedEvent.Name
 		virtualMachineClaim.Labels = labels
@@ -380,8 +380,8 @@ func (sss SessionServer) CreateProgress(sessionId string, scheduledEventId strin
 	labels := make(map[string]string)
 	labels[util.SessionLabel] = sessionId               // map to session
 	labels[util.ScheduledEventLabel] = scheduledEventId // map to scheduledevent
-	labels[util.UserLabel] = userId              // map to scheduledevent
-	labels["finished"] = "false"                   // default is in progress, finished = false
+	labels[util.UserLabel] = userId                     // map to scheduledevent
+	labels["finished"] = "false"                        // default is in progress, finished = false
 	progress.Labels = labels
 
 	createdProgress, err := sss.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Create(sss.ctx, &progress, metav1.CreateOptions{})

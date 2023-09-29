@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 	"net/http"
@@ -72,10 +72,10 @@ type PreparedEnvironment struct {
 }
 
 type PreparedListEnvironment struct {
-	Name string 									`json:"name"`
-	DisplayName string 								`json:"display_name"`
-	Provider string 								`json:"provider"`
-	TemplateMapping  map[string]map[string]string 	`json:"template_mapping"`
+	Name            string                       `json:"name"`
+	DisplayName     string                       `json:"display_name"`
+	Provider        string                       `json:"provider"`
+	TemplateMapping map[string]map[string]string `json:"template_mapping"`
 }
 
 func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
@@ -132,9 +132,9 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 
 	for _, e := range environments.Items {
 		keys := make(map[string]map[string]string)
-    	for k, _ := range e.Spec.TemplateMapping {
-        	keys[k] = map[string]string{}
-    	}
+		for k, _ := range e.Spec.TemplateMapping {
+			keys[k] = map[string]string{}
+		}
 		preparedEnvironments = append(preparedEnvironments, PreparedListEnvironment{e.Name, e.Spec.DisplayName, e.Spec.Provider, keys})
 	}
 
@@ -246,7 +246,6 @@ func (e EnvironmentServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	environment.Spec.WsEndpoint = wsEndpoint
 	environment.Spec.CountCapacity = countCapacityUnmarshaled
 
-
 	environment, err = e.hfClientSet.HobbyfarmV1().Environments(util.GetReleaseNamespace()).Create(e.ctx, environment, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating environment %v", err)
@@ -324,7 +323,7 @@ func (e EnvironmentServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			environment.Spec.EnvironmentSpecifics = environmentSpecificsUnmarshaled
 		}
 
-		if(len(countCapacity) > 0){
+		if len(countCapacity) > 0 {
 			countCapacityUnmarshaled := map[string]int{}
 			err = json.Unmarshal([]byte(countCapacity), &countCapacityUnmarshaled)
 			if err != nil {
@@ -368,7 +367,7 @@ func (e EnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, r
 		rbacclient.RbacRequest().
 			HobbyfarmPermission(resourcePlural, rbacclient.VerbList).
 			HobbyfarmPermission("virtualmachinetemplates", rbacclient.VerbList),
-		 w, r)
+		w, r)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get environment")
 		return
