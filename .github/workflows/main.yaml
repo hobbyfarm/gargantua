@@ -83,7 +83,7 @@ jobs:
           --cache-from type=local,src=/home/runner/tmp/amd64 \
           --cache-from type=local,src=/home/runner/tmp/arm64 \
           --tag ${GITHUB_REPOSITORY,,}:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }} \
-          --file cicd/Dockerfile .
+          --file Dockerfile .
 
     - name: Docker build from cache & push latest
       if: |
@@ -96,4 +96,4 @@ jobs:
           --cache-from type=local,src=/home/runner/tmp/amd64 \
           --cache-from type=local,src=/home/runner/tmp/arm64 \
           --tag ${GITHUB_REPOSITORY,,}:latest \
-          --file cicd/Dockerfile .
+          --file Dockerfile .
