@@ -60,7 +60,6 @@ jobs:
         fi
 
     - name: Docker setup env
-      if: fromJSON(env.should_push_image)
       run: |
         echo "${{ secrets.DOCKER_HUB_PASSWORD }}" \
           | docker login -u "${{ secrets.DOCKER_HUB_USER }}" --password-stdin
