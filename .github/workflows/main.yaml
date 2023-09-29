@@ -31,6 +31,7 @@ env:
       else
         cache="--no-cache"
       fi
+      echo "We will use: $cache"
     }
 
 jobs:
