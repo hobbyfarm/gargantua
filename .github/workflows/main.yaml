@@ -27,7 +27,7 @@ env:
   check_if_safe_to_use_cache: |-
     check_if_safe_to_use_cache() {
       if [ -d "/home/runner/tmp/amd64" ] && [ -d "/home/runner/tmp/arm64" ]; then
-        cache="--cache-from type=local,src=/home/runner/tmp/amd64 --cache-from type=local,src=/home/runner/tmp/arm64 \"
+        cache="--cache-from type=local,src=/home/runner/tmp/amd64 --cache-from type=local,src=/home/runner/tmp/arm64"
       else
         cache="--no-cache"
       fi
@@ -90,7 +90,7 @@ jobs:
         ${{ env.check_if_safe_to_use_cache }}
         check_if_safe_to_use_cache
         docker buildx build --push \
-          --platform linux/amd64,linux/arm64 $cache
+          $cache --platform linux/amd64,linux/arm64 \
           --tag ${GITHUB_REPOSITORY,,}:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }} \
           --file Dockerfile .
 
@@ -103,6 +103,6 @@ jobs:
         ${{ env.check_if_safe_to_use_cache }}
         check_if_safe_to_use_cache
         docker buildx build --push \
-          --platform linux/amd64,linux/arm64 $cache
+          $cache --platform linux/amd64,linux/arm64 \
           --tag ${GITHUB_REPOSITORY,,}:latest \
           --file Dockerfile .
