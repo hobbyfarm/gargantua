@@ -34,7 +34,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@master
 
-    - name: update cache on every commit
+    - name: Update cache on every commit
       uses: actions/cache@v3
       with:
         path: /home/runner/tmp
@@ -59,10 +59,14 @@ jobs:
           exit 1
         fi
 
-    - name: Docker setup env
+    - name: Docker registry login
+      if: fromJSON(env.should_push_image)
       run: |
         echo "${{ secrets.DOCKER_HUB_PASSWORD }}" \
           | docker login -u "${{ secrets.DOCKER_HUB_USER }}" --password-stdin
+
+    - name: Docker env prep
+      run: |
         docker buildx create --use
         docker buildx inspect --bootstrap
 
