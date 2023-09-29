@@ -31,7 +31,6 @@ env:
       else
         cache="--no-cache"
       fi
-      echo "We will use: $cache"
     }
 
 jobs:
@@ -90,6 +89,7 @@ jobs:
       run: |
         ${{ env.check_if_safe_to_use_cache }}
         check_if_safe_to_use_cache
+        echo "We will use: $cache"
         docker buildx build --push \
           $cache --platform linux/amd64,linux/arm64 \
           --tag ${GITHUB_REPOSITORY,,}:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }} \
