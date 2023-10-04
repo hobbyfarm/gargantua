@@ -8,12 +8,12 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfv2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
+	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"golang.org/x/crypto/bcrypt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
@@ -65,8 +65,9 @@ func (u UserServer) SetupRoutes(r *mux.Router) {
 }
 
 type PreparedUser struct {
-	ID string `json:"id"`
-	hfv2.UserSpec
+	ID 			string `json:"id"`
+	Email 		string `json:"email"`
+	AccessCodes	[]string `json:"access_codes"`
 }
 
 func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +94,7 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preparedUser := PreparedUser{user.Name, user.Spec}
+	preparedUser := PreparedUser{user.Name, user.Spec.Email, user.Spec.AccessCodes}
 
 	encodedUser, err := json.Marshal(preparedUser)
 	if err != nil {
@@ -121,7 +122,7 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 
 	preparedUsers := []PreparedUser{} // must be declared this way so as to JSON marshal into [] instead of null
 	for _, s := range users.Items {
-		preparedUsers = append(preparedUsers, PreparedUser{s.Name, s.Spec})
+		preparedUsers = append(preparedUsers, PreparedUser{s.Name, s.Spec.Email, s.Spec.AccessCodes})
 	}
 
 	encodedUsers, err := json.Marshal(preparedUsers)

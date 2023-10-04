@@ -3,11 +3,11 @@ package crd
 import (
 	"fmt"
 	"github.com/ebauman/crder"
-	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	v2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
-	terraformv1 "github.com/hobbyfarm/gargantua/pkg/apis/terraformcontroller.cattle.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/labels"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
+	terraformv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	v12 "k8s.io/api/admissionregistration/v1"
 	v13 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

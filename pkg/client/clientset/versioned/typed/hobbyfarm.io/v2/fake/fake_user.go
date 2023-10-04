@@ -21,7 +21,7 @@ package fake
 import (
 	"context"
 
-	v2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
+	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

@@ -17,12 +17,12 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	v2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
-	"github.com/hobbyfarm/gargantua/pkg/util"
-	"github.com/hobbyfarm/gargantua/pkg/vmclient"
+	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
+	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/pkg/vmclient"
 	"golang.org/x/crypto/ssh"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -38,14 +38,14 @@ type ShellProxy struct {
 }
 
 type Service struct {
-	Name string `json:"name"`
-	HasWebinterface bool `json:"hasWebinterface"`
-	Port int `json:"port"`
-	Path string `json:"path"`
-	HasOwnTab bool `json:"hasOwnTab"`
-	NoRewriteRootPath bool `json:"noRewriteRootPath"`
-	RewriteHostHeader bool `json:"rewriteHostHeader"`
-	RewriteOriginHeader bool `json:"rewriteOriginHeader"`
+	Name                string `json:"name"`
+	HasWebinterface     bool   `json:"hasWebinterface"`
+	Port                int    `json:"port"`
+	Path                string `json:"path"`
+	HasOwnTab           bool   `json:"hasOwnTab"`
+	NoRewriteRootPath   bool   `json:"noRewriteRootPath"`
+	RewriteHostHeader   bool   `json:"rewriteHostHeader"`
+	RewriteOriginHeader bool   `json:"rewriteOriginHeader"`
 }
 
 var sshDev = ""
@@ -187,13 +187,12 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 		util.ReturnHTTPMessage(w, r, 404, "error", "no vm template found")
 		return
 	}
-	
+
 	// Get the target Port variable, default to 80
 	targetPort := vars["port"]
 	if targetPort == "" {
 		targetPort = "80"
 	}
-
 
 	// find the corresponding service
 	service := Service{}
@@ -202,7 +201,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 		servicesUnmarshaled := []Service{}
 		err = json.Unmarshal([]byte(servicesMarhaled), &servicesUnmarshaled)
 
-		if(err != nil){
+		if err != nil {
 			glog.Infof("Error umarshaling: %v", err)
 		} else {
 			for _, s := range servicesUnmarshaled {
@@ -278,16 +277,16 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(r *httputil.ProxyRequest) {
 			r.SetURL(remote)
-			if( hasService && service.RewriteHostHeader){
+			if hasService && service.RewriteHostHeader {
 				// Rewrite Host header to proxy server host (this is needed for some applications like code-server)
 				r.Out.Host = r.In.Host
 			}
 
-			if( hasService && service.RewriteOriginHeader){
+			if hasService && service.RewriteOriginHeader {
 				// Rewrite Origin header to remote host (this is needed for some applications like jupyter)
 				r.Out.Header.Set("Origin", target)
 			}
-			
+
 		},
 	}
 	proxy.Transport = &http.Transport{
@@ -656,15 +655,15 @@ func ResizePty(h int, w int) {
 }
 
 func retry[T any](attempts int, sleep int, f func() (T, error)) (result T, err error) {
-    for i := 0; i < attempts; i++ {
-        if i > 0 {
-            time.Sleep(time.Duration(sleep) * time.Millisecond)
-            sleep *= 2
-        }
-        result, err = f()
-        if err == nil {
-            return result, nil
-        }
-    }
-    return result, fmt.Errorf("after %d attempts, last error: %s", attempts, err)
+	for i := 0; i < attempts; i++ {
+		if i > 0 {
+			time.Sleep(time.Duration(sleep) * time.Millisecond)
+			sleep *= 2
+		}
+		result, err = f()
+		if err == nil {
+			return result, nil
+		}
+	}
+	return result, fmt.Errorf("after %d attempts, last error: %s", attempts, err)
 }

@@ -3,15 +3,15 @@ package predefinedservicesserver
 import (
 	"context"
 	"encoding/json"
-	"net/http"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/authclient"
-	"github.com/hobbyfarm/gargantua/pkg/rbacclient"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/http"
 )
 
 type AdminPreparedPredefinedService struct {
@@ -24,7 +24,6 @@ type PredefinedServiceServer struct {
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
-
 
 func NewPredefinedServiceServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, ctx context.Context) (*PredefinedServiceServer, error) {
 	pss := PredefinedServiceServer{}
@@ -39,7 +38,6 @@ func (s PredefinedServiceServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/predefinedservices/list", s.ListFunc).Methods("GET")
 	glog.V(2).Infof("set up routes for PredefinedServiceServer")
 }
-
 
 func (s PredefinedServiceServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission("virtualmachinetemplates", rbacclient.VerbList), w, r)

@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	hfListers "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
@@ -194,7 +194,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 			}
 
 			for _, vm := range vmcObj.Spec.VirtualMachines {
-				if(len(vm.VirtualMachineId) == 0){
+				if len(vm.VirtualMachineId) == 0 {
 					// VM was not even provisioned / assigned yet.
 					continue
 				}

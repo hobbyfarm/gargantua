@@ -2,12 +2,12 @@ package settings
 
 import (
 	"context"
-	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/settingclient"
-	"github.com/hobbyfarm/gargantua/pkg/labels"
-	"github.com/hobbyfarm/gargantua/pkg/property"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
+	"github.com/hobbyfarm/gargantua/v3/pkg/property"
+	"github.com/hobbyfarm/gargantua/v3/pkg/settingclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sync"
@@ -127,6 +127,57 @@ func settings() []*v1.Setting {
 				DataType:    property.DataTypeBoolean,
 				ValueType:   property.ValueTypeScalar,
 				DisplayName: "Registration Disabled",
+			},
+		},
+		{
+			ObjectMeta: v12.ObjectMeta{
+				Name:      string(settingclient.SettingRegistrationPrivacyPolicyRequired),
+				Namespace: util.GetReleaseNamespace(),
+				Labels: map[string]string{
+					labels.SettingScope: "public",
+					labels.SettingGroup: "privacy-policy",
+					labels.SettingWeight: "3",
+				},
+			},
+			Value: "false",
+			Property: property.Property{
+				DataType:    property.DataTypeBoolean,
+				ValueType:   property.ValueTypeScalar,
+				DisplayName: "Require Privacy Policy acception",
+			},
+		},
+		{
+			ObjectMeta: v12.ObjectMeta{
+				Name:      string(settingclient.SettingRegistrationPrivacyPolicyLink),
+				Namespace: util.GetReleaseNamespace(),
+				Labels: map[string]string{
+					labels.SettingScope: "public",
+					labels.SettingGroup: "privacy-policy",
+					labels.SettingWeight: "2",
+				},
+			},
+			Value: "",
+			Property: property.Property{
+				DataType:    property.DataTypeString,
+				ValueType:   property.ValueTypeScalar,
+				DisplayName: "URL to Privacy Policy Agreement",
+			},
+		},
+		{
+			ObjectMeta: v12.ObjectMeta{
+				Name:      string(settingclient.SettingRegistrationPrivacyPolicyLinkName),
+				Namespace: util.GetReleaseNamespace(),
+				Labels: map[string]string{
+					labels.SettingScope: "public",
+					labels.SettingGroup: "privacy-policy",
+					labels.SettingWeight: "1",
+				},
+			},
+			Value: "",
+			Property: property.Property{
+				DataType:    property.DataTypeString,
+				ValueType:   property.ValueTypeScalar,
+				DisplayName: "Privacy Policy URL Display Name",
 			},
 		},
 		{
