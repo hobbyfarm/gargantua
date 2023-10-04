@@ -16,10 +16,13 @@ var (
 )
 
 const (
-	SettingRegistrationDisabled SettingName = "registration-disabled"
-	SettingAdminUIMOTD          SettingName = "motd-admin-ui"
-	SettingUIMOTD               SettingName = "motd-ui"
-	ScheduledEventRetentionTime SettingName = "scheduledevent-retention-time"
+	SettingRegistrationDisabled 				SettingName = "registration-disabled"
+	SettingRegistrationPrivacyPolicyRequired 	SettingName = "registration-privacy-policy-required"
+	SettingRegistrationPrivacyPolicyLink 		SettingName = "registration-privacy-policy-link"
+	SettingRegistrationPrivacyPolicyLinkName	SettingName = "registration-privacy-policy-linkname"
+	SettingAdminUIMOTD          				SettingName = "motd-admin-ui"
+	SettingUIMOTD               				SettingName = "motd-ui"
+	ScheduledEventRetentionTime 				SettingName = "scheduledevent-retention-time"
 )
 
 type SettingName string
