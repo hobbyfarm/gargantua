@@ -65,8 +65,9 @@ func (u UserServer) SetupRoutes(r *mux.Router) {
 }
 
 type PreparedUser struct {
-	ID string `json:"id"`
-	hfv2.UserSpec
+	ID 			string `json:"id"`
+	Email 		string `json:"email"`
+	AccessCodes	[]string `json:"access_codes"`
 }
 
 func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +94,7 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	preparedUser := PreparedUser{user.Name, user.Spec}
+	preparedUser := PreparedUser{user.Name, user.Spec.Email, user.Spec.AccessCodes}
 
 	encodedUser, err := json.Marshal(preparedUser)
 	if err != nil {
@@ -121,7 +122,7 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 
 	preparedUsers := []PreparedUser{} // must be declared this way so as to JSON marshal into [] instead of null
 	for _, s := range users.Items {
-		preparedUsers = append(preparedUsers, PreparedUser{s.Name, s.Spec})
+		preparedUsers = append(preparedUsers, PreparedUser{s.Name, s.Spec.Email, s.Spec.AccessCodes})
 	}
 
 	encodedUsers, err := json.Marshal(preparedUsers)
