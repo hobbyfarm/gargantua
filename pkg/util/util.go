@@ -521,3 +521,7 @@ func GetVMConfig(env *hfv1.Environment, vmt *hfv1.VirtualMachineTemplate) map[st
 
 	return config
 }
+
+func StringPtr(s string) *string {
+	return &s
+}

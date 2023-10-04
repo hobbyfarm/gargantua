@@ -131,6 +131,57 @@ func settings() []*v1.Setting {
 		},
 		{
 			ObjectMeta: v12.ObjectMeta{
+				Name:      string(settingclient.SettingRegistrationPrivacyPolicyRequired),
+				Namespace: util.GetReleaseNamespace(),
+				Labels: map[string]string{
+					labels.SettingScope: "public",
+					labels.SettingGroup: "privacy-policy",
+					labels.SettingWeight: "3",
+				},
+			},
+			Value: "false",
+			Property: property.Property{
+				DataType:    property.DataTypeBoolean,
+				ValueType:   property.ValueTypeScalar,
+				DisplayName: "Require Privacy Policy acception",
+			},
+		},
+		{
+			ObjectMeta: v12.ObjectMeta{
+				Name:      string(settingclient.SettingRegistrationPrivacyPolicyLink),
+				Namespace: util.GetReleaseNamespace(),
+				Labels: map[string]string{
+					labels.SettingScope: "public",
+					labels.SettingGroup: "privacy-policy",
+					labels.SettingWeight: "2",
+				},
+			},
+			Value: "",
+			Property: property.Property{
+				DataType:    property.DataTypeString,
+				ValueType:   property.ValueTypeScalar,
+				DisplayName: "URL to Privacy Policy Agreement",
+			},
+		},
+		{
+			ObjectMeta: v12.ObjectMeta{
+				Name:      string(settingclient.SettingRegistrationPrivacyPolicyLinkName),
+				Namespace: util.GetReleaseNamespace(),
+				Labels: map[string]string{
+					labels.SettingScope: "public",
+					labels.SettingGroup: "privacy-policy",
+					labels.SettingWeight: "1",
+				},
+			},
+			Value: "",
+			Property: property.Property{
+				DataType:    property.DataTypeString,
+				ValueType:   property.ValueTypeScalar,
+				DisplayName: "Privacy Policy URL Display Name",
+			},
+		},
+		{
+			ObjectMeta: v12.ObjectMeta{
 				Name:      string(settingclient.ScheduledEventRetentionTime),
 				Namespace: util.GetReleaseNamespace(),
 				Labels: map[string]string{
