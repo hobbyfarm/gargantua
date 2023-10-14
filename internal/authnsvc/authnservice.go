@@ -14,11 +14,12 @@ import (
 	"github.com/gorilla/mux"
 	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/pkg/microservices"
-	"github.com/hobbyfarm/gargantua/pkg/settingclient"
+	settingUtil "github.com/hobbyfarm/gargantua/pkg/setting"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	accessCodeProto "github.com/hobbyfarm/gargantua/protos/accesscode"
 	"github.com/hobbyfarm/gargantua/protos/authn"
 	rbacProto "github.com/hobbyfarm/gargantua/protos/rbac"
+	settingProto "github.com/hobbyfarm/gargantua/protos/setting"
 	userProto "github.com/hobbyfarm/gargantua/protos/user"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
@@ -386,14 +387,27 @@ func (a AuthServer) UpdateSettings(user *userProto.User, newSettings map[string]
 }
 
 func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
-	if set := settingclient.GetSetting(settingclient.SettingRegistrationDisabled); set == nil {
+	settingConn, err := microservices.EstablishConnection("setting-service", a.tlsCaPath)
+	if err != nil {
+		glog.Error("failed connecting to service setting-service")
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
 		return
-	} else {
-		if set.(bool) {
-			util.ReturnHTTPMessage(w, r, http.StatusConflict, "disabled", "registration disabled")
-			return
-		}
+	}
+	settingClient := settingProto.NewSettingSvcClient(settingConn)
+	defer settingConn.Close()
+
+	set, err := settingClient.GetSettingValue(r.Context(), &settingProto.Id{Name: settingUtil.SettingRegistrationDisabled})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
+		return
+	}
+
+	if s, ok := set.GetValue().(*settingProto.SettingValue_BoolValue); err != nil || !ok || set == nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
+		return
+	} else if s.BoolValue {
+		util.ReturnHTTPMessage(w, r, http.StatusConflict, "disabled", "registration disabled")
+		return
 	}
 	r.ParseForm()
 

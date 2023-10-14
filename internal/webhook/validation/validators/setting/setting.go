@@ -2,18 +2,19 @@ package setting
 
 import (
 	"context"
+
 	"github.com/golang/glog"
+	"github.com/hobbyfarm/gargantua/internal/webhook/validation/response"
 	v12 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/labels"
 	"github.com/hobbyfarm/gargantua/pkg/util"
-	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/response"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v13 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/conversion"
-	"github.com/hobbyfarm/gargantua/pkg/webhook/validation/deserialize"
+	"github.com/hobbyfarm/gargantua/internal/webhook/validation/conversion"
+	"github.com/hobbyfarm/gargantua/internal/webhook/validation/deserialize"
 	v1 "k8s.io/api/admission/v1"
 	"k8s.io/api/admission/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"

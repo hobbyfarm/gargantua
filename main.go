@@ -5,10 +5,6 @@ import (
 	"flag"
 	"os"
 
-	"github.com/hobbyfarm/gargantua/pkg/preinstall"
-	"github.com/hobbyfarm/gargantua/pkg/settingclient"
-	"github.com/hobbyfarm/gargantua/pkg/settingserver"
-
 	"github.com/ebauman/crder"
 	"github.com/hobbyfarm/gargantua/pkg/authserver"
 	"github.com/hobbyfarm/gargantua/pkg/crd"
@@ -67,7 +63,6 @@ var (
 	disableControllers bool
 	shellServer        bool
 	tlsCA              string
-	webhookTLSCA       string
 )
 
 func init() {
@@ -76,7 +71,6 @@ func init() {
 	flag.BoolVar(&disableControllers, "disablecontrollers", false, "Disable the controllers")
 	flag.BoolVar(&shellServer, "shellserver", false, "Be a shell server")
 	flag.StringVar(&tlsCA, "tls-ca", "/etc/ssl/certs/ca.crt", "Path to CA cert for auth servers")
-	flag.StringVar(&webhookTLSCA, "webhook-tls-ca", "/webhook-secret/ca.crt", "Path to CA cert for webhook server")
 }
 
 func main() {
@@ -101,15 +95,7 @@ func main() {
 	namespace := util.GetReleaseNamespace()
 
 	if !shellServer {
-		ca, err := os.ReadFile(webhookTLSCA)
-		if err != nil {
-			glog.Fatalf("error reading ca certificate: %s", err.Error())
-		}
-
-		crds := crd.GenerateCRDs(string(ca), crd.ServiceReference{
-			Namespace: namespace,
-			Name:      "hobbyfarm-webhook",
-		})
+		crds := crd.GenerateCRDs()
 
 		glog.Info("installing/updating CRDs")
 		err = crder.InstallUpdateCRDs(cfg, crds...)
@@ -220,13 +206,6 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	settingServer, err := settingserver.NewSettingServer(hfClient, tlsCA, ctx)
-	if err != nil {
-		glog.Fatal(err)
-	}
-
-	settingclient.WatchSettings(ctx, hfClient, hfInformerFactory)
-
 	if shellServer {
 		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
@@ -244,7 +223,6 @@ func main() {
 		vmTemplateServer.SetupRoutes(r)
 		progressServer.SetupRoutes(r)
 		predefinedServiceServer.SetupRoutes(r)
-		settingServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
@@ -269,11 +247,6 @@ func main() {
 	*/
 
 	var wg sync.WaitGroup
-
-	if !shellServer {
-		// install resources
-		preinstall.Preinstall(ctx, hfClient)
-	}
 
 	wg.Add(1)
 
@@ -342,7 +315,7 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	if err != nil {
 		return err
 	}
-	scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory, gctx)
+	scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory, gctx, tlsCA)
 	if err != nil {
 		return err
 	}

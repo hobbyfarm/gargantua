@@ -1,59 +1,37 @@
-package settingserver
+package settingservice
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
+	"io"
+	"net/http"
+	"strings"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	labels "github.com/hobbyfarm/gargantua/pkg/labels"
 	"github.com/hobbyfarm/gargantua/pkg/property"
 	"github.com/hobbyfarm/gargantua/pkg/rbac"
+	settingUtil "github.com/hobbyfarm/gargantua/pkg/setting"
 	"github.com/hobbyfarm/gargantua/pkg/util"
-	"io"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/http"
-	"strconv"
-	"strings"
+	settingProto "github.com/hobbyfarm/gargantua/protos/setting"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 const (
-	resourcePlural      = "settings"
-	scopeResourcePlural = "scopes"
+	resourcePlural      = rbac.ResourcePluralSettings
+	scopeResourcePlural = rbac.ResourcePluralScopes
 )
-
-type SettingServer struct {
-	ctx         context.Context
-	tlsCA       string
-	hfClientSet hfClientset.Interface
-}
 
 type PreparedSetting struct {
 	Name string `json:"name"`
-	property.Property
-	Value  any    `json:"value"`
-	Scope  string `json:"scope"`
-	Group  string `json:"group"`
-	Weight int    `json:"weight"`
-}
-
-func NewSettingServer(clientset hfClientset.Interface, tlsCa string, ctx context.Context) (*SettingServer, error) {
-	setting := SettingServer{}
-
-	setting.ctx = ctx
-	setting.hfClientSet = clientset
-	setting.tlsCA = tlsCa
-
-	return &setting, nil
-}
-
-func (s SettingServer) SetupRoutes(r *mux.Router) {
-	r.HandleFunc("/setting/list/{scope}", s.ListFunc).Methods(http.MethodGet)
-	r.HandleFunc("/setting/update/{setting_id}", s.UpdateFunc).Methods(http.MethodPut)
-	r.HandleFunc("/setting/updatecollection", s.UpdateCollection).Methods(http.MethodPut)
-	r.HandleFunc("/scope/list", s.ListScopeFunc).Methods(http.MethodGet)
+	*settingProto.Property
+	DataType  property.DataType  `json:"dataType"`
+	ValueType property.ValueType `json:"valueType"`
+	Value     any                `json:"value"`
+	Scope     string             `json:"scope"`
+	Group     string             `json:"group"`
+	Weight    int64              `json:"weight"`
 }
 
 func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
@@ -69,23 +47,21 @@ func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	// so skip RBAC check for those
 	if scope != "public" {
 		resource := resourcePlural + "/" + scope
-		user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+		user, err := rbac.AuthenticateRequest(r, s.tlsCaPath)
 		if err != nil {
 			util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 			return
 		}
 
 		impersonatedUserId := user.GetId()
-		authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resource, rbac.VerbList))
+		authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCaPath, impersonatedUserId, rbac.HobbyfarmPermission(resource, rbac.VerbList))
 		if err != nil || !authrResponse.Success {
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list settings")
 			return
 		}
 	}
 
-	kSettings, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", labels.SettingScope, scope),
-	})
+	kSettings, err := s.internalSettingServer.ListSettings(r.Context(), &settingProto.ListSettingsRequest{Scope: scope})
 	if err != nil {
 		glog.Errorf("error listing settings: %s", err.Error())
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing settings")
@@ -93,21 +69,18 @@ func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var settings []PreparedSetting
-	for _, ks := range kSettings.Items {
-		scope, _ := ks.Labels[labels.SettingScope]
-		weight, _ := ks.Labels[labels.SettingWeight]
-		group, _ := ks.Labels[labels.SettingGroup]
-		iweight, _ := strconv.Atoi(weight)
-
-		val, err := ks.Property.FromJSON(ks.Value)
+	for _, ks := range kSettings.GetSettings() {
+		val, err := settingUtil.FromJSON(ks.GetProperty(), ks.GetValue())
 		if err != nil {
 			glog.Errorf("error encoding setting value for api: %s", err.Error())
 			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error encoding setting as json")
 			return
 		}
 
-		settings = append(settings, PreparedSetting{Name: ks.Name, Property: ks.Property,
-			Value: val, Scope: scope, Group: group, Weight: iweight})
+		stringifiedDataType := settingUtil.DataTypeMappingToHfTypes[ks.GetProperty().GetDataType()]
+		stringifiedValueType := settingUtil.ValueTypeMappingToHfTypes[ks.GetProperty().GetValueType()]
+		settings = append(settings, PreparedSetting{Name: ks.GetName(), Property: ks.GetProperty(),
+			DataType: stringifiedDataType, ValueType: stringifiedValueType, Value: val, Scope: ks.GetScope(), Group: ks.GetGroup(), Weight: ks.GetWeight()})
 	}
 
 	encodedSettings, err := json.Marshal(settings)
@@ -173,70 +146,62 @@ func (s SettingServer) UpdateCollection(w http.ResponseWriter, r *http.Request) 
 	glog.V(8).Info("updated settings")
 }
 
-func (s SettingServer) update(w http.ResponseWriter, r *http.Request, setting PreparedSetting) bool {
-	kSetting, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Get(s.ctx, setting.Name, metav1.GetOptions{})
-	if errors.IsNotFound(err) {
-		util.ReturnHTTPMessage(w, r, 404, "notfound", "setting not found")
-		return false
-	}
+func (s SettingServer) update(w http.ResponseWriter, r *http.Request, updatedSetting PreparedSetting) bool {
+	setting, err := s.internalSettingServer.GetSetting(r.Context(), &settingProto.Id{Name: updatedSetting.Name})
 	if err != nil {
-		glog.Errorf("error getting setting from database: %s", err.Error())
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error updating setting")
+		if s, ok := status.FromError(err); ok {
+			if s.Code() == codes.NotFound {
+				util.ReturnHTTPMessage(w, r, 404, "error", "setting not found")
+				return false
+			}
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error retrieving setting for update")
+			return false
+		}
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error retrieving setting for update")
 		return false
 	}
-
-	// check if the user has permissions to do this action
-	scope, ok := kSetting.Labels[labels.SettingScope]
-	if !ok {
-		glog.Errorf("setting %s does not have scope label", kSetting.Name)
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error updating setting")
-		return false
-	}
-
-	var resource = resourcePlural + "/" + scope
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	var resource = resourcePlural + "/" + setting.GetScope()
+	user, err := rbac.AuthenticateRequest(r, s.tlsCaPath)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return false
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resource, rbac.VerbUpdate))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCaPath, impersonatedUserId, rbac.HobbyfarmPermission(resource, rbac.VerbUpdate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 401, "forbidden", "no access to update setting")
 		return false
 	}
 
-	kSetting = kSetting.DeepCopy()
-
-	val, err := json.Marshal(setting.Value)
+	val, err := json.Marshal(updatedSetting.Value)
 
 	// json marshalled strings have quotes before & after, we don't need or want that
-	if kSetting.DataType == property.DataTypeString && kSetting.ValueType == property.ValueTypeScalar {
+	if setting.Property.GetDataType() == settingProto.DataType_DATA_TYPE_STRING && setting.Property.GetValueType() == settingProto.ValueType_VALUE_TYPE_SCALAR {
 		val = []byte(strings.Replace(string(val), "\"", "", 2))
 	}
 
 	if err != nil {
-		glog.Errorf("error marshalling setting value: %s", err.Error())
+		glog.Errorf("error marshalling and setting value: %s", err.Error())
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error updating setting")
 		return false
 	}
 
-	// validate the value
-	if err := kSetting.Validate(string(val)); err != nil {
-		util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", err.Error())
-		return false
-	}
+	setting.Value = string(val)
 
-	kSetting.Value = string(val)
-
-	_, err = s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Update(s.ctx, kSetting, metav1.UpdateOptions{})
+	_, err = s.internalSettingServer.UpdateSetting(r.Context(), setting)
 	if err != nil {
-		glog.Errorf("error updating setting: %s", err.Error())
+		if s, ok := status.FromError(err); ok {
+			if s.Code() == codes.InvalidArgument {
+				util.ReturnHTTPMessage(w, r, 400, "error", s.Message())
+				return false
+			}
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", s.Message())
+			return false
+		}
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error updating setting")
 		return false
 	}
-
 	return true
 }
 
@@ -246,36 +211,27 @@ type PreparedScope struct {
 }
 
 func (s SettingServer) ListScopeFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.tlsCaPath)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(scopeResourcePlural, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCaPath, impersonatedUserId, rbac.HobbyfarmPermission(scopeResourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 401, "forbidden", "no access to list scopes")
 		return
 	}
 
-	scopes, err := s.hfClientSet.HobbyfarmV1().Scopes(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
+	scopes, err := s.internalSettingServer.ListScopes(r.Context(), &emptypb.Empty{})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "error listing scopes")
 		glog.Errorf("error while listing scopes: %s", err.Error())
 		return
 	}
 
-	var preparedScopes = make([]PreparedScope, len(scopes.Items))
-
-	for i, s := range scopes.Items {
-		preparedScopes[i] = PreparedScope{
-			Name:        s.Name,
-			DisplayName: s.DisplayName,
-		}
-	}
-
-	encodedScopes, err := json.Marshal(preparedScopes)
+	encodedScopes, err := json.Marshal(scopes.Scopes)
 	if err != nil {
 		glog.Errorf("error marshalling prepared scopes: %s", err.Error())
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing scopes")

@@ -38,4 +38,6 @@ const (
 	ResourcePluralRole        = "roles"
 	ResourcePluralRolebinding = "rolebindings"
 	ResourcePluralOTAC        = "onetimeaccesscodes"
+	ResourcePluralSettings    = "settings"
+	ResourcePluralScopes      = "scopes"
 )

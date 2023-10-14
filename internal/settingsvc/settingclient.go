@@ -1,14 +1,16 @@
-package settingclient
+package settingservice
 
 import (
 	"context"
+	"fmt"
+	"time"
+
 	"github.com/golang/glog"
 	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"time"
 )
 
 var (
@@ -65,12 +67,12 @@ func WatchSettings(ctx context.Context,
 	return nil
 }
 
-func GetSetting(name SettingName) any {
-	var set, err = settings[string(name)].FromJSON(settings[string(name)].Value)
-	if err != nil {
-		glog.Errorf("error getting setting %s: %s", name, err.Error())
-		return nil
+func GetSetting(name SettingName) (*v1.Setting, error) {
+	var set, ok = settings[string(name)]
+	if !ok {
+		glog.Errorf("error retrieving setting %s", name)
+		return nil, fmt.Errorf("error retrieving setting %s", name)
 	}
 
-	return set
+	return set, nil
 }

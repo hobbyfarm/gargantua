@@ -27,6 +27,7 @@ var (
 	User       = MicroService{"user-service"}
 	Rbac       = MicroService{"rbac-service"}
 	AccessCode = MicroService{"accesscode-service"}
+	Setting    = MicroService{"setting-service"}
 	Unknown    = MicroService{""}
 )
 
@@ -82,6 +83,8 @@ func createMicroService(service string) (MicroService, error) {
 		return Rbac, nil
 	case AccessCode.name:
 		return AccessCode, nil
+	case Setting.name:
+		return Setting, nil
 	}
 
 	return Unknown, fmt.Errorf("unknown service: %s", service)
