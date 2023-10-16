@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/ebauman/crder"
-	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/crd"
-	"github.com/hobbyfarm/gargantua/pkg/labels"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
+	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	v12 "k8s.io/api/admissionregistration/v1"
 	v13 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

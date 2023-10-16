@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hobbyfarm/gargantua/pkg/property"
-	settingProto "github.com/hobbyfarm/gargantua/protos/setting"
+	"github.com/hobbyfarm/gargantua/v3/pkg/property"
+	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
 )
 
 const (

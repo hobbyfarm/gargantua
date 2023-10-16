@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

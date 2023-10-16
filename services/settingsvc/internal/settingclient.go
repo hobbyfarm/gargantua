@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -18,10 +18,13 @@ var (
 )
 
 const (
-	SettingRegistrationDisabled SettingName = "registration-disabled"
-	SettingAdminUIMOTD          SettingName = "motd-admin-ui"
-	SettingUIMOTD               SettingName = "motd-ui"
-	ScheduledEventRetentionTime SettingName = "scheduledevent-retention-time"
+	SettingRegistrationDisabled 				SettingName = "registration-disabled"
+	SettingAdminUIMOTD          				SettingName = "motd-admin-ui"
+	SettingUIMOTD               				SettingName = "motd-ui"
+	ScheduledEventRetentionTime 				SettingName = "scheduledevent-retention-time"
+	SettingRegistrationPrivacyPolicyRequired 	SettingName = "registration-privacy-policy-required"
+	SettingRegistrationPrivacyPolicyLink 		SettingName = "registration-privacy-policy-link"
+	SettingRegistrationPrivacyPolicyLinkName	SettingName = "registration-privacy-policy-linkname"
 )
 
 type SettingName string

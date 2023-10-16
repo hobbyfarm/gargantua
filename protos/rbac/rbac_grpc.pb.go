@@ -8,8 +8,8 @@ package rbac
 
 import (
 	context "context"
-	authr "github.com/hobbyfarm/gargantua/protos/authr"
-	user "github.com/hobbyfarm/gargantua/protos/user"
+	authr "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	user "github.com/hobbyfarm/gargantua/v3/protos/user"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

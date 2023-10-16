@@ -7,9 +7,9 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
-	"github.com/hobbyfarm/gargantua/pkg/microservices"
-	authnProto "github.com/hobbyfarm/gargantua/protos/authn"
-	userProto "github.com/hobbyfarm/gargantua/protos/user"
+	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+	authnProto "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

@@ -14,8 +14,8 @@ import (
 	mrand "math/rand"
 
 	"github.com/golang/glog"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfListers "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	"golang.org/x/crypto/ssh"
 	"google.golang.org/protobuf/encoding/protojson"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -32,7 +32,7 @@ import (
 	"strings"
 	"time"
 
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 )
 
 type HTTPMessage struct {
@@ -549,4 +549,8 @@ func GetProtoMarshaller() protojson.MarshalOptions {
 		EmitUnpopulated: true,
 		UseProtoNames:   true,
 	}
+}
+
+func StringPtr(s string) *string {
+	return &s
 }

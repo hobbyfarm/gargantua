@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	hfListers "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -253,10 +253,8 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 		env, err := v.envLister.Environments(util.GetReleaseNamespace()).Get(vmset.Spec.Environment)
 		var provision bool
 		provision = true
-		if provisionMethod, ok := env.Annotations["hobbyfarm.io/provisioner"]; ok {
-			if provisionMethod == "external" {
-				provision = false
-			}
+		if provisionMethod, ok := env.Annotations["hobbyfarm.io/provisioner"]; ok && provisionMethod != "" {
+			provision = false
 		}
 		if err != nil {
 			if apierrors.IsNotFound(err) {
@@ -323,6 +321,11 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			} else {
 				vm.ObjectMeta.Labels["restrictedbind"] = "false"
 			}
+
+			if provisionMethod, ok := env.Annotations["hobbyfarm.io/provisioner"]; ok && provisionMethod != "" {
+				vm.ObjectMeta.Labels["hobbyfarm.io/provisioner"] = provisionMethod
+			}
+
 			// adding a custom finalizer for reconcile of vmsets
 			vm.SetFinalizers([]string{vmSetFinalizer})
 			vm, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Create(v.ctx, vm, metav1.CreateOptions{})
@@ -354,18 +357,20 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			}
 		}
 	}
-//-----------------------handle case of scaling down VMSets
+	//-----------------------handle case of scaling down VMSets
 	if len(currentVMs) > vmset.Spec.Count {
 		needed_delete := len(currentVMs) - vmset.Spec.Count
 		for _, cur_vm := range currentVMs {
 			if !cur_vm.Status.Allocated {
-				v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Delete(v.ctx, cur_vm.Name, metav1.DeleteOptions{} )
+				v.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Delete(v.ctx, cur_vm.Name, metav1.DeleteOptions{})
 				needed_delete--
-				if needed_delete == 0 {break}
+				if needed_delete == 0 {
+					break
+				}
 			}
 		}
-	}	
-//-----------------------------------------------------
+	}
+	//-----------------------------------------------------
 	vms, err := v.vmLister.List(labels.Set{
 		"vmset": string(vmset.Name),
 	}.AsSelector())

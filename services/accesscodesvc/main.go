@@ -8,8 +8,8 @@ import (
 	"os"
 
 	"github.com/ebauman/crder"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	tls2 "github.com/hobbyfarm/gargantua/pkg/tls"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -18,8 +18,8 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/golang/glog"
-	accesscodeservice "github.com/hobbyfarm/gargantua/services/accesscodesvc/internal"
-	accessCodeProto "github.com/hobbyfarm/gargantua/protos/accesscode"
+	accesscodeservice "github.com/hobbyfarm/gargantua/v3/services/accesscodesvc/internal"
+	accessCodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
 )
 
 var (

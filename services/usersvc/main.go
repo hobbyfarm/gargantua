@@ -12,11 +12,11 @@ import (
 	"github.com/ebauman/crder"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/pkg/crd"
-	"github.com/hobbyfarm/gargantua/pkg/signals"
-	tls2 "github.com/hobbyfarm/gargantua/pkg/tls"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
+	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
+	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/leaderelection"
@@ -26,10 +26,10 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/golang/glog"
-	userservice "github.com/hobbyfarm/gargantua/services/usersvc/internal"
-	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
+	userservice "github.com/hobbyfarm/gargantua/v3/services/usersvc/internal"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 
-	usr "github.com/hobbyfarm/gargantua/protos/user"
+	usr "github.com/hobbyfarm/gargantua/v3/protos/user"
 )
 
 var (

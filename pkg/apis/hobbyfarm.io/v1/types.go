@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"github.com/hobbyfarm/gargantua/pkg/property"
+	"github.com/hobbyfarm/gargantua/v3/pkg/property"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -410,8 +410,8 @@ type OneTimeAccessCodeList struct {
 // +k8s:deepcopy-gen:true
 
 type OneTimeAccessCodeSpec struct {
-	User           		string `json:"user"`
-	RedeemedTimestamp   string `json:"redeemed_timestamp"`
+	User              string `json:"user"`
+	RedeemedTimestamp string `json:"redeemed_timestamp"`
 }
 
 // +genclient

@@ -6,16 +6,16 @@ import (
 	"net"
 	"os"
 
-	tls2 "github.com/hobbyfarm/gargantua/pkg/tls"
+	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/golang/glog"
-	authrservice "github.com/hobbyfarm/gargantua/services/authrsvc/internal"
+	authrservice "github.com/hobbyfarm/gargantua/v3/services/authrsvc/internal"
 
-	authr "github.com/hobbyfarm/gargantua/protos/authr"
+	authr "github.com/hobbyfarm/gargantua/v3/protos/authr"
 )
 
 var (

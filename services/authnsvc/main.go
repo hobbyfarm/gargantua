@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 
-	tls2 "github.com/hobbyfarm/gargantua/pkg/tls"
+	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -16,9 +16,9 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/golang/glog"
-	authnservice "github.com/hobbyfarm/gargantua/services/authnsvc/internal"
+	authnservice "github.com/hobbyfarm/gargantua/v3/services/authnsvc/internal"
 
-	authn "github.com/hobbyfarm/gargantua/protos/authn"
+	authn "github.com/hobbyfarm/gargantua/v3/protos/authn"
 )
 
 var (

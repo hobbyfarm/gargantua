@@ -6,9 +6,9 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/pkg/rbac"
-	"github.com/hobbyfarm/gargantua/pkg/util"
-	rbacProto "github.com/hobbyfarm/gargantua/protos/rbac"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"

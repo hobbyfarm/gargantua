@@ -8,7 +8,7 @@ package authn
 
 import (
 	context "context"
-	user "github.com/hobbyfarm/gargantua/protos/user"
+	user "github.com/hobbyfarm/gargantua/v3/protos/user"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

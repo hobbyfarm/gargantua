@@ -1,6 +1,6 @@
-module github.com/hobbyfarm/gargantua
+module github.com/hobbyfarm/gargantua/v3
 
-go 1.20
+go 1.21
 
 replace k8s.io/client-go => k8s.io/client-go v0.25.2
 
@@ -26,6 +26,7 @@ require (
 	k8s.io/apimachinery v0.25.2
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/code-generator v0.25.2
+	k8s.io/utils v0.0.0-20220922133306-665eaaec4324
 )
 
 require (

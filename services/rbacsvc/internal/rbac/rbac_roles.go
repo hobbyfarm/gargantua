@@ -3,7 +3,7 @@ package rbacinstaller
 import (
 	"context"
 
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	wranglerRbac "github.com/rancher/wrangler/pkg/generated/controllers/rbac"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

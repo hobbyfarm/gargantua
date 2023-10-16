@@ -2,7 +2,7 @@ package accesscodeservice
 
 import (
 	"github.com/ebauman/crder"
-	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 )
 
 func GenerateAccessCodeCRD() []crder.CRD {

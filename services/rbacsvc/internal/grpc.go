@@ -1,7 +1,7 @@
 package rbac
 
 import (
-	rbacProto "github.com/hobbyfarm/gargantua/protos/rbac"
+	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 )

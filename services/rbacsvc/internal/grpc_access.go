@@ -3,9 +3,9 @@ package rbac
 import (
 	"fmt"
 
-	"github.com/hobbyfarm/gargantua/pkg/util"
-	authrProto "github.com/hobbyfarm/gargantua/protos/authr"
-	rbacProto "github.com/hobbyfarm/gargantua/protos/rbac"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	authrProto "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 

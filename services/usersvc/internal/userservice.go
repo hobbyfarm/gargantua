@@ -6,12 +6,11 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	hfv2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
-	"github.com/hobbyfarm/gargantua/pkg/microservices"
-	"github.com/hobbyfarm/gargantua/pkg/rbac"
-	"github.com/hobbyfarm/gargantua/pkg/util"
-	rbacProto "github.com/hobbyfarm/gargantua/protos/rbac"
-	userProto "github.com/hobbyfarm/gargantua/protos/user"
+	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -22,8 +21,9 @@ const (
 )
 
 type PreparedUser struct {
-	ID string `json:"id"`
-	hfv2.UserSpec
+	ID 			string `json:"id"`
+	Email 		string `json:"email"`
+	AccessCodes	[]string `json:"access_codes"`
 }
 
 type PreparedSubject struct {
@@ -70,7 +70,19 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 		util.ReturnHTTPMessage(w, r, 500, "error", "no user found")
 	}
 
-	encodedUser, err := util.GetProtoMarshaller().Marshal(user)
+
+	accessCodes := user.GetAccessCodes()
+		// If "accessCodes" variable is nil -> convert it to an empty slice
+	if accessCodes == nil {
+		accessCodes = []string{}
+	}
+	preparedUser := PreparedUser{
+		ID: user.GetId(),
+		Email: user.GetEmail(),
+		AccessCodes: accessCodes,
+	}
+
+	encodedUser, err := json.Marshal(preparedUser)
 	if err != nil {
 		glog.Errorf("error while marshalling json for user: %v", err)
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
@@ -110,19 +122,10 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		if accessCodes == nil {
 			accessCodes = []string{}
 		}
-		settings := s.GetSettings()
-		// If "settings" variable is nil -> convert it to an empty map
-		if settings == nil {
-			settings = make(map[string]string)
-		}
 		preparedUsers = append(preparedUsers, PreparedUser{
 			ID: s.GetId(),
-			UserSpec: hfv2.UserSpec{
-				Email:       s.GetEmail(),
-				Password:    s.GetPassword(),
-				AccessCodes: accessCodes,
-				Settings:    settings,
-			},
+			Email: s.GetEmail(),
+			AccessCodes: accessCodes,
 		})
 	}
 

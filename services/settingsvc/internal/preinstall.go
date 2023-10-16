@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	"github.com/hobbyfarm/gargantua/pkg/labels"
-	"github.com/hobbyfarm/gargantua/pkg/util"
-	settingProto "github.com/hobbyfarm/gargantua/protos/setting"
+	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -136,6 +136,51 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				DataType:    settingProto.DataType_DATA_TYPE_INTEGER,
 				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
 				DisplayName: "ScheduledEvent retention time (h)",
+			},
+		},
+		{
+			Name:      string(SettingRegistrationPrivacyPolicyRequired),
+			Namespace: util.GetReleaseNamespace(),
+			Labels: map[string]string{
+				labels.SettingScope: "public",
+				labels.SettingGroup: "privacy-policy",
+				labels.SettingWeight: "3",
+			},
+			Value: "false",
+			Property: &settingProto.Property{
+				DataType:    settingProto.DataType_DATA_TYPE_BOOLEAN,
+				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+				DisplayName: "Require Privacy Policy acception",
+			},
+		},
+		{
+			Name:      string(SettingRegistrationPrivacyPolicyLink),
+			Namespace: util.GetReleaseNamespace(),
+			Labels: map[string]string{
+				labels.SettingScope: "public",
+				labels.SettingGroup: "privacy-policy",
+				labels.SettingWeight: "2",
+			},
+			Value: "",
+			Property: &settingProto.Property{
+				DataType:    settingProto.DataType_DATA_TYPE_STRING,
+				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+				DisplayName: "URL to Privacy Policy Agreement",
+			},
+		},
+		{
+			Name:      string(SettingRegistrationPrivacyPolicyLinkName),
+			Namespace: util.GetReleaseNamespace(),
+			Labels: map[string]string{
+				labels.SettingScope: "public",
+				labels.SettingGroup: "privacy-policy",
+				labels.SettingWeight: "1",
+			},
+			Value: "",
+			Property: &settingProto.Property{
+				DataType:    settingProto.DataType_DATA_TYPE_STRING,
+				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+				DisplayName: "Privacy Policy URL Display Name",
 			},
 		},
 	}

@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/golang/glog"
-	authrProto "github.com/hobbyfarm/gargantua/protos/authr"
-	rbacProto "github.com/hobbyfarm/gargantua/protos/rbac"
-	userProto "github.com/hobbyfarm/gargantua/protos/user"
+	authrProto "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

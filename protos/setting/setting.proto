@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package setting;
 
-option go_package = "github.com/hobbyfarm/gargantua/protos/setting";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/setting";
 
 import "google/protobuf/wrappers.proto";
 import "google/protobuf/empty.proto";

@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/golang/glog"
-	"github.com/hobbyfarm/gargantua/pkg/microservices"
-	"github.com/hobbyfarm/gargantua/protos/authn"
-	"github.com/hobbyfarm/gargantua/protos/authr"
-	userProto "github.com/hobbyfarm/gargantua/protos/user"
+	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
 )
 
 func AuthenticateRequest(r *http.Request, caCertPath string) (*userProto.User, error) {
@@ -37,7 +37,7 @@ func AuthenticateWS(r *http.Request, caCertPath string) (*userProto.User, error)
 }
 
 func AuthorizeSimple(r *http.Request, caCertPath string, username string, permission *authr.Permission) (*authr.AuthRResponse, error) {
-	authrConn, err := microservices.EstablishConnection(microservices.AuthN, caCertPath)
+	authrConn, err := microservices.EstablishConnection(microservices.AuthR, caCertPath)
 	if err != nil {
 		glog.Error("failed connecting to service authr-service")
 		return nil, err
@@ -55,7 +55,7 @@ func AuthorizeSimple(r *http.Request, caCertPath string, username string, permis
 }
 
 func Authorize(r *http.Request, caCertPath string, username string, permissions []*authr.Permission, operator string) (*authr.AuthRResponse, error) {
-	authrConn, err := microservices.EstablishConnection(microservices.AuthN, caCertPath)
+	authrConn, err := microservices.EstablishConnection(microservices.AuthR, caCertPath)
 	if err != nil {
 		glog.Error("failed connecting to service authr-service")
 		return nil, err

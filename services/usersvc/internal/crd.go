@@ -2,9 +2,9 @@ package userservice
 
 import (
 	"github.com/ebauman/crder"
-	v1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	v2 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v2"
-	"github.com/hobbyfarm/gargantua/pkg/crd"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
+	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 )
 
 func GenerateUserCRD(caBundle string, reference crd.ServiceReference) []crder.CRD {

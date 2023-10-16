@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	hfv1 "github.com/hobbyfarm/gargantua/pkg/apis/hobbyfarm.io/v1"
-	tfv1 "github.com/hobbyfarm/gargantua/pkg/apis/terraformcontroller.cattle.io/v1"
-	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
-	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
-	hfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/hobbyfarm.io/v1"
-	tfListers "github.com/hobbyfarm/gargantua/pkg/client/listers/terraformcontroller.cattle.io/v1"
-	"github.com/hobbyfarm/gargantua/pkg/util"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	tfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	hfListers "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	tfListers "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/terraformcontroller.cattle.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	k8sv1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -174,12 +174,10 @@ func (t *TerraformProvisionerController) processNextVM() bool {
 // returns an error and a boolean of requeue
 func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine) (error, bool) {
 	// VM shall not be provisioned by internal terraform controller
-	if ! vm.Spec.Provision {
-		if provisionMethod, ok := vm.ObjectMeta.Labels["hobbyfarm.io/provisioner"]; ok {
-			if provisionMethod == "external" {
-				glog.V(8).Infof("vm %s ignored due to external provisioning label", vm.Name)
-				t.vmWorkqueue.Done(vm.Name)
-			}
+	if !vm.Spec.Provision {
+		if prov, ok := vm.ObjectMeta.Labels["hobbyfarm.io/provisioner"]; ok && prov != "" {
+			glog.V(8).Infof("vm %s ignored by internal provisioner due to 3rd party provisioning label", vm.Name)
+			t.vmWorkqueue.Done(vm.Name)
 		}
 		glog.V(8).Infof("vm %s was not a provisioned vm", vm.Name)
 		return nil, false
@@ -235,18 +233,18 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			glog.Errorf("error generating keypair %v", err)
 			return err, true
 		}
-		config := util.GetVMConfig(env,vmt)
+		config := util.GetVMConfig(env, vmt)
 
 		config["name"] = vm.Name
 		config["public_key"] = pubKey
 
 		image, exists := config["image"]
-		if !exists ||  image == "" {
+		if !exists || image == "" {
 			return fmt.Errorf("image does not exist or is empty in vm config for vmt %s", vmt.Name), true
 		}
 
 		moduleName, exists := config["module"]
-		if !exists ||  moduleName == "" {
+		if !exists || moduleName == "" {
 			return fmt.Errorf("module name does not exist or is empty in vm config for vmt %s", vmt.Name), true
 		}
 
@@ -297,7 +295,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 			Data: map[string][]byte{
 				"private_key": []byte(privKey),
 				"public_key":  []byte(pubKey),
-				"password"  :  []byte(password),
+				"password":    []byte(password),
 			},
 		}
 
@@ -348,10 +346,10 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 
 			toUpdate.Status.Status = hfv1.VmStatusProvisioned
 			toUpdate.Status.TFState = tfs.Name
-			
+
 			toUpdate, updateErr := t.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).UpdateStatus(t.ctx, toUpdate, metav1.UpdateOptions{})
 
-			if(updateErr != nil){
+			if updateErr != nil {
 				glog.Errorf("error while updating VirtualMachine status %s", toUpdate.Name)
 				return updateErr
 			}
@@ -362,7 +360,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 
 			toUpdate, updateErr = t.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(t.ctx, toUpdate, metav1.UpdateOptions{})
 
-			if(updateErr != nil){
+			if updateErr != nil {
 				glog.Errorf("error while updating VirtualMachine %s", toUpdate.Name)
 				return updateErr
 			}
@@ -465,7 +463,7 @@ func (t *TerraformProvisionerController) handleProvision(vm *hfv1.VirtualMachine
 
 			toUpdate, updateErr := t.hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()).Update(t.ctx, toUpdate, metav1.UpdateOptions{})
 
-			if(updateErr != nil){
+			if updateErr != nil {
 				glog.Errorf("error while updating machine: %s", toUpdate.Name)
 				return updateErr
 			}
