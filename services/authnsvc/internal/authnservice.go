@@ -12,7 +12,6 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	hfv2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
@@ -25,11 +24,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-type PreparedUser struct {
-	ID string `json:"id"`
-	hfv2.UserSpec
-}
 
 func (a AuthServer) ChangePasswordFunc(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("Authorization")

@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/golang/glog"
-	userservice "github.com/hobbyfarm/gargantua/v3/services/usersvc/internal"
+	userservice "github.com/hobbyfarm/gargantua/services/usersvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 
 	usr "github.com/hobbyfarm/gargantua/v3/protos/user"

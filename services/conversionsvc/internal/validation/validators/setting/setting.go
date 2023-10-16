@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/golang/glog"
-	"github.com/hobbyfarm/gargantua/v3/services/conversionsvc/internal/validation/response"
+	"github.com/hobbyfarm/gargantua/services/conversionsvc/v3/internal/validation/response"
 	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
@@ -13,8 +13,8 @@ import (
 	v13 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/hobbyfarm/gargantua/v3/services/conversionsvc/internal/validation/conversion"
-	"github.com/hobbyfarm/gargantua/v3/services/conversionsvc/internal/validation/deserialize"
+	"github.com/hobbyfarm/gargantua/services/conversionsvc/v3/internal/validation/conversion"
+	"github.com/hobbyfarm/gargantua/services/conversionsvc/v3/internal/validation/deserialize"
 	v1 "k8s.io/api/admission/v1"
 	"k8s.io/api/admission/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"

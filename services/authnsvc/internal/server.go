@@ -1,6 +1,5 @@
 package authnservice
 
-// TODO: Remove Client Set Import
 import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"

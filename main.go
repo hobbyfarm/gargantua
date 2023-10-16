@@ -370,5 +370,5 @@ func getLock(lockName string, cfg *rest.Config) (resourcelock.Interface, error) 
 	}
 
 	ns := util.GetReleaseNamespace()
-	return resourcelock.NewFromKubeconfig(resourcelock.ConfigMapsLeasesResourceLock, ns, lockName, resourcelock.ResourceLockConfig{Identity: hostname}, cfg, 15*time.Second)
+	return resourcelock.NewFromKubeconfig(resourcelock.LeasesResourceLock, ns, lockName, resourcelock.ResourceLockConfig{Identity: hostname}, cfg, 15*time.Second)
 }

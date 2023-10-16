@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/golang/glog"
-	accesscodeservice "github.com/hobbyfarm/gargantua/v3/services/accesscodesvc/internal"
+	accesscodeservice "github.com/hobbyfarm/gargantua/services/accesscodesvc/v3/internal"
 	accessCodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
 )
 

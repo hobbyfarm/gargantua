@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/golang/glog"
-	authrservice "github.com/hobbyfarm/gargantua/v3/services/authrsvc/internal"
+	authrservice "github.com/hobbyfarm/gargantua/services/authrsvc/v3/internal"
 
 	authr "github.com/hobbyfarm/gargantua/v3/protos/authr"
 )
