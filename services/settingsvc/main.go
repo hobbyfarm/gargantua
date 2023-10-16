@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/golang/glog"
-	settingservice "github.com/hobbyfarm/gargantua/internal/settingsvc"
+	settingservice "github.com/hobbyfarm/gargantua/services/settingsvc/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/pkg/client/informers/externalversions"
 
 	settingProto "github.com/hobbyfarm/gargantua/protos/setting"

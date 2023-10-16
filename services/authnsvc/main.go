@@ -16,7 +16,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/golang/glog"
-	authnservice "github.com/hobbyfarm/gargantua/internal/authnsvc"
+	authnservice "github.com/hobbyfarm/gargantua/services/authnsvc/internal"
 
 	authn "github.com/hobbyfarm/gargantua/protos/authn"
 )

@@ -9,9 +9,9 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/internal/webhook/validation/admitters"
-	"github.com/hobbyfarm/gargantua/internal/webhook/validation/deserialize"
-	"github.com/hobbyfarm/gargantua/internal/webhook/validation/validators/setting"
+	"github.com/hobbyfarm/gargantua/services/conversionsvc/internal/validation/admitters"
+	"github.com/hobbyfarm/gargantua/services/conversionsvc/internal/validation/deserialize"
+	"github.com/hobbyfarm/gargantua/services/conversionsvc/internal/validation/validators/setting"
 	hfClientset "github.com/hobbyfarm/gargantua/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/pkg/util"
 	"github.com/pkg/errors"
