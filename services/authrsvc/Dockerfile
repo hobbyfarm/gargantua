@@ -10,11 +10,9 @@ COPY . .
 WORKDIR /app/services/authrsvc
 RUN go mod download
 
-# Build the service. The output binary is named "authnsvc".
+# Build the service. The output binary is named "authrsvc".
 RUN CGO_ENABLED=0 GOOS=linux go build -o authrsvc
 
-
-#RUN ls -lart && go build -o /go/bin/gargantua main.go
 ###### release image #####
 FROM alpine:latest
 

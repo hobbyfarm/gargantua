@@ -13,8 +13,6 @@ RUN go mod download
 # Build the service. The output binary is named "authnsvc".
 RUN CGO_ENABLED=0 GOOS=linux go build -o authnsvc
 
-
-#RUN ls -lart && go build -o /go/bin/gargantua main.go
 ###### release image #####
 FROM alpine:latest
 
