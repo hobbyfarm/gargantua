@@ -49,7 +49,7 @@ func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrProto.AuthRRequest) 
 	}
 
 	// Establish connection to rbac service
-	rbacConn, err := microservices.EstablishConnection("rbac-service", a.tlsCaPath)
+	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, a.tlsCaPath)
 	if err != nil {
 		glog.Error("failed connecting to service rbac-service")
 		msg := "rbac-service unreachable: "

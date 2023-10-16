@@ -17,21 +17,18 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type MicroService struct {
-	name string
-}
+type MicroService string
 
-var (
-	AuthN      = MicroService{"authn-service"}
-	AuthR      = MicroService{"authr-service"}
-	User       = MicroService{"user-service"}
-	Rbac       = MicroService{"rbac-service"}
-	AccessCode = MicroService{"accesscode-service"}
-	Setting    = MicroService{"setting-service"}
-	Unknown    = MicroService{""}
-)
+const (
+	AuthN MicroService 		= "authn-service"
+	AuthR MicroService 		= "authr-service"
+	User MicroService 		= "user-service"
+	Rbac MicroService 		= "rbac-service"
+	AccessCode MicroService	= "accesscode-service"
+	Setting MicroService 	= "setting-service"
+  )
 
-func (m MicroService) getUrl() (string, error) {
+func (svc MicroService) getUrl() (string, error) {
 	// Create a Kubernetes clientset
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -45,7 +42,7 @@ func (m MicroService) getUrl() (string, error) {
 	ctx := context.Background()
 
 	// Get the endpoints object for the service
-	endpoints, err := clientset.CoreV1().Endpoints(util.GetReleaseNamespace()).Get(ctx, m.name, metav1.GetOptions{})
+	endpoints, err := clientset.CoreV1().Endpoints(util.GetReleaseNamespace()).Get(ctx, string(svc), metav1.GetOptions{})
 	if err != nil {
 		return "", fmt.Errorf("error retrieving endpoints")
 	}
@@ -62,45 +59,17 @@ func (m MicroService) getUrl() (string, error) {
 	}
 
 	if grpcPort == 0 {
-		return "", fmt.Errorf("no grpc port found for service %s", m.name)
+		return "", fmt.Errorf("no grpc port found for service %s", svc)
 	}
 
-	// if port < 1 || port > 65535 {
-	// 	return "", errors.New("Invalid port(" + strconv.Itoa(port) + ")! Port must be within the range 1 to 65535")
-	// }
-	return "dns://" + util.GetK8sDnsServer() + "/" + m.name + "." + util.GetReleaseNamespace() + ".svc.cluster.local:" + strconv.Itoa(int(grpcPort)), nil
+	return string(svc) + "." + util.GetReleaseNamespace() + ".svc.cluster.local:" + strconv.Itoa(int(grpcPort)), nil
 }
 
-func createMicroService(service string) (MicroService, error) {
-	switch service {
-	case AuthN.name:
-		return AuthN, nil
-	case AuthR.name:
-		return AuthR, nil
-	case User.name:
-		return User, nil
-	case Rbac.name:
-		return Rbac, nil
-	case AccessCode.name:
-		return AccessCode, nil
-	case Setting.name:
-		return Setting, nil
-	}
-
-	return Unknown, fmt.Errorf("unknown service: %s", service)
-}
-
-func EstablishConnection(svcName string, caCertPath string) (*grpc.ClientConn, error) {
-	svc, err := createMicroService(svcName)
-	if err != nil {
-		glog.Errorf("failed to create microservice %s", svcName)
-		return nil, err
-	}
+func EstablishConnection(svc MicroService, caCertPath string) (*grpc.ClientConn, error) {
 	url, err := svc.getUrl()
-
 	if err != nil {
-		glog.Errorf("could not establish connection, failed to retrieve url for service %s", svc.name)
-		return nil, fmt.Errorf("could not establish connection, failed to retrieve url for service %s", svc.name)
+		glog.Errorf("could not establish connection, failed to retrieve url for service %s", svc)
+		return nil, fmt.Errorf("could not establish connection, failed to retrieve url for service %s", svc)
 	}
 	// Read the CA certificate from file
 	caCert, err := os.ReadFile(caCertPath)

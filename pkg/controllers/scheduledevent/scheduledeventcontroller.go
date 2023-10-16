@@ -622,7 +622,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 
 	if endTime.Before(now) && se.Status.Finished {
 		// scheduled event is finished and nothing to do
-		settingConn, err := microservices.EstablishConnection("setting-service", s.tlsCA)
+		settingConn, err := microservices.EstablishConnection(microservices.Setting, s.tlsCA)
 		if err != nil {
 			glog.Error("failed connecting to service setting-service")
 			return fmt.Errorf("error retreiving retention Time setting")

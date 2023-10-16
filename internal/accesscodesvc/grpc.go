@@ -60,7 +60,7 @@ func (a *GrpcAccessCodeServer) GetOtac(ctx context.Context, gor *accessCodeProto
 	otac, err := a.getOtac(gor.GetId())
 
 	if err != nil {
-		glog.Errorf("error while retrieving OTAC %v", err)
+		glog.V(2).Infof("%v is not an OTAC, returning status NotFound", err)
 		newErr := status.Newf(
 			codes.NotFound,
 			"no OTAC %s found",

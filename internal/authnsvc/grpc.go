@@ -78,7 +78,7 @@ func (a *GrpcAuthnServer) validateToken(ctx context.Context, token string) (*use
 }
 
 func (a *GrpcAuthnServer) validate(ctx context.Context, tokenString string) (*userProto.User, error) {
-	userConn, err := microservices.EstablishConnection("user-service", a.tlsCaPath)
+	userConn, err := microservices.EstablishConnection(microservices.User, a.tlsCaPath)
 	if err != nil {
 		glog.Error("failed connecting to service user-service")
 		return &userProto.User{}, fmt.Errorf("user service unreachable")

@@ -11,7 +11,7 @@ import (
 )
 
 func AuthenticateRequest(r *http.Request, caCertPath string) (*userProto.User, error) {
-	authnConn, err := microservices.EstablishConnection("authn-service", caCertPath)
+	authnConn, err := microservices.EstablishConnection(microservices.AuthN, caCertPath)
 	if err != nil {
 		glog.Error("failed connecting to service authn-service")
 		return nil, err
@@ -24,7 +24,7 @@ func AuthenticateRequest(r *http.Request, caCertPath string) (*userProto.User, e
 }
 
 func AuthenticateWS(r *http.Request, caCertPath string) (*userProto.User, error) {
-	authnConn, err := microservices.EstablishConnection("authn-service", caCertPath)
+	authnConn, err := microservices.EstablishConnection(microservices.AuthN, caCertPath)
 	if err != nil {
 		glog.Error("failed connecting to service authn-service")
 		return nil, err
@@ -37,7 +37,7 @@ func AuthenticateWS(r *http.Request, caCertPath string) (*userProto.User, error)
 }
 
 func AuthorizeSimple(r *http.Request, caCertPath string, username string, permission *authr.Permission) (*authr.AuthRResponse, error) {
-	authrConn, err := microservices.EstablishConnection("authr-service", caCertPath)
+	authrConn, err := microservices.EstablishConnection(microservices.AuthN, caCertPath)
 	if err != nil {
 		glog.Error("failed connecting to service authr-service")
 		return nil, err
@@ -55,7 +55,7 @@ func AuthorizeSimple(r *http.Request, caCertPath string, username string, permis
 }
 
 func Authorize(r *http.Request, caCertPath string, username string, permissions []*authr.Permission, operator string) (*authr.AuthRResponse, error) {
-	authrConn, err := microservices.EstablishConnection("authr-service", caCertPath)
+	authrConn, err := microservices.EstablishConnection(microservices.AuthN, caCertPath)
 	if err != nil {
 		glog.Error("failed connecting to service authr-service")
 		return nil, err

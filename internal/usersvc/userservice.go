@@ -247,7 +247,7 @@ func (u UserServer) ListRoleBindingsForUser(w http.ResponseWriter, r *http.Reque
 
 	user := vars["user"]
 
-	rbacConn, err := microservices.EstablishConnection("rbac-service", u.tlsCaPath)
+	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, u.tlsCaPath)
 	if err != nil {
 		glog.Error("failed connecting to service rbac-service")
 		util.ReturnHTTPMessage(w, r, 500, "error", "rbac service unreachable")

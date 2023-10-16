@@ -210,7 +210,7 @@ func (a AuthServer) AddAccessCode(user *userProto.User, accessCode string, ctx c
 
 	accessCode = strings.ToLower(accessCode)
 
-	acConn, err := microservices.EstablishConnection("accesscode-service", a.tlsCaPath)
+	acConn, err := microservices.EstablishConnection(microservices.AccessCode, a.tlsCaPath)
 	if err != nil {
 		glog.Error("failed connecting to service accesscode-service")
 		return err
@@ -257,7 +257,7 @@ func (a AuthServer) AddAccessCode(user *userProto.User, accessCode string, ctx c
 		AccessCodes: append(user.AccessCodes, accessCode),
 	}
 
-	userConn, err := microservices.EstablishConnection("user-service", a.tlsCaPath)
+	userConn, err := microservices.EstablishConnection(microservices.User, a.tlsCaPath)
 	if err != nil {
 		glog.Error("failed connecting to service user-service")
 		return err
@@ -311,7 +311,7 @@ func (a AuthServer) RemoveAccessCode(user *userProto.User, accessCode string, ct
 		AccessCodes: newAccessCodes,
 	}
 
-	userConn, err := microservices.EstablishConnection("user-service", a.tlsCaPath)
+	userConn, err := microservices.EstablishConnection(microservices.User, a.tlsCaPath)
 	if err != nil {
 		glog.Error("failed connecting to service user-service")
 		return err
@@ -333,7 +333,7 @@ func (a AuthServer) ChangePassword(user *userProto.User, oldPassword string, new
 		return fmt.Errorf("bad parameters passed, %s", user.GetId())
 	}
 
-	userConn, err := microservices.EstablishConnection("user-service", a.tlsCaPath)
+	userConn, err := microservices.EstablishConnection(microservices.User, a.tlsCaPath)
 	if err != nil {
 		glog.Error("failed connecting to service user-service")
 		return err
@@ -364,7 +364,7 @@ func (a AuthServer) UpdateSettings(user *userProto.User, newSettings map[string]
 		return fmt.Errorf("bad parameters passed, %s", user.GetId())
 	}
 
-	userConn, err := microservices.EstablishConnection("user-service", a.tlsCaPath)
+	userConn, err := microservices.EstablishConnection(microservices.User, a.tlsCaPath)
 	if err != nil {
 		glog.Error("failed connecting to service user-service")
 		return err
@@ -387,7 +387,7 @@ func (a AuthServer) UpdateSettings(user *userProto.User, newSettings map[string]
 }
 
 func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
-	settingConn, err := microservices.EstablishConnection("setting-service", a.tlsCaPath)
+	settingConn, err := microservices.EstablishConnection(microservices.Setting, a.tlsCaPath)
 	if err != nil {
 		glog.Error("failed connecting to service setting-service")
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
@@ -432,7 +432,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	userConn, err := microservices.EstablishConnection("user-service", a.tlsCaPath)
+	userConn, err := microservices.EstablishConnection(microservices.User, a.tlsCaPath)
 	if err != nil {
 		glog.Error("failed connecting to service user-service")
 		util.ReturnHTTPMessage(w, r, 500, "internal server error", "user service unreachable")
@@ -503,7 +503,7 @@ func (a AuthServer) LoginFunc(w http.ResponseWriter, r *http.Request) {
 	email := r.PostFormValue("email")
 	password := r.PostFormValue("password")
 
-	userConn, err := microservices.EstablishConnection("user-service", a.tlsCaPath)
+	userConn, err := microservices.EstablishConnection(microservices.User, a.tlsCaPath)
 	if err != nil {
 		glog.Error("failed connecting to service user-service")
 		util.ReturnHTTPMessage(w, r, 500, "internal server error", "user service unreachable")
@@ -564,7 +564,7 @@ func (a *AuthServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rbacConn, err := microservices.EstablishConnection("rbac-service", a.tlsCaPath)
+	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, a.tlsCaPath)
 	if err != nil {
 		glog.Error("failed connecting to service rbac-service")
 		util.ReturnHTTPMessage(w, r, 500, "internal server error", "rbac service unreachable")
