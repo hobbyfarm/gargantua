@@ -525,15 +525,6 @@ func GetVMConfig(env *hfv1.Environment, vmt *hfv1.VirtualMachineTemplate) map[st
 	return config
 }
 
-func GetK8sDnsServer() string {
-	provisionDNS := "10.43.0.10"
-	nameserver := os.Getenv("HF_K8S_NAMESERVER")
-	if nameserver != "" {
-		provisionDNS = nameserver
-	}
-	return provisionDNS
-}
-
 func GetLock(lockName string, cfg *rest.Config) (resourcelock.Interface, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
