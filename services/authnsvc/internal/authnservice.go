@@ -12,12 +12,10 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	accessCodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
 	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"golang.org/x/crypto/bcrypt"
@@ -204,16 +202,8 @@ func (a AuthServer) AddAccessCode(user *userProto.User, accessCode string, ctx c
 
 	accessCode = strings.ToLower(accessCode)
 
-	acConn, err := microservices.EstablishConnection(microservices.AccessCode, a.tlsCaPath)
-	if err != nil {
-		glog.Error("failed connecting to service accesscode-service")
-		return err
-	}
-	acClient := accessCodeProto.NewAccessCodeSvcClient(acConn)
-	defer acConn.Close()
-
 	// check if this is an otac
-	otac, err := acClient.GetOtac(ctx, &accessCodeProto.ResourceId{Id: accessCode})
+	otac, err := a.acClient.GetOtac(ctx, &accessCodeProto.ResourceId{Id: accessCode})
 	if err != nil {
 		//otac does not exist. normal access code
 	} else {
@@ -225,7 +215,7 @@ func (a AuthServer) AddAccessCode(user *userProto.User, accessCode string, ctx c
 			//otac not in use, redeem now
 			otac.User = user.GetId()
 			otac.RedeemedTimestamp = time.Now().Format(time.UnixDate)
-			_, err = acClient.UpdateOtac(ctx, otac)
+			_, err = a.acClient.UpdateOtac(ctx, otac)
 			if err != nil {
 				return fmt.Errorf("error redeeming one time access code %v", err)
 			}
@@ -251,15 +241,7 @@ func (a AuthServer) AddAccessCode(user *userProto.User, accessCode string, ctx c
 		AccessCodes: append(user.AccessCodes, accessCode),
 	}
 
-	userConn, err := microservices.EstablishConnection(microservices.User, a.tlsCaPath)
-	if err != nil {
-		glog.Error("failed connecting to service user-service")
-		return err
-	}
-	userClient := userProto.NewUserSvcClient(userConn)
-	defer userConn.Close()
-
-	_, err = userClient.UpdateUser(ctx, user)
+	_, err = a.userClient.UpdateUser(ctx, user)
 
 	if err != nil {
 		return err
@@ -305,15 +287,7 @@ func (a AuthServer) RemoveAccessCode(user *userProto.User, accessCode string, ct
 		AccessCodes: newAccessCodes,
 	}
 
-	userConn, err := microservices.EstablishConnection(microservices.User, a.tlsCaPath)
-	if err != nil {
-		glog.Error("failed connecting to service user-service")
-		return err
-	}
-	userClient := userProto.NewUserSvcClient(userConn)
-	defer userConn.Close()
-
-	_, err = userClient.UpdateUser(ctx, user)
+	_, err := a.userClient.UpdateUser(ctx, user)
 
 	if err != nil {
 		return err
@@ -327,15 +301,7 @@ func (a AuthServer) ChangePassword(user *userProto.User, oldPassword string, new
 		return fmt.Errorf("bad parameters passed, %s", user.GetId())
 	}
 
-	userConn, err := microservices.EstablishConnection(microservices.User, a.tlsCaPath)
-	if err != nil {
-		glog.Error("failed connecting to service user-service")
-		return err
-	}
-	userClient := userProto.NewUserSvcClient(userConn)
-	defer userConn.Close()
-
-	err = bcrypt.CompareHashAndPassword([]byte(user.GetPassword()), []byte(oldPassword))
+	err := bcrypt.CompareHashAndPassword([]byte(user.GetPassword()), []byte(oldPassword))
 
 	if err != nil {
 		glog.Errorf("old password incorrect for user ID %s: %v", user.GetId(), err)
@@ -344,7 +310,7 @@ func (a AuthServer) ChangePassword(user *userProto.User, oldPassword string, new
 
 	user.Password = newPassword
 
-	_, err = userClient.UpdateUser(ctx, user)
+	_, err = a.userClient.UpdateUser(ctx, user)
 
 	if err != nil {
 		return err
@@ -358,20 +324,12 @@ func (a AuthServer) UpdateSettings(user *userProto.User, newSettings map[string]
 		return fmt.Errorf("bad parameters passed, %s", user.GetId())
 	}
 
-	userConn, err := microservices.EstablishConnection(microservices.User, a.tlsCaPath)
-	if err != nil {
-		glog.Error("failed connecting to service user-service")
-		return err
-	}
-	userClient := userProto.NewUserSvcClient(userConn)
-	defer userConn.Close()
-
 	user = &userProto.User{
 		Id:       user.GetId(),
 		Settings: newSettings,
 	}
 
-	_, err = userClient.UpdateUser(ctx, user)
+	_, err := a.userClient.UpdateUser(ctx, user)
 
 	if err != nil {
 		return err
@@ -381,16 +339,7 @@ func (a AuthServer) UpdateSettings(user *userProto.User, newSettings map[string]
 }
 
 func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
-	settingConn, err := microservices.EstablishConnection(microservices.Setting, a.tlsCaPath)
-	if err != nil {
-		glog.Error("failed connecting to service setting-service")
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
-		return
-	}
-	settingClient := settingProto.NewSettingSvcClient(settingConn)
-	defer settingConn.Close()
-
-	set, err := settingClient.GetSettingValue(r.Context(), &settingProto.Id{Name: settingUtil.SettingRegistrationDisabled})
+	set, err := a.settingClient.GetSettingValue(r.Context(), &settingProto.Id{Name: settingUtil.SettingRegistrationDisabled})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
 		return
@@ -426,16 +375,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	userConn, err := microservices.EstablishConnection(microservices.User, a.tlsCaPath)
-	if err != nil {
-		glog.Error("failed connecting to service user-service")
-		util.ReturnHTTPMessage(w, r, 500, "internal server error", "user service unreachable")
-		return
-	}
-	userClient := userProto.NewUserSvcClient(userConn)
-	defer userConn.Close()
-
-	userId, err := userClient.CreateUser(r.Context(), &userProto.CreateUserRequest{
+	userId, err := a.userClient.CreateUser(r.Context(), &userProto.CreateUserRequest{
 		Email:    email,
 		Password: password,
 	})
@@ -464,7 +404,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	// from this point, the user is created
 	// we are now trying to add the access code he provided
 
-	user, err := userClient.GetUserById(r.Context(), &userProto.UserId{
+	user, err := a.userClient.GetUserById(r.Context(), &userProto.UserId{
 		Id: userId.GetId(),
 	})
 
@@ -497,16 +437,7 @@ func (a AuthServer) LoginFunc(w http.ResponseWriter, r *http.Request) {
 	email := r.PostFormValue("email")
 	password := r.PostFormValue("password")
 
-	userConn, err := microservices.EstablishConnection(microservices.User, a.tlsCaPath)
-	if err != nil {
-		glog.Error("failed connecting to service user-service")
-		util.ReturnHTTPMessage(w, r, 500, "internal server error", "user service unreachable")
-		return
-	}
-	userClient := userProto.NewUserSvcClient(userConn)
-	defer userConn.Close()
-
-	user, err := userClient.GetUserByEmail(r.Context(), &userProto.GetUserByEmailRequest{Email: email})
+	user, err := a.userClient.GetUserByEmail(r.Context(), &userProto.GetUserByEmailRequest{Email: email})
 
 	if err != nil {
 		glog.Errorf("there was an error retrieving the user %s: %v", email, err)
@@ -558,17 +489,8 @@ func (a *AuthServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, a.tlsCaPath)
-	if err != nil {
-		glog.Error("failed connecting to service rbac-service")
-		util.ReturnHTTPMessage(w, r, 500, "internal server error", "rbac service unreachable")
-		return
-	}
-	rbacClient := rbacProto.NewRbacSvcClient(rbacConn)
-	defer rbacConn.Close()
-
 	// need to get the user's access set and publish to front end
-	as, err := rbacClient.GetAccessSet(r.Context(), &userProto.UserId{Id: user.GetId()})
+	as, err := a.rbacClient.GetAccessSet(r.Context(), &userProto.UserId{Id: user.GetId()})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error fetching access set")
 		glog.Error(err)

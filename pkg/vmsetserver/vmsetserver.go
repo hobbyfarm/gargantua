@@ -13,6 +13,8 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -23,7 +25,8 @@ const (
 )
 
 type VMSetServer struct {
-	tlsCA       string
+	authnClient authn.AuthNClient
+	authrClient authr.AuthRClient
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 	vmIndexer   cache.Indexer
@@ -35,11 +38,12 @@ type PreparedVirtualMachineSet struct {
 	hfv1.VirtualMachineSetStatus
 }
 
-func NewVMSetServer(tlsCA string, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMSetServer, error) {
+func NewVMSetServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMSetServer, error) {
 	vms := VMSetServer{}
 
+	vms.authnClient = authnClient
+	vms.authrClient = authrClient
 	vms.hfClientSet = hfClientset
-	vms.tlsCA = tlsCA
 	vms.ctx = ctx
 
 	inf := hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer()
@@ -76,14 +80,14 @@ func (vms VMSetServer) GetAllVMSetListFunc(w http.ResponseWriter, r *http.Reques
 }
 
 func (vms VMSetServer) GetVMSetListFunc(w http.ResponseWriter, r *http.Request, listOptions metav1.ListOptions) {
-	user, err := rbac.AuthenticateRequest(r, vms.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, vms.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, vms.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, vms.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list vmsets")
 		return

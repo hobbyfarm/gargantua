@@ -7,8 +7,8 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
-	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	authnProto "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/user"
 	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -16,11 +16,11 @@ import (
 
 type GrpcAuthnServer struct {
 	authnProto.UnimplementedAuthNServer
-	tlsCaPath string
+	userClient user.UserSvcClient
 }
 
-func NewGrpcAuthNServer(tlsCaPath string) *GrpcAuthnServer {
-	return &GrpcAuthnServer{tlsCaPath: tlsCaPath}
+func NewGrpcAuthNServer(userClient user.UserSvcClient) *GrpcAuthnServer {
+	return &GrpcAuthnServer{userClient: userClient}
 }
 
 func (a *GrpcAuthnServer) AuthN(c context.Context, ar *authnProto.AuthNRequest) (*userProto.User, error) {
@@ -78,14 +78,6 @@ func (a *GrpcAuthnServer) validateToken(ctx context.Context, token string) (*use
 }
 
 func (a *GrpcAuthnServer) validate(ctx context.Context, tokenString string) (*userProto.User, error) {
-	userConn, err := microservices.EstablishConnection(microservices.User, a.tlsCaPath)
-	if err != nil {
-		glog.Error("failed connecting to service user-service")
-		return &userProto.User{}, fmt.Errorf("user service unreachable")
-	}
-	userClient := userProto.NewUserSvcClient(userConn)
-	defer userConn.Close()
-
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -94,7 +86,7 @@ func (a *GrpcAuthnServer) validate(ctx context.Context, tokenString string) (*us
 		var user *userProto.User
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
 			var err error
-			user, err = userClient.GetUserByEmail(ctx, &userProto.GetUserByEmailRequest{Email: fmt.Sprint(claims["email"])})
+			user, err = a.userClient.GetUserByEmail(ctx, &userProto.GetUserByEmailRequest{Email: fmt.Sprint(claims["email"])})
 			if err != nil {
 				glog.Errorf("could not find user that matched token %s", fmt.Sprint(claims["email"]))
 				return &userProto.User{}, fmt.Errorf("could not find user that matched token %s", fmt.Sprint(claims["email"]))
@@ -110,7 +102,7 @@ func (a *GrpcAuthnServer) validate(ctx context.Context, tokenString string) (*us
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		user, err := userClient.GetUserByEmail(ctx, &userProto.GetUserByEmailRequest{Email: fmt.Sprint(claims["email"])})
+		user, err := a.userClient.GetUserByEmail(ctx, &userProto.GetUserByEmailRequest{Email: fmt.Sprint(claims["email"])})
 		if err != nil {
 			return &userProto.User{}, err
 		} else {

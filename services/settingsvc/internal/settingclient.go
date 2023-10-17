@@ -18,13 +18,13 @@ var (
 )
 
 const (
-	SettingRegistrationDisabled 				SettingName = "registration-disabled"
-	SettingAdminUIMOTD          				SettingName = "motd-admin-ui"
-	SettingUIMOTD               				SettingName = "motd-ui"
-	ScheduledEventRetentionTime 				SettingName = "scheduledevent-retention-time"
-	SettingRegistrationPrivacyPolicyRequired 	SettingName = "registration-privacy-policy-required"
-	SettingRegistrationPrivacyPolicyLink 		SettingName = "registration-privacy-policy-link"
-	SettingRegistrationPrivacyPolicyLinkName	SettingName = "registration-privacy-policy-linkname"
+	SettingRegistrationDisabled              SettingName = "registration-disabled"
+	SettingAdminUIMOTD                       SettingName = "motd-admin-ui"
+	SettingUIMOTD                            SettingName = "motd-ui"
+	ScheduledEventRetentionTime              SettingName = "scheduledevent-retention-time"
+	SettingRegistrationPrivacyPolicyRequired SettingName = "registration-privacy-policy-required"
+	SettingRegistrationPrivacyPolicyLink     SettingName = "registration-privacy-policy-link"
+	SettingRegistrationPrivacyPolicyLinkName SettingName = "registration-privacy-policy-linkname"
 )
 
 type SettingName string
@@ -32,7 +32,7 @@ type SettingName string
 type SettingsHandlers struct {
 }
 
-func (s SettingsHandlers) OnAdd(obj any) {
+func (s SettingsHandlers) OnAdd(obj any, isInInitialList bool) {
 	set := obj.(*v1.Setting)
 
 	settings[set.Name] = set

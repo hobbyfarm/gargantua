@@ -2,17 +2,21 @@ package rbac
 
 import (
 	"github.com/gorilla/mux"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 )
 
 type Server struct {
 	internalRbacServer *GrpcRbacServer
-	tlsCA              string
+	authnClient        authn.AuthNClient
+	authrClient        authr.AuthRClient
 }
 
-func NewRbacServer(internalRbacServer *GrpcRbacServer, tlsCA string) *Server {
+func NewRbacServer(internalRbacServer *GrpcRbacServer, authnClient authn.AuthNClient, authrClient authr.AuthRClient) *Server {
 	return &Server{
 		internalRbacServer: internalRbacServer,
-		tlsCA:              tlsCA,
+		authnClient:        authnClient,
+		authrClient:        authrClient,
 	}
 }
 

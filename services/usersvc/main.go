@@ -14,6 +14,7 @@ import (
 	"github.com/gorilla/mux"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
+	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
 	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
@@ -29,6 +30,9 @@ import (
 	userservice "github.com/hobbyfarm/gargantua/services/usersvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	usr "github.com/hobbyfarm/gargantua/v3/protos/user"
 )
 
@@ -156,6 +160,30 @@ func main() {
 		reflection.Register(gs)
 	}
 
+	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, userTLSCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer rbacConn.Close()
+
+	rbacClient := rbac.NewRbacSvcClient(rbacConn)
+
+	authnConn, err := microservices.EstablishConnection(microservices.AuthN, userTLSCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer authnConn.Close()
+
+	authnClient := authn.NewAuthNClient(authnConn)
+
+	authrConn, err := microservices.EstablishConnection(microservices.AuthR, userTLSCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer authrConn.Close()
+
+	authrClient := authr.NewAuthRClient(authrConn)
+
 	go func() {
 		glog.Info("grpc user server listening on " + grpcPort)
 		l, errr := net.Listen("tcp", ":"+grpcPort)
@@ -167,7 +195,7 @@ func main() {
 	}()
 
 	r := mux.NewRouter()
-	userServer, err := userservice.NewUserServer(userTLSCA, us)
+	userServer, err := userservice.NewUserServer(authnClient, authrClient, rbacClient, us)
 	if err != nil {
 		glog.Fatal(err)
 	}

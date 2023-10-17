@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
-	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	authrProto "github.com/hobbyfarm/gargantua/v3/protos/authr"
@@ -25,11 +24,11 @@ const (
 
 type GrpcAuthRServer struct {
 	authrProto.UnimplementedAuthRServer
-	tlsCaPath string
+	rbacClient rbacProto.RbacSvcClient
 }
 
-func NewGrpcAuthRServer(tlsCaPath string) *GrpcAuthRServer {
-	return &GrpcAuthRServer{tlsCaPath: tlsCaPath}
+func NewGrpcAuthRServer(rbacClient rbacProto.RbacSvcClient) *GrpcAuthRServer {
+	return &GrpcAuthRServer{rbacClient: rbacClient}
 }
 
 // This function authorizes the user by using impersonation as an additional security layer.
@@ -48,16 +47,6 @@ func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrProto.AuthRRequest) 
 		glog.Fatalf("error while creating kubernetes client: %s", err)
 	}
 
-	// Establish connection to rbac service
-	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, a.tlsCaPath)
-	if err != nil {
-		glog.Error("failed connecting to service rbac-service")
-		msg := "rbac-service unreachable: "
-		return a.returnResponseFailedAuthrWithError(ar, msg, err)
-	}
-	rbacClient := rbacProto.NewRbacSvcClient(rbacConn)
-	defer rbacConn.Close()
-
 	// Set impersonated username
 	iu := ar.GetUserName()
 
@@ -73,7 +62,7 @@ func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrProto.AuthRRequest) 
 				return a.returnResponseFailedAuthrWithError(ar, msg, err)
 			}
 
-			rbacAuthGrant, err := rbacClient.Grants(c, &rbacProto.GrantRequest{UserName: iu, Permission: p})
+			rbacAuthGrant, err := a.rbacClient.Grants(c, &rbacProto.GrantRequest{UserName: iu, Permission: p})
 			if err != nil {
 				if s, ok := status.FromError(err); ok {
 					details := s.Details()[0].(*rbacProto.GrantRequest)
@@ -114,7 +103,7 @@ func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrProto.AuthRRequest) 
 				return a.returnResponseFailedAuthrWithError(ar, msg, err)
 			}
 
-			rbacAuthGrant, err := rbacClient.Grants(c, &rbacProto.GrantRequest{UserName: iu, Permission: p})
+			rbacAuthGrant, err := a.rbacClient.Grants(c, &rbacProto.GrantRequest{UserName: iu, Permission: p})
 			if err != nil {
 				if s, ok := status.FromError(err); ok {
 					details := s.Details()[0].(*rbacProto.GrantRequest)

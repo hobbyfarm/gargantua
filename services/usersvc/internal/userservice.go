@@ -6,7 +6,6 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
@@ -21,9 +20,9 @@ const (
 )
 
 type PreparedUser struct {
-	ID 			string `json:"id"`
-	Email 		string `json:"email"`
-	AccessCodes	[]string `json:"access_codes"`
+	ID          string   `json:"id"`
+	Email       string   `json:"email"`
+	AccessCodes []string `json:"access_codes"`
 }
 
 type PreparedSubject struct {
@@ -38,14 +37,14 @@ type PreparedRoleBinding struct {
 }
 
 func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	authenticatedUser, err := rbac.AuthenticateRequest(r, u.tlsCaPath)
+	authenticatedUser, err := rbac.AuthenticateRequest(r, u.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, u.tlsCaPath, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
+	authrResponse, err := rbac.AuthorizeSimple(r, u.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get User")
 		return
@@ -70,15 +69,14 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 		util.ReturnHTTPMessage(w, r, 500, "error", "no user found")
 	}
 
-
 	accessCodes := user.GetAccessCodes()
-		// If "accessCodes" variable is nil -> convert it to an empty slice
+	// If "accessCodes" variable is nil -> convert it to an empty slice
 	if accessCodes == nil {
 		accessCodes = []string{}
 	}
 	preparedUser := PreparedUser{
-		ID: user.GetId(),
-		Email: user.GetEmail(),
+		ID:          user.GetId(),
+		Email:       user.GetEmail(),
 		AccessCodes: accessCodes,
 	}
 
@@ -94,14 +92,14 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, u.tlsCaPath)
+	user, err := rbac.AuthenticateRequest(r, u.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, u.tlsCaPath, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, u.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get User")
 		return
@@ -123,8 +121,8 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 			accessCodes = []string{}
 		}
 		preparedUsers = append(preparedUsers, PreparedUser{
-			ID: s.GetId(),
-			Email: s.GetEmail(),
+			ID:          s.GetId(),
+			Email:       s.GetEmail(),
 			AccessCodes: accessCodes,
 		})
 	}
@@ -141,14 +139,14 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, u.tlsCaPath)
+	user, err := rbac.AuthenticateRequest(r, u.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, u.tlsCaPath, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
+	authrResponse, err := rbac.AuthorizeSimple(r, u.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get User")
 		return
@@ -191,14 +189,14 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	// 1. must not have an active session
 	// that's about it.
 
-	user, err := rbac.AuthenticateRequest(r, u.tlsCaPath)
+	user, err := rbac.AuthenticateRequest(r, u.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, u.tlsCaPath, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbDelete))
+	authrResponse, err := rbac.AuthorizeSimple(r, u.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbDelete))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get User")
 		return
@@ -233,14 +231,14 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserServer) ListRoleBindingsForUser(w http.ResponseWriter, r *http.Request) {
-	authenticatedUser, err := rbac.AuthenticateRequest(r, u.tlsCaPath)
+	authenticatedUser, err := rbac.AuthenticateRequest(r, u.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, u.tlsCaPath, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRolebinding, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, u.authrClient, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRolebinding, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list rolebindings")
 		return
@@ -250,16 +248,7 @@ func (u UserServer) ListRoleBindingsForUser(w http.ResponseWriter, r *http.Reque
 
 	user := vars["user"]
 
-	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, u.tlsCaPath)
-	if err != nil {
-		glog.Error("failed connecting to service rbac-service")
-		util.ReturnHTTPMessage(w, r, 500, "error", "rbac service unreachable")
-		return
-	}
-	rbacClient := rbacProto.NewRbacSvcClient(rbacConn)
-	defer rbacConn.Close()
-
-	bindings, err := rbacClient.GetHobbyfarmRoleBindings(r.Context(), &userProto.UserId{
+	bindings, err := u.rbacClient.GetHobbyfarmRoleBindings(r.Context(), &userProto.UserId{
 		Id: user,
 	})
 

@@ -14,9 +14,12 @@ import (
 	"github.com/gorilla/mux"
 	rbacservice "github.com/hobbyfarm/gargantua/services/rbacsvc/v3/internal"
 	rbacinstaller "github.com/hobbyfarm/gargantua/services/rbacsvc/v3/internal/rbac"
+	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
 	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -140,6 +143,22 @@ func main() {
 		reflection.Register(gs)
 	}
 
+	authnConn, err := microservices.EstablishConnection(microservices.AuthN, tlsCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer authnConn.Close()
+
+	authnClient := authn.NewAuthNClient(authnConn)
+
+	authrConn, err := microservices.EstablishConnection(microservices.AuthR, tlsCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer authnConn.Close()
+
+	authrClient := authr.NewAuthRClient(authrConn)
+
 	go func() {
 		glog.Info("grpc rbac server listening on " + grpcPort)
 		l, err := net.Listen("tcp", ":"+grpcPort)
@@ -154,7 +173,7 @@ func main() {
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
 	corsOrigins := handlers.AllowedOrigins([]string{"*"})
 	corsMethods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"})
-	rbacServer := rbacservice.NewRbacServer(rs, tlsCA)
+	rbacServer := rbacservice.NewRbacServer(rs, authnClient, authrClient)
 	rbacServer.SetupRoutes(r)
 	http.Handle("/", r)
 	apiPort := os.Getenv("PORT")

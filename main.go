@@ -7,6 +7,10 @@ import (
 
 	"github.com/ebauman/crder"
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
+	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	"github.com/hobbyfarm/gargantua/v3/protos/setting"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/leaderelection"
@@ -34,7 +38,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/environmentserver"
-	"github.com/hobbyfarm/gargantua/v3/pkg/predefinedserviceserver"
+	predefinedservicesserver "github.com/hobbyfarm/gargantua/v3/pkg/predefinedserviceserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/progressserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/v3/pkg/scenarioserver"
@@ -121,17 +125,41 @@ func main() {
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, informers.WithNamespace(namespace))
 
+	authnConn, err := microservices.EstablishConnection(microservices.AuthN, tlsCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer authnConn.Close()
+
+	authnClient := authn.NewAuthNClient(authnConn)
+
+	authrConn, err := microservices.EstablishConnection(microservices.AuthR, tlsCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer authrConn.Close()
+
+	authrClient := authr.NewAuthRClient(authrConn)
+
+	settingConn, err := microservices.EstablishConnection(microservices.Setting, tlsCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer settingConn.Close()
+
+	settingClient := setting.NewSettingSvcClient(settingConn)
+
 	acClient, err := accesscode.NewAccessCodeClient(hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	authServer, err := authserver.NewAuthServer(tlsCA, hfClient, ctx, acClient)
+	authServer, err := authserver.NewAuthServer(authnClient, hfClient, ctx, acClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	courseServer, err := courseserver.NewCourseServer(tlsCA, acClient, hfClient, hfInformerFactory, ctx)
+	courseServer, err := courseserver.NewCourseServer(authnClient, authrClient, acClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -141,7 +169,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	scenarioServer, err := scenarioserver.NewScenarioServer(tlsCA, acClient, hfClient, hfInformerFactory, ctx, courseClient)
+	scenarioServer, err := scenarioserver.NewScenarioServer(authnClient, authrClient, acClient, hfClient, hfInformerFactory, ctx, courseClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -151,17 +179,17 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	sessionServer, err := sessionserver.NewSessionServer(tlsCA, acClient, scenarioClient, courseClient, hfClient, hfInformerFactory, ctx)
+	sessionServer, err := sessionserver.NewSessionServer(authnClient, authrClient, acClient, scenarioClient, courseClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	vmServer, err := vmserver.NewVMServer(tlsCA, hfClient, hfInformerFactory, ctx)
+	vmServer, err := vmserver.NewVMServer(authnClient, authrClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	vmSetServer, err := vmsetserver.NewVMSetServer(tlsCA, hfClient, hfInformerFactory, ctx)
+	vmSetServer, err := vmsetserver.NewVMSetServer(authnClient, authrClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -171,37 +199,37 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	vmClaimServer, err := vmclaimserver.NewVMClaimServer(tlsCA, hfClient, hfInformerFactory)
+	vmClaimServer, err := vmclaimserver.NewVMClaimServer(authnClient, authrClient, hfClient, hfInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	shellProxy, err := shell.NewShellProxy(tlsCA, vmClient, hfClient, kubeClient, ctx)
+	shellProxy, err := shell.NewShellProxy(authnClient, authrClient, vmClient, hfClient, kubeClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	environmentServer, err := environmentserver.NewEnvironmentServer(tlsCA, hfClient, ctx)
+	environmentServer, err := environmentserver.NewEnvironmentServer(authnClient, authrClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	scheduledEventServer, err := scheduledeventserver.NewScheduledEventServer(tlsCA, hfClient, ctx)
+	scheduledEventServer, err := scheduledeventserver.NewScheduledEventServer(authnClient, authrClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	vmTemplateServer, err := vmtemplateserver.NewVirtualMachineTemplateServer(tlsCA, hfClient, ctx)
+	vmTemplateServer, err := vmtemplateserver.NewVirtualMachineTemplateServer(authnClient, authrClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	predefinedServiceServer, err := predefinedservicesserver.NewPredefinedServiceServer(tlsCA, hfClient, ctx)
+	predefinedServiceServer, err := predefinedservicesserver.NewPredefinedServiceServer(authnClient, authrClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	progressServer, err := progressserver.NewProgressServer(tlsCA, hfClient, ctx)
+	progressServer, err := progressserver.NewProgressServer(authnClient, authrClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -276,7 +304,7 @@ func main() {
 			RetryPeriod:     2 * time.Second,
 			Callbacks: leaderelection.LeaderCallbacks{
 				OnStartedLeading: func(c context.Context) {
-					err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, kubeInformerFactory, acClient, ctx, stopCh)
+					err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, kubeInformerFactory, acClient, settingClient, ctx, stopCh)
 					if err != nil {
 						glog.Fatal(err)
 					}
@@ -307,7 +335,7 @@ func main() {
 
 func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientset.Clientset,
 	hfInformerFactory hfInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, acClient *accesscode.AccessCodeClient,
-	ctx context.Context, stopCh <-chan struct{}) error {
+	settingClient setting.SettingSvcClient, ctx context.Context, stopCh <-chan struct{}) error {
 
 	g, gctx := errgroup.WithContext(ctx)
 	glog.V(2).Infof("Starting controllers")
@@ -315,7 +343,7 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	if err != nil {
 		return err
 	}
-	scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory, gctx, tlsCA)
+	scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory, gctx, settingClient)
 	if err != nil {
 		return err
 	}

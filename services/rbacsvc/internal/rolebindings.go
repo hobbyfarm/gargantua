@@ -26,14 +26,14 @@ type PreparedSubject struct {
 }
 
 func (s Server) ListRoleBindings(w http.ResponseWriter, r *http.Request) {
-	authenticatedUser, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	authenticatedUser, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRolebinding, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRolebinding, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list rolebindings")
 		return
@@ -68,14 +68,14 @@ func (s Server) ListRoleBindings(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) GetRoleBinding(w http.ResponseWriter, r *http.Request) {
-	authenticatedUser, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	authenticatedUser, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRolebinding, rbac.VerbGet))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRolebinding, rbac.VerbGet))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", "no access to get rolebinding")
 		return
@@ -114,14 +114,14 @@ func (s Server) GetRoleBinding(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) CreateRoleBinding(w http.ResponseWriter, r *http.Request) {
-	authenticatedUser, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	authenticatedUser, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRolebinding, rbac.VerbCreate))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRolebinding, rbac.VerbCreate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", "no access to create rolebinding")
 		return
@@ -151,14 +151,14 @@ func (s Server) CreateRoleBinding(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) UpdateRoleBinding(w http.ResponseWriter, r *http.Request) {
-	authenticatedUser, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	authenticatedUser, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRolebinding, rbac.VerbUpdate))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRolebinding, rbac.VerbUpdate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", "no access to update rolebinding")
 		return
@@ -188,14 +188,14 @@ func (s Server) UpdateRoleBinding(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) DeleteRoleBinding(w http.ResponseWriter, r *http.Request) {
-	authenticatedUser, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	authenticatedUser, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRolebinding, rbac.VerbDelete))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRolebinding, rbac.VerbDelete))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", "no access to delete rolebinding")
 		return

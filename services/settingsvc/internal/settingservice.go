@@ -47,14 +47,14 @@ func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	// so skip RBAC check for those
 	if scope != "public" {
 		resource := resourcePlural + "/" + scope
-		user, err := rbac.AuthenticateRequest(r, s.tlsCaPath)
+		user, err := rbac.AuthenticateRequest(r, s.authnClient)
 		if err != nil {
 			util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 			return
 		}
 
 		impersonatedUserId := user.GetId()
-		authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCaPath, impersonatedUserId, rbac.HobbyfarmPermission(resource, rbac.VerbList))
+		authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resource, rbac.VerbList))
 		if err != nil || !authrResponse.Success {
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list settings")
 			return
@@ -161,14 +161,14 @@ func (s SettingServer) update(w http.ResponseWriter, r *http.Request, updatedSet
 		return false
 	}
 	var resource = resourcePlural + "/" + setting.GetScope()
-	user, err := rbac.AuthenticateRequest(r, s.tlsCaPath)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return false
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCaPath, impersonatedUserId, rbac.HobbyfarmPermission(resource, rbac.VerbUpdate))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resource, rbac.VerbUpdate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 401, "forbidden", "no access to update setting")
 		return false
@@ -211,14 +211,14 @@ type PreparedScope struct {
 }
 
 func (s SettingServer) ListScopeFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCaPath)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCaPath, impersonatedUserId, rbac.HobbyfarmPermission(scopeResourcePlural, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(scopeResourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 401, "forbidden", "no access to list scopes")
 		return

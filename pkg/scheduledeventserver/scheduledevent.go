@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -25,16 +27,18 @@ const (
 )
 
 type ScheduledEventServer struct {
-	tlsCA       string
+	authnClient authn.AuthNClient
+	authrClient authr.AuthRClient
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
 
-func NewScheduledEventServer(tlsCA string, hfClientset hfClientset.Interface, ctx context.Context) (*ScheduledEventServer, error) {
+func NewScheduledEventServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, hfClientset hfClientset.Interface, ctx context.Context) (*ScheduledEventServer, error) {
 	es := ScheduledEventServer{}
 
+	es.authnClient = authnClient
+	es.authrClient = authrClient
 	es.hfClientSet = hfClientset
-	es.tlsCA = tlsCA
 	es.ctx = ctx
 
 	return &es, nil
@@ -81,14 +85,14 @@ type PreparedOTAC struct {
 }
 
 func (s ScheduledEventServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get scheduledEvent")
 		return
@@ -123,14 +127,14 @@ func (s ScheduledEventServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scheduledEvents")
 		return
@@ -159,14 +163,14 @@ func (s ScheduledEventServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbCreate))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbCreate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create scheduledevents")
 		return
@@ -331,14 +335,14 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 }
 
 func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scheduledevents")
 		return
@@ -516,14 +520,14 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 }
 
 func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbDelete))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbDelete))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete scheduledevents")
 		return
@@ -582,14 +586,14 @@ func (s ScheduledEventServer) DeleteFunc(w http.ResponseWriter, r *http.Request)
 }
 
 func (s ScheduledEventServer) GetOTACsFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scheduledevents")
 		return
@@ -631,14 +635,14 @@ func (s ScheduledEventServer) GetOTACsFunc(w http.ResponseWriter, r *http.Reques
 }
 
 func (s ScheduledEventServer) DeleteOTACFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scheduledevents")
 		return
@@ -663,14 +667,14 @@ func (s ScheduledEventServer) DeleteOTACFunc(w http.ResponseWriter, r *http.Requ
 }
 
 func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scheduledevents")
 		return

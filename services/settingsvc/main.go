@@ -14,6 +14,7 @@ import (
 	"github.com/gorilla/mux"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
+	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
 	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
@@ -29,6 +30,8 @@ import (
 	settingservice "github.com/hobbyfarm/gargantua/services/settingsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
 )
 
@@ -158,6 +161,22 @@ func main() {
 	}
 	settingservice.Preinstall(ctx, ss)
 
+	authnConn, err := microservices.EstablishConnection(microservices.AuthN, settingTLSCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer authnConn.Close()
+
+	authnClient := authn.NewAuthNClient(authnConn)
+
+	authrConn, err := microservices.EstablishConnection(microservices.AuthR, settingTLSCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer authrConn.Close()
+
+	authrClient := authr.NewAuthRClient(authrConn)
+
 	go func() {
 		glog.Info("grpc setting server listening on " + grpcPort)
 		l, errr := net.Listen("tcp", ":"+grpcPort)
@@ -169,7 +188,7 @@ func main() {
 	}()
 
 	r := mux.NewRouter()
-	settingServer, err := settingservice.NewSettingServer(settingTLSCA, ss)
+	settingServer, err := settingservice.NewSettingServer(authnClient, authrClient, ss)
 	if err != nil {
 		glog.Fatal(err)
 	}

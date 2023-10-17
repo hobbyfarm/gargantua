@@ -2,3 +2,5 @@ deploy/
 artifacts/
 .github
 .git
+go.work
+go.work.sum

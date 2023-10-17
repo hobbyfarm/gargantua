@@ -14,6 +14,8 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
@@ -24,7 +26,8 @@ const (
 )
 
 type ProgressServer struct {
-	tlsCA       string
+	authnClient authn.AuthNClient
+	authrClient authr.AuthRClient
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
@@ -46,11 +49,12 @@ type ScheduledEventProgressCount struct {
 	CountMap map[string]int `json:"count_map"`
 }
 
-func NewProgressServer(tlsCA string, hfClientset hfClientset.Interface, ctx context.Context) (*ProgressServer, error) {
+func NewProgressServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, hfClientset hfClientset.Interface, ctx context.Context) (*ProgressServer, error) {
 	progress := ProgressServer{}
 
 	progress.hfClientSet = hfClientset
-	progress.tlsCA = tlsCA
+	progress.authnClient = authnClient
+	progress.authrClient = authrClient
 	progress.ctx = ctx
 	return &progress, nil
 }
@@ -72,14 +76,14 @@ List Progress by Scheduled Event
 	- id : The scheduled event id
 */
 func (s ProgressServer) ListByScheduledEventFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
@@ -106,14 +110,14 @@ func (s ProgressServer) ListByScheduledEventFunc(w http.ResponseWriter, r *http.
 }
 
 func (s ProgressServer) ListByRangeFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
@@ -154,7 +158,7 @@ func (s ProgressServer) ListByRangeFunc(w http.ResponseWriter, r *http.Request) 
 List Progress for the authenticated user
 */
 func (s ProgressServer) ListForUserFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
@@ -170,14 +174,14 @@ List Progress by User
 	- id : The user id
 */
 func (s ProgressServer) ListByUserFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
@@ -198,14 +202,14 @@ func (s ProgressServer) ListByUserFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ProgressServer) CountByScheduledEvent(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
@@ -306,7 +310,7 @@ Update Progress
 func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update progress")
 		return

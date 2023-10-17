@@ -11,21 +11,22 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 )
 
 type AuthServer struct {
-	tlsCA            string
+	authClient       authn.AuthNClient
 	hfClientSet      hfClientset.Interface
 	accessCodeClient *accesscode.AccessCodeClient
 	ctx              context.Context
 }
 
-func NewAuthServer(tlsCA string, hfClientSet hfClientset.Interface, ctx context.Context, acClient *accesscode.AccessCodeClient) (AuthServer, error) {
+func NewAuthServer(authClient authn.AuthNClient, hfClientSet hfClientset.Interface, ctx context.Context, acClient *accesscode.AccessCodeClient) (AuthServer, error) {
 	a := AuthServer{}
-	a.tlsCA = tlsCA
+	a.authClient = authClient
 	a.hfClientSet = hfClientSet
 	a.ctx = ctx
 	a.accessCodeClient = acClient
@@ -38,7 +39,7 @@ func (a AuthServer) SetupRoutes(r *mux.Router) {
 }
 
 func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, a.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, a.authClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list suitable scheduledevents")
 		return

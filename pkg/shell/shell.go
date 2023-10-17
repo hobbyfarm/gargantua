@@ -21,6 +21,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"github.com/hobbyfarm/gargantua/v3/pkg/vmclient"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"golang.org/x/crypto/ssh"
@@ -29,12 +30,12 @@ import (
 )
 
 type ShellProxy struct {
-	tlsCA    string
-	vmClient *vmclient.VirtualMachineClient
-
-	hfClient   hfClientset.Interface
-	kubeClient kubernetes.Interface
-	ctx        context.Context
+	authnClient authn.AuthNClient
+	authrClient authr.AuthRClient
+	vmClient    *vmclient.VirtualMachineClient
+	hfClient    hfClientset.Interface
+	kubeClient  kubernetes.Interface
+	ctx         context.Context
 }
 
 type Service struct {
@@ -73,10 +74,11 @@ func init() {
 	SIGWINCH = regexp.MustCompile(`.*\[8;(.*);(.*)t`)
 }
 
-func NewShellProxy(tlsCA string, vmClient *vmclient.VirtualMachineClient, hfClientSet hfClientset.Interface, kubeClient kubernetes.Interface, ctx context.Context) (*ShellProxy, error) {
+func NewShellProxy(authnClient authn.AuthNClient, authrClient authr.AuthRClient, vmClient *vmclient.VirtualMachineClient, hfClientSet hfClientset.Interface, kubeClient kubernetes.Interface, ctx context.Context) (*ShellProxy, error) {
 	shellProxy := ShellProxy{}
 
-	shellProxy.tlsCA = tlsCA
+	shellProxy.authnClient = authnClient
+	shellProxy.authrClient = authrClient
 	shellProxy.vmClient = vmClient
 	shellProxy.hfClient = hfClientSet
 	shellProxy.kubeClient = kubeClient
@@ -141,7 +143,7 @@ func (sp ShellProxy) checkCookieAndProxy(w http.ResponseWriter, r *http.Request)
 
 func (sp ShellProxy) proxyAuth(w http.ResponseWriter, r *http.Request, token string) (*userProto.User, error) {
 	r.Header.Add("Authorization", "Bearer "+token)
-	user, err := rbac.AuthenticateRequest(r, sp.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, sp.authnClient)
 	if err != nil {
 		return &userProto.User{}, err
 	}
@@ -169,7 +171,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userPro
 	if vm.Spec.UserId != user.GetId() {
 		// check if the user has access to user sessions
 		impersonatedUserId := user.GetId()
-		authrResponse, err := rbac.Authorize(r, sp.tlsCA, impersonatedUserId, []*authr.Permission{
+		authrResponse, err := rbac.Authorize(r, sp.authrClient, impersonatedUserId, []*authr.Permission{
 			rbac.HobbyfarmPermission(rbac.ResourcePluralUser, rbac.VerbGet),
 			rbac.HobbyfarmPermission(rbac.ResourcePluralSession, rbac.VerbGet),
 			rbac.HobbyfarmPermission(rbac.ResourcePluralVM, rbac.VerbGet),
@@ -312,7 +314,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userPro
 * Currently supported protocols are: rdp, vnc, telnet, ssh
  */
 func (sp ShellProxy) ConnectGuacFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateWS(r, sp.tlsCA)
+	user, err := rbac.AuthenticateWS(r, sp.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
 		return
@@ -487,7 +489,7 @@ func copyResponse(rw http.ResponseWriter, resp *http.Response) error {
 * This is mainly used for SSH Connections to VMs
  */
 func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateWS(r, sp.tlsCA)
+	user, err := rbac.AuthenticateWS(r, sp.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
 		return
@@ -513,7 +515,7 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 		// check if the user has access to access user sessions
 		// TODO: add permission like 'virtualmachine/shell' similar to 'pod/exec'
 		impersonatedUserId := user.GetId()
-		authrResponse, err := rbac.Authorize(r, sp.tlsCA, impersonatedUserId, []*authr.Permission{
+		authrResponse, err := rbac.Authorize(r, sp.authrClient, impersonatedUserId, []*authr.Permission{
 			rbac.HobbyfarmPermission(rbac.ResourcePluralUser, rbac.VerbGet),
 			rbac.HobbyfarmPermission(rbac.ResourcePluralSession, rbac.VerbGet),
 			rbac.HobbyfarmPermission(rbac.ResourcePluralVM, rbac.VerbGet),

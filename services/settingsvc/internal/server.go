@@ -5,16 +5,20 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 )
 
 type SettingServer struct {
-	tlsCaPath             string
+	authnClient           authn.AuthNClient
+	authrClient           authr.AuthRClient
 	internalSettingServer *GrpcSettingServer
 }
 
-func NewSettingServer(tlsCaPath string, internalSettingServer *GrpcSettingServer) (SettingServer, error) {
+func NewSettingServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, internalSettingServer *GrpcSettingServer) (SettingServer, error) {
 	s := SettingServer{}
-	s.tlsCaPath = tlsCaPath
+	s.authnClient = authnClient
+	s.authrClient = authrClient
 	s.internalSettingServer = internalSettingServer
 	return s, nil
 }

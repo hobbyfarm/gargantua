@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -33,7 +35,8 @@ const (
 )
 
 type SessionServer struct {
-	tlsCA            string
+	authnClient      authn.AuthNClient
+	authrClient      authr.AuthRClient
 	hfClientSet      hfClientset.Interface
 	courseClient     *courseclient.CourseClient
 	scenarioClient   *scenarioclient.ScenarioClient
@@ -47,12 +50,13 @@ type preparedSession struct {
 	hfv1.SessionSpec
 }
 
-func NewSessionServer(tlsCA string, accessCodeClient *accesscode.AccessCodeClient, scenarioClient *scenarioclient.ScenarioClient, courseClient *courseclient.CourseClient, hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*SessionServer, error) {
+func NewSessionServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, accessCodeClient *accesscode.AccessCodeClient, scenarioClient *scenarioclient.ScenarioClient, courseClient *courseclient.CourseClient, hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*SessionServer, error) {
 	a := SessionServer{}
+	a.authnClient = authnClient
+	a.authrClient = authrClient
 	a.hfClientSet = hfClientSet
 	a.courseClient = courseClient
 	a.scenarioClient = scenarioClient
-	a.tlsCA = tlsCA
 	a.accessCodeClient = accessCodeClient
 	inf := hfInformerFactory.Hobbyfarm().V1().Sessions().Informer()
 	indexers := map[string]cache.IndexFunc{ssIndex: ssIdIndexer}
@@ -74,7 +78,7 @@ func (sss SessionServer) SetupRoutes(r *mux.Router) {
 }
 
 func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, sss.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, sss.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create sessions")
 		return
@@ -424,7 +428,7 @@ func (sss SessionServer) FinishProgress(sessionId string, userId string) {
 }
 
 func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, sss.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, sss.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to finish sessions")
 		return
@@ -442,7 +446,7 @@ func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Requ
 	if ss.Spec.UserId != user.Id {
 		// check if the user has access to write sessions
 		impersonatedUserId := user.GetId()
-		authrResponse, err := rbac.AuthorizeSimple(r, sss.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
+		authrResponse, err := rbac.AuthorizeSimple(r, sss.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
 		if err != nil || !authrResponse.Success {
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to update session")
 			return
@@ -478,7 +482,7 @@ func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Requ
 }
 
 func (sss SessionServer) KeepAliveSessionFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, sss.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, sss.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to sessions")
 		return
@@ -581,7 +585,7 @@ func (sss SessionServer) KeepAliveSessionFunc(w http.ResponseWriter, r *http.Req
 }
 
 func (sss SessionServer) PauseSessionFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, sss.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, sss.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to pause sessions")
 		return
@@ -668,7 +672,7 @@ func (sss SessionServer) PauseSessionFunc(w http.ResponseWriter, r *http.Request
 }
 
 func (sss SessionServer) ResumeSessionFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, sss.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, sss.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to resume sessions")
 		return
@@ -750,7 +754,7 @@ func (sss SessionServer) ResumeSessionFunc(w http.ResponseWriter, r *http.Reques
 }
 
 func (sss SessionServer) GetSessionFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, sss.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, sss.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get sessions")
 		return
@@ -774,7 +778,7 @@ func (sss SessionServer) GetSessionFunc(w http.ResponseWriter, r *http.Request) 
 
 	if ss.Spec.UserId != user.Id {
 		impersonatedUserId := user.GetId()
-		authrResponse, err := rbac.AuthorizeSimple(r, sss.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
+		authrResponse, err := rbac.AuthorizeSimple(r, sss.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
 		if err != nil || !authrResponse.Success {
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no session found that matches for this user")
 			return

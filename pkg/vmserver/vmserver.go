@@ -13,6 +13,8 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -24,7 +26,8 @@ const (
 )
 
 type VMServer struct {
-	tlsCA       string
+	authnClient authn.AuthNClient
+	authrClient authr.AuthRClient
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 	vmIndexer   cache.Indexer
@@ -36,11 +39,12 @@ type PreparedVirtualMachine struct {
 	hfv1.VirtualMachineStatus
 }
 
-func NewVMServer(tlsCA string, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMServer, error) {
+func NewVMServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMServer, error) {
 	vms := VMServer{}
 
+	vms.authnClient = authnClient
+	vms.authrClient = authrClient
 	vms.hfClientSet = hfClientset
-	vms.tlsCA = tlsCA
 	vms.ctx = ctx
 
 	inf := hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer()
@@ -66,7 +70,7 @@ func (vms VMServer) SetupRoutes(r *mux.Router) {
  */
 func (vms VMServer) getWebinterfaces(w http.ResponseWriter, r *http.Request) {
 	// Check if User has access to VMs
-	user, err := rbac.AuthenticateRequest(r, vms.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, vms.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
 		return
@@ -89,7 +93,7 @@ func (vms VMServer) getWebinterfaces(w http.ResponseWriter, r *http.Request) {
 	// Check if the VM belongs to the User or User has RBAC-Rights to access VMs
 	if vm.Spec.UserId != user.GetId() {
 		impersonatedUserId := user.GetId()
-		authrResponse, err := rbac.AuthorizeSimple(r, vms.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
+		authrResponse, err := rbac.AuthorizeSimple(r, vms.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
 		if err != nil || !authrResponse.Success {
 			glog.Errorf("user forbidden from accessing vm id %s", vm.Name)
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
@@ -145,7 +149,7 @@ func (vms VMServer) GetVirtualMachineById(id string) (hfv1.VirtualMachine, error
 }
 
 func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, vms.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, vms.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
 		return
@@ -170,7 +174,7 @@ func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 
 	if vm.Spec.UserId != user.GetId() {
 		impersonatedUserId := user.GetId()
-		authrResponse, err := rbac.AuthorizeSimple(r, vms.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
+		authrResponse, err := rbac.AuthorizeSimple(r, vms.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
 		if err != nil || !authrResponse.Success {
 			glog.Errorf("user forbidden from accessing vm id %s", vm.Name)
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
@@ -190,14 +194,14 @@ func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (vms VMServer) GetVMListFunc(w http.ResponseWriter, r *http.Request, listOptions metav1.ListOptions) {
-	user, err := rbac.AuthenticateRequest(r, vms.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, vms.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, vms.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, vms.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list virtualmachines")
 		return
@@ -240,14 +244,14 @@ func (vms VMServer) GetVMListByScheduledEventFunc(w http.ResponseWriter, r *http
 }
 
 func (vms VMServer) CountByScheduledEvent(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, vms.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, vms.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, vms.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, vms.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list virtualmachines")
 		return

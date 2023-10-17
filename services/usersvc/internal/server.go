@@ -3,16 +3,23 @@ package userservice
 import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
 )
 
 type UserServer struct {
-	tlsCaPath          string
+	authnClient        authn.AuthNClient
+	authrClient        authr.AuthRClient
+	rbacClient         rbac.RbacSvcClient
 	internalUserServer *GrpcUserServer
 }
 
-func NewUserServer(tlsCaPath string, internalUserServer *GrpcUserServer) (UserServer, error) {
+func NewUserServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, rbacClient rbac.RbacSvcClient, internalUserServer *GrpcUserServer) (UserServer, error) {
 	u := UserServer{}
-	u.tlsCaPath = tlsCaPath
+	u.authnClient = authnClient
+	u.authrClient = authrClient
+	u.rbacClient = rbacClient
 	u.internalUserServer = internalUserServer
 	return u, nil
 }

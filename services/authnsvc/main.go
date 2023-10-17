@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 
 	"github.com/gorilla/handlers"
@@ -18,7 +19,11 @@ import (
 	"github.com/golang/glog"
 	authnservice "github.com/hobbyfarm/gargantua/services/authnsvc/v3/internal"
 
-	authn "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	"github.com/hobbyfarm/gargantua/v3/protos/setting"
+	"github.com/hobbyfarm/gargantua/v3/protos/user"
 )
 
 var (
@@ -56,6 +61,38 @@ func main() {
 		Certificates: []tls.Certificate{*cert},
 	})
 
+	accesscodeConn, err := microservices.EstablishConnection(microservices.AccessCode, authTLSCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer accesscodeConn.Close()
+
+	accesscodeClient := accesscode.NewAccessCodeSvcClient(accesscodeConn)
+
+	userConn, err := microservices.EstablishConnection(microservices.User, authTLSCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer userConn.Close()
+
+	userClient := user.NewUserSvcClient(userConn)
+
+	settingConn, err := microservices.EstablishConnection(microservices.Setting, authTLSCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer settingConn.Close()
+
+	settingClient := setting.NewSettingSvcClient(settingConn)
+
+	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, authTLSCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer rbacConn.Close()
+
+	rbacClient := rbac.NewRbacSvcClient(rbacConn)
+
 	grpcPort := os.Getenv("GRPC_PORT")
 	if grpcPort == "" {
 		grpcPort = "8080"
@@ -63,7 +100,7 @@ func main() {
 	glog.Info("grpc auth server listening on " + grpcPort)
 
 	gs := grpc.NewServer(grpc.Creds(creds))
-	as := authnservice.NewGrpcAuthNServer(authTLSCA)
+	as := authnservice.NewGrpcAuthNServer(userClient)
 	authn.RegisterAuthNServer(gs, as)
 	if enableReflection {
 		reflection.Register(gs)
@@ -78,7 +115,7 @@ func main() {
 		glog.Fatal(gs.Serve(l))
 	}()
 
-	authServer, err := authnservice.NewAuthServer(authTLSCA, as)
+	authServer, err := authnservice.NewAuthServer(accesscodeClient, userClient, settingClient, rbacClient, as)
 	if err != nil {
 		glog.Fatal(err)
 	}

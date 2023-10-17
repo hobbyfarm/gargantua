@@ -11,6 +11,8 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -20,16 +22,18 @@ type AdminPreparedPredefinedService struct {
 }
 
 type PredefinedServiceServer struct {
-	tlsCA       string
+	authnClient authn.AuthNClient
+	authrClient authr.AuthRClient
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
 
-func NewPredefinedServiceServer(tlsCA string, hfClientset hfClientset.Interface, ctx context.Context) (*PredefinedServiceServer, error) {
+func NewPredefinedServiceServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, hfClientset hfClientset.Interface, ctx context.Context) (*PredefinedServiceServer, error) {
 	pss := PredefinedServiceServer{}
 
 	pss.hfClientSet = hfClientset
-	pss.tlsCA = tlsCA
+	pss.authnClient = authnClient
+	pss.authrClient = authrClient
 	pss.ctx = ctx
 	return &pss, nil
 }
@@ -40,14 +44,14 @@ func (s PredefinedServiceServer) SetupRoutes(r *mux.Router) {
 }
 
 func (s PredefinedServiceServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(rbac.ResourcePluralVMTemplate, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(rbac.ResourcePluralVMTemplate, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list PredefinedServices")
 		return

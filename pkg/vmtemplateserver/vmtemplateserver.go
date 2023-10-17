@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -26,16 +28,18 @@ const (
 )
 
 type VirtualMachineTemplateServer struct {
-	tlsCA       string
+	authnClient authn.AuthNClient
+	authrClient authr.AuthRClient
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
 
-func NewVirtualMachineTemplateServer(tlsCA string, hfClientset hfClientset.Interface, ctx context.Context) (*VirtualMachineTemplateServer, error) {
+func NewVirtualMachineTemplateServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, hfClientset hfClientset.Interface, ctx context.Context) (*VirtualMachineTemplateServer, error) {
 	as := VirtualMachineTemplateServer{}
 
+	as.authnClient = authnClient
+	as.authrClient = authrClient
 	as.hfClientSet = hfClientset
-	as.tlsCA = tlsCA
 	as.ctx = ctx
 	return &as, nil
 }
@@ -78,14 +82,14 @@ type PreparedVMTemplateList struct {
 }
 
 func (v VirtualMachineTemplateServer) GetFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, v.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, v.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, v.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
+	authrResponse, err := rbac.AuthorizeSimple(r, v.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm template")
 		return
@@ -120,14 +124,14 @@ func (v VirtualMachineTemplateServer) GetFunc(w http.ResponseWriter, r *http.Req
 }
 
 func (v VirtualMachineTemplateServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, v.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, v.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, v.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, v.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list vmts")
 		return
@@ -157,14 +161,14 @@ func (v VirtualMachineTemplateServer) ListFunc(w http.ResponseWriter, r *http.Re
 }
 
 func (v VirtualMachineTemplateServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, v.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, v.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, v.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbCreate))
+	authrResponse, err := rbac.AuthorizeSimple(r, v.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbCreate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create vmt")
 		return
@@ -220,14 +224,14 @@ func (v VirtualMachineTemplateServer) CreateFunc(w http.ResponseWriter, r *http.
 }
 
 func (v VirtualMachineTemplateServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, v.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, v.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, v.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
+	authrResponse, err := rbac.AuthorizeSimple(r, v.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update vmt")
 		return
@@ -292,14 +296,14 @@ func (v VirtualMachineTemplateServer) DeleteFunc(w http.ResponseWriter, r *http.
 	// - virtualmachines
 	// - virtualmachineclaims
 	// - virtualmachinesets
-	user, err := rbac.AuthenticateRequest(r, v.tlsCA)
+	user, err := rbac.AuthenticateRequest(r, v.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, v.tlsCA, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbDelete))
+	authrResponse, err := rbac.AuthorizeSimple(r, v.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbDelete))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete vmt")
 		return

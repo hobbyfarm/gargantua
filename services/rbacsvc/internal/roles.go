@@ -26,14 +26,14 @@ type PreparedRule struct {
 }
 
 func (s Server) ListRoles(w http.ResponseWriter, r *http.Request) {
-	authenticatedUser, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	authenticatedUser, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list roles")
 		return
@@ -68,14 +68,14 @@ func (s Server) ListRoles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) GetRole(w http.ResponseWriter, r *http.Request) {
-	authenticatedUser, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	authenticatedUser, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbGet))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbGet))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get role")
 		return
@@ -114,14 +114,14 @@ func (s Server) GetRole(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) CreateRole(w http.ResponseWriter, r *http.Request) {
-	authenticatedUser, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	authenticatedUser, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbCreate))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbCreate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create role")
 		return
@@ -151,14 +151,14 @@ func (s Server) CreateRole(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) UpdateRole(w http.ResponseWriter, r *http.Request) {
-	authenticatedUser, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	authenticatedUser, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbUpdate))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbUpdate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", "no access to update role")
 		return
@@ -188,14 +188,14 @@ func (s Server) UpdateRole(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) DeleteRole(w http.ResponseWriter, r *http.Request) {
-	authenticatedUser, err := rbac.AuthenticateRequest(r, s.tlsCA)
+	authenticatedUser, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := authenticatedUser.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, s.tlsCA, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbDelete))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.RbacPermission(rbac.ResourcePluralRole, rbac.VerbDelete))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", "no access to delete role")
 		return

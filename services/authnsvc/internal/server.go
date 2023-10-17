@@ -3,16 +3,26 @@ package authnservice
 import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	"github.com/hobbyfarm/gargantua/v3/protos/setting"
+	"github.com/hobbyfarm/gargantua/v3/protos/user"
 )
 
 type AuthServer struct {
-	tlsCaPath           string
+	acClient            accesscode.AccessCodeSvcClient
+	userClient          user.UserSvcClient
+	settingClient       setting.SettingSvcClient
+	rbacClient          rbac.RbacSvcClient
 	internalAuthnServer *GrpcAuthnServer
 }
 
-func NewAuthServer(tlsCaPath string, internalAuthnServer *GrpcAuthnServer) (AuthServer, error) {
+func NewAuthServer(accesscodeClient accesscode.AccessCodeSvcClient, userClient user.UserSvcClient, settingCLient setting.SettingSvcClient, rbacClient rbac.RbacSvcClient, internalAuthnServer *GrpcAuthnServer) (AuthServer, error) {
 	a := AuthServer{}
-	a.tlsCaPath = tlsCaPath
+	a.acClient = accesscodeClient
+	a.userClient = userClient
+	a.settingClient = settingCLient
+	a.rbacClient = rbacClient
 	a.internalAuthnServer = internalAuthnServer
 	return a, nil
 }
