@@ -28,7 +28,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/leaderelection"
 )
 
 var (
@@ -85,39 +84,7 @@ func main() {
 		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, informers.WithNamespace(namespace))
-
-	lock, err := util.GetLock("controller-manager-rbac", cfg)
-	if err != nil {
-		glog.Fatal(err)
-	}
-
-	// Creating the leader election config
-	leaderElectionConfig := leaderelection.LeaderElectionConfig{
-		Lock:            lock,
-		ReleaseOnCancel: true,
-		LeaseDuration:   10 * time.Second,
-		RenewDeadline:   5 * time.Second,
-		RetryPeriod:     2 * time.Second,
-		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: func(ctx context.Context) {
-				// Start informer
-				kubeInformerFactory.Start(stopCh)
-			},
-			OnStoppedLeading: func() {
-				// Need to start informer factory since even when not leader to ensure api layer
-				// keeps working.
-				kubeInformerFactory.Start(stopCh)
-			},
-			OnNewLeader: func(current_id string) {
-				kubeInformerFactory.Start(stopCh)
-				if current_id == lock.Identity() {
-					glog.Info("currently the leader")
-					return
-				}
-				glog.Infof("current leader is %s", current_id)
-			},
-		},
-	}
+	kubeInformerFactory.Start(stopCh)
 
 	cert, err := tls2.ReadKeyPair(tlsCert, tlsKey)
 	if err != nil {
@@ -155,7 +122,7 @@ func main() {
 	if err != nil {
 		glog.Fatalf("failed connecting to service authn-service: %v", err)
 	}
-	defer authnConn.Close()
+	defer authrConn.Close()
 
 	authrClient := authr.NewAuthRClient(authrConn)
 
@@ -185,7 +152,4 @@ func main() {
 	go func() {
 		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
 	}()
-
-	// Run leader election
-	leaderelection.RunOrDie(ctx, leaderElectionConfig)
 }

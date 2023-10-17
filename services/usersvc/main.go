@@ -20,7 +20,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/leaderelection"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -82,39 +81,7 @@ func main() {
 	}
 
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
-
-	lock, err := util.GetLock("controller-manager-user", cfg)
-	if err != nil {
-		glog.Fatal(err)
-	}
-
-	// Creating the leader election config
-	leaderElectionConfig := leaderelection.LeaderElectionConfig{
-		Lock:            lock,
-		ReleaseOnCancel: true,
-		LeaseDuration:   10 * time.Second,
-		RenewDeadline:   5 * time.Second,
-		RetryPeriod:     2 * time.Second,
-		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: func(ctx context.Context) {
-				// Start informer
-				hfInformerFactory.Start(stopCh)
-			},
-			OnStoppedLeading: func() {
-				// Need to start informer factory since even when not leader to ensure api layer
-				// keeps working.
-				hfInformerFactory.Start(stopCh)
-			},
-			OnNewLeader: func(current_id string) {
-				hfInformerFactory.Start(stopCh)
-				if current_id == lock.Identity() {
-					glog.Info("currently the leader")
-					return
-				}
-				glog.Infof("current leader is %s", current_id)
-			},
-		},
-	}
+	hfInformerFactory.Start(stopCh)
 
 	ca, err := os.ReadFile(webhookTLSCA)
 	if err != nil {
@@ -210,7 +177,4 @@ func main() {
 	go func() {
 		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
 	}()
-
-	// Run leader election
-	leaderelection.RunOrDie(ctx, leaderElectionConfig)
 }

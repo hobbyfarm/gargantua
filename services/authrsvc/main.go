@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 
 	"google.golang.org/grpc"
@@ -15,7 +16,8 @@ import (
 	"github.com/golang/glog"
 	authrservice "github.com/hobbyfarm/gargantua/services/authrsvc/v3/internal"
 
-	authr "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
 )
 
 var (
@@ -44,6 +46,14 @@ func main() {
 		Certificates: []tls.Certificate{*cert},
 	})
 
+	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, authTLSCA)
+	if err != nil {
+		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	}
+	defer rbacConn.Close()
+
+	rbacClient := rbac.NewRbacSvcClient(rbacConn)
+
 	grpcPort := os.Getenv("GRPC_PORT")
 	if grpcPort == "" {
 		grpcPort = "8080"
@@ -51,7 +61,7 @@ func main() {
 	glog.Info("grpc authr server listening on " + grpcPort)
 
 	gs := grpc.NewServer(grpc.Creds(creds))
-	as := authrservice.NewGrpcAuthRServer(authTLSCA)
+	as := authrservice.NewGrpcAuthRServer(rbacClient)
 	authr.RegisterAuthRServer(gs, as)
 	if enableReflection {
 		reflection.Register(gs)
