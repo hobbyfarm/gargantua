@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/ebauman/crder"
@@ -21,7 +22,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
@@ -32,7 +32,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
-	usr "github.com/hobbyfarm/gargantua/v3/protos/user"
+	"github.com/hobbyfarm/gargantua/v3/protos/user"
 )
 
 var (
@@ -81,7 +81,6 @@ func main() {
 	}
 
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
-	hfInformerFactory.Start(stopCh)
 
 	ca, err := os.ReadFile(webhookTLSCA)
 	if err != nil {
@@ -100,10 +99,6 @@ func main() {
 	}
 	glog.Info("finished installing/updating user CRD")
 
-	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
-	corsOrigins := handlers.AllowedOrigins([]string{"*"})
-	corsMethods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"})
-
 	ctx := context.Background()
 
 	cert, err := tls2.ReadKeyPair(userTLSCert, userTLSKey)
@@ -115,21 +110,9 @@ func main() {
 		Certificates: []tls.Certificate{*cert},
 	})
 
-	grpcPort := os.Getenv("GRPC_PORT")
-	if grpcPort == "" {
-		grpcPort = "8080"
-	}
-
-	gs := grpc.NewServer(grpc.Creds(creds))
-	us := userservice.NewGrpcUserServer(hfClient, hfInformerFactory, ctx)
-	usr.RegisterUserSvcServer(gs, us)
-	if enableReflection {
-		reflection.Register(gs)
-	}
-
 	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, userTLSCA)
 	if err != nil {
-		glog.Fatalf("failed connecting to service authn-service: %v", err)
+		glog.Fatalf("failed connecting to service rbac-service: %v", err)
 	}
 	defer rbacConn.Close()
 
@@ -145,36 +128,62 @@ func main() {
 
 	authrConn, err := microservices.EstablishConnection(microservices.AuthR, userTLSCA)
 	if err != nil {
-		glog.Fatalf("failed connecting to service authn-service: %v", err)
+		glog.Fatalf("failed connecting to service authr-service: %v", err)
 	}
 	defer authrConn.Close()
 
 	authrClient := authr.NewAuthRClient(authrConn)
 
-	go func() {
-		glog.Info("grpc user server listening on " + grpcPort)
-		l, errr := net.Listen("tcp", ":"+grpcPort)
+	gs := microservices.CreateGRPCServer(creds)
+	us, err := userservice.NewGrpcUserServer(hfClient, hfInformerFactory, ctx)
 
-		if errr != nil {
-			glog.Info("Can not serve grpc")
+	if err != nil {
+		glog.Fatalf("starting grpc user server failed: %v", err)
+	}
+
+	user.RegisterUserSvcServer(gs, us)
+	if enableReflection {
+		reflection.Register(gs)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		grpcPort := os.Getenv("GRPC_PORT")
+		if grpcPort == "" {
+			grpcPort = "8080"
 		}
+		l, errr := net.Listen("tcp", ":"+grpcPort)
+		if errr != nil {
+			glog.Fatalf("Can not serve grpc: %v", errr)
+		}
+		glog.Info("grpc user server listening on " + grpcPort)
 		glog.Fatal(gs.Serve(l))
 	}()
 
-	r := mux.NewRouter()
-	userServer, err := userservice.NewUserServer(authnClient, authrClient, rbacClient, us)
-	if err != nil {
-		glog.Fatal(err)
-	}
-	userServer.SetupRoutes(r)
-	http.Handle("/", r)
-	apiPort := os.Getenv("PORT")
-	if apiPort == "" {
-		apiPort = "80"
-	}
-	glog.Info("http user server listening on " + apiPort)
-
 	go func() {
-		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
+		defer wg.Done()
+
+		r := mux.NewRouter()
+		userServer, err := userservice.NewUserServer(authnClient, authrClient, rbacClient, us)
+		if err != nil {
+			glog.Fatal(err)
+		}
+
+		userServer.SetupRoutes(r)
+		http.Handle("/", r)
+
+		apiPort := os.Getenv("PORT")
+		if apiPort == "" {
+			apiPort = "80"
+		}
+
+		glog.Info("http user server listening on " + apiPort)
+		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(microservices.CORS_HANDLER_ALLOWED_HEADERS, microservices.CORS_HANDLER_ALLOWED_METHODS, microservices.CORS_HANDLER_ALLOWED_ORIGINS)(r)))
 	}()
+
+	hfInformerFactory.Start(stopCh)
+	wg.Wait()
 }

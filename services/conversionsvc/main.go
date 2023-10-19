@@ -13,6 +13,7 @@ import (
 	"github.com/hobbyfarm/gargantua/services/conversionsvc/v3/internal/conversion/user"
 	"github.com/hobbyfarm/gargantua/services/conversionsvc/v3/internal/validation"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/rest"
@@ -67,10 +68,6 @@ func main() {
 		glog.Fatalf("error building apiextensions clientset: %s", err.Error())
 	}
 
-	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
-	corsOrigins := handlers.AllowedOrigins([]string{"*"})
-	corsMethods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"})
-
 	user.Init()
 	conversionRouter := mux.NewRouter()
 	conversion.New(conversionRouter, apiExtensionsClient, string(ca))
@@ -94,7 +91,7 @@ func main() {
 			Certificates: []tls.Certificate{*cert},
 		},
 		Addr:    ":" + webhookPort,
-		Handler: handlers.CORS(corsHeaders, corsOrigins, corsMethods)(conversionRouter),
+		Handler: handlers.CORS(microservices.CORS_HANDLER_ALLOWED_HEADERS, microservices.CORS_HANDLER_ALLOWED_METHODS, microservices.CORS_HANDLER_ALLOWED_ORIGINS)(conversionRouter),
 	}
 
 	glog.Fatal(server.ListenAndServeTLS("", ""))

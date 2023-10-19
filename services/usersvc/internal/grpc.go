@@ -34,15 +34,19 @@ type GrpcUserServer struct {
 	ctx         context.Context
 }
 
-func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) *GrpcUserServer {
+func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*GrpcUserServer, error) {
 	inf := hfInformerFactory.Hobbyfarm().V2().Users().Informer()
 	indexers := map[string]cache.IndexFunc{emailIndex: emailIndexer}
-	inf.AddIndexers(indexers)
+	err := inf.AddIndexers(indexers)
+	if err != nil {
+		glog.Fatalf("Error adding indexer %v", err)
+		return nil, err
+	}
 	return &GrpcUserServer{
 		hfClientSet: hfClientSet,
 		userIndexer: inf.GetIndexer(),
 		ctx:         ctx,
-	}
+	}, nil
 }
 
 func emailIndexer(obj interface{}) ([]string, error) {

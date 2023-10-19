@@ -339,7 +339,7 @@ func (a AuthServer) UpdateSettings(user *userProto.User, newSettings map[string]
 }
 
 func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
-	set, err := a.settingClient.GetSettingValue(r.Context(), &settingProto.Id{Name: settingUtil.SettingRegistrationDisabled})
+	set, err := a.settingClient.GetSettingValue(r.Context(), &settingProto.Id{Name: string(settingUtil.SettingRegistrationDisabled)})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
 		return

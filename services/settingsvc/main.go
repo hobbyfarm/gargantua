@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/ebauman/crder"
@@ -21,7 +22,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
@@ -80,7 +80,6 @@ func main() {
 	}
 
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
-	hfInformerFactory.Start(stopCh)
 
 	ca, err := os.ReadFile(webhookTLSCA)
 	if err != nil {
@@ -99,10 +98,6 @@ func main() {
 	}
 	glog.Info("finished installing/updating setting CRD")
 
-	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
-	corsOrigins := handlers.AllowedOrigins([]string{"*"})
-	corsMethods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"})
-
 	ctx := context.Background()
 
 	cert, err := tls2.ReadKeyPair(settingTLSCert, settingTLSKey)
@@ -114,20 +109,6 @@ func main() {
 		Certificates: []tls.Certificate{*cert},
 	})
 
-	grpcPort := os.Getenv("GRPC_PORT")
-	if grpcPort == "" {
-		grpcPort = "8080"
-	}
-
-	settingservice.WatchSettings(ctx, hfClient, hfInformerFactory)
-	gs := grpc.NewServer(grpc.Creds(creds))
-	ss := settingservice.NewGrpcSettingServer(hfClient, ctx)
-	settingProto.RegisterSettingSvcServer(gs, ss)
-	if enableReflection {
-		reflection.Register(gs)
-	}
-	settingservice.Preinstall(ctx, ss)
-
 	authnConn, err := microservices.EstablishConnection(microservices.AuthN, settingTLSCA)
 	if err != nil {
 		glog.Fatalf("failed connecting to service authn-service: %v", err)
@@ -138,36 +119,61 @@ func main() {
 
 	authrConn, err := microservices.EstablishConnection(microservices.AuthR, settingTLSCA)
 	if err != nil {
-		glog.Fatalf("failed connecting to service authn-service: %v", err)
+		glog.Fatalf("failed connecting to service authr-service: %v", err)
 	}
 	defer authrConn.Close()
 
 	authrClient := authr.NewAuthRClient(authrConn)
 
-	go func() {
-		glog.Info("grpc setting server listening on " + grpcPort)
-		l, errr := net.Listen("tcp", ":"+grpcPort)
+	err = settingservice.WatchSettings(ctx, hfClient, hfInformerFactory)
+	if err != nil {
+		glog.Info("watching settings failed: ", err)
+	}
+	gs := microservices.CreateGRPCServer(creds)
+	ss := settingservice.NewGrpcSettingServer(hfClient, ctx)
+	settingProto.RegisterSettingSvcServer(gs, ss)
+	if enableReflection {
+		reflection.Register(gs)
+	}
+	settingservice.Preinstall(ctx, ss)
 
-		if errr != nil {
-			glog.Info("Can not serve grpc")
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		grpcPort := os.Getenv("GRPC_PORT")
+		if grpcPort == "" {
+			grpcPort = "8080"
 		}
+		l, errr := net.Listen("tcp", ":"+grpcPort)
+		if errr != nil {
+			glog.Fatalf("Can not serve grpc: %v", errr)
+		}
+		glog.Info("grpc setting server listening on " + grpcPort)
 		glog.Fatal(gs.Serve(l))
 	}()
 
-	r := mux.NewRouter()
-	settingServer, err := settingservice.NewSettingServer(authnClient, authrClient, ss)
-	if err != nil {
-		glog.Fatal(err)
-	}
-	settingServer.SetupRoutes(r)
-	http.Handle("/", r)
-	apiPort := os.Getenv("PORT")
-	if apiPort == "" {
-		apiPort = "80"
-	}
-	glog.Info("http setting server listening on " + apiPort)
-
 	go func() {
-		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
+		defer wg.Done()
+
+		r := mux.NewRouter()
+		settingServer, err := settingservice.NewSettingServer(authnClient, authrClient, ss)
+		if err != nil {
+			glog.Fatal(err)
+		}
+		settingServer.SetupRoutes(r)
+		http.Handle("/", r)
+
+		apiPort := os.Getenv("PORT")
+		if apiPort == "" {
+			apiPort = "80"
+		}
+
+		glog.Info("http setting server listening on " + apiPort)
+		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(microservices.CORS_HANDLER_ALLOWED_HEADERS, microservices.CORS_HANDLER_ALLOWED_METHODS, microservices.CORS_HANDLER_ALLOWED_ORIGINS)(r)))
 	}()
+
+	hfInformerFactory.Start(stopCh)
+	wg.Wait()
 }

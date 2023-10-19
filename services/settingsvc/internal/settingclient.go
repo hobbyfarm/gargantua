@@ -17,6 +17,7 @@ var (
 	settings = map[string]*v1.Setting{}
 )
 
+// TODO remove SettingName and consts in facor of settingUtil
 const (
 	SettingRegistrationDisabled              SettingName = "registration-disabled"
 	SettingAdminUIMOTD                       SettingName = "motd-admin-ui"

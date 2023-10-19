@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -21,7 +22,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 	"k8s.io/client-go/informers"
@@ -84,7 +84,6 @@ func main() {
 		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, informers.WithNamespace(namespace))
-	kubeInformerFactory.Start(stopCh)
 
 	cert, err := tls2.ReadKeyPair(tlsCert, tlsKey)
 	if err != nil {
@@ -95,12 +94,7 @@ func main() {
 		Certificates: []tls.Certificate{*cert},
 	})
 
-	grpcPort := os.Getenv("GRPC_PORT")
-	if grpcPort == "" {
-		grpcPort = "8080"
-	}
-
-	gs := grpc.NewServer(grpc.Creds(creds))
+	gs := microservices.CreateGRPCServer(creds)
 	rs, err := rbacservice.NewGrpcRbacServer(kubeClient, namespace, kubeInformerFactory)
 	if err != nil {
 		glog.Fatalf("Failed to start rbac grpc server: %s", err)
@@ -120,36 +114,44 @@ func main() {
 
 	authrConn, err := microservices.EstablishConnection(microservices.AuthR, tlsCA)
 	if err != nil {
-		glog.Fatalf("failed connecting to service authn-service: %v", err)
+		glog.Fatalf("failed connecting to service authr-service: %v", err)
 	}
 	defer authrConn.Close()
 
 	authrClient := authr.NewAuthRClient(authrConn)
 
-	go func() {
-		glog.Info("grpc rbac server listening on " + grpcPort)
-		l, err := net.Listen("tcp", ":"+grpcPort)
+	var wg sync.WaitGroup
+	wg.Add(1)
 
-		if err != nil {
-			glog.Info("Can not serve grpc")
+	go func() {
+		defer wg.Done()
+		grpcPort := os.Getenv("GRPC_PORT")
+		if grpcPort == "" {
+			grpcPort = "8080"
 		}
+		l, err := net.Listen("tcp", ":"+grpcPort)
+		if err != nil {
+			glog.Fatalf("Can not serve grpc: %v", err)
+		}
+		glog.Info("grpc rbac server listening on " + grpcPort)
 		glog.Fatal(gs.Serve(l))
 	}()
 
-	r := mux.NewRouter()
-	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
-	corsOrigins := handlers.AllowedOrigins([]string{"*"})
-	corsMethods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"})
-	rbacServer := rbacservice.NewRbacServer(rs, authnClient, authrClient)
-	rbacServer.SetupRoutes(r)
-	http.Handle("/", r)
-	apiPort := os.Getenv("PORT")
-	if apiPort == "" {
-		apiPort = "80"
-	}
-	glog.Info("http rbac server listening on " + apiPort)
-
 	go func() {
-		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
+		defer wg.Done()
+		r := mux.NewRouter()
+		rbacServer := rbacservice.NewRbacServer(rs, authnClient, authrClient)
+		rbacServer.SetupRoutes(r)
+		http.Handle("/", r)
+		apiPort := os.Getenv("PORT")
+		if apiPort == "" {
+			apiPort = "80"
+		}
+
+		glog.Info("http rbac server listening on " + apiPort)
+		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(microservices.CORS_HANDLER_ALLOWED_HEADERS, microservices.CORS_HANDLER_ALLOWED_METHODS, microservices.CORS_HANDLER_ALLOWED_ORIGINS)(r)))
 	}()
+
+	kubeInformerFactory.Start(stopCh)
+	wg.Wait()
 }

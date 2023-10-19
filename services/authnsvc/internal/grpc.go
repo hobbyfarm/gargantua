@@ -24,7 +24,6 @@ func NewGrpcAuthNServer(userClient user.UserSvcClient) *GrpcAuthnServer {
 }
 
 func (a *GrpcAuthnServer) AuthN(c context.Context, ar *authnProto.AuthNRequest) (*userProto.User, error) {
-	glog.Info("Authenticating (gRPC)...")
 	token := ar.GetToken()
 	if len(token) == 0 {
 		err := status.Newf(

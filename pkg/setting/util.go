@@ -10,11 +10,16 @@ import (
 	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
 )
 
+type SettingName string
+
 const (
-	SettingRegistrationDisabled string = "registration-disabled"
-	SettingAdminUIMOTD          string = "motd-admin-ui"
-	SettingUIMOTD               string = "motd-ui"
-	ScheduledEventRetentionTime string = "scheduledevent-retention-time"
+	SettingRegistrationDisabled              SettingName = "registration-disabled"
+	SettingAdminUIMOTD                       SettingName = "motd-admin-ui"
+	SettingUIMOTD                            SettingName = "motd-ui"
+	ScheduledEventRetentionTime              SettingName = "scheduledevent-retention-time"
+	SettingRegistrationPrivacyPolicyRequired SettingName = "registration-privacy-policy-required"
+	SettingRegistrationPrivacyPolicyLink     SettingName = "registration-privacy-policy-link"
+	SettingRegistrationPrivacyPolicyLinkName SettingName = "registration-privacy-policy-linkname"
 )
 
 var DataTypeMappingToProto = map[property.DataType]settingProto.DataType{

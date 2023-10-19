@@ -620,7 +620,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 
 	if endTime.Before(now) && se.Status.Finished {
 		// scheduled event is finished and nothing to do
-		setting, err := s.settingClient.GetSettingValue(s.ctx, &settingProto.Id{Name: settingUtil.ScheduledEventRetentionTime})
+		setting, err := s.settingClient.GetSettingValue(s.ctx, &settingProto.Id{Name: string(settingUtil.ScheduledEventRetentionTime)})
 
 		if set, ok := setting.GetValue().(*settingProto.SettingValue_Int64Value); err != nil || !ok || setting == nil {
 			return fmt.Errorf("error retreiving retention Time setting")

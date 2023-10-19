@@ -14,7 +14,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
 	"github.com/hobbyfarm/gargantua/v3/pkg/scheduledeventserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/vmtemplateserver"
@@ -292,7 +291,7 @@ func main() {
 	}()
 
 	if !disableControllers {
-		lock, err := getLock("controller-manager-gargantua", cfg)
+		lock, err := util.GetLock("controller-manager-gargantua", cfg)
 		if err != nil {
 			glog.Fatal(err)
 		}
@@ -389,14 +388,4 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	}
 
 	return nil
-}
-
-func getLock(lockName string, cfg *rest.Config) (resourcelock.Interface, error) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		return nil, err
-	}
-
-	ns := util.GetReleaseNamespace()
-	return resourcelock.NewFromKubeconfig(resourcelock.LeasesResourceLock, ns, lockName, resourcelock.ResourceLockConfig{Identity: hostname}, cfg, 15*time.Second)
 }

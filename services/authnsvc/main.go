@@ -6,13 +6,13 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
@@ -50,7 +50,6 @@ func init() {
 func main() {
 	flag.Parse()
 	glog.V(2).Infof("Starting Authentication Service")
-	r := mux.NewRouter()
 
 	cert, err := tls2.ReadKeyPair(authTLSCert, authTLSKey)
 	if err != nil {
@@ -63,7 +62,7 @@ func main() {
 
 	accesscodeConn, err := microservices.EstablishConnection(microservices.AccessCode, authTLSCA)
 	if err != nil {
-		glog.Fatalf("failed connecting to service authn-service: %v", err)
+		glog.Fatalf("failed connecting to service accesscode-service: %v", err)
 	}
 	defer accesscodeConn.Close()
 
@@ -71,7 +70,7 @@ func main() {
 
 	userConn, err := microservices.EstablishConnection(microservices.User, authTLSCA)
 	if err != nil {
-		glog.Fatalf("failed connecting to service authn-service: %v", err)
+		glog.Fatalf("failed connecting to service user-service: %v", err)
 	}
 	defer userConn.Close()
 
@@ -79,7 +78,7 @@ func main() {
 
 	settingConn, err := microservices.EstablishConnection(microservices.Setting, authTLSCA)
 	if err != nil {
-		glog.Fatalf("failed connecting to service authn-service: %v", err)
+		glog.Fatalf("failed connecting to service setting-service: %v", err)
 	}
 	defer settingConn.Close()
 
@@ -87,51 +86,58 @@ func main() {
 
 	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, authTLSCA)
 	if err != nil {
-		glog.Fatalf("failed connecting to service authn-service: %v", err)
+		glog.Fatalf("failed connecting to service rbac-service: %v", err)
 	}
 	defer rbacConn.Close()
 
 	rbacClient := rbac.NewRbacSvcClient(rbacConn)
 
-	grpcPort := os.Getenv("GRPC_PORT")
-	if grpcPort == "" {
-		grpcPort = "8080"
-	}
-	glog.Info("grpc auth server listening on " + grpcPort)
-
-	gs := grpc.NewServer(grpc.Creds(creds))
+	gs := microservices.CreateGRPCServer(creds)
 	as := authnservice.NewGrpcAuthNServer(userClient)
 	authn.RegisterAuthNServer(gs, as)
 	if enableReflection {
 		reflection.Register(gs)
 	}
 
+	var wg sync.WaitGroup
+	wg.Add(1)
+
 	go func() {
+		defer wg.Done()
+
+		grpcPort := os.Getenv("GRPC_PORT")
+		if grpcPort == "" {
+			grpcPort = "8080"
+		}
 		l, errr := net.Listen("tcp", ":"+grpcPort)
 
 		if errr != nil {
-			glog.Info("Can not serve grpc")
+			glog.Infof("Can not serve grpc: %v", errr)
+			return
 		}
+
+		glog.Info("grpc auth server listening on " + grpcPort)
 		glog.Fatal(gs.Serve(l))
 	}()
 
-	authServer, err := authnservice.NewAuthServer(accesscodeClient, userClient, settingClient, rbacClient, as)
-	if err != nil {
-		glog.Fatal(err)
-	}
-	authServer.SetupRoutes(r)
+	go func() {
+		defer wg.Done()
+		authServer, err := authnservice.NewAuthServer(accesscodeClient, userClient, settingClient, rbacClient, as)
+		if err != nil {
+			glog.Fatal(err)
+		}
 
-	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
-	corsOrigins := handlers.AllowedOrigins([]string{"*"})
-	corsMethods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"})
+		r := mux.NewRouter()
+		authServer.SetupRoutes(r)
 
-	http.Handle("/", r)
+		http.Handle("/", r)
+		apiPort := os.Getenv("PORT")
+		if apiPort == "" {
+			apiPort = "80"
+		}
+		glog.Info("http auth server listening on " + apiPort)
+		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(microservices.CORS_HANDLER_ALLOWED_HEADERS, microservices.CORS_HANDLER_ALLOWED_METHODS, microservices.CORS_HANDLER_ALLOWED_ORIGINS)(r)))
+	}()
 
-	apiPort := os.Getenv("PORT")
-	if apiPort == "" {
-		apiPort = "80"
-	}
-	glog.Info("http auth server listening on " + apiPort)
-
-	glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
+	wg.Wait()
 }

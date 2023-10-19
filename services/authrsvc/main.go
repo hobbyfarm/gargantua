@@ -5,11 +5,11 @@ import (
 	"flag"
 	"net"
 	"os"
+	"sync"
 
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
@@ -48,29 +48,35 @@ func main() {
 
 	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, authTLSCA)
 	if err != nil {
-		glog.Fatalf("failed connecting to service authn-service: %v", err)
+		glog.Fatalf("failed connecting to service rbac-service: %v", err)
 	}
 	defer rbacConn.Close()
 
 	rbacClient := rbac.NewRbacSvcClient(rbacConn)
 
-	grpcPort := os.Getenv("GRPC_PORT")
-	if grpcPort == "" {
-		grpcPort = "8080"
-	}
-	glog.Info("grpc authr server listening on " + grpcPort)
-
-	gs := grpc.NewServer(grpc.Creds(creds))
+	gs := microservices.CreateGRPCServer(creds)
 	as := authrservice.NewGrpcAuthRServer(rbacClient)
 	authr.RegisterAuthRServer(gs, as)
 	if enableReflection {
 		reflection.Register(gs)
 	}
 
-	l, errr := net.Listen("tcp", ":"+grpcPort)
+	var wg sync.WaitGroup
+	wg.Add(1)
 
-	if errr != nil {
-		glog.Info("Can not serve grpc")
-	}
-	glog.Fatal(gs.Serve(l))
+	go func() {
+		defer wg.Done()
+		grpcPort := os.Getenv("GRPC_PORT")
+		if grpcPort == "" {
+			grpcPort = "8080"
+		}
+		l, errr := net.Listen("tcp", ":"+grpcPort)
+		if errr != nil {
+			glog.Fatalf("Can not serve grpc: %v", errr)
+		}
+		glog.Info("grpc rbac server listening on " + grpcPort)
+		glog.Fatal(gs.Serve(l))
+	}()
+
+	wg.Wait()
 }
