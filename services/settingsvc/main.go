@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"flag"
 	"net"
 	"net/http"
@@ -13,16 +12,11 @@ import (
 	"github.com/ebauman/crder"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
-	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/golang/glog"
@@ -55,29 +49,11 @@ func init() {
 }
 
 func main() {
-	stopCh := signals.SetupSignalHandler()
 	flag.Parse()
 
-	const (
-		ClientGoQPS   = 100
-		ClientGoBurst = 100
-	)
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		cfg, err = clientcmd.BuildConfigFromFlags(localMasterUrl, localKubeconfig)
-		if err != nil {
-			glog.Fatalf("Error building kubeconfig: %s", err.Error())
-		}
-	}
-	cfg.QPS = ClientGoQPS
-	cfg.Burst = ClientGoBurst
+	cfg, hfClient := microservices.BuildClusterConfig(localMasterUrl, localKubeconfig)
 
 	namespace := util.GetReleaseNamespace()
-
-	hfClient, err := hfClientset.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatal(err)
-	}
 
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 
@@ -100,16 +76,12 @@ func main() {
 
 	ctx := context.Background()
 
-	cert, err := tls2.ReadKeyPair(settingTLSCert, settingTLSKey)
+	cert, err := microservices.BuildTLSCredentials(settingTLSCA, settingTLSCert, settingTLSKey)
 	if err != nil {
-		glog.Fatalf("error generating x509keypair from conversion cert and key: %s", err)
+		glog.Fatalf("error building cert: %v", err)
 	}
 
-	creds := credentials.NewTLS(&tls.Config{
-		Certificates: []tls.Certificate{*cert},
-	})
-
-	authnConn, err := microservices.EstablishConnection(microservices.AuthN, settingTLSCA)
+	authnConn, err := microservices.EstablishConnection(microservices.AuthN, cert)
 	if err != nil {
 		glog.Fatalf("failed connecting to service authn-service: %v", err)
 	}
@@ -117,7 +89,7 @@ func main() {
 
 	authnClient := authn.NewAuthNClient(authnConn)
 
-	authrConn, err := microservices.EstablishConnection(microservices.AuthR, settingTLSCA)
+	authrConn, err := microservices.EstablishConnection(microservices.AuthR, cert)
 	if err != nil {
 		glog.Fatalf("failed connecting to service authr-service: %v", err)
 	}
@@ -129,7 +101,7 @@ func main() {
 	if err != nil {
 		glog.Info("watching settings failed: ", err)
 	}
-	gs := microservices.CreateGRPCServer(creds)
+	gs := microservices.CreateGRPCServer(cert)
 	ss := settingservice.NewGrpcSettingServer(hfClient, ctx)
 	settingProto.RegisterSettingSvcServer(gs, ss)
 	if enableReflection {
@@ -174,6 +146,7 @@ func main() {
 		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(microservices.CORS_HANDLER_ALLOWED_HEADERS, microservices.CORS_HANDLER_ALLOWED_METHODS, microservices.CORS_HANDLER_ALLOWED_ORIGINS)(r)))
 	}()
 
+	stopCh := signals.SetupSignalHandler()
 	hfInformerFactory.Start(stopCh)
 	wg.Wait()
 }

@@ -1,16 +1,13 @@
 package main
 
 import (
-	"crypto/tls"
 	"flag"
 	"net"
 	"os"
 	"sync"
 
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
-	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/golang/glog"
@@ -37,16 +34,12 @@ func init() {
 func main() {
 	flag.Parse()
 
-	cert, err := tls2.ReadKeyPair(authTLSCert, authTLSKey)
+	cert, err := microservices.BuildTLSCredentials(authTLSCA, authTLSCert, authTLSKey)
 	if err != nil {
-		glog.Fatalf("error generating x509keypair from conversion cert and key: %s", err)
+		glog.Fatalf("error building cert: %v", err)
 	}
 
-	creds := credentials.NewTLS(&tls.Config{
-		Certificates: []tls.Certificate{*cert},
-	})
-
-	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, authTLSCA)
+	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, cert)
 	if err != nil {
 		glog.Fatalf("failed connecting to service rbac-service: %v", err)
 	}
@@ -54,7 +47,7 @@ func main() {
 
 	rbacClient := rbac.NewRbacSvcClient(rbacConn)
 
-	gs := microservices.CreateGRPCServer(creds)
+	gs := microservices.CreateGRPCServer(cert)
 	as := authrservice.NewGrpcAuthRServer(rbacClient)
 	authr.RegisterAuthRServer(gs, as)
 	if enableReflection {

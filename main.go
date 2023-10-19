@@ -37,7 +37,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/environmentserver"
-	predefinedservicesserver "github.com/hobbyfarm/gargantua/v3/pkg/predefinedserviceserver"
+	predefinedserviceserver "github.com/hobbyfarm/gargantua/v3/pkg/predefinedserviceserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/progressserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/v3/pkg/scenarioserver"
@@ -124,7 +124,12 @@ func main() {
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, informers.WithNamespace(namespace))
 
-	authnConn, err := microservices.EstablishConnection(microservices.AuthN, tlsCA)
+	cert, err := microservices.BuildTLSCredentials(tlsCA, "", "")
+	if err != nil {
+		glog.Fatalf("error building cert: %v", err)
+	}
+
+	authnConn, err := microservices.EstablishConnection(microservices.AuthN, cert)
 	if err != nil {
 		glog.Fatalf("failed connecting to service authn-service: %v", err)
 	}
@@ -132,7 +137,7 @@ func main() {
 
 	authnClient := authn.NewAuthNClient(authnConn)
 
-	authrConn, err := microservices.EstablishConnection(microservices.AuthR, tlsCA)
+	authrConn, err := microservices.EstablishConnection(microservices.AuthR, cert)
 	if err != nil {
 		glog.Fatalf("failed connecting to service authn-service: %v", err)
 	}
@@ -140,7 +145,7 @@ func main() {
 
 	authrClient := authr.NewAuthRClient(authrConn)
 
-	settingConn, err := microservices.EstablishConnection(microservices.Setting, tlsCA)
+	settingConn, err := microservices.EstablishConnection(microservices.Setting, cert)
 	if err != nil {
 		glog.Fatalf("failed connecting to service authn-service: %v", err)
 	}
@@ -223,7 +228,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	predefinedServiceServer, err := predefinedservicesserver.NewPredefinedServiceServer(authnClient, authrClient, hfClient, ctx)
+	predefinedServiceServer, err := predefinedserviceserver.NewPredefinedServiceServer(authnClient, authrClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}

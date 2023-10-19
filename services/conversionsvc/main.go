@@ -12,12 +12,9 @@ import (
 	"github.com/hobbyfarm/gargantua/services/conversionsvc/v3/internal/conversion"
 	"github.com/hobbyfarm/gargantua/services/conversionsvc/v3/internal/conversion/user"
 	"github.com/hobbyfarm/gargantua/services/conversionsvc/v3/internal/validation"
-	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 var (
@@ -39,24 +36,7 @@ func init() {
 func main() {
 	flag.Parse()
 
-	const (
-		ClientGoQPS   = 100
-		ClientGoBurst = 100
-	)
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		cfg, err = clientcmd.BuildConfigFromFlags(localMasterUrl, localKubeconfig)
-		if err != nil {
-			glog.Fatalf("Error building kubeconfig: %s", err.Error())
-		}
-	}
-	cfg.QPS = ClientGoQPS
-	cfg.Burst = ClientGoBurst
-
-	hfClient, err := hfClientset.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatal(err)
-	}
+	cfg, hfClient := microservices.BuildClusterConfig(localMasterUrl, localKubeconfig)
 
 	ca, err := os.ReadFile(webhookTLSCA)
 	if err != nil {

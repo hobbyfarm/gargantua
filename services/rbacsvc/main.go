@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"flag"
 	"net"
 	"net/http"
@@ -17,17 +16,13 @@ import (
 	rbacinstaller "github.com/hobbyfarm/gargantua/services/rbacsvc/v3/internal/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
-	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 var (
@@ -51,26 +46,13 @@ func init() {
 }
 
 func main() {
-	stopCh := signals.SetupSignalHandler()
-	ctx := context.Background()
 	flag.Parse()
 	glog.V(2).Infof("Starting Rbac Service")
-	const (
-		ClientGoQPS   = 100
-		ClientGoBurst = 100
-	)
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		cfg, err = clientcmd.BuildConfigFromFlags(localMasterUrl, localKubeconfig)
-		if err != nil {
-			glog.Fatalf("Error building kubeconfig: %s", err.Error())
-		}
-	}
-	cfg.QPS = ClientGoQPS
-	cfg.Burst = ClientGoBurst
+	cfg, _ := microservices.BuildClusterConfig(localMasterUrl, localKubeconfig)
 
 	// self manage default rbac roles
 	if installRBACRoles {
+		ctx := context.Background()
 		err := rbacinstaller.Create(ctx, cfg)
 		if err != nil {
 			glog.Fatalf("Error installing RBAC roles: %s", err.Error())
@@ -85,16 +67,12 @@ func main() {
 	}
 	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, informers.WithNamespace(namespace))
 
-	cert, err := tls2.ReadKeyPair(tlsCert, tlsKey)
+	cert, err := microservices.BuildTLSCredentials(tlsCA, tlsCert, tlsKey)
 	if err != nil {
-		glog.Fatalf("error generating x509keypair from conversion cert and key: %s", err)
+		glog.Fatalf("error building cert: %v", err)
 	}
 
-	creds := credentials.NewTLS(&tls.Config{
-		Certificates: []tls.Certificate{*cert},
-	})
-
-	gs := microservices.CreateGRPCServer(creds)
+	gs := microservices.CreateGRPCServer(cert)
 	rs, err := rbacservice.NewGrpcRbacServer(kubeClient, namespace, kubeInformerFactory)
 	if err != nil {
 		glog.Fatalf("Failed to start rbac grpc server: %s", err)
@@ -104,7 +82,7 @@ func main() {
 		reflection.Register(gs)
 	}
 
-	authnConn, err := microservices.EstablishConnection(microservices.AuthN, tlsCA)
+	authnConn, err := microservices.EstablishConnection(microservices.AuthN, cert)
 	if err != nil {
 		glog.Fatalf("failed connecting to service authn-service: %v", err)
 	}
@@ -112,7 +90,7 @@ func main() {
 
 	authnClient := authn.NewAuthNClient(authnConn)
 
-	authrConn, err := microservices.EstablishConnection(microservices.AuthR, tlsCA)
+	authrConn, err := microservices.EstablishConnection(microservices.AuthR, cert)
 	if err != nil {
 		glog.Fatalf("failed connecting to service authr-service: %v", err)
 	}
@@ -152,6 +130,7 @@ func main() {
 		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(microservices.CORS_HANDLER_ALLOWED_HEADERS, microservices.CORS_HANDLER_ALLOWED_METHODS, microservices.CORS_HANDLER_ALLOWED_ORIGINS)(r)))
 	}()
 
+	stopCh := signals.SetupSignalHandler()
 	kubeInformerFactory.Start(stopCh)
 	wg.Wait()
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"flag"
 	"net"
 	"net/http"
@@ -9,11 +8,9 @@ import (
 	"sync"
 
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
-	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/golang/glog"
@@ -51,16 +48,12 @@ func main() {
 	flag.Parse()
 	glog.V(2).Infof("Starting Authentication Service")
 
-	cert, err := tls2.ReadKeyPair(authTLSCert, authTLSKey)
+	cert, err := microservices.BuildTLSCredentials(authTLSCA, authTLSCert, authTLSKey)
 	if err != nil {
-		glog.Fatalf("error generating x509keypair from conversion cert and key: %s", err)
+		glog.Fatalf("error building cert: %v", err)
 	}
 
-	creds := credentials.NewTLS(&tls.Config{
-		Certificates: []tls.Certificate{*cert},
-	})
-
-	accesscodeConn, err := microservices.EstablishConnection(microservices.AccessCode, authTLSCA)
+	accesscodeConn, err := microservices.EstablishConnection(microservices.AccessCode, cert)
 	if err != nil {
 		glog.Fatalf("failed connecting to service accesscode-service: %v", err)
 	}
@@ -68,7 +61,7 @@ func main() {
 
 	accesscodeClient := accesscode.NewAccessCodeSvcClient(accesscodeConn)
 
-	userConn, err := microservices.EstablishConnection(microservices.User, authTLSCA)
+	userConn, err := microservices.EstablishConnection(microservices.User, cert)
 	if err != nil {
 		glog.Fatalf("failed connecting to service user-service: %v", err)
 	}
@@ -76,7 +69,7 @@ func main() {
 
 	userClient := user.NewUserSvcClient(userConn)
 
-	settingConn, err := microservices.EstablishConnection(microservices.Setting, authTLSCA)
+	settingConn, err := microservices.EstablishConnection(microservices.Setting, cert)
 	if err != nil {
 		glog.Fatalf("failed connecting to service setting-service: %v", err)
 	}
@@ -84,7 +77,7 @@ func main() {
 
 	settingClient := setting.NewSettingSvcClient(settingConn)
 
-	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, authTLSCA)
+	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, cert)
 	if err != nil {
 		glog.Fatalf("failed connecting to service rbac-service: %v", err)
 	}
@@ -92,7 +85,7 @@ func main() {
 
 	rbacClient := rbac.NewRbacSvcClient(rbacConn)
 
-	gs := microservices.CreateGRPCServer(creds)
+	gs := microservices.CreateGRPCServer(cert)
 	as := authnservice.NewGrpcAuthNServer(userClient)
 	authn.RegisterAuthNServer(gs, as)
 	if enableReflection {

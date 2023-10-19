@@ -2,20 +2,14 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"flag"
 	"net"
 	"os"
 	"sync"
 
 	"github.com/ebauman/crder"
-	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
-	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/golang/glog"
@@ -44,29 +38,12 @@ func init() {
 func main() {
 	flag.Parse()
 
-	const (
-		ClientGoQPS   = 100
-		ClientGoBurst = 100
-	)
-	cfg, err := rest.InClusterConfig()
-	if err != nil {
-		cfg, err = clientcmd.BuildConfigFromFlags(localMasterUrl, localKubeconfig)
-		if err != nil {
-			glog.Fatalf("Error building kubeconfig: %s", err.Error())
-		}
-	}
-	cfg.QPS = ClientGoQPS
-	cfg.Burst = ClientGoBurst
-
-	hfClient, err := hfClientset.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatal(err)
-	}
+	cfg, hfClient := microservices.BuildClusterConfig(localMasterUrl, localKubeconfig)
 
 	crds := accesscodeservice.GenerateAccessCodeCRD()
 
 	glog.Info("installing/updating access code CRDs")
-	err = crder.InstallUpdateCRDs(cfg, crds...)
+	err := crder.InstallUpdateCRDs(cfg, crds...)
 	if err != nil {
 		glog.Fatalf("failed installing/updating access code CRDs: %s", err.Error())
 	}
@@ -74,16 +51,12 @@ func main() {
 
 	ctx := context.Background()
 
-	cert, err := tls2.ReadKeyPair(acTLSCert, acTLSKey)
+	cert, err := microservices.BuildTLSCredentials(acTLSCA, acTLSCert, acTLSKey)
 	if err != nil {
-		glog.Fatalf("error generating x509keypair from conversion cert and key: %s", err)
+		glog.Fatalf("error building cert: %v", err)
 	}
 
-	creds := credentials.NewTLS(&tls.Config{
-		Certificates: []tls.Certificate{*cert},
-	})
-
-	gs := microservices.CreateGRPCServer(creds)
+	gs := microservices.CreateGRPCServer(cert)
 	as := accesscodeservice.NewGrpcAccessCodeServer(hfClient, ctx)
 	accessCodeProto.RegisterAccessCodeSvcServer(gs, as)
 	if enableReflection {
