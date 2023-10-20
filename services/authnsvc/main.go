@@ -1,8 +1,6 @@
 package main
 
 import (
-	"flag"
-	"net"
 	"net/http"
 	"os"
 	"sync"
@@ -11,7 +9,6 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"google.golang.org/grpc/reflection"
 
 	"github.com/golang/glog"
 	authnservice "github.com/hobbyfarm/gargantua/services/authnsvc/v3/internal"
@@ -24,36 +21,16 @@ import (
 )
 
 var (
-	localMasterUrl   string
-	localKubeconfig  string
-	installRBACRoles bool
-	authTLSCert      string
-	authTLSKey       string
-	authTLSCA        string
-	enableReflection bool
+	serviceConfig *microservices.ServiceConfig
 )
 
 func init() {
-	flag.StringVar(&localKubeconfig, "kubeconfig", "", "Path to kubeconfig of local cluster. Only required if out-of-cluster.")
-	flag.StringVar(&localMasterUrl, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	flag.BoolVar(&installRBACRoles, "installrbacroles", false, "Install default RBAC Roles")
-	flag.StringVar(&authTLSCert, "auth-tls-cert", "/etc/ssl/certs/tls.crt", "Path to TLS certificate for authn server")
-	flag.StringVar(&authTLSKey, "auth-tls-key", "/etc/ssl/certs/tls.key", "Path to TLS key for authn server")
-	flag.StringVar(&authTLSCA, "auth-tls-ca", "/etc/ssl/certs/ca.crt", "Path to CA cert for authn server")
-	flag.BoolVar(&enableReflection, "enableReflection", true, "Enable reflection")
+	serviceConfig = microservices.BuildServiceConfig()
 }
 
 // TODO: Remove rbacClient, hfClientSet etc.
 func main() {
-	flag.Parse()
-	glog.V(2).Infof("Starting Authentication Service")
-
-	cert, err := microservices.BuildTLSCredentials(authTLSCA, authTLSCert, authTLSKey)
-	if err != nil {
-		glog.Fatalf("error building cert: %v", err)
-	}
-
-	accesscodeConn, err := microservices.EstablishConnection(microservices.AccessCode, cert)
+	accesscodeConn, err := microservices.EstablishConnection(microservices.AccessCode, serviceConfig.ClientCert.Clone())
 	if err != nil {
 		glog.Fatalf("failed connecting to service accesscode-service: %v", err)
 	}
@@ -61,7 +38,7 @@ func main() {
 
 	accesscodeClient := accesscode.NewAccessCodeSvcClient(accesscodeConn)
 
-	userConn, err := microservices.EstablishConnection(microservices.User, cert)
+	userConn, err := microservices.EstablishConnection(microservices.User, serviceConfig.ClientCert.Clone())
 	if err != nil {
 		glog.Fatalf("failed connecting to service user-service: %v", err)
 	}
@@ -69,7 +46,7 @@ func main() {
 
 	userClient := user.NewUserSvcClient(userConn)
 
-	settingConn, err := microservices.EstablishConnection(microservices.Setting, cert)
+	settingConn, err := microservices.EstablishConnection(microservices.Setting, serviceConfig.ClientCert.Clone())
 	if err != nil {
 		glog.Fatalf("failed connecting to service setting-service: %v", err)
 	}
@@ -77,7 +54,7 @@ func main() {
 
 	settingClient := setting.NewSettingSvcClient(settingConn)
 
-	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, cert)
+	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, serviceConfig.ClientCert.Clone())
 	if err != nil {
 		glog.Fatalf("failed connecting to service rbac-service: %v", err)
 	}
@@ -85,32 +62,16 @@ func main() {
 
 	rbacClient := rbac.NewRbacSvcClient(rbacConn)
 
-	gs := microservices.CreateGRPCServer(cert)
+	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 	as := authnservice.NewGrpcAuthNServer(userClient)
 	authn.RegisterAuthNServer(gs, as)
-	if enableReflection {
-		reflection.Register(gs)
-	}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 
 	go func() {
 		defer wg.Done()
-
-		grpcPort := os.Getenv("GRPC_PORT")
-		if grpcPort == "" {
-			grpcPort = "8080"
-		}
-		l, errr := net.Listen("tcp", ":"+grpcPort)
-
-		if errr != nil {
-			glog.Infof("Can not serve grpc: %v", errr)
-			return
-		}
-
-		glog.Info("grpc auth server listening on " + grpcPort)
-		glog.Fatal(gs.Serve(l))
+		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
 	}()
 
 	go func() {

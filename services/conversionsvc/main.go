@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"flag"
 	"net/http"
 	"os"
 
@@ -18,27 +17,17 @@ import (
 )
 
 var (
-	webhookTLSCert  string
-	webhookTLSKey   string
-	webhookTLSCA    string
-	localMasterUrl  string
-	localKubeconfig string
+	serviceConfig *microservices.ServiceConfig
 )
 
 func init() {
-	flag.StringVar(&localKubeconfig, "kubeconfig", "", "Path to kubeconfig of local cluster. Only required if out-of-cluster.")
-	flag.StringVar(&localMasterUrl, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&webhookTLSCert, "webhook-tls-cert", "/etc/ssl/certs/tls.crt", "Path to TLS certificate for webhook server")
-	flag.StringVar(&webhookTLSKey, "webhook-tls-key", "/etc/ssl/certs/tls.key", "Path to TLS key for webhook server")
-	flag.StringVar(&webhookTLSCA, "webhook-tls-ca", "/etc/ssl/certs/ca.crt", "Path to CA cert for webhook server")
+	serviceConfig = microservices.BuildServiceConfig()
 }
 
 func main() {
-	flag.Parse()
+	cfg, hfClient := microservices.BuildClusterConfig(serviceConfig)
 
-	cfg, hfClient := microservices.BuildClusterConfig(localMasterUrl, localKubeconfig)
-
-	ca, err := os.ReadFile(webhookTLSCA)
+	ca, err := os.ReadFile(serviceConfig.TLSCA)
 	if err != nil {
 		glog.Fatalf("error reading ca certificate: %s", err.Error())
 	}
@@ -61,7 +50,7 @@ func main() {
 	}
 	glog.Info("webhook listening on " + webhookPort)
 
-	cert, err := tls2.ReadKeyPair(webhookTLSCert, webhookTLSKey)
+	cert, err := tls2.ReadKeyPair(serviceConfig.TLSCert, serviceConfig.TLSKey)
 	if err != nil {
 		glog.Fatalf("error generating x509keypair from conversion cert and key: %s", err)
 	}

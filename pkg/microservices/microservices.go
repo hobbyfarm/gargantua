@@ -3,7 +3,9 @@ package microservices
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"flag"
 	"fmt"
+	"net"
 	"os"
 	"time"
 
@@ -15,11 +17,25 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/reflection"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 type MicroService string
+
+// ServiceConfig holds the configuration for a service
+type ServiceConfig struct {
+	TLSCert          string
+	TLSKey           string
+	TLSCA            string
+	WebhookTLSCA     string
+	LocalMasterUrl   string
+	LocalKubeconfig  string
+	EnableReflection bool
+	ClientCert       credentials.TransportCredentials
+	ServerCert       credentials.TransportCredentials
+}
 
 const (
 	AuthN      MicroService = "authn-service"
@@ -28,6 +44,10 @@ const (
 	Rbac       MicroService = "rbac-service"
 	AccessCode MicroService = "accesscode-service"
 	Setting    MicroService = "setting-service"
+)
+
+const (
+	GrpcPort string = "8080"
 )
 
 var CORS_ALLOWED_METHODS_ALL = [...]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"}
@@ -42,7 +62,7 @@ func (svc MicroService) getGRPCUrl() string {
 	// Builds the connection string for the headless service.
 	// Service for a grpc microservice has to be named <service>-grpc and must be headless (set .spec.ClusterIP: None)
 	// Most important is the dns:/// part that leads the grpc resolver to discover multiple addresses, otherwise only the first address is used
-	return fmt.Sprintf("dns:///%s-grpc.%s.svc.cluster.local:%s", string(svc), util.GetReleaseNamespace(), "8080")
+	return fmt.Sprintf("dns:///%s-grpc.%s.svc.cluster.local:%s", string(svc), util.GetReleaseNamespace(), GrpcPort)
 }
 
 /*
@@ -56,6 +76,7 @@ func EstablishConnection(svc MicroService, cert credentials.TransportCredentials
 	// - waitForReady states that the service has to be ready before event attempting to send
 	//
 	// All available options can be found here: https://github.com/grpc/grpc-proto/blob/master/grpc/service_config/service_config.proto
+	// More about retryPolicy: https://github.com/grpc/proposal/blob/master/A6-client-retries.md
 	const grpcServiceConfig = `
 	{
 		"loadBalancingConfig": [
@@ -103,7 +124,25 @@ func CreateGRPCServer(c credentials.TransportCredentials) *grpc.Server {
 	return grpc.NewServer(opts...)
 }
 
-func BuildTLSCredentials(caPath string, certPath string, keyPath string) (credentials.TransportCredentials, error) {
+func StartGRPCServer(server *grpc.Server, enableReflection bool) {
+	if enableReflection {
+		reflection.Register(server)
+	}
+
+	grpcPort := os.Getenv("GRPC_PORT")
+	if grpcPort == "" {
+		grpcPort = GrpcPort
+	}
+
+	l, errr := net.Listen("tcp", ":"+grpcPort)
+	if errr != nil {
+		glog.Fatalf("Can not serve grpc: %v", errr)
+	}
+	glog.Info("grpc server listening on " + grpcPort)
+	glog.Fatal(server.Serve(l))
+}
+
+func BuildTLSClientCredentials(caPath string) (credentials.TransportCredentials, error) {
 	// Read the CA certificate from file
 	caCert, err := os.ReadFile(caPath)
 	if err != nil {
@@ -124,29 +163,27 @@ func BuildTLSCredentials(caPath string, certPath string, keyPath string) (creden
 		RootCAs: caCertPool,
 	})
 
-	// Certificate is not always needed, so omit it.
-	if certPath != "" && keyPath != "" {
-		keyPair, err := tls2.ReadKeyPair(certPath, keyPath)
-		if err != nil {
-			glog.Fatalf("error generating x509keypair from conversion cert and key: %s", err)
-		}
-		creds = credentials.NewTLS(&tls.Config{
-			RootCAs:      caCertPool,
-			Certificates: []tls.Certificate{*keyPair},
-		})
-	}
-
 	return creds, nil
 }
 
-func BuildClusterConfig(localMasterUrl string, localKubeconfig string) (*rest.Config, *hfClientset.Clientset) {
+func buildTLSServerCredentials(certPath string, keyPath string) (credentials.TransportCredentials, error) {
+	certKeyPair, err := tls2.ReadKeyPair(certPath, keyPath)
+	if err != nil {
+		return nil, err
+	}
+	return credentials.NewTLS(&tls.Config{
+		Certificates: []tls.Certificate{*certKeyPair},
+	}), nil
+}
+
+func BuildClusterConfig(serviceConfig *ServiceConfig) (*rest.Config, *hfClientset.Clientset) {
 	const (
 		ClientGoQPS   = 100
 		ClientGoBurst = 100
 	)
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
-		cfg, err = clientcmd.BuildConfigFromFlags(localMasterUrl, localKubeconfig)
+		cfg, err = clientcmd.BuildConfigFromFlags(serviceConfig.LocalMasterUrl, serviceConfig.LocalKubeconfig)
 		if err != nil {
 			glog.Fatalf("Error building kubeconfig: %s", err.Error())
 		}
@@ -160,4 +197,34 @@ func BuildClusterConfig(localMasterUrl string, localKubeconfig string) (*rest.Co
 	}
 
 	return cfg, hfClient
+}
+
+// ParseFlags declares the flags and parses them, then returns a ServiceConfig struct.
+func BuildServiceConfig() *ServiceConfig {
+	cfg := &ServiceConfig{}
+
+	flag.StringVar(&cfg.TLSCert, "tls-cert", "/etc/ssl/certs/tls.crt", "Path to TLS certificate for this server")
+	flag.StringVar(&cfg.TLSKey, "tls-key", "/etc/ssl/certs/tls.key", "Path to TLS key for this server")
+	flag.StringVar(&cfg.TLSCA, "tls-ca", "/etc/ssl/certs/ca.crt", "Path to CA cert for this server")
+	flag.StringVar(&cfg.WebhookTLSCA, "webhook-ca", "/webhook-secret/ca.crt", "Path to Webhook CA")
+	flag.StringVar(&cfg.LocalKubeconfig, "kubeconfig", "", "Path to kubeconfig of local cluster. Only required if out-of-cluster.")
+	flag.StringVar(&cfg.LocalMasterUrl, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.BoolVar(&cfg.EnableReflection, "enableReflection", true, "Enable reflection")
+
+	flag.Parse()
+
+	serverCert, err := buildTLSServerCredentials(cfg.TLSCert, cfg.TLSKey)
+	if err != nil {
+		glog.Fatalf("error building server cert: %v", err)
+	}
+
+	cert, err := BuildTLSClientCredentials(cfg.TLSCA)
+	if err != nil {
+		glog.Fatalf("error building client cert: %v", err)
+	}
+
+	cfg.ClientCert = cert
+	cfg.ServerCert = serverCert
+
+	return cfg
 }

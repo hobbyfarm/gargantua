@@ -124,7 +124,7 @@ func main() {
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, informers.WithNamespace(namespace))
 
-	cert, err := microservices.BuildTLSCredentials(tlsCA, "", "")
+	cert, err := microservices.BuildTLSClientCredentials(tlsCA)
 	if err != nil {
 		glog.Fatalf("error building cert: %v", err)
 	}

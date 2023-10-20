@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
-	"net"
 	"net/http"
 	"os"
 	"sync"
@@ -17,8 +15,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 
-	"google.golang.org/grpc/reflection"
-
 	"github.com/golang/glog"
 	settingservice "github.com/hobbyfarm/gargantua/services/settingsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
@@ -29,35 +25,21 @@ import (
 )
 
 var (
-	settingTLSCert   string
-	settingTLSKey    string
-	settingTLSCA     string
-	webhookTLSCA     string
-	localMasterUrl   string
-	localKubeconfig  string
-	enableReflection bool
+	serviceConfig *microservices.ServiceConfig
 )
 
 func init() {
-	flag.StringVar(&localKubeconfig, "kubeconfig", "", "Path to kubeconfig of local cluster. Only required if out-of-cluster.")
-	flag.StringVar(&localMasterUrl, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&settingTLSCert, "setting-tls-cert", "/etc/ssl/certs/tls.crt", "Path to TLS certificate for setting server")
-	flag.StringVar(&settingTLSKey, "setting-tls-key", "/etc/ssl/certs/tls.key", "Path to TLS key for setting server")
-	flag.StringVar(&settingTLSCA, "setting-tls-ca", "/etc/ssl/certs/ca.crt", "Path to CA cert for setting server")
-	flag.StringVar(&webhookTLSCA, "webhook-tls-ca", "/webhook-secret/ca.crt", "Path to CA cert for webhook server")
-	flag.BoolVar(&enableReflection, "enableReflection", true, "Enable reflection")
+	serviceConfig = microservices.BuildServiceConfig()
 }
 
 func main() {
-	flag.Parse()
-
-	cfg, hfClient := microservices.BuildClusterConfig(localMasterUrl, localKubeconfig)
+	cfg, hfClient := microservices.BuildClusterConfig(serviceConfig)
 
 	namespace := util.GetReleaseNamespace()
 
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 
-	ca, err := os.ReadFile(webhookTLSCA)
+	ca, err := os.ReadFile(serviceConfig.WebhookTLSCA)
 	if err != nil {
 		glog.Fatalf("error reading ca certificate: %s", err.Error())
 	}
@@ -74,14 +56,7 @@ func main() {
 	}
 	glog.Info("finished installing/updating setting CRD")
 
-	ctx := context.Background()
-
-	cert, err := microservices.BuildTLSCredentials(settingTLSCA, settingTLSCert, settingTLSKey)
-	if err != nil {
-		glog.Fatalf("error building cert: %v", err)
-	}
-
-	authnConn, err := microservices.EstablishConnection(microservices.AuthN, cert)
+	authnConn, err := microservices.EstablishConnection(microservices.AuthN, serviceConfig.ClientCert.Clone())
 	if err != nil {
 		glog.Fatalf("failed connecting to service authn-service: %v", err)
 	}
@@ -89,7 +64,7 @@ func main() {
 
 	authnClient := authn.NewAuthNClient(authnConn)
 
-	authrConn, err := microservices.EstablishConnection(microservices.AuthR, cert)
+	authrConn, err := microservices.EstablishConnection(microservices.AuthR, serviceConfig.ClientCert.Clone())
 	if err != nil {
 		glog.Fatalf("failed connecting to service authr-service: %v", err)
 	}
@@ -97,16 +72,15 @@ func main() {
 
 	authrClient := authr.NewAuthRClient(authrConn)
 
+	ctx := context.Background()
+
 	err = settingservice.WatchSettings(ctx, hfClient, hfInformerFactory)
 	if err != nil {
 		glog.Info("watching settings failed: ", err)
 	}
-	gs := microservices.CreateGRPCServer(cert)
+	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 	ss := settingservice.NewGrpcSettingServer(hfClient, ctx)
 	settingProto.RegisterSettingSvcServer(gs, ss)
-	if enableReflection {
-		reflection.Register(gs)
-	}
 	settingservice.Preinstall(ctx, ss)
 
 	var wg sync.WaitGroup
@@ -114,16 +88,7 @@ func main() {
 
 	go func() {
 		defer wg.Done()
-		grpcPort := os.Getenv("GRPC_PORT")
-		if grpcPort == "" {
-			grpcPort = "8080"
-		}
-		l, errr := net.Listen("tcp", ":"+grpcPort)
-		if errr != nil {
-			glog.Fatalf("Can not serve grpc: %v", errr)
-		}
-		glog.Info("grpc setting server listening on " + grpcPort)
-		glog.Fatal(gs.Serve(l))
+		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
 	}()
 
 	go func() {
