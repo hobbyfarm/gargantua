@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"sync"
 
 	"github.com/ebauman/crder"
@@ -22,8 +21,6 @@ func init() {
 }
 
 func main() {
-	flag.Parse()
-
 	cfg, hfClient := microservices.BuildClusterConfig(serviceConfig)
 
 	crds := accesscodeservice.GenerateAccessCodeCRD()
