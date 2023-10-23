@@ -56,21 +56,17 @@ func main() {
 	}
 	glog.Info("finished installing/updating setting CRD")
 
-	authnConn, err := microservices.EstablishConnection(microservices.AuthN, serviceConfig.ClientCert.Clone())
-	if err != nil {
-		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	services := []microservices.MicroService{
+		microservices.AuthN,
+		microservices.AuthR,
 	}
-	defer authnConn.Close()
-
-	authnClient := authn.NewAuthNClient(authnConn)
-
-	authrConn, err := microservices.EstablishConnection(microservices.AuthR, serviceConfig.ClientCert.Clone())
-	if err != nil {
-		glog.Fatalf("failed connecting to service authr-service: %v", err)
+	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
+	for _, conn := range connections {
+		defer conn.Close()
 	}
-	defer authrConn.Close()
 
-	authrClient := authr.NewAuthRClient(authrConn)
+	authnClient := authn.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authr.NewAuthRClient(connections[microservices.AuthR])
 
 	ctx := context.Background()
 

@@ -129,29 +129,19 @@ func main() {
 		glog.Fatalf("error building cert: %v", err)
 	}
 
-	authnConn, err := microservices.EstablishConnection(microservices.AuthN, cert)
-	if err != nil {
-		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	services := []microservices.MicroService{
+		microservices.Setting,
+		microservices.AuthN,
+		microservices.AuthR,
 	}
-	defer authnConn.Close()
-
-	authnClient := authn.NewAuthNClient(authnConn)
-
-	authrConn, err := microservices.EstablishConnection(microservices.AuthR, cert)
-	if err != nil {
-		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	connections := microservices.EstablishConnections(services, cert)
+	for _, conn := range connections {
+		defer conn.Close()
 	}
-	defer authrConn.Close()
 
-	authrClient := authr.NewAuthRClient(authrConn)
-
-	settingConn, err := microservices.EstablishConnection(microservices.Setting, cert)
-	if err != nil {
-		glog.Fatalf("failed connecting to service authn-service: %v", err)
-	}
-	defer settingConn.Close()
-
-	settingClient := setting.NewSettingSvcClient(settingConn)
+	settingClient := setting.NewSettingSvcClient(connections[microservices.Setting])
+	authnClient := authn.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authr.NewAuthRClient(connections[microservices.AuthR])
 
 	acClient, err := accesscode.NewAccessCodeClient(hfClient, ctx)
 	if err != nil {

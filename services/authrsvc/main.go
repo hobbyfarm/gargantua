@@ -5,7 +5,6 @@ import (
 
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 
-	"github.com/golang/glog"
 	authrservice "github.com/hobbyfarm/gargantua/services/authrsvc/v3/internal"
 
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"
@@ -21,14 +20,15 @@ func init() {
 }
 
 func main() {
-	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, serviceConfig.ClientCert.Clone())
-	if err != nil {
-		glog.Fatalf("failed connecting to service rbac-service: %v", err)
+	services := []microservices.MicroService{
+		microservices.Rbac,
 	}
-	defer rbacConn.Close()
+	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
+	for _, conn := range connections {
+		defer conn.Close()
+	}
 
-	rbacClient := rbac.NewRbacSvcClient(rbacConn)
-
+	rbacClient := rbac.NewRbacSvcClient(connections[microservices.Rbac])
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 	as := authrservice.NewGrpcAuthRServer(rbacClient)
 	authr.RegisterAuthRServer(gs, as)

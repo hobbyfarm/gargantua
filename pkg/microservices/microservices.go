@@ -1,12 +1,14 @@
 package microservices
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
 	"fmt"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -15,6 +17,7 @@ import (
 	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
@@ -47,7 +50,8 @@ const (
 )
 
 const (
-	GrpcPort string = "8080"
+	GrpcPort                 string        = "8080"
+	InitialConnectionTimeout time.Duration = 10 * time.Second
 )
 
 var CORS_ALLOWED_METHODS_ALL = [...]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"}
@@ -68,7 +72,7 @@ func (svc MicroService) getGRPCUrl() string {
 /*
 /  Used to create new gcpr client with options
 */
-func EstablishConnection(svc MicroService, cert credentials.TransportCredentials) (*grpc.ClientConn, error) {
+func EstablishConnection(svc MicroService, cert credentials.TransportCredentials) *grpc.ClientConn {
 	url := svc.getGRPCUrl()
 
 	// - Using round_robin loadBalancingConfig to target all of the backend services.
@@ -98,12 +102,69 @@ func EstablishConnection(svc MicroService, cert credentials.TransportCredentials
 		]
 	}`
 
-	// Add keepalive params to rediscover every x seconds
-	return grpc.Dial(
+	// Create a context with a deadline for the initial connection
+	ctx, cancel := context.WithTimeout(context.Background(), InitialConnectionTimeout)
+	defer cancel()
+
+	// WithBlock blocks grpc.Dial until the connection is READY
+	conn, err := grpc.DialContext(
+		ctx,
 		url,
+		grpc.WithBlock(),
 		grpc.WithTransportCredentials(cert),
 		grpc.WithDefaultServiceConfig(grpcServiceConfig),
 	)
+	if err != nil {
+		glog.Fatalf("Failed to conect to service %s within %v seconds: %v", svc, InitialConnectionTimeout, err)
+	}
+
+	glog.Infof("Connection to %s is now in state %s", svc, conn.GetState())
+	return conn
+}
+
+func EstablishConnections(services []MicroService, cert credentials.TransportCredentials) map[MicroService]*grpc.ClientConn {
+	connections := make(map[MicroService]*grpc.ClientConn)
+	var connWait sync.WaitGroup
+	var connMutex sync.Mutex // protect connections map
+
+	for _, svc := range services {
+		connWait.Add(1) // Add a delta to the WaitGroup counter
+		go func(microservice MicroService) {
+			defer connWait.Done()
+			connMutex.Lock() // Securing access against concurrent write operations
+			connections[microservice] = EstablishConnection(microservice, cert)
+			connMutex.Unlock()
+		}(svc)
+	}
+
+	connWait.Wait()
+
+	glog.Infof("Connections to %d services have been made.", len(connections))
+
+	for svc, conn := range connections {
+		ConnectionWatchdog(svc, conn)
+	}
+
+	return connections
+}
+
+/*
+Watchdog for grpc Connection that logs state changes into
+*/
+func ConnectionWatchdog(svc MicroService, conn *grpc.ClientConn) {
+	glog.Infof("Starting Watchdog for connection to service %s", svc)
+	go func() {
+		for {
+			state := conn.GetState()
+			switch state {
+			case connectivity.TransientFailure, connectivity.Shutdown:
+				// Only log the error if the state persists for longer than the threshold duration
+				glog.Errorf("Connection to %s is now in state %s", svc, state)
+			}
+			//glog.V(8).Infof("Connection to %s is now in state %s", svc, state) // Enable this if log levels are used correctly
+			conn.WaitForStateChange(context.Background(), state) // Wait for the next state change
+		}
+	}()
 }
 
 /*

@@ -56,29 +56,19 @@ func main() {
 	}
 	glog.Info("finished installing/updating user CRD")
 
-	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, serviceConfig.ClientCert)
-	if err != nil {
-		glog.Fatalf("failed connecting to service rbac-service: %v", err)
+	services := []microservices.MicroService{
+		microservices.Rbac,
+		microservices.AuthN,
+		microservices.AuthR,
 	}
-	defer rbacConn.Close()
-
-	rbacClient := rbac.NewRbacSvcClient(rbacConn)
-
-	authnConn, err := microservices.EstablishConnection(microservices.AuthN, serviceConfig.ClientCert)
-	if err != nil {
-		glog.Fatalf("failed connecting to service authn-service: %v", err)
+	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
+	for _, conn := range connections {
+		defer conn.Close()
 	}
-	defer authnConn.Close()
 
-	authnClient := authn.NewAuthNClient(authnConn)
-
-	authrConn, err := microservices.EstablishConnection(microservices.AuthR, serviceConfig.ClientCert)
-	if err != nil {
-		glog.Fatalf("failed connecting to service authr-service: %v", err)
-	}
-	defer authrConn.Close()
-
-	authrClient := authr.NewAuthRClient(authrConn)
+	rbacClient := rbac.NewRbacSvcClient(connections[microservices.Rbac])
+	authnClient := authn.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authr.NewAuthRClient(connections[microservices.AuthR])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert)
 	ctx := context.Background()

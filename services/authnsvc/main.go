@@ -30,37 +30,21 @@ func init() {
 
 // TODO: Remove rbacClient, hfClientSet etc.
 func main() {
-	accesscodeConn, err := microservices.EstablishConnection(microservices.AccessCode, serviceConfig.ClientCert.Clone())
-	if err != nil {
-		glog.Fatalf("failed connecting to service accesscode-service: %v", err)
+	services := []microservices.MicroService{
+		microservices.AccessCode,
+		microservices.User,
+		microservices.Setting,
+		microservices.Rbac,
 	}
-	defer accesscodeConn.Close()
-
-	accesscodeClient := accesscode.NewAccessCodeSvcClient(accesscodeConn)
-
-	userConn, err := microservices.EstablishConnection(microservices.User, serviceConfig.ClientCert.Clone())
-	if err != nil {
-		glog.Fatalf("failed connecting to service user-service: %v", err)
+	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
+	for _, conn := range connections {
+		defer conn.Close()
 	}
-	defer userConn.Close()
 
-	userClient := user.NewUserSvcClient(userConn)
-
-	settingConn, err := microservices.EstablishConnection(microservices.Setting, serviceConfig.ClientCert.Clone())
-	if err != nil {
-		glog.Fatalf("failed connecting to service setting-service: %v", err)
-	}
-	defer settingConn.Close()
-
-	settingClient := setting.NewSettingSvcClient(settingConn)
-
-	rbacConn, err := microservices.EstablishConnection(microservices.Rbac, serviceConfig.ClientCert.Clone())
-	if err != nil {
-		glog.Fatalf("failed connecting to service rbac-service: %v", err)
-	}
-	defer rbacConn.Close()
-
-	rbacClient := rbac.NewRbacSvcClient(rbacConn)
+	rbacClient := rbac.NewRbacSvcClient(connections[microservices.Rbac])
+	accesscodeClient := accesscode.NewAccessCodeSvcClient(connections[microservices.AccessCode])
+	userClient := user.NewUserSvcClient(connections[microservices.User])
+	settingClient := setting.NewSettingSvcClient(connections[microservices.Setting])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 	as := authnservice.NewGrpcAuthNServer(userClient)
