@@ -192,7 +192,8 @@ func ConnectionWatchdog(svc MicroService, conn *grpc.ClientConn) {
 	go func() {
 		time.Sleep(InitialConnectionTimeout)
 		if conn.GetState() != connectivity.Ready && !wasReady {
-			glog.Fatalf("Connection %s never came ready. Aborting after %v seconds", svc, InitialConnectionTimeout)
+			glog.Errorf("Connection %s never came ready. Aborting after %v seconds", svc, InitialConnectionTimeout)
+			glog.Exit("Exiting...")
 		}
 	}()
 }
