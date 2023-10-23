@@ -15,14 +15,14 @@ require (
 	github.com/rancher/wrangler v1.0.1
 	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/crypto v0.11.0
-	golang.org/x/sync v0.1.0
-	google.golang.org/grpc v1.47.0
+	golang.org/x/sync v0.2.0
+	google.golang.org/grpc v1.54.0
 	google.golang.org/protobuf v1.31.0
 	k8s.io/api v0.28.2
-	k8s.io/apiextensions-apiserver v0.25.2
+	k8s.io/apiextensions-apiserver v0.28.2
 	k8s.io/apimachinery v0.28.2
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/code-generator v0.25.2
+	k8s.io/code-generator v0.28.2
 	k8s.io/utils v0.0.0-20230406110748-d93618cff8a2
 )
 
@@ -67,11 +67,11 @@ require (
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.8.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220502173005-c8bf987b8c21 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230525234030-28d5490b6b19 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/gengo v0.0.0-20211129171323-c02415ce4185 // indirect
+	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d // indirect
 	k8s.io/klog/v2 v2.100.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9 // indirect
 	sigs.k8s.io/controller-runtime v0.13.0 // indirect

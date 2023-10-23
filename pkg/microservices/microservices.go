@@ -159,17 +159,31 @@ func EstablishConnections(services []MicroService, cert credentials.TransportCre
 }
 
 /*
-Watchdog for grpc Connection that logs state changes into
+Watchdog for grpc Connection that logs state changes
+Only log changes if
+- moving to TransientFailure or Shutdown
+- moving to Connecting when the previous State was an Error
+- moving to Ready when there was an previous Error
 */
 func ConnectionWatchdog(svc MicroService, conn *grpc.ClientConn) {
 	glog.Infof("Starting Watchdog for connection to service %s", svc)
 	go func() {
+		hadError := false
 		for {
 			state := conn.GetState()
 			switch state {
+			case connectivity.Ready:
+				if hadError {
+					glog.Infof("Resolved connection to %s (State %s)", svc, state)
+					hadError = false
+				}
 			case connectivity.TransientFailure, connectivity.Shutdown:
-				// Only log the error if the state persists for longer than the threshold duration
-				glog.Errorf("Connection to %s is now in state %s", svc, state)
+				hadError = true
+				fallthrough
+			default:
+				if hadError {
+					glog.Infof("Connection to %s is now in state %s", svc, state)
+				}
 			}
 			//glog.V(8).Infof("Connection to %s is now in state %s", svc, state) // Enable this if log levels are used correctly
 			conn.WaitForStateChange(context.Background(), state) // Wait for the next state change
