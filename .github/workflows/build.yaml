@@ -1,5 +1,18 @@
 name: Build
-on: [workflow_call]
+on:   
+  workflow_call:
+    inputs:
+      image:
+        required: true
+        type: string
+      path:
+        required: true
+        type: string
+    secrets:
+      DOCKER_HUB_PASSWORD:
+        required: true
+      DOCKER_HUB_USER:
+        required: true
 jobs:
   build:
     name: Build
