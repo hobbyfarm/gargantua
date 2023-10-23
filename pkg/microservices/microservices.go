@@ -58,7 +58,8 @@ const (
 )
 
 const (
-	GrpcPort                 string        = "8080"
+	defaultGrpcPort          string        = "8080"
+	defaultApiPort           string        = "80"
 	InitialConnectionTimeout time.Duration = 10 * time.Second
 )
 
@@ -74,7 +75,7 @@ func (svc MicroService) getGRPCUrl() string {
 	// Builds the connection string for the headless service.
 	// Service for a grpc microservice has to be named <service>-grpc and must be headless (set .spec.ClusterIP: None)
 	// Most important is the dns:/// part that leads the grpc resolver to discover multiple addresses, otherwise only the first address is used
-	return fmt.Sprintf("dns:///%s-grpc.%s.svc.cluster.local:%s", string(svc), util.GetReleaseNamespace(), GrpcPort)
+	return fmt.Sprintf("dns:///%s-grpc.%s.svc.cluster.local:%s", string(svc), util.GetReleaseNamespace(), defaultGrpcPort)
 }
 
 /*
@@ -204,7 +205,7 @@ func StartGRPCServer(server *grpc.Server, enableReflection bool) {
 
 	grpcPort := os.Getenv("GRPC_PORT")
 	if grpcPort == "" {
-		grpcPort = GrpcPort
+		grpcPort = defaultGrpcPort
 	}
 
 	l, errr := net.Listen("tcp", ":"+grpcPort)
@@ -226,7 +227,7 @@ func StartAPIServer(server APIServer) {
 
 	apiPort := os.Getenv("PORT")
 	if apiPort == "" {
-		apiPort = "80"
+		apiPort = defaultApiPort
 	}
 
 	glog.Infof("http server listening on port %s", apiPort)
