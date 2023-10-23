@@ -77,8 +77,8 @@ jobs:
         )
       run: |
         docker tag \
-          hobbyfarm/${{ inputs.image }}:${GIT_COMMIT_SHORT_HASH:-dev} \
-          hobbyfarm/${{ inputs.image }}:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }}
+          hobbyfarm/${{ inputs.image }}":${GIT_COMMIT_SHORT_HASH:-dev} \
+          hobbyfarm/"${{ inputs.image }}":"${{ steps.compute_docker_tag.outputs.DOCKER_TAG }}"
 
     - name: Docker Push
       if: |
@@ -88,7 +88,7 @@ jobs:
         )
       run: |
         docker push \
-          hobbyfarm/${{ inputs.image }}:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }}
+          hobbyfarm/"${{ inputs.image }}":"${{ steps.compute_docker_tag.outputs.DOCKER_TAG }}"
 
     - name: Docker Tag Latest
       if: |
@@ -97,8 +97,8 @@ jobs:
         )
       run: |
         docker tag \
-          hobbyfarm/${{ inputs.image }}:${GIT_COMMIT_SHORT_HASH:-dev} \
-          hobbyfarm/${{ inputs.image }}:latest
+          hobbyfarm/"${{ inputs.image }}":${GIT_COMMIT_SHORT_HASH:-dev} \
+          hobbyfarm/"${{ inputs.image }}":latest
 
     - name: Docker Push Latest
       if: |
@@ -107,4 +107,4 @@ jobs:
         )
       run: |
         docker push \
-          hobbyfarm/${{ inputs.image }}:latest
+          hobbyfarm/"${{ inputs.image }}":latest
