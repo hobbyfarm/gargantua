@@ -1,6 +1,7 @@
 
 # Image URL to use all building/pushing image targets
 IMG ?= hobbyfarm/gargantua:dev
+SVC ?= usersvc
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
@@ -43,4 +44,18 @@ docker-build: fmt vet
 
 # Push the docker image
 docker-push:
+	docker push ${IMG}
+
+build-svc:
+	go build -v -o bin/app ./services/${SVC}/ && \
+	docker build -f ./cicd/Dockerfile -t ${IMG} bin
+
+push-svc: build-svc
+	docker push ${IMG}
+
+build-gargantua:
+	go build -v -o bin/app ./ && \
+	docker build -f ./cicd/Dockerfile -t ${IMG} bin
+
+push-gargantua: build-gargantua
 	docker push ${IMG}

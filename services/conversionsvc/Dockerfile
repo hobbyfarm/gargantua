@@ -10,13 +10,13 @@ COPY . .
 WORKDIR /app/services/conversionsvc
 RUN go mod download
 
-# Build the service. The output binary is named "conversionsvc".
-RUN CGO_ENABLED=0 GOOS=linux go build -o conversionsvc
+# Build the service. The output binary is named "app".
+RUN CGO_ENABLED=0 GOOS=linux go build -o /tmp/app
 
 ###### release image #####
 FROM alpine:latest
 
-COPY --from=sdk /app/services/conversionsvc/conversionsvc /usr/local/bin/
+COPY --from=sdk /tmp/app /usr/local/bin/
 
-ENTRYPOINT ["conversionsvc"]
+ENTRYPOINT ["app"]
 CMD ["-v=9", "-logtostderr"]

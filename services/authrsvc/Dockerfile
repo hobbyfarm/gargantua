@@ -10,13 +10,13 @@ COPY . .
 WORKDIR /app/services/authrsvc
 RUN go mod download
 
-# Build the service. The output binary is named "authrsvc".
-RUN CGO_ENABLED=0 GOOS=linux go build -o authrsvc
+# Build the service. The output binary is named "app".
+RUN CGO_ENABLED=0 GOOS=linux go build -o /tmp/app
 
 ###### release image #####
 FROM alpine:latest
 
-COPY --from=sdk /app/services/authrsvc/authrsvc /usr/local/bin/
+COPY --from=sdk /tmp/app /usr/local/bin/
 
-ENTRYPOINT ["authrsvc"]
+ENTRYPOINT ["app"]
 CMD ["-v=9", "-logtostderr"]

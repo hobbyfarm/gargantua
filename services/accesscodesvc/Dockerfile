@@ -10,13 +10,13 @@ COPY . .
 WORKDIR /app/services/accesscodesvc
 RUN go mod download
 
-# Build the service. The output binary is named "accesscodesvc".
-RUN CGO_ENABLED=0 GOOS=linux go build -o accesscodesvc
+# Build the service. The output binary is named "app".
+RUN CGO_ENABLED=0 GOOS=linux go build -o /tmp/app
 
 ###### release image #####
 FROM alpine:latest
 
-COPY --from=sdk /app/services/accesscodesvc/accesscodesvc /usr/local/bin/
+COPY --from=sdk /tmp/app /usr/local/bin/
 
-ENTRYPOINT ["accesscodesvc"]
+ENTRYPOINT ["app"]
 CMD ["-v=9", "-logtostderr"]

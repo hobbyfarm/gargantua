@@ -10,13 +10,13 @@ COPY . .
 WORKDIR /app/services/usersvc
 RUN go mod download
 
-# Build the service. The output binary is named "usersvc".
-RUN CGO_ENABLED=0 GOOS=linux go build -o usersvc
+# Build the service. The output binary is named "app".
+RUN CGO_ENABLED=0 GOOS=linux go build -o /tmp/app
 
 ###### release image #####
 FROM alpine:latest
 
-COPY --from=sdk /app/services/usersvc/usersvc /usr/local/bin/
+COPY --from=sdk /tmp/app /usr/local/bin/
 
-ENTRYPOINT ["usersvc"]
+ENTRYPOINT ["app"]
 CMD ["-v=9", "-logtostderr"]

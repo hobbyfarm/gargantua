@@ -60,7 +60,7 @@ const (
 const (
 	defaultGrpcPort          string        = "8080"
 	defaultApiPort           string        = "80"
-	InitialConnectionTimeout time.Duration = 10 * time.Second
+	InitialConnectionTimeout time.Duration = 30 * time.Second
 )
 
 var CORS_ALLOWED_METHODS_ALL = [...]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"}
@@ -115,17 +115,15 @@ func EstablishConnection(svc MicroService, cert credentials.TransportCredentials
 	ctx, cancel := context.WithTimeout(context.Background(), InitialConnectionTimeout)
 	defer cancel()
 
-	// WithBlock blocks grpc.DialContext until the connection is READY
 	// With the given context ctx, an error is thrown when the timeout is reached.
 	conn, err := grpc.DialContext(
 		ctx,
 		url,
-		grpc.WithBlock(),
 		grpc.WithTransportCredentials(cert),
 		grpc.WithDefaultServiceConfig(grpcServiceConfig),
 	)
 	if err != nil {
-		glog.Fatalf("Failed to conect to service %s within %v seconds: %v", svc, InitialConnectionTimeout, err)
+		glog.Fatalf("Failed to conect to service %s within %v seconds.", svc, InitialConnectionTimeout)
 	}
 
 	glog.Infof("Connection to %s is now in state %s", svc, conn.GetState())
@@ -149,7 +147,7 @@ func EstablishConnections(services []MicroService, cert credentials.TransportCre
 
 	connWait.Wait()
 
-	glog.Infof("Connections to %d services have been made.", len(connections))
+	glog.Infof("Connections to %d services have been created.", len(connections))
 
 	for svc, conn := range connections {
 		ConnectionWatchdog(svc, conn)

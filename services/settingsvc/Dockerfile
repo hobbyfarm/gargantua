@@ -10,13 +10,13 @@ COPY . .
 WORKDIR /app/services/settingsvc
 RUN go mod download
 
-# Build the service. The output binary is named "settingsvc".
-RUN CGO_ENABLED=0 GOOS=linux go build -o settingsvc
+# Build the service. The output binary is named "app".
+RUN CGO_ENABLED=0 GOOS=linux go build -o /tmp/app
 
 ###### release image #####
 FROM alpine:latest
 
-COPY --from=sdk /app/services/settingsvc/settingsvc /usr/local/bin/
+COPY --from=sdk /tmp/app /usr/local/bin/
 
-ENTRYPOINT ["settingsvc"]
+ENTRYPOINT ["app"]
 CMD ["-v=9", "-logtostderr"]
