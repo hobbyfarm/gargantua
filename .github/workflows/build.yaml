@@ -8,11 +8,6 @@ on:
       path:
         required: true
         type: string
-    secrets:
-      DOCKER_HUB_PASSWORD:
-        required: true
-      DOCKER_HUB_USER:
-        required: true
 jobs:
   build:
     name: Build
