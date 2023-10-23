@@ -111,13 +111,8 @@ func EstablishConnection(svc MicroService, cert credentials.TransportCredentials
 		]
 	}`
 
-	// Create a context with a deadline for the initial connection
-	ctx, cancel := context.WithTimeout(context.Background(), InitialConnectionTimeout)
-	defer cancel()
-
 	// With the given context ctx, an error is thrown when the timeout is reached.
-	conn, err := grpc.DialContext(
-		ctx,
+	conn, err := grpc.Dial(
 		url,
 		grpc.WithTransportCredentials(cert),
 		grpc.WithDefaultServiceConfig(grpcServiceConfig),
@@ -161,29 +156,43 @@ Watchdog for grpc Connection that logs state changes
 Only log changes if
 - moving to TransientFailure or Shutdown
 - moving to any other state when there was an Error (this happens until the error is resolved and the state = READY)
+
+Second watchdog tries to catch initial connection errors
 */
 func ConnectionWatchdog(svc MicroService, conn *grpc.ClientConn) {
 	glog.Infof("Starting Watchdog for connection to service %s", svc)
+	hadError := false //The connection had an error in the last time, resolved by state READY
+	wasReady := false //If the connection was ready at one point
 	go func() {
-		hadError := false
 		for {
 			state := conn.GetState()
 			switch state {
 			case connectivity.Ready:
-				if hadError {
+				if !wasReady {
+					glog.Infof("Connection to %s is now in state %s", svc, state)
+				}
+				if hadError && !wasReady {
 					glog.Infof("Resolved connection to %s (State %s)", svc, state)
 					hadError = false
 				}
+				wasReady = true
 			case connectivity.TransientFailure, connectivity.Shutdown:
 				hadError = true
 				fallthrough
 			default:
-				if hadError {
+				if hadError && wasReady {
 					glog.Infof("Connection to %s is now in state %s", svc, state)
 				}
 			}
 			//glog.V(8).Infof("Connection to %s is now in state %s", svc, state) // Enable this if log levels are used correctly
 			conn.WaitForStateChange(context.Background(), state) // Wait for the next state change
+		}
+	}()
+
+	go func() {
+		time.Sleep(InitialConnectionTimeout)
+		if conn.GetState() != connectivity.Ready && !wasReady {
+			glog.Fatalf("Connection %s never came ready. Aborting after %v seconds", svc, InitialConnectionTimeout)
 		}
 	}()
 }
