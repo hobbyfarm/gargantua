@@ -28,7 +28,7 @@ jobs:
       env:
         GOOS: linux
         CGO_ENABLED: 0
-      run: go build -v -o "${{ inputs.image }}" "${{ inputs.path }}"
+      run: go build -v -o app "${{ inputs.path }}"
 
     - name: Build Release
       if: |
