@@ -1,14 +1,9 @@
 package main
 
 import (
-	"net/http"
-	"os"
 	"sync"
 
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
-
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 
 	"github.com/golang/glog"
 	authnservice "github.com/hobbyfarm/gargantua/services/authnsvc/v3/internal"
@@ -64,17 +59,7 @@ func main() {
 		if err != nil {
 			glog.Fatal(err)
 		}
-
-		r := mux.NewRouter()
-		authServer.SetupRoutes(r)
-
-		http.Handle("/", r)
-		apiPort := os.Getenv("PORT")
-		if apiPort == "" {
-			apiPort = "80"
-		}
-		glog.Info("http auth server listening on " + apiPort)
-		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(microservices.CORS_HANDLER_ALLOWED_HEADERS, microservices.CORS_HANDLER_ALLOWED_METHODS, microservices.CORS_HANDLER_ALLOWED_ORIGINS)(r)))
+		microservices.StartAPIServer(authServer)
 	}()
 
 	wg.Wait()

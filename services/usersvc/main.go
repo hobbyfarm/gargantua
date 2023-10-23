@@ -2,14 +2,11 @@ package main
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/ebauman/crder"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
@@ -91,22 +88,11 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		r := mux.NewRouter()
 		userServer, err := userservice.NewUserServer(authnClient, authrClient, rbacClient, us)
 		if err != nil {
-			glog.Fatal(err)
+			glog.Fatalf("Error creating userserver: %v", err)
 		}
-
-		userServer.SetupRoutes(r)
-		http.Handle("/", r)
-
-		apiPort := os.Getenv("PORT")
-		if apiPort == "" {
-			apiPort = "80"
-		}
-
-		glog.Info("http user server listening on " + apiPort)
-		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(microservices.CORS_HANDLER_ALLOWED_HEADERS, microservices.CORS_HANDLER_ALLOWED_METHODS, microservices.CORS_HANDLER_ALLOWED_ORIGINS)(r)))
+		microservices.StartAPIServer(userServer)
 	}()
 
 	stopCh := signals.SetupSignalHandler()

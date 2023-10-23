@@ -7,12 +7,14 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
@@ -25,7 +27,13 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// Add type MicroService based on string that is used to define constants for every service
 type MicroService string
+
+// Interface for http APIServers that share the common method "SetupRoutes".
+type APIServer interface {
+	SetupRoutes(r *mux.Router)
+}
 
 // ServiceConfig holds the configuration for a service
 type ServiceConfig struct {
@@ -106,7 +114,8 @@ func EstablishConnection(svc MicroService, cert credentials.TransportCredentials
 	ctx, cancel := context.WithTimeout(context.Background(), InitialConnectionTimeout)
 	defer cancel()
 
-	// WithBlock blocks grpc.Dial until the connection is READY
+	// WithBlock blocks grpc.DialContext until the connection is READY
+	// With the given context ctx, an error is thrown when the timeout is reached.
 	conn, err := grpc.DialContext(
 		ctx,
 		url,
@@ -185,6 +194,9 @@ func CreateGRPCServer(c credentials.TransportCredentials) *grpc.Server {
 	return grpc.NewServer(opts...)
 }
 
+/*
+Common method that starts a microservices grpc server
+*/
 func StartGRPCServer(server *grpc.Server, enableReflection bool) {
 	if enableReflection {
 		reflection.Register(server)
@@ -201,6 +213,25 @@ func StartGRPCServer(server *grpc.Server, enableReflection bool) {
 	}
 	glog.Info("grpc server listening on " + grpcPort)
 	glog.Fatal(server.Serve(l))
+}
+
+/*
+Common method that starts a microservices API server
+*/
+func StartAPIServer(server APIServer) {
+	r := mux.NewRouter()
+
+	server.SetupRoutes(r)
+	http.Handle("/", r)
+
+	apiPort := os.Getenv("PORT")
+	if apiPort == "" {
+		apiPort = "80"
+	}
+
+	glog.Infof("http server listening on port %s", apiPort)
+	glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(CORS_HANDLER_ALLOWED_HEADERS, CORS_HANDLER_ALLOWED_METHODS, CORS_HANDLER_ALLOWED_ORIGINS)(r)))
+
 }
 
 func BuildTLSClientCredentials(caPath string) (credentials.TransportCredentials, error) {

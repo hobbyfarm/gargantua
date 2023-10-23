@@ -3,14 +3,10 @@ package main
 import (
 	"context"
 	"flag"
-	"net/http"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/golang/glog"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 	rbacservice "github.com/hobbyfarm/gargantua/services/rbacsvc/v3/internal"
 	rbacinstaller "github.com/hobbyfarm/gargantua/services/rbacsvc/v3/internal/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
@@ -82,17 +78,8 @@ func main() {
 
 	go func() {
 		defer wg.Done()
-		r := mux.NewRouter()
 		rbacServer := rbacservice.NewRbacServer(rs, authnClient, authrClient)
-		rbacServer.SetupRoutes(r)
-		http.Handle("/", r)
-		apiPort := os.Getenv("PORT")
-		if apiPort == "" {
-			apiPort = "80"
-		}
-
-		glog.Info("http rbac server listening on " + apiPort)
-		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(microservices.CORS_HANDLER_ALLOWED_HEADERS, microservices.CORS_HANDLER_ALLOWED_METHODS, microservices.CORS_HANDLER_ALLOWED_ORIGINS)(r)))
+		microservices.StartAPIServer(rbacServer)
 	}()
 
 	stopCh := signals.SetupSignalHandler()
