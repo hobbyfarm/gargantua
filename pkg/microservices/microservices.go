@@ -162,8 +162,7 @@ func EstablishConnections(services []MicroService, cert credentials.TransportCre
 Watchdog for grpc Connection that logs state changes
 Only log changes if
 - moving to TransientFailure or Shutdown
-- moving to Connecting when the previous State was an Error
-- moving to Ready when there was an previous Error
+- moving to any other state when there was an Error (this happens until the error is resolved and the state = READY)
 */
 func ConnectionWatchdog(svc MicroService, conn *grpc.ClientConn) {
 	glog.Infof("Starting Watchdog for connection to service %s", svc)
