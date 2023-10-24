@@ -63,7 +63,8 @@ func WatchSettings(ctx context.Context,
 	}
 
 	for _, set := range settingList.Items {
-		settings[set.Name] = &set
+		s := set
+		settings[set.Name] = &s
 	}
 
 	informer.Hobbyfarm().V1().Settings().Informer().AddEventHandlerWithResyncPeriod(SettingsHandlers{}, 30*time.Minute)
