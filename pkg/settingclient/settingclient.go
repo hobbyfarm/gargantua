@@ -16,13 +16,13 @@ var (
 )
 
 const (
-	SettingRegistrationDisabled 				SettingName = "registration-disabled"
-	SettingRegistrationPrivacyPolicyRequired 	SettingName = "registration-privacy-policy-required"
-	SettingRegistrationPrivacyPolicyLink 		SettingName = "registration-privacy-policy-link"
-	SettingRegistrationPrivacyPolicyLinkName	SettingName = "registration-privacy-policy-linkname"
-	SettingAdminUIMOTD          				SettingName = "motd-admin-ui"
-	SettingUIMOTD               				SettingName = "motd-ui"
-	ScheduledEventRetentionTime 				SettingName = "scheduledevent-retention-time"
+	SettingRegistrationDisabled              SettingName = "registration-disabled"
+	SettingRegistrationPrivacyPolicyRequired SettingName = "registration-privacy-policy-required"
+	SettingRegistrationPrivacyPolicyLink     SettingName = "registration-privacy-policy-link"
+	SettingRegistrationPrivacyPolicyLinkName SettingName = "registration-privacy-policy-linkname"
+	SettingAdminUIMOTD                       SettingName = "motd-admin-ui"
+	SettingUIMOTD                            SettingName = "motd-ui"
+	ScheduledEventRetentionTime              SettingName = "scheduledevent-retention-time"
 )
 
 type SettingName string
@@ -60,7 +60,8 @@ func WatchSettings(ctx context.Context,
 	}
 
 	for _, set := range settingList.Items {
-		settings[set.Name] = &set
+		s := set
+		settings[set.Name] = &s
 	}
 
 	informer.Hobbyfarm().V1().Settings().Informer().AddEventHandlerWithResyncPeriod(SettingsHandlers{}, 30*time.Minute)
