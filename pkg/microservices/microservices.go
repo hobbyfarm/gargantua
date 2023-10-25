@@ -171,7 +171,7 @@ func ConnectionWatchdog(svc MicroService, conn *grpc.ClientConn) {
 				if !wasReady {
 					glog.Infof("Connection to %s is now in state %s", svc, state)
 				}
-				if hadError && !wasReady {
+				if hadError && wasReady {
 					glog.Infof("Resolved connection to %s (State %s)", svc, state)
 					hadError = false
 				}
