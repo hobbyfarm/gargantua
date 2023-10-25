@@ -47,15 +47,13 @@ docker-push:
 	docker push ${IMG}
 
 build-svc:
-	go build -v -o bin/app ./services/${SVC}/ && \
-	docker build -f ./cicd/Dockerfile -t ${IMG} bin
+	docker build -f ./services/${SVC}/Dockerfile -t ${IMG} bin
 
 push-svc: build-svc
 	docker push ${IMG}
 
 build-gargantua:
-	go build -v -o bin/app ./ && \
-	docker build -f ./cicd/Dockerfile -t ${IMG} bin
+	docker build -t ${IMG} .
 
 push-gargantua: build-gargantua
 	docker push ${IMG}
