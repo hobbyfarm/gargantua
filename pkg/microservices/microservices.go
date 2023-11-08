@@ -75,7 +75,7 @@ func (svc MicroService) getGRPCUrl() string {
 	// Builds the connection string for the headless service.
 	// Service for a grpc microservice has to be named <service>-grpc and must be headless (set .spec.ClusterIP: None)
 	// Most important is the dns:/// part that leads the grpc resolver to discover multiple addresses, otherwise only the first address is used
-	return fmt.Sprintf("dns:///%s-grpc.%s.svc.cluster.local:%s", string(svc), util.GetReleaseNamespace(), defaultGrpcPort)
+	return fmt.Sprintf("dns:///%s-grpc.%s.svc:%s", string(svc), util.GetReleaseNamespace(), defaultGrpcPort)
 }
 
 /*
