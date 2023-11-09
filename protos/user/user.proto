@@ -12,6 +12,7 @@ service UserSvc {
     rpc GetUserById (UserId) returns (User);
     rpc GetUserByEmail (GetUserByEmailRequest) returns (User);
     rpc UpdateUser (User) returns (User);
+    rpc UpdateAccessCodes (UpdateAccessCodesRequest) returns (User);
     rpc DeleteUser (UserId) returns (google.protobuf.Empty);
     rpc ListUser (google.protobuf.Empty) returns (ListUsersResponse);
 }
@@ -19,6 +20,11 @@ service UserSvc {
 message CreateUserRequest {
     string email = 1;
     string password = 2;
+}
+
+message UpdateAccessCodesRequest {
+    string id = 1;
+    repeated string access_codes = 2;
 }
 
 message UserId {

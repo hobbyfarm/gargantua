@@ -279,6 +279,61 @@ func (u *GrpcUserServer) UpdateUser(ctx context.Context, userRequest *userProto.
 	return userRequest, nil
 }
 
+func (u *GrpcUserServer) UpdateAccessCodes(ctx context.Context, updateAccessCodesRequest *userProto.UpdateAccessCodesRequest) (*userProto.User, error) {
+	id := updateAccessCodesRequest.GetId()
+	if id == "" {
+		newErr := status.Newf(
+			codes.InvalidArgument,
+			"no ID passed in",
+		)
+		newErr, wde := newErr.WithDetails(updateAccessCodesRequest)
+		if wde != nil {
+			return &userProto.User{}, wde
+		}
+		return &userProto.User{}, newErr.Err()
+	}
+
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		user, err := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Get(u.ctx, id, metav1.GetOptions{})
+		if err != nil {
+			newErr := status.Newf(
+				codes.Internal,
+				"error while retrieving user %s",
+				updateAccessCodesRequest.GetId(),
+			)
+			newErr, wde := newErr.WithDetails(updateAccessCodesRequest)
+			if wde != nil {
+				return wde
+			}
+			glog.Error(err)
+			return newErr.Err()
+		}
+
+		if updateAccessCodesRequest.GetAccessCodes() != nil {
+			user.Spec.AccessCodes = updateAccessCodesRequest.GetAccessCodes()
+		} else {
+			user.Spec.AccessCodes = make([]string, 0)
+		}
+
+		_, updateErr := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Update(u.ctx, user, metav1.UpdateOptions{})
+		return updateErr
+	})
+
+	if retryErr != nil {
+		newErr := status.Newf(
+			codes.Internal,
+			"error attempting to update",
+		)
+		newErr, wde := newErr.WithDetails(updateAccessCodesRequest)
+		if wde != nil {
+			return &userProto.User{}, wde
+		}
+		return &userProto.User{}, newErr.Err()
+	}
+
+	return &userProto.User{}, nil
+}
+
 func (u *GrpcUserServer) GetUserByEmail(c context.Context, gur *userProto.GetUserByEmailRequest) (*userProto.User, error) {
 	if len(gur.GetEmail()) == 0 {
 		newErr := status.Newf(

@@ -282,12 +282,12 @@ func (a AuthServer) RemoveAccessCode(user *userProto.User, accessCode string, ct
 	// Important: user.GetPassword() contains the hashed password. Hence, it can and should not be updated!
 	// Otherwise the password would be updated to the current password hash value.
 	// To not update the password, we therefore need to provide an empty string or a user object without password.
-	user = &userProto.User{
+	updateAccessCode := &userProto.UpdateAccessCodesRequest{
 		Id:          user.Id,
 		AccessCodes: newAccessCodes,
 	}
 
-	_, err := a.userClient.UpdateUser(ctx, user)
+	_, err := a.userClient.UpdateAccessCodes(ctx, updateAccessCode)
 
 	if err != nil {
 		return err

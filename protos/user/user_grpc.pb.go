@@ -20,12 +20,13 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	UserSvc_CreateUser_FullMethodName     = "/user.UserSvc/CreateUser"
-	UserSvc_GetUserById_FullMethodName    = "/user.UserSvc/GetUserById"
-	UserSvc_GetUserByEmail_FullMethodName = "/user.UserSvc/GetUserByEmail"
-	UserSvc_UpdateUser_FullMethodName     = "/user.UserSvc/UpdateUser"
-	UserSvc_DeleteUser_FullMethodName     = "/user.UserSvc/DeleteUser"
-	UserSvc_ListUser_FullMethodName       = "/user.UserSvc/ListUser"
+	UserSvc_CreateUser_FullMethodName        = "/user.UserSvc/CreateUser"
+	UserSvc_GetUserById_FullMethodName       = "/user.UserSvc/GetUserById"
+	UserSvc_GetUserByEmail_FullMethodName    = "/user.UserSvc/GetUserByEmail"
+	UserSvc_UpdateUser_FullMethodName        = "/user.UserSvc/UpdateUser"
+	UserSvc_UpdateAccessCodes_FullMethodName = "/user.UserSvc/UpdateAccessCodes"
+	UserSvc_DeleteUser_FullMethodName        = "/user.UserSvc/DeleteUser"
+	UserSvc_ListUser_FullMethodName          = "/user.UserSvc/ListUser"
 )
 
 // UserSvcClient is the client API for UserSvc service.
@@ -36,6 +37,7 @@ type UserSvcClient interface {
 	GetUserById(ctx context.Context, in *UserId, opts ...grpc.CallOption) (*User, error)
 	GetUserByEmail(ctx context.Context, in *GetUserByEmailRequest, opts ...grpc.CallOption) (*User, error)
 	UpdateUser(ctx context.Context, in *User, opts ...grpc.CallOption) (*User, error)
+	UpdateAccessCodes(ctx context.Context, in *UpdateAccessCodesRequest, opts ...grpc.CallOption) (*User, error)
 	DeleteUser(ctx context.Context, in *UserId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListUser(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListUsersResponse, error)
 }
@@ -84,6 +86,15 @@ func (c *userSvcClient) UpdateUser(ctx context.Context, in *User, opts ...grpc.C
 	return out, nil
 }
 
+func (c *userSvcClient) UpdateAccessCodes(ctx context.Context, in *UpdateAccessCodesRequest, opts ...grpc.CallOption) (*User, error) {
+	out := new(User)
+	err := c.cc.Invoke(ctx, UserSvc_UpdateAccessCodes_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userSvcClient) DeleteUser(ctx context.Context, in *UserId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, UserSvc_DeleteUser_FullMethodName, in, out, opts...)
@@ -110,6 +121,7 @@ type UserSvcServer interface {
 	GetUserById(context.Context, *UserId) (*User, error)
 	GetUserByEmail(context.Context, *GetUserByEmailRequest) (*User, error)
 	UpdateUser(context.Context, *User) (*User, error)
+	UpdateAccessCodes(context.Context, *UpdateAccessCodesRequest) (*User, error)
 	DeleteUser(context.Context, *UserId) (*emptypb.Empty, error)
 	ListUser(context.Context, *emptypb.Empty) (*ListUsersResponse, error)
 	mustEmbedUnimplementedUserSvcServer()
@@ -130,6 +142,9 @@ func (UnimplementedUserSvcServer) GetUserByEmail(context.Context, *GetUserByEmai
 }
 func (UnimplementedUserSvcServer) UpdateUser(context.Context, *User) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateUser not implemented")
+}
+func (UnimplementedUserSvcServer) UpdateAccessCodes(context.Context, *UpdateAccessCodesRequest) (*User, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateAccessCodes not implemented")
 }
 func (UnimplementedUserSvcServer) DeleteUser(context.Context, *UserId) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteUser not implemented")
@@ -222,6 +237,24 @@ func _UserSvc_UpdateUser_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserSvc_UpdateAccessCodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateAccessCodesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserSvcServer).UpdateAccessCodes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserSvc_UpdateAccessCodes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserSvcServer).UpdateAccessCodes(ctx, req.(*UpdateAccessCodesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserSvc_DeleteUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UserId)
 	if err := dec(in); err != nil {
@@ -280,6 +313,10 @@ var UserSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateUser",
 			Handler:    _UserSvc_UpdateUser_Handler,
+		},
+		{
+			MethodName: "UpdateAccessCodes",
+			Handler:    _UserSvc_UpdateAccessCodes_Handler,
 		},
 		{
 			MethodName: "DeleteUser",
