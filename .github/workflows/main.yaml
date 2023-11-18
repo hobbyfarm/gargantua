@@ -1,5 +1,30 @@
 name: Main
 on: [push, pull_request]
+env:
+  should_push_image: |-
+    ${{
+      github.event_name == 'push' && (
+        startsWith(github.event.ref, 'refs/tags/')
+        || endsWith(github.event.ref, '/master')
+      )
+    }}
+
+  build_and_cache: |-
+    build_and_cache() {
+      arch="$1"
+      if ! docker buildx build \
+        --platform linux/$arch \
+        --cache-from type=local,src=/home/runner/tmp/$arch \
+        --cache-to type=local,dest=/home/runner/tmp/$arch \
+        --tag ${GITHUB_REPOSITORY,,}:$arch \
+        --file Dockerfile . ;
+      then
+        echo "::error::Docker-Build Error. $arch Cache will be deleted now!"
+        rm -rf /home/runner/tmp/$arch/
+        docker buildx prune -a -f
+      fi
+    }
+
 jobs:
   build:
     name: Build
@@ -9,33 +34,16 @@ jobs:
     - name: Checkout
       uses: actions/checkout@master
 
-    - uses: actions/setup-go@v3
-      name: go-cache
+    - name: Update cache on every commit
+      uses: actions/cache@v3
       with:
-        go-version: '1.21'
-        check-latest: false
-        cache: true
-
-    - name: Build
-      env:
-        GOOS: linux
-        CGO_ENABLED: 0
-      run: go build -v -o gargantua
-
-    - name: Build Release
-      if: |
-        github.event_name == 'push' && (
-          startsWith(github.event.ref, 'refs/tags/')
-          || endsWith(github.event.ref, '/master')
-        )
-      run: docker build -t hobbyfarm/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} -f cicd/Dockerfile .
+        path: /home/runner/tmp
+        key: docker-${{ github.run_id }}
+        restore-keys: |
+          docker-
 
     - name: Compute Docker Tag
-      if: |
-        github.event_name == 'push' && (
-          startsWith(github.event.ref, 'refs/tags/')
-          || endsWith(github.event.ref, '/master')
-        )
+      if: fromJSON(env.should_push_image)
       id: compute_docker_tag
       run: |
         tag=${GITHUB_REF#refs/tags/}
@@ -51,52 +59,41 @@ jobs:
           exit 1
         fi
 
-    - name: Docker Login
-      if: |
-        github.event_name == 'push' && (
-          startsWith(github.event.ref, 'refs/tags/')
-          || endsWith(github.event.ref, '/master')
-        )
+    - name: Docker registry login
+      if: fromJSON(env.should_push_image)
       run: |
         echo "${{ secrets.DOCKER_HUB_PASSWORD }}" \
           | docker login -u "${{ secrets.DOCKER_HUB_USER }}" --password-stdin
 
-    - name: Docker Tag
-      if: |
-        github.event_name == 'push' && (
-          startsWith(github.event.ref, 'refs/tags/')
-          || endsWith(github.event.ref, '/master')
-        )
+    - name: Docker env prep
       run: |
-        docker tag \
-          hobbyfarm/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} \
-          hobbyfarm/gargantua:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }}
+        docker buildx create --use
+        docker buildx inspect --bootstrap
 
-    - name: Docker Push
-      if: |
-        github.event_name == 'push' && (
-          startsWith(github.event.ref, 'refs/tags/')
-          || endsWith(github.event.ref, '/master')
-        )
+    - name: Fill AMD64 cache
       run: |
-        docker push \
-          hobbyfarm/gargantua:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }}
+        ${{ env.build_and_cache }} 
+        build_and_cache amd64
+    - name: Fill ARM64 cache
+      run: |
+        ${{ env.build_and_cache }} 
+        build_and_cache arm64
 
-    - name: Docker Tag Latest
-      if: |
-        github.event_name == 'push' && (
-          startsWith(github.event.ref, 'refs/tags/')
-        )
+    - name: Docker build (from cache) and push
+      if: fromJSON(env.should_push_image)
       run: |
-        docker tag \
-          hobbyfarm/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} \
-          hobbyfarm/gargantua:latest
+        docker buildx build --push \
+          --platform linux/amd64,linux/arm64 \
+          --tag ${GITHUB_REPOSITORY,,}:${{ steps.compute_docker_tag.outputs.DOCKER_TAG }} \
+          --file Dockerfile .
 
-    - name: Docker Push Latest
+    - name: Docker build (from cache) & push latest
       if: |
         github.event_name == 'push' && (
           startsWith(github.event.ref, 'refs/tags/')
         )
       run: |
-        docker push \
-          hobbyfarm/gargantua:latest
+        docker buildx build --push \
+          --platform linux/amd64,linux/arm64 \
+          --tag ${GITHUB_REPOSITORY,,}:latest \
+          --file Dockerfile .
