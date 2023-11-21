@@ -12,8 +12,10 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/v3/pkg/settingclient"
+	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/setting"
+	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -23,12 +25,11 @@ import (
 )
 
 type ScheduledEventController struct {
-	hfClientSet hfClientset.Interface
-
-	//seWorkqueue workqueue.RateLimitingInterface
-	seWorkqueue workqueue.DelayingInterface
-	seSynced    cache.InformerSynced
-	ctx         context.Context
+	hfClientSet   hfClientset.Interface
+	seWorkqueue   workqueue.DelayingInterface
+	seSynced      cache.InformerSynced
+	ctx           context.Context
+	settingClient setting.SettingSvcClient
 }
 
 var baseNameScheduledPrefix string
@@ -55,10 +56,11 @@ func init() {
 	}
 }
 
-func NewScheduledEventController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*ScheduledEventController, error) {
+func NewScheduledEventController(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context, settingClient setting.SettingSvcClient) (*ScheduledEventController, error) {
 	seController := ScheduledEventController{}
 	seController.ctx = ctx
 	seController.hfClientSet = hfClientSet
+	seController.settingClient = settingClient
 	seController.seSynced = hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer().HasSynced
 
 	//seController.seWorkqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ScheduledEvent")
@@ -618,12 +620,12 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 
 	if endTime.Before(now) && se.Status.Finished {
 		// scheduled event is finished and nothing to do
+		setting, err := s.settingClient.GetSettingValue(s.ctx, &settingProto.Id{Name: string(settingUtil.ScheduledEventRetentionTime)})
 
-		if set := settingclient.GetSetting(settingclient.ScheduledEventRetentionTime); set == nil {
-			// Could not get retention time setting. Just keep the SE
-			return fmt.Errorf("Error retreiving retention Time setting")
+		if set, ok := setting.GetValue().(*settingProto.SettingValue_Int64Value); err != nil || !ok || setting == nil {
+			return fmt.Errorf("error retreiving retention Time setting")
 		} else {
-			retentionTime := endTime.Add(time.Hour * time.Duration(set.(int)))
+			retentionTime := endTime.Add(time.Hour * time.Duration(set.Int64Value))
 			if retentionTime.Before(now) {
 				// Really finish the ScheduledEvent
 				return s.deleteScheduledEvent(se)

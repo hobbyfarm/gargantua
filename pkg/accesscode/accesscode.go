@@ -27,10 +27,6 @@ func NewAccessCodeClient(hfClientset hfClientset.Interface, ctx context.Context)
 	return &acc, nil
 }
 
-func (acc AccessCodeClient) GetSomething(code string) error {
-	return nil
-}
-
 func (acc AccessCodeClient) GetAccessCodesWithOTACs(codes []string) ([]hfv1.AccessCode, error) {
 	otacReq, err := labels.NewRequirement(util.OneTimeAccessCodeLabel, selection.In, codes)
 

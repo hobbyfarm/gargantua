@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package rbac;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/rbac";
+
+import "authr/authr.proto";
+import "user/user.proto";
+import "google/protobuf/empty.proto";
+
+// Service definition
+service RbacSvc {
+    rpc Grants (GrantRequest) returns (authr.AuthRResponse);
+    rpc GetAccessSet (user.UserId) returns (AccessSet);
+    rpc GetHobbyfarmRoleBindings (user.UserId) returns (RoleBindings);
+    // Resource oriented RPCs for roles:
+    rpc CreateRole (Role) returns (google.protobuf.Empty);
+    rpc GetRole (ResourceId) returns (Role);
+    rpc UpdateRole (Role) returns (google.protobuf.Empty);
+    rpc DeleteRole (ResourceId) returns (google.protobuf.Empty);
+    rpc ListRole (google.protobuf.Empty) returns (Roles);
+    // Resource oriented RPCs for rolebindings:
+    rpc CreateRolebinding (RoleBinding) returns (google.protobuf.Empty);
+    rpc GetRolebinding (ResourceId) returns (RoleBinding);
+    rpc UpdateRolebinding (RoleBinding) returns (google.protobuf.Empty);
+    rpc DeleteRolebinding (ResourceId) returns (google.protobuf.Empty);
+    rpc ListRolebinding (google.protobuf.Empty) returns (RoleBindings);
+}
+
+message GrantRequest {
+    string userName = 1;
+    authr.Permission permission = 2;
+}
+
+message AccessSet {
+    string subject = 1;
+    map<string, bool> access = 2;
+}
+
+message RoleBindings {
+    repeated RoleBinding rolebindings = 1;
+}
+
+message RoleBinding {
+    string name = 1;
+    string role = 2;
+    repeated Subject subjects = 3;
+}
+
+message Subject {
+    string kind = 1;
+    string name = 2;
+}
+
+message ResourceId {
+    string id = 1;
+}
+
+message Role {
+    string name = 1;
+    repeated Rule rules = 2;
+}
+
+message Rule {
+    repeated string verbs = 1;
+    repeated string apiGroups = 2;
+    repeated string resources = 3;
+}
+
+message Roles {
+    repeated Role roles = 1;
+}

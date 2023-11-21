@@ -7,17 +7,19 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseclient"
@@ -29,11 +31,12 @@ import (
 
 const (
 	idIndex        = "scenarioserver.hobbyfarm.io/id-index"
-	resourcePlural = "scenarios"
+	resourcePlural = rbac.ResourcePluralScenario
 )
 
 type ScenarioServer struct {
-	auth            *authclient.AuthClient
+	authnClient     authn.AuthNClient
+	authrClient     authr.AuthRClient
 	hfClientSet     hfClientset.Interface
 	acClient        *accesscode.AccessCodeClient
 	scenarioIndexer cache.Indexer
@@ -61,13 +64,15 @@ type AdminPreparedScenario struct {
 	hfv1.ScenarioSpec
 }
 
-func NewScenarioServer(authClient *authclient.AuthClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context, courseClient *courseclient.CourseClient) (*ScenarioServer, error) {
+func NewScenarioServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context, courseClient *courseclient.CourseClient) (*ScenarioServer, error) {
 	scenario := ScenarioServer{}
+
+	scenario.authnClient = authnClient
+	scenario.authrClient = authrClient
 
 	scenario.hfClientSet = hfClientset
 	scenario.acClient = acClient
 	scenario.courseClient = courseClient
-	scenario.auth = authClient
 	inf := hfInformerFactory.Hobbyfarm().V1().Scenarios().Informer()
 	indexers := map[string]cache.IndexFunc{idIndex: idIndexer}
 	err := inf.AddIndexers(indexers)
@@ -132,7 +137,7 @@ func (s ScenarioServer) getPrintableScenarioIds(accessCodes []string) []string {
 		glog.Errorf("error retrieving access codes %v", err)
 		return []string{}
 	}
-	for _, accessCode  := range accessCodeObjs {
+	for _, accessCode := range accessCodeObjs {
 		if !accessCode.Spec.Printable {
 			continue
 		}
@@ -174,7 +179,7 @@ func (s ScenarioServer) getPreparedScenarioById(id string, accessCodes []string)
 }
 
 func (s ScenarioServer) GetScenarioFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := s.auth.AuthN(w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get scenarios")
 		return
@@ -189,7 +194,7 @@ func (s ScenarioServer) GetScenarioFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	scenario, err := s.getPreparedScenarioById(scenario_id, user.Spec.AccessCodes)
+	scenario, err := s.getPreparedScenarioById(scenario_id, user.AccessCodes)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf("scenario %s not found", vars["scenario_id"]))
 		return
@@ -202,8 +207,15 @@ func (s ScenarioServer) GetScenarioFunc(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s ScenarioServer) AdminGetFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get Scenario")
 		return
 	}
@@ -237,8 +249,15 @@ func (s ScenarioServer) AdminGetFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ScenarioServer) AdminDeleteFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbDelete), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbDelete))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete Scenario")
 		return
 	}
@@ -329,7 +348,7 @@ func (s ScenarioServer) AdminDeleteFunc(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s ScenarioServer) GetScenarioStepFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthN(w, r)
+	_, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get scenario steps")
 		return
@@ -356,7 +375,7 @@ func (s ScenarioServer) GetScenarioStepFunc(w http.ResponseWriter, r *http.Reque
 }
 
 func (s ScenarioServer) ListScenariosForAccessCode(w http.ResponseWriter, r *http.Request) {
-	user, err := s.auth.AuthN(w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios")
 		return
@@ -370,7 +389,7 @@ func (s ScenarioServer) ListScenariosForAccessCode(w http.ResponseWriter, r *htt
 		return
 	}
 
-	if !util.StringInSlice(accessCode, user.Spec.AccessCodes) {
+	if !util.StringInSlice(accessCode, user.AccessCodes) {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios for this AccessCode")
 		return
 	}
@@ -424,8 +443,15 @@ func (s ScenarioServer) ListByCategoryFunc(w http.ResponseWriter, r *http.Reques
 }
 
 func (s ScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request, category string) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios")
 		return
 	}
@@ -462,8 +488,15 @@ func (s ScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request, categor
 }
 
 func (s ScenarioServer) ListCategories(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list categories")
 		return
 	}
@@ -497,8 +530,15 @@ func (s ScenarioServer) ListCategories(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ScenarioServer) AdminPrintFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbGet), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get Scenario")
 		return
 	}
@@ -556,7 +596,7 @@ func (s ScenarioServer) AdminPrintFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ScenarioServer) PrintFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := s.auth.AuthN(w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get Scenario")
 		return
@@ -571,7 +611,7 @@ func (s ScenarioServer) PrintFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	printableScenarioIds := s.getPrintableScenarioIds(user.Spec.AccessCodes)
+	printableScenarioIds := s.getPrintableScenarioIds(user.AccessCodes)
 
 	if !util.StringInSlice(id, printableScenarioIds) {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get this Scenario")
@@ -622,12 +662,18 @@ func (s ScenarioServer) PrintFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ScenarioServer) CopyFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(
-		rbacclient.RbacRequest().
-			HobbyfarmPermission(resourcePlural, rbacclient.VerbCreate).
-			HobbyfarmPermission(resourcePlural, rbacclient.VerbGet),
-		w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.Authorize(r, s.authrClient, impersonatedUserId, []*authr.Permission{
+		rbac.HobbyfarmPermission(resourcePlural, rbac.VerbCreate),
+		rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet),
+	}, rbac.OperatorAND)
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create scenarios")
 		return
 	}
@@ -676,8 +722,15 @@ func (s ScenarioServer) CopyFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbCreate), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbCreate))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create scenarios")
 		return
 	}
@@ -782,8 +835,15 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbUpdate), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scenarios")
 		return
 	}

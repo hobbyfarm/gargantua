@@ -2,27 +2,18 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"flag"
-	"github.com/hobbyfarm/gargantua/v3/pkg/preinstall"
-	"github.com/hobbyfarm/gargantua/v3/pkg/settingclient"
-	"github.com/hobbyfarm/gargantua/v3/pkg/settingserver"
-	"github.com/hobbyfarm/gargantua/v3/pkg/webhook/validation"
 	"os"
 
 	"github.com/ebauman/crder"
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
-	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
-	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
-	"github.com/hobbyfarm/gargantua/v3/pkg/rbacserver"
-	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
-	"github.com/hobbyfarm/gargantua/v3/pkg/webhook/conversion"
-	"github.com/hobbyfarm/gargantua/v3/pkg/webhook/conversion/user"
+	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	"github.com/hobbyfarm/gargantua/v3/protos/setting"
 	"golang.org/x/sync/errgroup"
-	apiextensions "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
 
 	"github.com/hobbyfarm/gargantua/v3/pkg/scheduledeventserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/vmtemplateserver"
@@ -35,7 +26,6 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
-	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
 	"github.com/hobbyfarm/gargantua/v3/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
@@ -47,20 +37,18 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/environmentserver"
-	"github.com/hobbyfarm/gargantua/v3/pkg/predefinedserviceserver"
+	predefinedserviceserver "github.com/hobbyfarm/gargantua/v3/pkg/predefinedserviceserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/progressserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/scenarioclient"
 	"github.com/hobbyfarm/gargantua/v3/pkg/scenarioserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/sessionserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/shell"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
-	"github.com/hobbyfarm/gargantua/v3/pkg/userserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"github.com/hobbyfarm/gargantua/v3/pkg/vmclaimserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/vmclient"
 	"github.com/hobbyfarm/gargantua/v3/pkg/vmserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/vmsetserver"
-	wranglerRbac "github.com/rancher/wrangler/pkg/generated/controllers/rbac"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -77,10 +65,7 @@ var (
 	localKubeconfig    string
 	disableControllers bool
 	shellServer        bool
-	installRBACRoles   bool
-	webhookTLSCert     string
-	webhookTLSKey      string
-	webhookTLSCA       string
+	tlsCA              string
 )
 
 func init() {
@@ -88,10 +73,7 @@ func init() {
 	flag.StringVar(&localMasterUrl, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.BoolVar(&disableControllers, "disablecontrollers", false, "Disable the controllers")
 	flag.BoolVar(&shellServer, "shellserver", false, "Be a shell server")
-	flag.BoolVar(&installRBACRoles, "installrbacroles", false, "Install default RBAC Roles")
-	flag.StringVar(&webhookTLSCert, "webhook-tls-cert", "/webhook-secret/tls.crt", "Path to TLS certificate for webhook server")
-	flag.StringVar(&webhookTLSKey, "webhook-tls-key", "/webhook-secret/tls.key", "Path to TLS key for webhook server")
-	flag.StringVar(&webhookTLSCA, "webhook-tls-ca", "/webhook-secret/ca", "Path to CA cert for webhook server")
+	flag.StringVar(&tlsCA, "tls-ca", "/etc/ssl/certs/ca.crt", "Path to CA cert for auth servers")
 }
 
 func main() {
@@ -115,17 +97,8 @@ func main() {
 
 	namespace := util.GetReleaseNamespace()
 
-	var ca string
 	if !shellServer {
-		ca, err := os.ReadFile(webhookTLSCA)
-		if err != nil {
-			glog.Fatalf("error reading ca certificate: %s", err.Error())
-		}
-
-		crds := crd.GenerateCRDs(string(ca), crd.ServiceReference{
-			Namespace: namespace,
-			Name:      "hobbyfarm-webhook",
-		})
+		crds := crd.GenerateCRDs()
 
 		glog.Info("installing/updating CRDs")
 		err = crder.InstallUpdateCRDs(cfg, crds...)
@@ -133,15 +106,6 @@ func main() {
 			glog.Fatalf("failed installing/updating crds: %s", err.Error())
 		}
 		glog.Info("finished installing/updating CRDs")
-	}
-
-	// self manage default rbac roles
-	if installRBACRoles {
-		err = rbac.Create(ctx, cfg)
-		if err != nil {
-			glog.Fatalf("Error installing RBAC roles: %s", err.Error())
-		}
-		glog.V(9).Infof("Successfully installed RBAC Roles")
 	}
 
 	cfg.QPS = ClientGoQPS
@@ -157,39 +121,39 @@ func main() {
 		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 
-	apiExtensionsClient, err := apiextensions.NewForConfig(cfg)
-	if err != nil {
-		glog.Fatalf("error building apiextensions clientset: %s", err.Error())
-	}
-
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 	kubeInformerFactory := informers.NewSharedInformerFactoryWithOptions(kubeClient, time.Second*30, informers.WithNamespace(namespace))
 
-	rbacControllerFactory := wranglerRbac.NewFactoryFromConfigOrDie(cfg)
-
-	rbacClient, err := rbacclient.NewRbacClient(namespace, kubeInformerFactory)
+	cert, err := microservices.BuildTLSClientCredentials(tlsCA)
 	if err != nil {
-		glog.Fatal(err)
+		glog.Fatalf("error building cert: %v", err)
 	}
 
-	authClient, err := authclient.NewAuthClient(hfClient, hfInformerFactory, rbacClient)
-	if err != nil {
-		glog.Fatal(err)
+	services := []microservices.MicroService{
+		microservices.Setting,
+		microservices.AuthN,
+		microservices.AuthR,
+	}
+	connections := microservices.EstablishConnections(services, cert)
+	for _, conn := range connections {
+		defer conn.Close()
 	}
 
-	rbacServer := rbacserver.NewRbacServer(kubeClient, authClient, rbacClient)
+	settingClient := setting.NewSettingSvcClient(connections[microservices.Setting])
+	authnClient := authn.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authr.NewAuthRClient(connections[microservices.AuthR])
 
 	acClient, err := accesscode.NewAccessCodeClient(hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	authServer, err := authserver.NewAuthServer(authClient, hfClient, ctx, acClient, rbacClient)
+	authServer, err := authserver.NewAuthServer(authnClient, hfClient, ctx, acClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	courseServer, err := courseserver.NewCourseServer(authClient, acClient, hfClient, hfInformerFactory, ctx)
+	courseServer, err := courseserver.NewCourseServer(authnClient, authrClient, acClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -199,7 +163,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	scenarioServer, err := scenarioserver.NewScenarioServer(authClient, acClient, hfClient, hfInformerFactory, ctx, courseClient)
+	scenarioServer, err := scenarioserver.NewScenarioServer(authnClient, authrClient, acClient, hfClient, hfInformerFactory, ctx, courseClient)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -209,17 +173,17 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	sessionServer, err := sessionserver.NewSessionServer(authClient, acClient, scenarioClient, courseClient, hfClient, hfInformerFactory, ctx)
+	sessionServer, err := sessionserver.NewSessionServer(authnClient, authrClient, acClient, scenarioClient, courseClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	vmServer, err := vmserver.NewVMServer(authClient, hfClient, hfInformerFactory, ctx)
+	vmServer, err := vmserver.NewVMServer(authnClient, authrClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	vmSetServer, err := vmsetserver.NewVMSetServer(authClient, hfClient, hfInformerFactory, ctx)
+	vmSetServer, err := vmsetserver.NewVMSetServer(authnClient, authrClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
@@ -229,59 +193,47 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	vmClaimServer, err := vmclaimserver.NewVMClaimServer(authClient, hfClient, hfInformerFactory)
+	vmClaimServer, err := vmclaimserver.NewVMClaimServer(authnClient, authrClient, hfClient, hfInformerFactory)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	shellProxy, err := shell.NewShellProxy(authClient, vmClient, hfClient, kubeClient, ctx)
+	shellProxy, err := shell.NewShellProxy(authnClient, authrClient, vmClient, hfClient, kubeClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	environmentServer, err := environmentserver.NewEnvironmentServer(authClient, hfClient, ctx)
+	environmentServer, err := environmentserver.NewEnvironmentServer(authnClient, authrClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	scheduledEventServer, err := scheduledeventserver.NewScheduledEventServer(authClient, hfClient, ctx)
+	scheduledEventServer, err := scheduledeventserver.NewScheduledEventServer(authnClient, authrClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	userServer, err := userserver.NewUserServer(authClient, hfClient, ctx)
+	vmTemplateServer, err := vmtemplateserver.NewVirtualMachineTemplateServer(authnClient, authrClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	vmTemplateServer, err := vmtemplateserver.NewVirtualMachineTemplateServer(authClient, hfClient, ctx)
+	predefinedServiceServer, err := predefinedserviceserver.NewPredefinedServiceServer(authnClient, authrClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
 
-	predefinedServiceServer, err := predefinedservicesserver.NewPredefinedServiceServer(authClient, hfClient, ctx)
+	progressServer, err := progressserver.NewProgressServer(authnClient, authrClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
-
-	progressServer, err := progressserver.NewProgressServer(authClient, hfClient, ctx)
-	if err != nil {
-		glog.Fatal(err)
-	}
-
-	settingServer, err := settingserver.NewSettingServer(hfClient, authClient, ctx)
-	if err != nil {
-		glog.Fatal(err)
-	}
-
-	settingclient.WatchSettings(ctx, hfClient, hfInformerFactory)
 
 	if shellServer {
 		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
 	} else {
-		sessionServer.SetupRoutes(r)
 		authServer.SetupRoutes(r)
+		sessionServer.SetupRoutes(r)
 		courseServer.SetupRoutes(r)
 		scenarioServer.SetupRoutes(r)
 		vmServer.SetupRoutes(r)
@@ -290,12 +242,9 @@ func main() {
 		vmClaimServer.SetupRoutes(r)
 		environmentServer.SetupRoutes(r)
 		scheduledEventServer.SetupRoutes(r)
-		userServer.SetupRoutes(r)
 		vmTemplateServer.SetupRoutes(r)
 		progressServer.SetupRoutes(r)
-		rbacServer.SetupRoutes(r)
 		predefinedServiceServer.SetupRoutes(r)
-		settingServer.SetupRoutes(r)
 	}
 
 	corsHeaders := handlers.AllowedHeaders([]string{"Authorization", "Content-Type"})
@@ -321,47 +270,6 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	// shell server does not serve webhook endpoint, so don't start it
-	if !shellServer {
-		user.Init()
-		webhookRouter := mux.NewRouter()
-		conversion.New(webhookRouter, apiExtensionsClient, string(ca))
-
-		validationEndpoints := webhookRouter.PathPrefix("/validation").Subrouter()
-		validation.SetupValidationServer(hfClient, validationEndpoints)
-
-		webhookPort := os.Getenv("WEBHOOK_PORT")
-		if webhookPort == "" {
-			webhookPort = "444"
-		}
-		glog.Info("webhook listening on " + webhookPort)
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			cert, err := tls2.ReadKeyPair(webhookTLSCert, webhookTLSKey)
-			if err != nil {
-				glog.Fatalf("error generating x509keypair from conversion cert and key: %s", err)
-			}
-
-			server := http.Server{
-				TLSConfig: &tls.Config{
-					Certificates: []tls.Certificate{*cert},
-				},
-				Addr:    ":" + webhookPort,
-				Handler: handlers.CORS(corsHeaders, corsOrigins, corsMethods)(webhookRouter),
-			}
-
-			glog.Fatal(server.ListenAndServeTLS("", ""))
-		}()
-
-		if !shellServer {
-			// install resources
-			preinstall.Preinstall(ctx, hfClient)
-		}
-	}
-
 	wg.Add(1)
 
 	http.Handle("/", r)
@@ -378,7 +286,7 @@ func main() {
 	}()
 
 	if !disableControllers {
-		lock, err := getLock("controller-manager", cfg)
+		lock, err := util.GetLock("controller-manager-gargantua", cfg)
 		if err != nil {
 			glog.Fatal(err)
 		}
@@ -390,7 +298,7 @@ func main() {
 			RetryPeriod:     2 * time.Second,
 			Callbacks: leaderelection.LeaderCallbacks{
 				OnStartedLeading: func(c context.Context) {
-					err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, kubeInformerFactory, rbacControllerFactory, acClient, ctx, stopCh)
+					err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, kubeInformerFactory, acClient, settingClient, ctx, stopCh)
 					if err != nil {
 						glog.Fatal(err)
 					}
@@ -420,8 +328,8 @@ func main() {
 }
 
 func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientset.Clientset,
-	hfInformerFactory hfInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, rbacControllerFactory *wranglerRbac.Factory, acClient *accesscode.AccessCodeClient,
-	ctx context.Context, stopCh <-chan struct{}) error {
+	hfInformerFactory hfInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, acClient *accesscode.AccessCodeClient,
+	settingClient setting.SettingSvcClient, ctx context.Context, stopCh <-chan struct{}) error {
 
 	g, gctx := errgroup.WithContext(ctx)
 	glog.V(2).Infof("Starting controllers")
@@ -429,7 +337,7 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	if err != nil {
 		return err
 	}
-	scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory, gctx)
+	scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory, gctx, settingClient)
 	if err != nil {
 		return err
 	}
@@ -466,10 +374,6 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 		return vmSetController.Run(stopCh)
 	})
 
-	g.Go(func() error {
-		return rbacControllerFactory.Start(ctx, 1)
-	})
-
 	hfInformerFactory.Start(stopCh)
 	kubeInformerFactory.Start(stopCh)
 
@@ -479,14 +383,4 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	}
 
 	return nil
-}
-
-func getLock(lockName string, cfg *rest.Config) (resourcelock.Interface, error) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		return nil, err
-	}
-
-	ns := util.GetReleaseNamespace()
-	return resourcelock.NewFromKubeconfig(resourcelock.ConfigMapsLeasesResourceLock, ns, lockName, resourcelock.ResourceLockConfig{Identity: hostname}, cfg, 15*time.Second)
 }

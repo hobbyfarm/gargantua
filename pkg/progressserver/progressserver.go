@@ -11,21 +11,23 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
 
 const (
 	idIndex        = "progressserver.hobbyfarm.io/id-index"
-	resourcePlural = "progresses"
+	resourcePlural = rbac.ResourcePluralProgress
 )
 
 type ProgressServer struct {
-	auth        *authclient.AuthClient
+	authnClient authn.AuthNClient
+	authrClient authr.AuthRClient
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
@@ -47,11 +49,12 @@ type ScheduledEventProgressCount struct {
 	CountMap map[string]int `json:"count_map"`
 }
 
-func NewProgressServer(authClient *authclient.AuthClient, hfClientset hfClientset.Interface, ctx context.Context) (*ProgressServer, error) {
+func NewProgressServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, hfClientset hfClientset.Interface, ctx context.Context) (*ProgressServer, error) {
 	progress := ProgressServer{}
 
 	progress.hfClientSet = hfClientset
-	progress.auth = authClient
+	progress.authnClient = authnClient
+	progress.authrClient = authrClient
 	progress.ctx = ctx
 	return &progress, nil
 }
@@ -73,8 +76,15 @@ List Progress by Scheduled Event
 	- id : The scheduled event id
 */
 func (s ProgressServer) ListByScheduledEventFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
 	}
@@ -100,8 +110,15 @@ func (s ProgressServer) ListByScheduledEventFunc(w http.ResponseWriter, r *http.
 }
 
 func (s ProgressServer) ListByRangeFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
 	}
@@ -141,13 +158,13 @@ func (s ProgressServer) ListByRangeFunc(w http.ResponseWriter, r *http.Request) 
 List Progress for the authenticated user
 */
 func (s ProgressServer) ListForUserFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := s.auth.AuthN(w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
 	}
 
-	s.ListByLabel(w, r, util.UserLabel, user.Name, true)
+	s.ListByLabel(w, r, util.UserLabel, user.GetId(), true)
 }
 
 /*
@@ -157,8 +174,15 @@ List Progress by User
 	- id : The user id
 */
 func (s ProgressServer) ListByUserFunc(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
 	}
@@ -178,8 +202,15 @@ func (s ProgressServer) ListByUserFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ProgressServer) CountByScheduledEvent(w http.ResponseWriter, r *http.Request) {
-	_, err := s.auth.AuthGrant(rbacclient.RbacRequest().HobbyfarmPermission(resourcePlural, rbacclient.VerbList), w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
+	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
 	}
@@ -279,7 +310,7 @@ Update Progress
 func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 
-	user, err := s.auth.AuthN(w, r)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update progress")
 		return
@@ -308,7 +339,7 @@ func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", util.SessionLabel, id, util.UserLabel, user.Name)})
+		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", util.SessionLabel, id, util.UserLabel, user.GetId())})
 
 	if err != nil {
 		glog.Errorf("error while retrieving progress %v", err)

@@ -17,24 +17,25 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
-	"github.com/hobbyfarm/gargantua/v3/pkg/authclient"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/v3/pkg/rbacclient"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"github.com/hobbyfarm/gargantua/v3/pkg/vmclient"
+	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"golang.org/x/crypto/ssh"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 type ShellProxy struct {
-	auth     *authclient.AuthClient
-	vmClient *vmclient.VirtualMachineClient
-
-	hfClient   hfClientset.Interface
-	kubeClient kubernetes.Interface
-	ctx        context.Context
+	authnClient authn.AuthNClient
+	authrClient authr.AuthRClient
+	vmClient    *vmclient.VirtualMachineClient
+	hfClient    hfClientset.Interface
+	kubeClient  kubernetes.Interface
+	ctx         context.Context
 }
 
 type Service struct {
@@ -73,10 +74,11 @@ func init() {
 	SIGWINCH = regexp.MustCompile(`.*\[8;(.*);(.*)t`)
 }
 
-func NewShellProxy(authClient *authclient.AuthClient, vmClient *vmclient.VirtualMachineClient, hfClientSet hfClientset.Interface, kubeClient kubernetes.Interface, ctx context.Context) (*ShellProxy, error) {
+func NewShellProxy(authnClient authn.AuthNClient, authrClient authr.AuthRClient, vmClient *vmclient.VirtualMachineClient, hfClientSet hfClientset.Interface, kubeClient kubernetes.Interface, ctx context.Context) (*ShellProxy, error) {
 	shellProxy := ShellProxy{}
 
-	shellProxy.auth = authClient
+	shellProxy.authnClient = authnClient
+	shellProxy.authrClient = authrClient
 	shellProxy.vmClient = vmClient
 	shellProxy.hfClient = hfClientSet
 	shellProxy.kubeClient = kubeClient
@@ -139,16 +141,16 @@ func (sp ShellProxy) checkCookieAndProxy(w http.ResponseWriter, r *http.Request)
 	sp.proxy(w, r, user)
 }
 
-func (sp ShellProxy) proxyAuth(w http.ResponseWriter, r *http.Request, token string) (v2.User, error) {
+func (sp ShellProxy) proxyAuth(w http.ResponseWriter, r *http.Request, token string) (*userProto.User, error) {
 	r.Header.Add("Authorization", "Bearer "+token)
-	user, err := sp.auth.AuthN(w, r)
+	user, err := rbac.AuthenticateRequest(r, sp.authnClient)
 	if err != nil {
-		return v2.User{}, err
+		return &userProto.User{}, err
 	}
 	return user, nil
 }
 
-func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User) {
+func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userProto.User) {
 
 	vars := mux.Vars(r)
 	// Check if variable for vm id was passed in
@@ -166,15 +168,15 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 		return
 	}
 
-	if vm.Spec.UserId != user.Name {
+	if vm.Spec.UserId != user.GetId() {
 		// check if the user has access to user sessions
-		_, err := sp.auth.AuthGrantWS(
-			rbacclient.RbacRequest().
-				HobbyfarmPermission("users", rbacclient.VerbGet).
-				HobbyfarmPermission("sessions", rbacclient.VerbGet).
-				HobbyfarmPermission("virtualmachines", rbacclient.VerbGet),
-			w, r)
-		if err != nil {
+		impersonatedUserId := user.GetId()
+		authrResponse, err := rbac.Authorize(r, sp.authrClient, impersonatedUserId, []*authr.Permission{
+			rbac.HobbyfarmPermission(rbac.ResourcePluralUser, rbac.VerbGet),
+			rbac.HobbyfarmPermission(rbac.ResourcePluralSession, rbac.VerbGet),
+			rbac.HobbyfarmPermission(rbac.ResourcePluralVM, rbac.VerbGet),
+		}, rbac.OperatorAND)
+		if err != nil || !authrResponse.Success {
 			glog.Infof("Error doing authGrantWS %s", err)
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to connect to ssh shell session")
 			return
@@ -312,7 +314,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user v2.User)
 * Currently supported protocols are: rdp, vnc, telnet, ssh
  */
 func (sp ShellProxy) ConnectGuacFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := sp.auth.AuthWS(w, r)
+	user, err := rbac.AuthenticateWS(r, sp.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
 		return
@@ -334,7 +336,7 @@ func (sp ShellProxy) ConnectGuacFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if vm.Spec.UserId != user.Name {
+	if vm.Spec.UserId != user.GetId() {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "you do not have access to shell")
 		return
 	}
@@ -487,7 +489,7 @@ func copyResponse(rw http.ResponseWriter, resp *http.Response) error {
 * This is mainly used for SSH Connections to VMs
  */
 func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := sp.auth.AuthWS(w, r)
+	user, err := rbac.AuthenticateWS(r, sp.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
 		return
@@ -509,16 +511,16 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if vm.Spec.UserId != user.Name {
+	if vm.Spec.UserId != user.GetId() {
 		// check if the user has access to access user sessions
 		// TODO: add permission like 'virtualmachine/shell' similar to 'pod/exec'
-		_, err := sp.auth.AuthGrantWS(
-			rbacclient.RbacRequest().
-				HobbyfarmPermission("users", rbacclient.VerbGet).
-				HobbyfarmPermission("sessions", rbacclient.VerbGet).
-				HobbyfarmPermission("virtualmachines", rbacclient.VerbGet),
-			w, r)
-		if err != nil {
+		impersonatedUserId := user.GetId()
+		authrResponse, err := rbac.Authorize(r, sp.authrClient, impersonatedUserId, []*authr.Permission{
+			rbac.HobbyfarmPermission(rbac.ResourcePluralUser, rbac.VerbGet),
+			rbac.HobbyfarmPermission(rbac.ResourcePluralSession, rbac.VerbGet),
+			rbac.HobbyfarmPermission(rbac.ResourcePluralVM, rbac.VerbGet),
+		}, rbac.OperatorAND)
+		if err != nil || !authrResponse.Success {
 			glog.Infof("Error doing authGrantWS %s", err)
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to connect to ssh shell session")
 			return
