@@ -155,6 +155,27 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	set, err := a.settingClient.GetSettingValue(r.Context(), &settingProto.Id{Name: string(settingUtil.StrictAccessCodeValidation)})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error adding accesscode")
+		return
+	}
+
+	if s, ok := set.GetValue().(*settingProto.SettingValue_BoolValue); err != nil || !ok || set == nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error adding accesscode")
+		return
+	} else if s.BoolValue {
+		validation, err := a.acClient.ValidateExistence(r.Context(), &accessCodeProto.ResourceId{Id: accessCode})
+		if err != nil {
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error adding accesscode")
+			return
+		}
+		if !validation.Valid {
+			util.ReturnHTTPMessage(w, r, 400, "badrequest", "AccessCode is invalid.")
+			return
+		}
+	}
+
 	err = a.AddAccessCode(user, accessCode, r.Context())
 
 	if err != nil {
@@ -373,6 +394,27 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	if !validAccessCode {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "AccessCode does not meet criteria.")
 		return
+	}
+
+	set, err = a.settingClient.GetSettingValue(r.Context(), &settingProto.Id{Name: string(settingUtil.StrictAccessCodeValidation)})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
+		return
+	}
+
+	if s, ok := set.GetValue().(*settingProto.SettingValue_BoolValue); err != nil || !ok || set == nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
+		return
+	} else if s.BoolValue {
+		validation, err := a.acClient.ValidateExistence(r.Context(), &accessCodeProto.ResourceId{Id: accessCode})
+		if err != nil {
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
+			return
+		}
+		if !validation.Valid {
+			util.ReturnHTTPMessage(w, r, 400, "badrequest", "AccessCode is invalid.")
+			return
+		}
 	}
 
 	userId, err := a.userClient.CreateUser(r.Context(), &userProto.CreateUserRequest{

@@ -20,8 +20,9 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AccessCodeSvc_GetOtac_FullMethodName    = "/access_code.AccessCodeSvc/GetOtac"
-	AccessCodeSvc_UpdateOtac_FullMethodName = "/access_code.AccessCodeSvc/UpdateOtac"
+	AccessCodeSvc_GetOtac_FullMethodName           = "/access_code.AccessCodeSvc/GetOtac"
+	AccessCodeSvc_UpdateOtac_FullMethodName        = "/access_code.AccessCodeSvc/UpdateOtac"
+	AccessCodeSvc_ValidateExistence_FullMethodName = "/access_code.AccessCodeSvc/ValidateExistence"
 )
 
 // AccessCodeSvcClient is the client API for AccessCodeSvc service.
@@ -31,6 +32,7 @@ type AccessCodeSvcClient interface {
 	// rpc CreateOtac (CreateOtacRequest) returns (OneTimeAccessCodeId);
 	GetOtac(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*OneTimeAccessCode, error)
 	UpdateOtac(ctx context.Context, in *OneTimeAccessCode, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ValidateExistence(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*ResourceValidation, error)
 }
 
 type accessCodeSvcClient struct {
@@ -59,6 +61,15 @@ func (c *accessCodeSvcClient) UpdateOtac(ctx context.Context, in *OneTimeAccessC
 	return out, nil
 }
 
+func (c *accessCodeSvcClient) ValidateExistence(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*ResourceValidation, error) {
+	out := new(ResourceValidation)
+	err := c.cc.Invoke(ctx, AccessCodeSvc_ValidateExistence_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AccessCodeSvcServer is the server API for AccessCodeSvc service.
 // All implementations must embed UnimplementedAccessCodeSvcServer
 // for forward compatibility
@@ -66,6 +77,7 @@ type AccessCodeSvcServer interface {
 	// rpc CreateOtac (CreateOtacRequest) returns (OneTimeAccessCodeId);
 	GetOtac(context.Context, *ResourceId) (*OneTimeAccessCode, error)
 	UpdateOtac(context.Context, *OneTimeAccessCode) (*emptypb.Empty, error)
+	ValidateExistence(context.Context, *ResourceId) (*ResourceValidation, error)
 	mustEmbedUnimplementedAccessCodeSvcServer()
 }
 
@@ -78,6 +90,9 @@ func (UnimplementedAccessCodeSvcServer) GetOtac(context.Context, *ResourceId) (*
 }
 func (UnimplementedAccessCodeSvcServer) UpdateOtac(context.Context, *OneTimeAccessCode) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateOtac not implemented")
+}
+func (UnimplementedAccessCodeSvcServer) ValidateExistence(context.Context, *ResourceId) (*ResourceValidation, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ValidateExistence not implemented")
 }
 func (UnimplementedAccessCodeSvcServer) mustEmbedUnimplementedAccessCodeSvcServer() {}
 
@@ -128,6 +143,24 @@ func _AccessCodeSvc_UpdateOtac_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccessCodeSvc_ValidateExistence_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResourceId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccessCodeSvcServer).ValidateExistence(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccessCodeSvc_ValidateExistence_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccessCodeSvcServer).ValidateExistence(ctx, req.(*ResourceId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AccessCodeSvc_ServiceDesc is the grpc.ServiceDesc for AccessCodeSvc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -142,6 +175,10 @@ var AccessCodeSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateOtac",
 			Handler:    _AccessCodeSvc_UpdateOtac_Handler,
+		},
+		{
+			MethodName: "ValidateExistence",
+			Handler:    _AccessCodeSvc_ValidateExistence_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

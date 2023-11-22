@@ -128,3 +128,28 @@ func (a *GrpcAccessCodeServer) UpdateOtac(ctx context.Context, otacRequest *acce
 
 	return &empty.Empty{}, nil
 }
+
+func (a *GrpcAccessCodeServer) ValidateExistence(ctx context.Context, gor *accessCodeProto.ResourceId) (*accessCodeProto.ResourceValidation, error) {
+	if len(gor.GetId()) == 0 {
+		newErr := status.Newf(
+			codes.InvalidArgument,
+			"no id passed in",
+		)
+		newErr, wde := newErr.WithDetails(gor)
+		if wde != nil {
+			return &accessCodeProto.ResourceValidation{Valid: false}, wde
+		}
+		return &accessCodeProto.ResourceValidation{Valid: false}, newErr.Err()
+	}
+
+	_, err := a.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Get(a.ctx, gor.GetId(), metav1.GetOptions{})
+	if err != nil {
+		// If AccessCode does not exist check if this might be an OTAC
+		_, err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Get(a.ctx, gor.GetId(), metav1.GetOptions{})
+		if err != nil {
+			return &accessCodeProto.ResourceValidation{Valid: false}, nil
+		}
+	}
+
+	return &accessCodeProto.ResourceValidation{Valid: true}, nil
+}

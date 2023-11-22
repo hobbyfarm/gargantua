@@ -17,6 +17,7 @@ const (
 	SettingAdminUIMOTD                       SettingName = "motd-admin-ui"
 	SettingUIMOTD                            SettingName = "motd-ui"
 	ScheduledEventRetentionTime              SettingName = "scheduledevent-retention-time"
+	StrictAccessCodeValidation               SettingName = "strict-accesscode-validation"
 	SettingRegistrationPrivacyPolicyRequired SettingName = "registration-privacy-policy-required"
 	SettingRegistrationPrivacyPolicyLink     SettingName = "registration-privacy-policy-link"
 	SettingRegistrationPrivacyPolicyLinkName SettingName = "registration-privacy-policy-linkname"
