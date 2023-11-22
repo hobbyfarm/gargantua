@@ -25,10 +25,16 @@ service AccessCodeSvc {
     // rpc DeleteOtac (OneTimeAccessCodeId) returns (google.protobuf.Empty);
     // rpc DeleteCollectionOtac (ListOptions) returns (google.protobuf.Empty);
     // rpc ListOtac (ListOptions) returns (OneTimeAccessCodes);
+
+    rpc ValidateExistence (ResourceId) returns (ResourceValidation);
 }
 
 message ResourceId {
     string id = 1;
+}
+
+message ResourceValidation {
+    bool valid = 1;
 }
 
 message OneTimeAccessCode {

@@ -214,5 +214,18 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				DisplayName: "Imprint URL Display Name",
 			},
 		},
+		{
+			Name:      string(settingUtil.StrictAccessCodeValidation),
+			Namespace: util.GetReleaseNamespace(),
+			Labels: map[string]string{
+				labels.SettingScope: "gargantua",
+			},
+			Value: "false",
+			Property: &settingProto.Property{
+				DataType:    settingProto.DataType_DATA_TYPE_BOOLEAN,
+				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+				DisplayName: "Strict AccessCode Validation",
+			},
+		},
 	}
 }
