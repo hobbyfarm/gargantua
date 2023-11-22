@@ -22,6 +22,7 @@ const (
 	SettingRegistrationPrivacyPolicyLinkName SettingName = "registration-privacy-policy-linkname"
 	ImprintLink                              SettingName = "imprint-link"
 	ImprintLinkName                          SettingName = "imprint-linkname"
+	AboutModalButtons                        SettingName = "aboutmodal-buttons"
 )
 
 var DataTypeMappingToProto = map[property.DataType]settingProto.DataType{

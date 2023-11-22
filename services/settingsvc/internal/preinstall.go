@@ -214,5 +214,19 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				DisplayName: "Imprint URL Display Name",
 			},
 		},
+		{
+			Name:      string(settingUtil.AboutModalButtons),
+			Namespace: util.GetReleaseNamespace(),
+			Labels: map[string]string{
+				labels.SettingScope: "user-ui",
+				labels.SettingGroup: "about-modal",
+			},
+			Value: "{\"HobbyFarm Project\":\"https://github.com/hobbyfarm\"}",
+			Property: &settingProto.Property{
+				DataType:    settingProto.DataType_DATA_TYPE_STRING,
+				ValueType:   settingProto.ValueType_VALUE_TYPE_MAP,
+				DisplayName: "About Modal Buttons (Title -> URL)",
+			},
+		},
 	}
 }
