@@ -20,6 +20,8 @@ const (
 	SettingRegistrationPrivacyPolicyRequired SettingName = "registration-privacy-policy-required"
 	SettingRegistrationPrivacyPolicyLink     SettingName = "registration-privacy-policy-link"
 	SettingRegistrationPrivacyPolicyLinkName SettingName = "registration-privacy-policy-linkname"
+	ImprintLink                              SettingName = "imprint-link"
+	ImprintLinkName                          SettingName = "imprint-linkname"
 )
 
 var DataTypeMappingToProto = map[property.DataType]settingProto.DataType{
