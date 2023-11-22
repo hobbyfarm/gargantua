@@ -8,9 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sort"
 	"strconv"
 	"strings"
+	"slices"
 
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
@@ -167,7 +167,7 @@ func (s ScenarioServer) getPreparedScenarioById(id string, accessCodes []string)
 	}
 
 	printableScenarioIds := s.getPrintableScenarioIds(accessCodes)
-	printable := util.StringInSlice(scenario.Name, printableScenarioIds)
+	printable := slices.Contains(printableScenarioIds, scenario.Name)
 
 	preparedScenario, err := s.prepareScenario(scenario, printable)
 
@@ -389,7 +389,8 @@ func (s ScenarioServer) ListScenariosForAccessCode(w http.ResponseWriter, r *htt
 		return
 	}
 
-	if !util.StringInSlice(accessCode, user.AccessCodes) {
+	if !slices.Contains(user.AccessCodes, accessCode) {
+
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios for this AccessCode")
 		return
 	}
@@ -517,8 +518,9 @@ func (s ScenarioServer) ListCategories(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	categories = util.UniqueStringSlice(categories)
-	sort.Strings(categories)
+	// Sort + Compact creates a unique sorted slice
+	slices.Sort(categories)
+	slices.Compact(categories)
 
 	encodedCategories, err := json.Marshal(categories)
 	if err != nil {
@@ -613,7 +615,7 @@ func (s ScenarioServer) PrintFunc(w http.ResponseWriter, r *http.Request) {
 
 	printableScenarioIds := s.getPrintableScenarioIds(user.AccessCodes)
 
-	if !util.StringInSlice(id, printableScenarioIds) {
+	if !slices.Contains(printableScenarioIds, id) {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get this Scenario")
 		return
 	}
