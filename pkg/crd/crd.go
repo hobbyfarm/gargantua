@@ -1,22 +1,12 @@
 package crd
 
 import (
-	"fmt"
 	"github.com/ebauman/crder"
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 	terraformv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
-	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
-	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	v12 "k8s.io/api/admissionregistration/v1"
-	v13 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	namespaceNameLabel = "kubernetes.io/metadata.name"
-)
-
-func GenerateCRDs(caBundle string, reference ServiceReference) []crder.CRD {
+func GenerateCRDs() []crder.CRD {
 	return []crder.CRD{
 		hobbyfarmCRD(&v1.VirtualMachine{}, func(c *crder.CRD) {
 			c.
@@ -98,48 +88,6 @@ func GenerateCRDs(caBundle string, reference ServiceReference) []crder.CRD {
 						WithColumn("LastUpdate", ".spec.last_update")
 				})
 		}),
-		hobbyfarmCRD(&v1.AccessCode{}, func(c *crder.CRD) {
-			c.
-				IsNamespaced(true).
-				AddVersion("v1", &v1.AccessCode{}, func(cv *crder.Version) {
-					cv.
-						WithColumn("AccessCode", ".spec.code").
-						WithColumn("Expiration", ".spec.expiration")
-				})
-		}),
-		hobbyfarmCRD(&v1.OneTimeAccessCode{}, func(c *crder.CRD) {
-			c.
-				IsNamespaced(true).
-				AddVersion("v1", &v1.OneTimeAccessCode{}, func(cv *crder.Version) {
-					cv.
-						WithColumn("User", ".spec.user").
-						WithColumn("Redeemed", ".spec.redeemed_timestamp")
-				})
-		}),
-		hobbyfarmCRD(&v1.User{}, func(c *crder.CRD) {
-			c.
-				IsNamespaced(true).
-				AddVersion("v1", &v1.User{}, func(cv *crder.Version) {
-					cv.
-						WithColumn("Email", ".spec.email")
-
-					cv.IsServed(true)
-					cv.IsStored(false)
-				}).
-				AddVersion("v2", &v2.User{}, func(cv *crder.Version) {
-					cv.WithColumn("Email", ".spec.email")
-
-					cv.IsServed(true)
-					cv.IsStored(true)
-				}).
-				WithConversion(func(cc *crder.Conversion) {
-					cc.
-						StrategyWebhook().
-						WithCABundle(caBundle).
-						WithService(reference.Toapiextv1WithPath("/conversion/users.hobbyfarm.io")).
-						WithVersions("v2", "v1")
-				})
-		}),
 		hobbyfarmCRD(&v1.ScheduledEvent{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
@@ -168,38 +116,6 @@ func GenerateCRDs(caBundle string, reference ServiceReference) []crder.CRD {
 		hobbyfarmCRD(&v1.Scope{}, func(c *crder.CRD) {
 			c.IsNamespaced(true).AddVersion("v1", &v1.Scope{}, func(cv *crder.Version) {
 				cv.WithColumn("DisplayName", ".displayName").IsServed(true).IsStored(true)
-			})
-		}),
-		hobbyfarmCRD(&v1.Setting{}, func(c *crder.CRD) {
-			c.IsNamespaced(true).AddVersion("v1", &v1.Setting{}, func(cv *crder.Version) {
-				cv.
-					WithColumn("DisplayName", ".displayName").
-					WithColumn("Scope", fmt.Sprintf(".metadata.labels.%s", labels.DotEscapeLabel(labels.SettingScope))).
-					WithColumn("Value", ".value").
-					IsServed(true).
-					IsStored(true)
-			})
-			c.AddValidation("settings.hobbyfarm.io", func(vv *crder.Validation) {
-				vv.AddRules(v12.RuleWithOperations{
-					Operations: []v12.OperationType{
-						v12.Create,
-						v12.Update,
-					},
-					Rule: v12.Rule{
-						APIGroups:   []string{v1.SchemeGroupVersion.Group},
-						APIVersions: []string{v1.SchemeGroupVersion.Version},
-						Resources:   []string{"settings"},
-					},
-				})
-				vv.WithCABundle(caBundle)
-				vv.WithService(reference.ToadmissionRegistrationv1WithPath("/validation/hobbyfarm.io/v1/settings"))
-				vv.WithVersions("v1")
-				vv.SetNamespaceSelector(v13.LabelSelector{
-					MatchLabels: map[string]string{
-						namespaceNameLabel: util.GetReleaseNamespace(), // only process settings in our namespace
-					},
-				})
-				vv.MatchPolicyExact()
 			})
 		}),
 		terraformCRD(&terraformv1.Module{}, func(c *crder.CRD) {

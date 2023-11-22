@@ -13,8 +13,10 @@
 gargantua
 .idea
 artifacts/testing
+/bin
 
 # docker-compose enviornment variables
 /.env
 
 kubeconfig
+ko

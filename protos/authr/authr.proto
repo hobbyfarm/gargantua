@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package authr;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/authr";
+
+// Service definition
+service AuthR {
+    rpc AuthR (AuthRRequest) returns (AuthRResponse);
+}
+
+message AuthRRequest {
+    string userName = 1;
+    RbacRequest request = 2;
+}
+
+message AuthRResponse {
+    bool success = 1;
+}
+
+message RbacRequest {
+    string operator = 1;
+    repeated Permission permissions = 2;
+}
+
+message Permission {
+    string apiGroup = 1;
+    string resource = 2;
+    string verb = 3;
+}

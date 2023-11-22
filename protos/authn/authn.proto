@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package authn;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/authn";
+
+import "user/user.proto";
+
+// Service definition
+service AuthN {
+    rpc AuthN (AuthNRequest) returns (user.User);
+}
+
+message AuthNRequest {
+    string token = 1;
+}

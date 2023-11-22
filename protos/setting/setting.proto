@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+package setting;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/setting";
+
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/empty.proto";
+
+service SettingSvc {
+    rpc CreateSetting(CreateSettingRequest) returns (google.protobuf.Empty);
+    rpc GetSetting (Id) returns (Setting);
+    rpc GetSettingValue(Id) returns (SettingValue);
+    rpc UpdateSetting (Setting) returns (google.protobuf.Empty);
+    // rpc DeleteSetting (Id) returns (google.protobuf.Empty); TODO
+    rpc ListSettings(ListSettingsRequest) returns (ListSettingsResponse);
+    rpc CreateScope (CreateScopeRequest) returns (google.protobuf.Empty);
+    rpc GetScope (Id) returns (Scope);
+    rpc ListScopes (google.protobuf.Empty) returns (Scopes);
+}
+
+message Id {
+    string name = 1;
+}
+
+message CreateSettingRequest {
+    string name = 1;
+    string namespace = 2;
+    map<string, string> labels = 3;
+    string value = 4;
+    Property property = 5;
+}
+
+message Setting {
+    string name = 1;
+    Property property = 2;
+    string value = 3;
+    string scope = 4;
+}
+
+message SettingValue {
+    oneof value {
+        bool bool_value = 1;
+        string string_value = 2;
+        int64 int64_value = 3;
+        double float64_value = 4;
+    }
+}
+
+message ListSettingsRequest {
+    string scope = 1;
+}
+
+message ListSettingsResponse {
+    repeated PreparedListSetting settings = 1;
+}
+
+message PreparedListSetting {
+    string name = 1;
+    Property property = 2;
+    string value = 3;
+    string scope = 4;
+    string group = 5;
+    int64 weight = 6;
+}
+
+message Property {
+    DataType dataType = 1;
+    ValueType valueType = 2;
+    string displayName = 3;
+
+    // SettingValidation fields
+    bool required = 4;
+    google.protobuf.DoubleValue maximum = 5;
+    google.protobuf.DoubleValue minimum = 6;
+    google.protobuf.Int64Value maxLength = 7;
+    google.protobuf.Int64Value minLength = 8;
+    google.protobuf.StringValue format = 9;
+    google.protobuf.StringValue pattern = 10;
+    repeated string enum = 11;
+    google.protobuf.StringValue default = 12;
+    bool uniqueItems = 13;
+}
+
+message Scope {
+    string name = 1;
+    string displayName = 2;
+}
+
+message Scopes {
+    repeated Scope scopes = 1;
+}
+
+enum DataType {
+    DATA_TYPE_UNKNOWN = 0;
+    DATA_TYPE_STRING = 1;
+    DATA_TYPE_INTEGER = 2;
+    DATA_TYPE_FLOAT = 3;
+    DATA_TYPE_BOOLEAN = 4;
+}
+
+enum ValueType {
+    VALUE_TYPE_UNKNOWN = 0;
+    VALUE_TYPE_SCALAR = 1;
+    VALUE_TYPE_ARRAY = 2;
+    VALUE_TYPE_MAP = 3;
+}
+
+message CreateScopeRequest {
+    string name = 1;
+    string namespace = 2;
+    string displayName = 3;
+}
