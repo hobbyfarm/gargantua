@@ -184,5 +184,35 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				DisplayName: "Privacy Policy URL Display Name",
 			},
 		},
+		{
+			Name:      string(settingUtil.ImprintLink),
+			Namespace: util.GetReleaseNamespace(),
+			Labels: map[string]string{
+				labels.SettingScope:  "public",
+				labels.SettingGroup:  "imprint",
+				labels.SettingWeight: "1",
+			},
+			Value: "",
+			Property: &settingProto.Property{
+				DataType:    settingProto.DataType_DATA_TYPE_STRING,
+				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+				DisplayName: "URL to Imprint",
+			},
+		},
+		{
+			Name:      string(settingUtil.ImprintLinkName),
+			Namespace: util.GetReleaseNamespace(),
+			Labels: map[string]string{
+				labels.SettingScope:  "public",
+				labels.SettingGroup:  "imprint",
+				labels.SettingWeight: "2",
+			},
+			Value: "",
+			Property: &settingProto.Property{
+				DataType:    settingProto.DataType_DATA_TYPE_STRING,
+				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+				DisplayName: "Imprint URL Display Name",
+			},
+		},
 	}
 }
