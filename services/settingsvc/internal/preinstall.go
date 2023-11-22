@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
+	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
 	"google.golang.org/grpc/codes"
@@ -86,7 +87,7 @@ func scopes() []*settingProto.CreateScopeRequest {
 func predefinedSettings() []*settingProto.CreateSettingRequest {
 	return []*settingProto.CreateSettingRequest{
 		{
-			Name:      string(SettingAdminUIMOTD),
+			Name:      string(settingUtil.SettingAdminUIMOTD),
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
 				labels.SettingScope: "admin-ui",
@@ -99,7 +100,7 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 			},
 		},
 		{
-			Name:      string(SettingUIMOTD),
+			Name:      string(settingUtil.SettingUIMOTD),
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
 				labels.SettingScope: "public",
@@ -112,7 +113,7 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 			},
 		},
 		{
-			Name:      string(SettingRegistrationDisabled),
+			Name:      string(settingUtil.SettingRegistrationDisabled),
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
 				labels.SettingScope: "public",
@@ -126,7 +127,7 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 		},
 		{
 
-			Name:      string(ScheduledEventRetentionTime),
+			Name:      string(settingUtil.ScheduledEventRetentionTime),
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
 				labels.SettingScope: "gargantua",
@@ -139,11 +140,11 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 			},
 		},
 		{
-			Name:      string(SettingRegistrationPrivacyPolicyRequired),
+			Name:      string(settingUtil.SettingRegistrationPrivacyPolicyRequired),
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
-				labels.SettingScope: "public",
-				labels.SettingGroup: "privacy-policy",
+				labels.SettingScope:  "public",
+				labels.SettingGroup:  "privacy-policy",
 				labels.SettingWeight: "3",
 			},
 			Value: "false",
@@ -154,11 +155,11 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 			},
 		},
 		{
-			Name:      string(SettingRegistrationPrivacyPolicyLink),
+			Name:      string(settingUtil.SettingRegistrationPrivacyPolicyLink),
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
-				labels.SettingScope: "public",
-				labels.SettingGroup: "privacy-policy",
+				labels.SettingScope:  "public",
+				labels.SettingGroup:  "privacy-policy",
 				labels.SettingWeight: "2",
 			},
 			Value: "",
@@ -169,11 +170,11 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 			},
 		},
 		{
-			Name:      string(SettingRegistrationPrivacyPolicyLinkName),
+			Name:      string(settingUtil.SettingRegistrationPrivacyPolicyLinkName),
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
-				labels.SettingScope: "public",
-				labels.SettingGroup: "privacy-policy",
+				labels.SettingScope:  "public",
+				labels.SettingGroup:  "privacy-policy",
 				labels.SettingWeight: "1",
 			},
 			Value: "",
