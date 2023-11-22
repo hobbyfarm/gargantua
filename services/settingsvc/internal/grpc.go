@@ -128,7 +128,7 @@ func (s *GrpcSettingServer) CreateSetting(ctx context.Context, creq *settingProt
 
 func (s *GrpcSettingServer) GetSettingValue(ctx context.Context, sreq *settingProto.Id) (*settingProto.SettingValue, error) {
 	resp := &settingProto.SettingValue{}
-	setting, err := GetSetting(SettingName(sreq.GetName()))
+	setting, err := GetSetting(settingUtil.SettingName(sreq.GetName()))
 
 	if err != nil {
 		newErr := status.Newf(
