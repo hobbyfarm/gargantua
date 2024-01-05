@@ -241,5 +241,18 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				DisplayName: "Strict AccessCode Validation",
 			},
 		},
+		{
+			Name:      string(settingUtil.LoginSettingErrorMessage),
+			Namespace: util.GetReleaseNamespace(),
+			Labels: map[string]string{
+				labels.SettingScope: "public",
+			},
+			Value: "",
+			Property: &settingProto.Property{
+				DataType:    settingProto.DataType_DATA_TYPE_STRING,
+				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+				DisplayName: "Login Error Message",
+			},
+		},
 	}
 }

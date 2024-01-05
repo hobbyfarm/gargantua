@@ -24,6 +24,7 @@ const (
 	ImprintLink                              SettingName = "imprint-link"
 	ImprintLinkName                          SettingName = "imprint-linkname"
 	AboutModalButtons                        SettingName = "aboutmodal-buttons"
+	LoginSettingErrorMessage 				 SettingName = "login-error-message"
 )
 
 var DataTypeMappingToProto = map[property.DataType]settingProto.DataType{

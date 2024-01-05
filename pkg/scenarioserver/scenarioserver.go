@@ -112,8 +112,10 @@ func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario, printable bool) 
 	ps.Pauseable = scenario.Spec.Pauseable
 	ps.Printable = printable
 	ps.StepCount = len(scenario.Spec.Steps)
-	ps.ManagedBy = scenario.Labels["managed-by"]
-
+	ps.ManagedBy = "hobbyfarm"
+	if  scenario.Labels["managed-by"] != "" {
+		ps.ManagedBy = scenario.Labels["managed-by"]
+	}
 	return ps, nil
 }
 
