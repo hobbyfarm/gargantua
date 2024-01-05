@@ -113,11 +113,6 @@ func GenerateCRDs() []crder.CRD {
 				IsNamespaced(true).
 				AddVersion("v1", &v1.DynamicBindConfiguration{}, nil)
 		}),
-		hobbyfarmCRD(&v1.Scope{}, func(c *crder.CRD) {
-			c.IsNamespaced(true).AddVersion("v1", &v1.Scope{}, func(cv *crder.Version) {
-				cv.WithColumn("DisplayName", ".displayName").IsServed(true).IsStored(true)
-			})
-		}),
 		terraformCRD(&terraformv1.Module{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
