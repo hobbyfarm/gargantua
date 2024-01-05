@@ -154,9 +154,11 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "AccessCode does not meet criteria.")
 		return
 	}
-
+	managedby := r.PostFormValue("managedby")
+	
 	set, err := a.settingClient.GetSettingValue(r.Context(), &settingProto.Id{Name: string(settingUtil.StrictAccessCodeValidation)})
 	if err != nil {
+		glog.Errorf("incorrect accesscode setting value %s: %v", managedby, err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error adding accesscode")
 		return
 	}

@@ -57,6 +57,7 @@ type PreparedScenario struct {
 	VirtualMachines []map[string]string `json:"virtualmachines"`
 	Pauseable       bool                `json:"pauseable"`
 	Printable       bool                `json:"printable"`
+	ManagedBy		string              `json:"managedby"`
 }
 
 type AdminPreparedScenario struct {
@@ -111,6 +112,7 @@ func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario, printable bool) 
 	ps.Pauseable = scenario.Spec.Pauseable
 	ps.Printable = printable
 	ps.StepCount = len(scenario.Spec.Steps)
+	ps.ManagedBy = scenario.Labels["managed-by"]
 
 	return ps, nil
 }
