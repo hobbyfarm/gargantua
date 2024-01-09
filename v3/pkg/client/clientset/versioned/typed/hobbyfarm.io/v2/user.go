@@ -20,10 +20,10 @@ package v2
 
 import (
 	"context"
-	"github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/scheme"
 	"time"
 
+	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
+	scheme "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"

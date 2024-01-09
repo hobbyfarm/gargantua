@@ -19,7 +19,7 @@ limitations under the License.
 package v1
 
 import (
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -30,7 +30,7 @@ import (
 type AccessCodeLister interface {
 	// List lists all AccessCodes in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.AccessCode, err error)
+	List(selector labels.Selector) (ret []*v1.AccessCode, err error)
 	// AccessCodes returns an object that can list and get AccessCodes.
 	AccessCodes(namespace string) AccessCodeNamespaceLister
 	AccessCodeListerExpansion
@@ -47,9 +47,9 @@ func NewAccessCodeLister(indexer cache.Indexer) AccessCodeLister {
 }
 
 // List lists all AccessCodes in the indexer.
-func (s *accessCodeLister) List(selector labels.Selector) (ret []*v12.AccessCode, err error) {
+func (s *accessCodeLister) List(selector labels.Selector) (ret []*v1.AccessCode, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.AccessCode))
+		ret = append(ret, m.(*v1.AccessCode))
 	})
 	return ret, err
 }
@@ -64,10 +64,10 @@ func (s *accessCodeLister) AccessCodes(namespace string) AccessCodeNamespaceList
 type AccessCodeNamespaceLister interface {
 	// List lists all AccessCodes in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.AccessCode, err error)
+	List(selector labels.Selector) (ret []*v1.AccessCode, err error)
 	// Get retrieves the AccessCode from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v12.AccessCode, error)
+	Get(name string) (*v1.AccessCode, error)
 	AccessCodeNamespaceListerExpansion
 }
 
@@ -79,21 +79,21 @@ type accessCodeNamespaceLister struct {
 }
 
 // List lists all AccessCodes in the indexer for a given namespace.
-func (s accessCodeNamespaceLister) List(selector labels.Selector) (ret []*v12.AccessCode, err error) {
+func (s accessCodeNamespaceLister) List(selector labels.Selector) (ret []*v1.AccessCode, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.AccessCode))
+		ret = append(ret, m.(*v1.AccessCode))
 	})
 	return ret, err
 }
 
 // Get retrieves the AccessCode from the indexer for a given namespace and name.
-func (s accessCodeNamespaceLister) Get(name string) (*v12.AccessCode, error) {
+func (s accessCodeNamespaceLister) Get(name string) (*v1.AccessCode, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v12.Resource("accesscode"), name)
+		return nil, errors.NewNotFound(v1.Resource("accesscode"), name)
 	}
-	return obj.(*v12.AccessCode), nil
+	return obj.(*v1.AccessCode), nil
 }

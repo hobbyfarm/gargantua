@@ -19,9 +19,9 @@ limitations under the License.
 package hobbyfarm
 
 import (
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/hobbyfarm.io/v2"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/hobbyfarm.io/v1"
+	v2 "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/hobbyfarm.io/v2"
+	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to each of this group's versions.

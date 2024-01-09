@@ -19,7 +19,7 @@ limitations under the License.
 package v1
 
 import (
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -30,7 +30,7 @@ import (
 type ProgressLister interface {
 	// List lists all Progresses in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.Progress, err error)
+	List(selector labels.Selector) (ret []*v1.Progress, err error)
 	// Progresses returns an object that can list and get Progresses.
 	Progresses(namespace string) ProgressNamespaceLister
 	ProgressListerExpansion
@@ -47,9 +47,9 @@ func NewProgressLister(indexer cache.Indexer) ProgressLister {
 }
 
 // List lists all Progresses in the indexer.
-func (s *progressLister) List(selector labels.Selector) (ret []*v12.Progress, err error) {
+func (s *progressLister) List(selector labels.Selector) (ret []*v1.Progress, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.Progress))
+		ret = append(ret, m.(*v1.Progress))
 	})
 	return ret, err
 }
@@ -64,10 +64,10 @@ func (s *progressLister) Progresses(namespace string) ProgressNamespaceLister {
 type ProgressNamespaceLister interface {
 	// List lists all Progresses in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.Progress, err error)
+	List(selector labels.Selector) (ret []*v1.Progress, err error)
 	// Get retrieves the Progress from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v12.Progress, error)
+	Get(name string) (*v1.Progress, error)
 	ProgressNamespaceListerExpansion
 }
 
@@ -79,21 +79,21 @@ type progressNamespaceLister struct {
 }
 
 // List lists all Progresses in the indexer for a given namespace.
-func (s progressNamespaceLister) List(selector labels.Selector) (ret []*v12.Progress, err error) {
+func (s progressNamespaceLister) List(selector labels.Selector) (ret []*v1.Progress, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.Progress))
+		ret = append(ret, m.(*v1.Progress))
 	})
 	return ret, err
 }
 
 // Get retrieves the Progress from the indexer for a given namespace and name.
-func (s progressNamespaceLister) Get(name string) (*v12.Progress, error) {
+func (s progressNamespaceLister) Get(name string) (*v1.Progress, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v12.Resource("progress"), name)
+		return nil, errors.NewNotFound(v1.Resource("progress"), name)
 	}
-	return obj.(*v12.Progress), nil
+	return obj.(*v1.Progress), nil
 }

@@ -19,7 +19,7 @@ limitations under the License.
 package v1
 
 import (
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -30,7 +30,7 @@ import (
 type StateLister interface {
 	// List lists all States in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.State, err error)
+	List(selector labels.Selector) (ret []*v1.State, err error)
 	// States returns an object that can list and get States.
 	States(namespace string) StateNamespaceLister
 	StateListerExpansion
@@ -47,9 +47,9 @@ func NewStateLister(indexer cache.Indexer) StateLister {
 }
 
 // List lists all States in the indexer.
-func (s *stateLister) List(selector labels.Selector) (ret []*v12.State, err error) {
+func (s *stateLister) List(selector labels.Selector) (ret []*v1.State, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.State))
+		ret = append(ret, m.(*v1.State))
 	})
 	return ret, err
 }
@@ -64,10 +64,10 @@ func (s *stateLister) States(namespace string) StateNamespaceLister {
 type StateNamespaceLister interface {
 	// List lists all States in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.State, err error)
+	List(selector labels.Selector) (ret []*v1.State, err error)
 	// Get retrieves the State from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v12.State, error)
+	Get(name string) (*v1.State, error)
 	StateNamespaceListerExpansion
 }
 
@@ -79,21 +79,21 @@ type stateNamespaceLister struct {
 }
 
 // List lists all States in the indexer for a given namespace.
-func (s stateNamespaceLister) List(selector labels.Selector) (ret []*v12.State, err error) {
+func (s stateNamespaceLister) List(selector labels.Selector) (ret []*v1.State, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.State))
+		ret = append(ret, m.(*v1.State))
 	})
 	return ret, err
 }
 
 // Get retrieves the State from the indexer for a given namespace and name.
-func (s stateNamespaceLister) Get(name string) (*v12.State, error) {
+func (s stateNamespaceLister) Get(name string) (*v1.State, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v12.Resource("state"), name)
+		return nil, errors.NewNotFound(v1.Resource("state"), name)
 	}
-	return obj.(*v12.State), nil
+	return obj.(*v1.State), nil
 }

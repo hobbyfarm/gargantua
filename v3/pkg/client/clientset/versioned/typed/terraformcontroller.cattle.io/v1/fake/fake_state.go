@@ -20,11 +20,10 @@ package fake
 
 import (
 	"context"
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,25 +35,25 @@ type FakeStates struct {
 	ns   string
 }
 
-var statesResource = schema.GroupVersionResource{Group: "terraformcontroller.cattle.io", Version: "v1", Resource: "states"}
+var statesResource = v1.SchemeGroupVersion.WithResource("states")
 
-var statesKind = schema.GroupVersionKind{Group: "terraformcontroller.cattle.io", Version: "v1", Kind: "State"}
+var statesKind = v1.SchemeGroupVersion.WithKind("State")
 
 // Get takes name of the state, and returns the corresponding state object, and an error if there is any.
-func (c *FakeStates) Get(ctx context.Context, name string, options v1.GetOptions) (result *v12.State, err error) {
+func (c *FakeStates) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.State, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(statesResource, c.ns, name), &v12.State{})
+		Invokes(testing.NewGetAction(statesResource, c.ns, name), &v1.State{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.State), err
+	return obj.(*v1.State), err
 }
 
 // List takes label and field selectors, and returns the list of States that match those selectors.
-func (c *FakeStates) List(ctx context.Context, opts v1.ListOptions) (result *v12.StateList, err error) {
+func (c *FakeStates) List(ctx context.Context, opts metav1.ListOptions) (result *v1.StateList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(statesResource, statesKind, c.ns, opts), &v12.StateList{})
+		Invokes(testing.NewListAction(statesResource, statesKind, c.ns, opts), &v1.StateList{})
 
 	if obj == nil {
 		return nil, err
@@ -64,8 +63,8 @@ func (c *FakeStates) List(ctx context.Context, opts v1.ListOptions) (result *v12
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v12.StateList{ListMeta: obj.(*v12.StateList).ListMeta}
-	for _, item := range obj.(*v12.StateList).Items {
+	list := &v1.StateList{ListMeta: obj.(*v1.StateList).ListMeta}
+	for _, item := range obj.(*v1.StateList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -74,69 +73,69 @@ func (c *FakeStates) List(ctx context.Context, opts v1.ListOptions) (result *v12
 }
 
 // Watch returns a watch.Interface that watches the requested states.
-func (c *FakeStates) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeStates) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(statesResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a state and creates it.  Returns the server's representation of the state, and an error, if there is any.
-func (c *FakeStates) Create(ctx context.Context, state *v12.State, opts v1.CreateOptions) (result *v12.State, err error) {
+func (c *FakeStates) Create(ctx context.Context, state *v1.State, opts metav1.CreateOptions) (result *v1.State, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(statesResource, c.ns, state), &v12.State{})
+		Invokes(testing.NewCreateAction(statesResource, c.ns, state), &v1.State{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.State), err
+	return obj.(*v1.State), err
 }
 
 // Update takes the representation of a state and updates it. Returns the server's representation of the state, and an error, if there is any.
-func (c *FakeStates) Update(ctx context.Context, state *v12.State, opts v1.UpdateOptions) (result *v12.State, err error) {
+func (c *FakeStates) Update(ctx context.Context, state *v1.State, opts metav1.UpdateOptions) (result *v1.State, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(statesResource, c.ns, state), &v12.State{})
+		Invokes(testing.NewUpdateAction(statesResource, c.ns, state), &v1.State{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.State), err
+	return obj.(*v1.State), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeStates) UpdateStatus(ctx context.Context, state *v12.State, opts v1.UpdateOptions) (*v12.State, error) {
+func (c *FakeStates) UpdateStatus(ctx context.Context, state *v1.State, opts metav1.UpdateOptions) (*v1.State, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(statesResource, "status", c.ns, state), &v12.State{})
+		Invokes(testing.NewUpdateSubresourceAction(statesResource, "status", c.ns, state), &v1.State{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.State), err
+	return obj.(*v1.State), err
 }
 
 // Delete takes name of the state and deletes it. Returns an error if one occurs.
-func (c *FakeStates) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+func (c *FakeStates) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(statesResource, c.ns, name, opts), &v12.State{})
+		Invokes(testing.NewDeleteActionWithOptions(statesResource, c.ns, name, opts), &v1.State{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeStates) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+func (c *FakeStates) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(statesResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &v12.StateList{})
+	_, err := c.Fake.Invokes(action, &v1.StateList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched state.
-func (c *FakeStates) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v12.State, err error) {
+func (c *FakeStates) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.State, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(statesResource, c.ns, name, pt, data, subresources...), &v12.State{})
+		Invokes(testing.NewPatchSubresourceAction(statesResource, c.ns, name, pt, data, subresources...), &v1.State{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.State), err
+	return obj.(*v1.State), err
 }

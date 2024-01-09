@@ -19,7 +19,7 @@ limitations under the License.
 package v1
 
 import (
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -30,7 +30,7 @@ import (
 type ScenarioLister interface {
 	// List lists all Scenarios in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.Scenario, err error)
+	List(selector labels.Selector) (ret []*v1.Scenario, err error)
 	// Scenarios returns an object that can list and get Scenarios.
 	Scenarios(namespace string) ScenarioNamespaceLister
 	ScenarioListerExpansion
@@ -47,9 +47,9 @@ func NewScenarioLister(indexer cache.Indexer) ScenarioLister {
 }
 
 // List lists all Scenarios in the indexer.
-func (s *scenarioLister) List(selector labels.Selector) (ret []*v12.Scenario, err error) {
+func (s *scenarioLister) List(selector labels.Selector) (ret []*v1.Scenario, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.Scenario))
+		ret = append(ret, m.(*v1.Scenario))
 	})
 	return ret, err
 }
@@ -64,10 +64,10 @@ func (s *scenarioLister) Scenarios(namespace string) ScenarioNamespaceLister {
 type ScenarioNamespaceLister interface {
 	// List lists all Scenarios in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.Scenario, err error)
+	List(selector labels.Selector) (ret []*v1.Scenario, err error)
 	// Get retrieves the Scenario from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v12.Scenario, error)
+	Get(name string) (*v1.Scenario, error)
 	ScenarioNamespaceListerExpansion
 }
 
@@ -79,21 +79,21 @@ type scenarioNamespaceLister struct {
 }
 
 // List lists all Scenarios in the indexer for a given namespace.
-func (s scenarioNamespaceLister) List(selector labels.Selector) (ret []*v12.Scenario, err error) {
+func (s scenarioNamespaceLister) List(selector labels.Selector) (ret []*v1.Scenario, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.Scenario))
+		ret = append(ret, m.(*v1.Scenario))
 	})
 	return ret, err
 }
 
 // Get retrieves the Scenario from the indexer for a given namespace and name.
-func (s scenarioNamespaceLister) Get(name string) (*v12.Scenario, error) {
+func (s scenarioNamespaceLister) Get(name string) (*v1.Scenario, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v12.Resource("scenario"), name)
+		return nil, errors.NewNotFound(v1.Resource("scenario"), name)
 	}
-	return obj.(*v12.Scenario), nil
+	return obj.(*v1.Scenario), nil
 }

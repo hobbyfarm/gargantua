@@ -20,10 +20,10 @@ package v1
 
 import (
 	"context"
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/scheme"
 	"time"
 
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	scheme "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -38,15 +38,15 @@ type ExecutionsGetter interface {
 
 // ExecutionInterface has methods to work with Execution resources.
 type ExecutionInterface interface {
-	Create(ctx context.Context, execution *v12.Execution, opts metav1.CreateOptions) (*v12.Execution, error)
-	Update(ctx context.Context, execution *v12.Execution, opts metav1.UpdateOptions) (*v12.Execution, error)
-	UpdateStatus(ctx context.Context, execution *v12.Execution, opts metav1.UpdateOptions) (*v12.Execution, error)
+	Create(ctx context.Context, execution *v1.Execution, opts metav1.CreateOptions) (*v1.Execution, error)
+	Update(ctx context.Context, execution *v1.Execution, opts metav1.UpdateOptions) (*v1.Execution, error)
+	UpdateStatus(ctx context.Context, execution *v1.Execution, opts metav1.UpdateOptions) (*v1.Execution, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v12.Execution, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v12.ExecutionList, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Execution, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.ExecutionList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v12.Execution, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Execution, err error)
 	ExecutionExpansion
 }
 
@@ -65,8 +65,8 @@ func newExecutions(c *TerraformcontrollerV1Client, namespace string) *executions
 }
 
 // Get takes name of the execution, and returns the corresponding execution object, and an error if there is any.
-func (c *executions) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v12.Execution, err error) {
-	result = &v12.Execution{}
+func (c *executions) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Execution, err error) {
+	result = &v1.Execution{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("executions").
@@ -78,12 +78,12 @@ func (c *executions) Get(ctx context.Context, name string, options metav1.GetOpt
 }
 
 // List takes label and field selectors, and returns the list of Executions that match those selectors.
-func (c *executions) List(ctx context.Context, opts metav1.ListOptions) (result *v12.ExecutionList, err error) {
+func (c *executions) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ExecutionList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
-	result = &v12.ExecutionList{}
+	result = &v1.ExecutionList{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("executions").
@@ -110,8 +110,8 @@ func (c *executions) Watch(ctx context.Context, opts metav1.ListOptions) (watch.
 }
 
 // Create takes the representation of a execution and creates it.  Returns the server's representation of the execution, and an error, if there is any.
-func (c *executions) Create(ctx context.Context, execution *v12.Execution, opts metav1.CreateOptions) (result *v12.Execution, err error) {
-	result = &v12.Execution{}
+func (c *executions) Create(ctx context.Context, execution *v1.Execution, opts metav1.CreateOptions) (result *v1.Execution, err error) {
+	result = &v1.Execution{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("executions").
@@ -123,8 +123,8 @@ func (c *executions) Create(ctx context.Context, execution *v12.Execution, opts 
 }
 
 // Update takes the representation of a execution and updates it. Returns the server's representation of the execution, and an error, if there is any.
-func (c *executions) Update(ctx context.Context, execution *v12.Execution, opts metav1.UpdateOptions) (result *v12.Execution, err error) {
-	result = &v12.Execution{}
+func (c *executions) Update(ctx context.Context, execution *v1.Execution, opts metav1.UpdateOptions) (result *v1.Execution, err error) {
+	result = &v1.Execution{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("executions").
@@ -138,8 +138,8 @@ func (c *executions) Update(ctx context.Context, execution *v12.Execution, opts 
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *executions) UpdateStatus(ctx context.Context, execution *v12.Execution, opts metav1.UpdateOptions) (result *v12.Execution, err error) {
-	result = &v12.Execution{}
+func (c *executions) UpdateStatus(ctx context.Context, execution *v1.Execution, opts metav1.UpdateOptions) (result *v1.Execution, err error) {
+	result = &v1.Execution{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("executions").
@@ -180,8 +180,8 @@ func (c *executions) DeleteCollection(ctx context.Context, opts metav1.DeleteOpt
 }
 
 // Patch applies the patch and returns the patched execution.
-func (c *executions) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v12.Execution, err error) {
-	result = &v12.Execution{}
+func (c *executions) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Execution, err error) {
+	result = &v1.Execution{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("executions").

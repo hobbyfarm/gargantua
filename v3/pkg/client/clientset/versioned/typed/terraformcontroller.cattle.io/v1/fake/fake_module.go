@@ -20,11 +20,10 @@ package fake
 
 import (
 	"context"
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,25 +35,25 @@ type FakeModules struct {
 	ns   string
 }
 
-var modulesResource = schema.GroupVersionResource{Group: "terraformcontroller.cattle.io", Version: "v1", Resource: "modules"}
+var modulesResource = v1.SchemeGroupVersion.WithResource("modules")
 
-var modulesKind = schema.GroupVersionKind{Group: "terraformcontroller.cattle.io", Version: "v1", Kind: "Module"}
+var modulesKind = v1.SchemeGroupVersion.WithKind("Module")
 
 // Get takes name of the module, and returns the corresponding module object, and an error if there is any.
-func (c *FakeModules) Get(ctx context.Context, name string, options v1.GetOptions) (result *v12.Module, err error) {
+func (c *FakeModules) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Module, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(modulesResource, c.ns, name), &v12.Module{})
+		Invokes(testing.NewGetAction(modulesResource, c.ns, name), &v1.Module{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.Module), err
+	return obj.(*v1.Module), err
 }
 
 // List takes label and field selectors, and returns the list of Modules that match those selectors.
-func (c *FakeModules) List(ctx context.Context, opts v1.ListOptions) (result *v12.ModuleList, err error) {
+func (c *FakeModules) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ModuleList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(modulesResource, modulesKind, c.ns, opts), &v12.ModuleList{})
+		Invokes(testing.NewListAction(modulesResource, modulesKind, c.ns, opts), &v1.ModuleList{})
 
 	if obj == nil {
 		return nil, err
@@ -64,8 +63,8 @@ func (c *FakeModules) List(ctx context.Context, opts v1.ListOptions) (result *v1
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v12.ModuleList{ListMeta: obj.(*v12.ModuleList).ListMeta}
-	for _, item := range obj.(*v12.ModuleList).Items {
+	list := &v1.ModuleList{ListMeta: obj.(*v1.ModuleList).ListMeta}
+	for _, item := range obj.(*v1.ModuleList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -74,69 +73,69 @@ func (c *FakeModules) List(ctx context.Context, opts v1.ListOptions) (result *v1
 }
 
 // Watch returns a watch.Interface that watches the requested modules.
-func (c *FakeModules) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeModules) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(modulesResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a module and creates it.  Returns the server's representation of the module, and an error, if there is any.
-func (c *FakeModules) Create(ctx context.Context, module *v12.Module, opts v1.CreateOptions) (result *v12.Module, err error) {
+func (c *FakeModules) Create(ctx context.Context, module *v1.Module, opts metav1.CreateOptions) (result *v1.Module, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(modulesResource, c.ns, module), &v12.Module{})
+		Invokes(testing.NewCreateAction(modulesResource, c.ns, module), &v1.Module{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.Module), err
+	return obj.(*v1.Module), err
 }
 
 // Update takes the representation of a module and updates it. Returns the server's representation of the module, and an error, if there is any.
-func (c *FakeModules) Update(ctx context.Context, module *v12.Module, opts v1.UpdateOptions) (result *v12.Module, err error) {
+func (c *FakeModules) Update(ctx context.Context, module *v1.Module, opts metav1.UpdateOptions) (result *v1.Module, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(modulesResource, c.ns, module), &v12.Module{})
+		Invokes(testing.NewUpdateAction(modulesResource, c.ns, module), &v1.Module{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.Module), err
+	return obj.(*v1.Module), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeModules) UpdateStatus(ctx context.Context, module *v12.Module, opts v1.UpdateOptions) (*v12.Module, error) {
+func (c *FakeModules) UpdateStatus(ctx context.Context, module *v1.Module, opts metav1.UpdateOptions) (*v1.Module, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(modulesResource, "status", c.ns, module), &v12.Module{})
+		Invokes(testing.NewUpdateSubresourceAction(modulesResource, "status", c.ns, module), &v1.Module{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.Module), err
+	return obj.(*v1.Module), err
 }
 
 // Delete takes name of the module and deletes it. Returns an error if one occurs.
-func (c *FakeModules) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+func (c *FakeModules) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(modulesResource, c.ns, name, opts), &v12.Module{})
+		Invokes(testing.NewDeleteActionWithOptions(modulesResource, c.ns, name, opts), &v1.Module{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeModules) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+func (c *FakeModules) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(modulesResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &v12.ModuleList{})
+	_, err := c.Fake.Invokes(action, &v1.ModuleList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched module.
-func (c *FakeModules) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v12.Module, err error) {
+func (c *FakeModules) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Module, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(modulesResource, c.ns, name, pt, data, subresources...), &v12.Module{})
+		Invokes(testing.NewPatchSubresourceAction(modulesResource, c.ns, name, pt, data, subresources...), &v1.Module{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.Module), err
+	return obj.(*v1.Module), err
 }

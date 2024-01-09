@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
@@ -28,71 +28,71 @@ type FakeHobbyfarmV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeHobbyfarmV1) AccessCodes(namespace string) v12.AccessCodeInterface {
+func (c *FakeHobbyfarmV1) AccessCodes(namespace string) v1.AccessCodeInterface {
 	return &FakeAccessCodes{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) Courses(namespace string) v12.CourseInterface {
+func (c *FakeHobbyfarmV1) Courses(namespace string) v1.CourseInterface {
 	return &FakeCourses{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) DynamicBindConfigurations(namespace string) v12.DynamicBindConfigurationInterface {
+func (c *FakeHobbyfarmV1) DynamicBindConfigurations(namespace string) v1.DynamicBindConfigurationInterface {
 	return &FakeDynamicBindConfigurations{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) Environments(namespace string) v12.EnvironmentInterface {
+func (c *FakeHobbyfarmV1) Environments(namespace string) v1.EnvironmentInterface {
 	return &FakeEnvironments{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) OneTimeAccessCodes(namespace string) v12.OneTimeAccessCodeInterface {
+func (c *FakeHobbyfarmV1) OneTimeAccessCodes(namespace string) v1.OneTimeAccessCodeInterface {
 	return &FakeOneTimeAccessCodes{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) PredefinedServices(namespace string) v12.PredefinedServiceInterface {
+func (c *FakeHobbyfarmV1) PredefinedServices(namespace string) v1.PredefinedServiceInterface {
 	return &FakePredefinedServices{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) Progresses(namespace string) v12.ProgressInterface {
+func (c *FakeHobbyfarmV1) Progresses(namespace string) v1.ProgressInterface {
 	return &FakeProgresses{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) Scenarios(namespace string) v12.ScenarioInterface {
+func (c *FakeHobbyfarmV1) Scenarios(namespace string) v1.ScenarioInterface {
 	return &FakeScenarios{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) ScheduledEvents(namespace string) v12.ScheduledEventInterface {
+func (c *FakeHobbyfarmV1) ScheduledEvents(namespace string) v1.ScheduledEventInterface {
 	return &FakeScheduledEvents{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) Scopes(namespace string) v12.ScopeInterface {
+func (c *FakeHobbyfarmV1) Scopes(namespace string) v1.ScopeInterface {
 	return &FakeScopes{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) Sessions(namespace string) v12.SessionInterface {
+func (c *FakeHobbyfarmV1) Sessions(namespace string) v1.SessionInterface {
 	return &FakeSessions{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) Settings(namespace string) v12.SettingInterface {
+func (c *FakeHobbyfarmV1) Settings(namespace string) v1.SettingInterface {
 	return &FakeSettings{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) Users(namespace string) v12.UserInterface {
+func (c *FakeHobbyfarmV1) Users(namespace string) v1.UserInterface {
 	return &FakeUsers{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) VirtualMachines(namespace string) v12.VirtualMachineInterface {
+func (c *FakeHobbyfarmV1) VirtualMachines(namespace string) v1.VirtualMachineInterface {
 	return &FakeVirtualMachines{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) VirtualMachineClaims(namespace string) v12.VirtualMachineClaimInterface {
+func (c *FakeHobbyfarmV1) VirtualMachineClaims(namespace string) v1.VirtualMachineClaimInterface {
 	return &FakeVirtualMachineClaims{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) VirtualMachineSets(namespace string) v12.VirtualMachineSetInterface {
+func (c *FakeHobbyfarmV1) VirtualMachineSets(namespace string) v1.VirtualMachineSetInterface {
 	return &FakeVirtualMachineSets{c, namespace}
 }
 
-func (c *FakeHobbyfarmV1) VirtualMachineTemplates(namespace string) v12.VirtualMachineTemplateInterface {
+func (c *FakeHobbyfarmV1) VirtualMachineTemplates(namespace string) v1.VirtualMachineTemplateInterface {
 	return &FakeVirtualMachineTemplates{c, namespace}
 }
 

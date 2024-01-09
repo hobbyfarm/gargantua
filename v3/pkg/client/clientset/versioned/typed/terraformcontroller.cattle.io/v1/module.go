@@ -20,10 +20,10 @@ package v1
 
 import (
 	"context"
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/scheme"
 	"time"
 
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	scheme "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -38,15 +38,15 @@ type ModulesGetter interface {
 
 // ModuleInterface has methods to work with Module resources.
 type ModuleInterface interface {
-	Create(ctx context.Context, module *v12.Module, opts metav1.CreateOptions) (*v12.Module, error)
-	Update(ctx context.Context, module *v12.Module, opts metav1.UpdateOptions) (*v12.Module, error)
-	UpdateStatus(ctx context.Context, module *v12.Module, opts metav1.UpdateOptions) (*v12.Module, error)
+	Create(ctx context.Context, module *v1.Module, opts metav1.CreateOptions) (*v1.Module, error)
+	Update(ctx context.Context, module *v1.Module, opts metav1.UpdateOptions) (*v1.Module, error)
+	UpdateStatus(ctx context.Context, module *v1.Module, opts metav1.UpdateOptions) (*v1.Module, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v12.Module, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v12.ModuleList, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Module, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.ModuleList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v12.Module, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Module, err error)
 	ModuleExpansion
 }
 
@@ -65,8 +65,8 @@ func newModules(c *TerraformcontrollerV1Client, namespace string) *modules {
 }
 
 // Get takes name of the module, and returns the corresponding module object, and an error if there is any.
-func (c *modules) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v12.Module, err error) {
-	result = &v12.Module{}
+func (c *modules) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Module, err error) {
+	result = &v1.Module{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("modules").
@@ -78,12 +78,12 @@ func (c *modules) Get(ctx context.Context, name string, options metav1.GetOption
 }
 
 // List takes label and field selectors, and returns the list of Modules that match those selectors.
-func (c *modules) List(ctx context.Context, opts metav1.ListOptions) (result *v12.ModuleList, err error) {
+func (c *modules) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ModuleList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
-	result = &v12.ModuleList{}
+	result = &v1.ModuleList{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("modules").
@@ -110,8 +110,8 @@ func (c *modules) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Int
 }
 
 // Create takes the representation of a module and creates it.  Returns the server's representation of the module, and an error, if there is any.
-func (c *modules) Create(ctx context.Context, module *v12.Module, opts metav1.CreateOptions) (result *v12.Module, err error) {
-	result = &v12.Module{}
+func (c *modules) Create(ctx context.Context, module *v1.Module, opts metav1.CreateOptions) (result *v1.Module, err error) {
+	result = &v1.Module{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("modules").
@@ -123,8 +123,8 @@ func (c *modules) Create(ctx context.Context, module *v12.Module, opts metav1.Cr
 }
 
 // Update takes the representation of a module and updates it. Returns the server's representation of the module, and an error, if there is any.
-func (c *modules) Update(ctx context.Context, module *v12.Module, opts metav1.UpdateOptions) (result *v12.Module, err error) {
-	result = &v12.Module{}
+func (c *modules) Update(ctx context.Context, module *v1.Module, opts metav1.UpdateOptions) (result *v1.Module, err error) {
+	result = &v1.Module{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("modules").
@@ -138,8 +138,8 @@ func (c *modules) Update(ctx context.Context, module *v12.Module, opts metav1.Up
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *modules) UpdateStatus(ctx context.Context, module *v12.Module, opts metav1.UpdateOptions) (result *v12.Module, err error) {
-	result = &v12.Module{}
+func (c *modules) UpdateStatus(ctx context.Context, module *v1.Module, opts metav1.UpdateOptions) (result *v1.Module, err error) {
+	result = &v1.Module{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("modules").
@@ -180,8 +180,8 @@ func (c *modules) DeleteCollection(ctx context.Context, opts metav1.DeleteOption
 }
 
 // Patch applies the patch and returns the patched module.
-func (c *modules) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v12.Module, err error) {
-	result = &v12.Module{}
+func (c *modules) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Module, err error) {
+	result = &v1.Module{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("modules").

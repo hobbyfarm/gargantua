@@ -19,7 +19,7 @@ limitations under the License.
 package v1
 
 import (
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -30,7 +30,7 @@ import (
 type SessionLister interface {
 	// List lists all Sessions in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.Session, err error)
+	List(selector labels.Selector) (ret []*v1.Session, err error)
 	// Sessions returns an object that can list and get Sessions.
 	Sessions(namespace string) SessionNamespaceLister
 	SessionListerExpansion
@@ -47,9 +47,9 @@ func NewSessionLister(indexer cache.Indexer) SessionLister {
 }
 
 // List lists all Sessions in the indexer.
-func (s *sessionLister) List(selector labels.Selector) (ret []*v12.Session, err error) {
+func (s *sessionLister) List(selector labels.Selector) (ret []*v1.Session, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.Session))
+		ret = append(ret, m.(*v1.Session))
 	})
 	return ret, err
 }
@@ -64,10 +64,10 @@ func (s *sessionLister) Sessions(namespace string) SessionNamespaceLister {
 type SessionNamespaceLister interface {
 	// List lists all Sessions in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.Session, err error)
+	List(selector labels.Selector) (ret []*v1.Session, err error)
 	// Get retrieves the Session from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v12.Session, error)
+	Get(name string) (*v1.Session, error)
 	SessionNamespaceListerExpansion
 }
 
@@ -79,21 +79,21 @@ type sessionNamespaceLister struct {
 }
 
 // List lists all Sessions in the indexer for a given namespace.
-func (s sessionNamespaceLister) List(selector labels.Selector) (ret []*v12.Session, err error) {
+func (s sessionNamespaceLister) List(selector labels.Selector) (ret []*v1.Session, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.Session))
+		ret = append(ret, m.(*v1.Session))
 	})
 	return ret, err
 }
 
 // Get retrieves the Session from the indexer for a given namespace and name.
-func (s sessionNamespaceLister) Get(name string) (*v12.Session, error) {
+func (s sessionNamespaceLister) Get(name string) (*v1.Session, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v12.Resource("session"), name)
+		return nil, errors.NewNotFound(v1.Resource("session"), name)
 	}
-	return obj.(*v12.Session), nil
+	return obj.(*v1.Session), nil
 }

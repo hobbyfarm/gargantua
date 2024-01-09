@@ -19,7 +19,7 @@ limitations under the License.
 package v1
 
 import (
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -30,7 +30,7 @@ import (
 type EnvironmentLister interface {
 	// List lists all Environments in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.Environment, err error)
+	List(selector labels.Selector) (ret []*v1.Environment, err error)
 	// Environments returns an object that can list and get Environments.
 	Environments(namespace string) EnvironmentNamespaceLister
 	EnvironmentListerExpansion
@@ -47,9 +47,9 @@ func NewEnvironmentLister(indexer cache.Indexer) EnvironmentLister {
 }
 
 // List lists all Environments in the indexer.
-func (s *environmentLister) List(selector labels.Selector) (ret []*v12.Environment, err error) {
+func (s *environmentLister) List(selector labels.Selector) (ret []*v1.Environment, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.Environment))
+		ret = append(ret, m.(*v1.Environment))
 	})
 	return ret, err
 }
@@ -64,10 +64,10 @@ func (s *environmentLister) Environments(namespace string) EnvironmentNamespaceL
 type EnvironmentNamespaceLister interface {
 	// List lists all Environments in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.Environment, err error)
+	List(selector labels.Selector) (ret []*v1.Environment, err error)
 	// Get retrieves the Environment from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v12.Environment, error)
+	Get(name string) (*v1.Environment, error)
 	EnvironmentNamespaceListerExpansion
 }
 
@@ -79,21 +79,21 @@ type environmentNamespaceLister struct {
 }
 
 // List lists all Environments in the indexer for a given namespace.
-func (s environmentNamespaceLister) List(selector labels.Selector) (ret []*v12.Environment, err error) {
+func (s environmentNamespaceLister) List(selector labels.Selector) (ret []*v1.Environment, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.Environment))
+		ret = append(ret, m.(*v1.Environment))
 	})
 	return ret, err
 }
 
 // Get retrieves the Environment from the indexer for a given namespace and name.
-func (s environmentNamespaceLister) Get(name string) (*v12.Environment, error) {
+func (s environmentNamespaceLister) Get(name string) (*v1.Environment, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v12.Resource("environment"), name)
+		return nil, errors.NewNotFound(v1.Resource("environment"), name)
 	}
-	return obj.(*v12.Environment), nil
+	return obj.(*v1.Environment), nil
 }

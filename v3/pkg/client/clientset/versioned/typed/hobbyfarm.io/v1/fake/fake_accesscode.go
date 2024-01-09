@@ -20,11 +20,10 @@ package fake
 
 import (
 	"context"
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,25 +35,25 @@ type FakeAccessCodes struct {
 	ns   string
 }
 
-var accesscodesResource = schema.GroupVersionResource{Group: "hobbyfarm.io", Version: "v1", Resource: "accesscodes"}
+var accesscodesResource = v1.SchemeGroupVersion.WithResource("accesscodes")
 
-var accesscodesKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version: "v1", Kind: "AccessCode"}
+var accesscodesKind = v1.SchemeGroupVersion.WithKind("AccessCode")
 
 // Get takes name of the accessCode, and returns the corresponding accessCode object, and an error if there is any.
-func (c *FakeAccessCodes) Get(ctx context.Context, name string, options v1.GetOptions) (result *hobbyfarmiov1.AccessCode, err error) {
+func (c *FakeAccessCodes) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.AccessCode, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(accesscodesResource, c.ns, name), &hobbyfarmiov1.AccessCode{})
+		Invokes(testing.NewGetAction(accesscodesResource, c.ns, name), &v1.AccessCode{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.AccessCode), err
+	return obj.(*v1.AccessCode), err
 }
 
 // List takes label and field selectors, and returns the list of AccessCodes that match those selectors.
-func (c *FakeAccessCodes) List(ctx context.Context, opts v1.ListOptions) (result *hobbyfarmiov1.AccessCodeList, err error) {
+func (c *FakeAccessCodes) List(ctx context.Context, opts metav1.ListOptions) (result *v1.AccessCodeList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(accesscodesResource, accesscodesKind, c.ns, opts), &hobbyfarmiov1.AccessCodeList{})
+		Invokes(testing.NewListAction(accesscodesResource, accesscodesKind, c.ns, opts), &v1.AccessCodeList{})
 
 	if obj == nil {
 		return nil, err
@@ -64,8 +63,8 @@ func (c *FakeAccessCodes) List(ctx context.Context, opts v1.ListOptions) (result
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &hobbyfarmiov1.AccessCodeList{ListMeta: obj.(*hobbyfarmiov1.AccessCodeList).ListMeta}
-	for _, item := range obj.(*hobbyfarmiov1.AccessCodeList).Items {
+	list := &v1.AccessCodeList{ListMeta: obj.(*v1.AccessCodeList).ListMeta}
+	for _, item := range obj.(*v1.AccessCodeList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -74,57 +73,57 @@ func (c *FakeAccessCodes) List(ctx context.Context, opts v1.ListOptions) (result
 }
 
 // Watch returns a watch.Interface that watches the requested accessCodes.
-func (c *FakeAccessCodes) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeAccessCodes) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(accesscodesResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a accessCode and creates it.  Returns the server's representation of the accessCode, and an error, if there is any.
-func (c *FakeAccessCodes) Create(ctx context.Context, accessCode *hobbyfarmiov1.AccessCode, opts v1.CreateOptions) (result *hobbyfarmiov1.AccessCode, err error) {
+func (c *FakeAccessCodes) Create(ctx context.Context, accessCode *v1.AccessCode, opts metav1.CreateOptions) (result *v1.AccessCode, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(accesscodesResource, c.ns, accessCode), &hobbyfarmiov1.AccessCode{})
+		Invokes(testing.NewCreateAction(accesscodesResource, c.ns, accessCode), &v1.AccessCode{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.AccessCode), err
+	return obj.(*v1.AccessCode), err
 }
 
 // Update takes the representation of a accessCode and updates it. Returns the server's representation of the accessCode, and an error, if there is any.
-func (c *FakeAccessCodes) Update(ctx context.Context, accessCode *hobbyfarmiov1.AccessCode, opts v1.UpdateOptions) (result *hobbyfarmiov1.AccessCode, err error) {
+func (c *FakeAccessCodes) Update(ctx context.Context, accessCode *v1.AccessCode, opts metav1.UpdateOptions) (result *v1.AccessCode, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(accesscodesResource, c.ns, accessCode), &hobbyfarmiov1.AccessCode{})
+		Invokes(testing.NewUpdateAction(accesscodesResource, c.ns, accessCode), &v1.AccessCode{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.AccessCode), err
+	return obj.(*v1.AccessCode), err
 }
 
 // Delete takes name of the accessCode and deletes it. Returns an error if one occurs.
-func (c *FakeAccessCodes) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+func (c *FakeAccessCodes) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(accesscodesResource, c.ns, name, opts), &hobbyfarmiov1.AccessCode{})
+		Invokes(testing.NewDeleteActionWithOptions(accesscodesResource, c.ns, name, opts), &v1.AccessCode{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeAccessCodes) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+func (c *FakeAccessCodes) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(accesscodesResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &hobbyfarmiov1.AccessCodeList{})
+	_, err := c.Fake.Invokes(action, &v1.AccessCodeList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched accessCode.
-func (c *FakeAccessCodes) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *hobbyfarmiov1.AccessCode, err error) {
+func (c *FakeAccessCodes) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.AccessCode, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(accesscodesResource, c.ns, name, pt, data, subresources...), &hobbyfarmiov1.AccessCode{})
+		Invokes(testing.NewPatchSubresourceAction(accesscodesResource, c.ns, name, pt, data, subresources...), &v1.AccessCode{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.AccessCode), err
+	return obj.(*v1.AccessCode), err
 }

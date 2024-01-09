@@ -20,11 +20,10 @@ package fake
 
 import (
 	"context"
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,25 +35,25 @@ type FakePredefinedServices struct {
 	ns   string
 }
 
-var predefinedservicesResource = schema.GroupVersionResource{Group: "hobbyfarm.io", Version: "v1", Resource: "predefinedservices"}
+var predefinedservicesResource = v1.SchemeGroupVersion.WithResource("predefinedservices")
 
-var predefinedservicesKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version: "v1", Kind: "PredefinedService"}
+var predefinedservicesKind = v1.SchemeGroupVersion.WithKind("PredefinedService")
 
 // Get takes name of the predefinedService, and returns the corresponding predefinedService object, and an error if there is any.
-func (c *FakePredefinedServices) Get(ctx context.Context, name string, options v1.GetOptions) (result *hobbyfarmiov1.PredefinedService, err error) {
+func (c *FakePredefinedServices) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.PredefinedService, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(predefinedservicesResource, c.ns, name), &hobbyfarmiov1.PredefinedService{})
+		Invokes(testing.NewGetAction(predefinedservicesResource, c.ns, name), &v1.PredefinedService{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.PredefinedService), err
+	return obj.(*v1.PredefinedService), err
 }
 
 // List takes label and field selectors, and returns the list of PredefinedServices that match those selectors.
-func (c *FakePredefinedServices) List(ctx context.Context, opts v1.ListOptions) (result *hobbyfarmiov1.PredefinedServiceList, err error) {
+func (c *FakePredefinedServices) List(ctx context.Context, opts metav1.ListOptions) (result *v1.PredefinedServiceList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(predefinedservicesResource, predefinedservicesKind, c.ns, opts), &hobbyfarmiov1.PredefinedServiceList{})
+		Invokes(testing.NewListAction(predefinedservicesResource, predefinedservicesKind, c.ns, opts), &v1.PredefinedServiceList{})
 
 	if obj == nil {
 		return nil, err
@@ -64,8 +63,8 @@ func (c *FakePredefinedServices) List(ctx context.Context, opts v1.ListOptions) 
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &hobbyfarmiov1.PredefinedServiceList{ListMeta: obj.(*hobbyfarmiov1.PredefinedServiceList).ListMeta}
-	for _, item := range obj.(*hobbyfarmiov1.PredefinedServiceList).Items {
+	list := &v1.PredefinedServiceList{ListMeta: obj.(*v1.PredefinedServiceList).ListMeta}
+	for _, item := range obj.(*v1.PredefinedServiceList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -74,57 +73,57 @@ func (c *FakePredefinedServices) List(ctx context.Context, opts v1.ListOptions) 
 }
 
 // Watch returns a watch.Interface that watches the requested predefinedServices.
-func (c *FakePredefinedServices) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakePredefinedServices) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(predefinedservicesResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a predefinedService and creates it.  Returns the server's representation of the predefinedService, and an error, if there is any.
-func (c *FakePredefinedServices) Create(ctx context.Context, predefinedService *hobbyfarmiov1.PredefinedService, opts v1.CreateOptions) (result *hobbyfarmiov1.PredefinedService, err error) {
+func (c *FakePredefinedServices) Create(ctx context.Context, predefinedService *v1.PredefinedService, opts metav1.CreateOptions) (result *v1.PredefinedService, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(predefinedservicesResource, c.ns, predefinedService), &hobbyfarmiov1.PredefinedService{})
+		Invokes(testing.NewCreateAction(predefinedservicesResource, c.ns, predefinedService), &v1.PredefinedService{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.PredefinedService), err
+	return obj.(*v1.PredefinedService), err
 }
 
 // Update takes the representation of a predefinedService and updates it. Returns the server's representation of the predefinedService, and an error, if there is any.
-func (c *FakePredefinedServices) Update(ctx context.Context, predefinedService *hobbyfarmiov1.PredefinedService, opts v1.UpdateOptions) (result *hobbyfarmiov1.PredefinedService, err error) {
+func (c *FakePredefinedServices) Update(ctx context.Context, predefinedService *v1.PredefinedService, opts metav1.UpdateOptions) (result *v1.PredefinedService, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(predefinedservicesResource, c.ns, predefinedService), &hobbyfarmiov1.PredefinedService{})
+		Invokes(testing.NewUpdateAction(predefinedservicesResource, c.ns, predefinedService), &v1.PredefinedService{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.PredefinedService), err
+	return obj.(*v1.PredefinedService), err
 }
 
 // Delete takes name of the predefinedService and deletes it. Returns an error if one occurs.
-func (c *FakePredefinedServices) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+func (c *FakePredefinedServices) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(predefinedservicesResource, c.ns, name, opts), &hobbyfarmiov1.PredefinedService{})
+		Invokes(testing.NewDeleteActionWithOptions(predefinedservicesResource, c.ns, name, opts), &v1.PredefinedService{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakePredefinedServices) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+func (c *FakePredefinedServices) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(predefinedservicesResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &hobbyfarmiov1.PredefinedServiceList{})
+	_, err := c.Fake.Invokes(action, &v1.PredefinedServiceList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched predefinedService.
-func (c *FakePredefinedServices) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *hobbyfarmiov1.PredefinedService, err error) {
+func (c *FakePredefinedServices) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.PredefinedService, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(predefinedservicesResource, c.ns, name, pt, data, subresources...), &hobbyfarmiov1.PredefinedService{})
+		Invokes(testing.NewPatchSubresourceAction(predefinedservicesResource, c.ns, name, pt, data, subresources...), &v1.PredefinedService{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.PredefinedService), err
+	return obj.(*v1.PredefinedService), err
 }

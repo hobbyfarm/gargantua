@@ -19,7 +19,7 @@ limitations under the License.
 package v1
 
 import (
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -30,7 +30,7 @@ import (
 type ScheduledEventLister interface {
 	// List lists all ScheduledEvents in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.ScheduledEvent, err error)
+	List(selector labels.Selector) (ret []*v1.ScheduledEvent, err error)
 	// ScheduledEvents returns an object that can list and get ScheduledEvents.
 	ScheduledEvents(namespace string) ScheduledEventNamespaceLister
 	ScheduledEventListerExpansion
@@ -47,9 +47,9 @@ func NewScheduledEventLister(indexer cache.Indexer) ScheduledEventLister {
 }
 
 // List lists all ScheduledEvents in the indexer.
-func (s *scheduledEventLister) List(selector labels.Selector) (ret []*v12.ScheduledEvent, err error) {
+func (s *scheduledEventLister) List(selector labels.Selector) (ret []*v1.ScheduledEvent, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.ScheduledEvent))
+		ret = append(ret, m.(*v1.ScheduledEvent))
 	})
 	return ret, err
 }
@@ -64,10 +64,10 @@ func (s *scheduledEventLister) ScheduledEvents(namespace string) ScheduledEventN
 type ScheduledEventNamespaceLister interface {
 	// List lists all ScheduledEvents in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.ScheduledEvent, err error)
+	List(selector labels.Selector) (ret []*v1.ScheduledEvent, err error)
 	// Get retrieves the ScheduledEvent from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v12.ScheduledEvent, error)
+	Get(name string) (*v1.ScheduledEvent, error)
 	ScheduledEventNamespaceListerExpansion
 }
 
@@ -79,21 +79,21 @@ type scheduledEventNamespaceLister struct {
 }
 
 // List lists all ScheduledEvents in the indexer for a given namespace.
-func (s scheduledEventNamespaceLister) List(selector labels.Selector) (ret []*v12.ScheduledEvent, err error) {
+func (s scheduledEventNamespaceLister) List(selector labels.Selector) (ret []*v1.ScheduledEvent, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.ScheduledEvent))
+		ret = append(ret, m.(*v1.ScheduledEvent))
 	})
 	return ret, err
 }
 
 // Get retrieves the ScheduledEvent from the indexer for a given namespace and name.
-func (s scheduledEventNamespaceLister) Get(name string) (*v12.ScheduledEvent, error) {
+func (s scheduledEventNamespaceLister) Get(name string) (*v1.ScheduledEvent, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v12.Resource("scheduledevent"), name)
+		return nil, errors.NewNotFound(v1.Resource("scheduledevent"), name)
 	}
-	return obj.(*v12.ScheduledEvent), nil
+	return obj.(*v1.ScheduledEvent), nil
 }

@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/terraformcontroller.cattle.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/terraformcontroller.cattle.io/v1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
@@ -28,15 +28,15 @@ type FakeTerraformcontrollerV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeTerraformcontrollerV1) Executions(namespace string) v12.ExecutionInterface {
+func (c *FakeTerraformcontrollerV1) Executions(namespace string) v1.ExecutionInterface {
 	return &FakeExecutions{c, namespace}
 }
 
-func (c *FakeTerraformcontrollerV1) Modules(namespace string) v12.ModuleInterface {
+func (c *FakeTerraformcontrollerV1) Modules(namespace string) v1.ModuleInterface {
 	return &FakeModules{c, namespace}
 }
 
-func (c *FakeTerraformcontrollerV1) States(namespace string) v12.StateInterface {
+func (c *FakeTerraformcontrollerV1) States(namespace string) v1.StateInterface {
 	return &FakeStates{c, namespace}
 }
 

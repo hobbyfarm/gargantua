@@ -20,11 +20,10 @@ package fake
 
 import (
 	"context"
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,25 +35,25 @@ type FakeExecutions struct {
 	ns   string
 }
 
-var executionsResource = schema.GroupVersionResource{Group: "terraformcontroller.cattle.io", Version: "v1", Resource: "executions"}
+var executionsResource = v1.SchemeGroupVersion.WithResource("executions")
 
-var executionsKind = schema.GroupVersionKind{Group: "terraformcontroller.cattle.io", Version: "v1", Kind: "Execution"}
+var executionsKind = v1.SchemeGroupVersion.WithKind("Execution")
 
 // Get takes name of the execution, and returns the corresponding execution object, and an error if there is any.
-func (c *FakeExecutions) Get(ctx context.Context, name string, options v1.GetOptions) (result *v12.Execution, err error) {
+func (c *FakeExecutions) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Execution, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(executionsResource, c.ns, name), &v12.Execution{})
+		Invokes(testing.NewGetAction(executionsResource, c.ns, name), &v1.Execution{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.Execution), err
+	return obj.(*v1.Execution), err
 }
 
 // List takes label and field selectors, and returns the list of Executions that match those selectors.
-func (c *FakeExecutions) List(ctx context.Context, opts v1.ListOptions) (result *v12.ExecutionList, err error) {
+func (c *FakeExecutions) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ExecutionList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(executionsResource, executionsKind, c.ns, opts), &v12.ExecutionList{})
+		Invokes(testing.NewListAction(executionsResource, executionsKind, c.ns, opts), &v1.ExecutionList{})
 
 	if obj == nil {
 		return nil, err
@@ -64,8 +63,8 @@ func (c *FakeExecutions) List(ctx context.Context, opts v1.ListOptions) (result 
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v12.ExecutionList{ListMeta: obj.(*v12.ExecutionList).ListMeta}
-	for _, item := range obj.(*v12.ExecutionList).Items {
+	list := &v1.ExecutionList{ListMeta: obj.(*v1.ExecutionList).ListMeta}
+	for _, item := range obj.(*v1.ExecutionList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -74,69 +73,69 @@ func (c *FakeExecutions) List(ctx context.Context, opts v1.ListOptions) (result 
 }
 
 // Watch returns a watch.Interface that watches the requested executions.
-func (c *FakeExecutions) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeExecutions) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(executionsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a execution and creates it.  Returns the server's representation of the execution, and an error, if there is any.
-func (c *FakeExecutions) Create(ctx context.Context, execution *v12.Execution, opts v1.CreateOptions) (result *v12.Execution, err error) {
+func (c *FakeExecutions) Create(ctx context.Context, execution *v1.Execution, opts metav1.CreateOptions) (result *v1.Execution, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(executionsResource, c.ns, execution), &v12.Execution{})
+		Invokes(testing.NewCreateAction(executionsResource, c.ns, execution), &v1.Execution{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.Execution), err
+	return obj.(*v1.Execution), err
 }
 
 // Update takes the representation of a execution and updates it. Returns the server's representation of the execution, and an error, if there is any.
-func (c *FakeExecutions) Update(ctx context.Context, execution *v12.Execution, opts v1.UpdateOptions) (result *v12.Execution, err error) {
+func (c *FakeExecutions) Update(ctx context.Context, execution *v1.Execution, opts metav1.UpdateOptions) (result *v1.Execution, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(executionsResource, c.ns, execution), &v12.Execution{})
+		Invokes(testing.NewUpdateAction(executionsResource, c.ns, execution), &v1.Execution{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.Execution), err
+	return obj.(*v1.Execution), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeExecutions) UpdateStatus(ctx context.Context, execution *v12.Execution, opts v1.UpdateOptions) (*v12.Execution, error) {
+func (c *FakeExecutions) UpdateStatus(ctx context.Context, execution *v1.Execution, opts metav1.UpdateOptions) (*v1.Execution, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(executionsResource, "status", c.ns, execution), &v12.Execution{})
+		Invokes(testing.NewUpdateSubresourceAction(executionsResource, "status", c.ns, execution), &v1.Execution{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.Execution), err
+	return obj.(*v1.Execution), err
 }
 
 // Delete takes name of the execution and deletes it. Returns an error if one occurs.
-func (c *FakeExecutions) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+func (c *FakeExecutions) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(executionsResource, c.ns, name, opts), &v12.Execution{})
+		Invokes(testing.NewDeleteActionWithOptions(executionsResource, c.ns, name, opts), &v1.Execution{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeExecutions) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+func (c *FakeExecutions) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(executionsResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &v12.ExecutionList{})
+	_, err := c.Fake.Invokes(action, &v1.ExecutionList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched execution.
-func (c *FakeExecutions) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v12.Execution, err error) {
+func (c *FakeExecutions) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Execution, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(executionsResource, c.ns, name, pt, data, subresources...), &v12.Execution{})
+		Invokes(testing.NewPatchSubresourceAction(executionsResource, c.ns, name, pt, data, subresources...), &v1.Execution{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v12.Execution), err
+	return obj.(*v1.Execution), err
 }

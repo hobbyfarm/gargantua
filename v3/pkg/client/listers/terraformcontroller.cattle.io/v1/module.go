@@ -19,7 +19,7 @@ limitations under the License.
 package v1
 
 import (
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -30,7 +30,7 @@ import (
 type ModuleLister interface {
 	// List lists all Modules in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.Module, err error)
+	List(selector labels.Selector) (ret []*v1.Module, err error)
 	// Modules returns an object that can list and get Modules.
 	Modules(namespace string) ModuleNamespaceLister
 	ModuleListerExpansion
@@ -47,9 +47,9 @@ func NewModuleLister(indexer cache.Indexer) ModuleLister {
 }
 
 // List lists all Modules in the indexer.
-func (s *moduleLister) List(selector labels.Selector) (ret []*v12.Module, err error) {
+func (s *moduleLister) List(selector labels.Selector) (ret []*v1.Module, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.Module))
+		ret = append(ret, m.(*v1.Module))
 	})
 	return ret, err
 }
@@ -64,10 +64,10 @@ func (s *moduleLister) Modules(namespace string) ModuleNamespaceLister {
 type ModuleNamespaceLister interface {
 	// List lists all Modules in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.Module, err error)
+	List(selector labels.Selector) (ret []*v1.Module, err error)
 	// Get retrieves the Module from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v12.Module, error)
+	Get(name string) (*v1.Module, error)
 	ModuleNamespaceListerExpansion
 }
 
@@ -79,21 +79,21 @@ type moduleNamespaceLister struct {
 }
 
 // List lists all Modules in the indexer for a given namespace.
-func (s moduleNamespaceLister) List(selector labels.Selector) (ret []*v12.Module, err error) {
+func (s moduleNamespaceLister) List(selector labels.Selector) (ret []*v1.Module, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.Module))
+		ret = append(ret, m.(*v1.Module))
 	})
 	return ret, err
 }
 
 // Get retrieves the Module from the indexer for a given namespace and name.
-func (s moduleNamespaceLister) Get(name string) (*v12.Module, error) {
+func (s moduleNamespaceLister) Get(name string) (*v1.Module, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v12.Resource("module"), name)
+		return nil, errors.NewNotFound(v1.Resource("module"), name)
 	}
-	return obj.(*v12.Module), nil
+	return obj.(*v1.Module), nil
 }

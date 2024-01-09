@@ -1,20 +1,28 @@
 #!/bin/bash
 
+if [[ "$(PWD)" != */github.com/hobbyfarm/gargantua ]]
+then
+  echo "You must run this script from within a path that ends in /github.com/hobbyfarm/gargantua"
+  exit 1
+fi
+
+PKG_PATH=$(pwd | sed -e 's/github.com\/hobbyfarm\/gargantua//')
+
 source kube_codegen.sh
 
-mkdir -p pkg/client/clientset
-mkdir -p pkg/client/listers
-mkdir -p pkg/client/informers
+mkdir -p v3/pkg/client/clientset
+mkdir -p v3/pkg/client/listers
+mkdir -p v3/pkg/client/informers
 
 kube::codegen::gen_helpers \
-  --input-pkg-root github.com/hobbyfarm/gargantua/pkg/apis \
-  --output-base "${GOPATH}"/src
+  --input-pkg-root github.com/hobbyfarm/gargantua/v3/pkg/apis \
+  --output-base "${PKG_PATH}"
 
 kube::codegen::gen_client \
-  --input-pkg-root github.com/hobbyfarm/gargantua/pkg/apis \
-  --output-pkg-root github.com/hobbyfarm/gargantua/pkg/client \
+  --input-pkg-root github.com/hobbyfarm/gargantua/v3/pkg/apis \
+  --output-pkg-root github.com/hobbyfarm/gargantua/v3/pkg/client \
   --boilerplate ./hack/boilerplate.go.txt \
-  --output-base "${GOPATH}"/src \
+  --output-base "${PKG_PATH}" \
   --clientset-name clientset \
   --versioned-name versioned \
   --listers-name listers \
@@ -22,8 +30,8 @@ kube::codegen::gen_client \
   --with-watch
 
 kube::codegen::gen_helpers \
-  --input-pkg-root github.com/hobbyfarm/gargantua/pkg/property \
-  --output-base "${GOPATH}"/src 2>&1 | grep -v -e "GenericType"
+  --input-pkg-root github.com/hobbyfarm/gargantua/v3/pkg/property \
+  --output-base "${PKG_PATH}" 2>&1 | grep -v -e "GenericType"
 
 # The previous command ignores any lines w/ string GenericType
 # This is to suppress a warning about deepcopy-gen not being able to support a generic type

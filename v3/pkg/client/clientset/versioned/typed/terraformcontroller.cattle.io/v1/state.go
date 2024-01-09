@@ -20,10 +20,10 @@ package v1
 
 import (
 	"context"
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/scheme"
 	"time"
 
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	scheme "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -38,15 +38,15 @@ type StatesGetter interface {
 
 // StateInterface has methods to work with State resources.
 type StateInterface interface {
-	Create(ctx context.Context, state *v12.State, opts metav1.CreateOptions) (*v12.State, error)
-	Update(ctx context.Context, state *v12.State, opts metav1.UpdateOptions) (*v12.State, error)
-	UpdateStatus(ctx context.Context, state *v12.State, opts metav1.UpdateOptions) (*v12.State, error)
+	Create(ctx context.Context, state *v1.State, opts metav1.CreateOptions) (*v1.State, error)
+	Update(ctx context.Context, state *v1.State, opts metav1.UpdateOptions) (*v1.State, error)
+	UpdateStatus(ctx context.Context, state *v1.State, opts metav1.UpdateOptions) (*v1.State, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v12.State, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v12.StateList, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.State, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1.StateList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v12.State, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.State, err error)
 	StateExpansion
 }
 
@@ -65,8 +65,8 @@ func newStates(c *TerraformcontrollerV1Client, namespace string) *states {
 }
 
 // Get takes name of the state, and returns the corresponding state object, and an error if there is any.
-func (c *states) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v12.State, err error) {
-	result = &v12.State{}
+func (c *states) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.State, err error) {
+	result = &v1.State{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("states").
@@ -78,12 +78,12 @@ func (c *states) Get(ctx context.Context, name string, options metav1.GetOptions
 }
 
 // List takes label and field selectors, and returns the list of States that match those selectors.
-func (c *states) List(ctx context.Context, opts metav1.ListOptions) (result *v12.StateList, err error) {
+func (c *states) List(ctx context.Context, opts metav1.ListOptions) (result *v1.StateList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
-	result = &v12.StateList{}
+	result = &v1.StateList{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("states").
@@ -110,8 +110,8 @@ func (c *states) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Inte
 }
 
 // Create takes the representation of a state and creates it.  Returns the server's representation of the state, and an error, if there is any.
-func (c *states) Create(ctx context.Context, state *v12.State, opts metav1.CreateOptions) (result *v12.State, err error) {
-	result = &v12.State{}
+func (c *states) Create(ctx context.Context, state *v1.State, opts metav1.CreateOptions) (result *v1.State, err error) {
+	result = &v1.State{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("states").
@@ -123,8 +123,8 @@ func (c *states) Create(ctx context.Context, state *v12.State, opts metav1.Creat
 }
 
 // Update takes the representation of a state and updates it. Returns the server's representation of the state, and an error, if there is any.
-func (c *states) Update(ctx context.Context, state *v12.State, opts metav1.UpdateOptions) (result *v12.State, err error) {
-	result = &v12.State{}
+func (c *states) Update(ctx context.Context, state *v1.State, opts metav1.UpdateOptions) (result *v1.State, err error) {
+	result = &v1.State{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("states").
@@ -138,8 +138,8 @@ func (c *states) Update(ctx context.Context, state *v12.State, opts metav1.Updat
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *states) UpdateStatus(ctx context.Context, state *v12.State, opts metav1.UpdateOptions) (result *v12.State, err error) {
-	result = &v12.State{}
+func (c *states) UpdateStatus(ctx context.Context, state *v1.State, opts metav1.UpdateOptions) (result *v1.State, err error) {
+	result = &v1.State{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("states").
@@ -180,8 +180,8 @@ func (c *states) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions
 }
 
 // Patch applies the patch and returns the patched state.
-func (c *states) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v12.State, err error) {
-	result = &v12.State{}
+func (c *states) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.State, err error) {
+	result = &v1.State{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("states").

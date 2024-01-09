@@ -20,11 +20,11 @@ package versioned
 
 import (
 	"fmt"
+	"net/http"
+
 	hobbyfarmv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
 	hobbyfarmv2 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v2"
 	terraformcontrollerv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/terraformcontroller.cattle.io/v1"
-	"net/http"
-
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -37,8 +37,7 @@ type Interface interface {
 	TerraformcontrollerV1() terraformcontrollerv1.TerraformcontrollerV1Interface
 }
 
-// Clientset contains the clients for groups. Each group has exactly one
-// version included in a Clientset.
+// Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
 	hobbyfarmV1           *hobbyfarmv1.HobbyfarmV1Client

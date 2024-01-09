@@ -19,7 +19,7 @@ limitations under the License.
 package v1
 
 import (
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -30,7 +30,7 @@ import (
 type VirtualMachineLister interface {
 	// List lists all VirtualMachines in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.VirtualMachine, err error)
+	List(selector labels.Selector) (ret []*v1.VirtualMachine, err error)
 	// VirtualMachines returns an object that can list and get VirtualMachines.
 	VirtualMachines(namespace string) VirtualMachineNamespaceLister
 	VirtualMachineListerExpansion
@@ -47,9 +47,9 @@ func NewVirtualMachineLister(indexer cache.Indexer) VirtualMachineLister {
 }
 
 // List lists all VirtualMachines in the indexer.
-func (s *virtualMachineLister) List(selector labels.Selector) (ret []*v12.VirtualMachine, err error) {
+func (s *virtualMachineLister) List(selector labels.Selector) (ret []*v1.VirtualMachine, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.VirtualMachine))
+		ret = append(ret, m.(*v1.VirtualMachine))
 	})
 	return ret, err
 }
@@ -64,10 +64,10 @@ func (s *virtualMachineLister) VirtualMachines(namespace string) VirtualMachineN
 type VirtualMachineNamespaceLister interface {
 	// List lists all VirtualMachines in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.VirtualMachine, err error)
+	List(selector labels.Selector) (ret []*v1.VirtualMachine, err error)
 	// Get retrieves the VirtualMachine from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v12.VirtualMachine, error)
+	Get(name string) (*v1.VirtualMachine, error)
 	VirtualMachineNamespaceListerExpansion
 }
 
@@ -79,21 +79,21 @@ type virtualMachineNamespaceLister struct {
 }
 
 // List lists all VirtualMachines in the indexer for a given namespace.
-func (s virtualMachineNamespaceLister) List(selector labels.Selector) (ret []*v12.VirtualMachine, err error) {
+func (s virtualMachineNamespaceLister) List(selector labels.Selector) (ret []*v1.VirtualMachine, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.VirtualMachine))
+		ret = append(ret, m.(*v1.VirtualMachine))
 	})
 	return ret, err
 }
 
 // Get retrieves the VirtualMachine from the indexer for a given namespace and name.
-func (s virtualMachineNamespaceLister) Get(name string) (*v12.VirtualMachine, error) {
+func (s virtualMachineNamespaceLister) Get(name string) (*v1.VirtualMachine, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v12.Resource("virtualmachine"), name)
+		return nil, errors.NewNotFound(v1.Resource("virtualmachine"), name)
 	}
-	return obj.(*v12.VirtualMachine), nil
+	return obj.(*v1.VirtualMachine), nil
 }

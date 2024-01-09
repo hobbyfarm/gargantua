@@ -20,11 +20,10 @@ package fake
 
 import (
 	"context"
-	"github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 
+	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,9 +35,9 @@ type FakeUsers struct {
 	ns   string
 }
 
-var usersResource = schema.GroupVersionResource{Group: "hobbyfarm.io", Version: "v2", Resource: "users"}
+var usersResource = v2.SchemeGroupVersion.WithResource("users")
 
-var usersKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version: "v2", Kind: "User"}
+var usersKind = v2.SchemeGroupVersion.WithKind("User")
 
 // Get takes name of the user, and returns the corresponding user object, and an error if there is any.
 func (c *FakeUsers) Get(ctx context.Context, name string, options v1.GetOptions) (result *v2.User, err error) {

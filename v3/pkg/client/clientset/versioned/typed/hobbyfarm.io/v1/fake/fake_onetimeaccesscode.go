@@ -20,11 +20,10 @@ package fake
 
 import (
 	"context"
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,25 +35,25 @@ type FakeOneTimeAccessCodes struct {
 	ns   string
 }
 
-var onetimeaccesscodesResource = schema.GroupVersionResource{Group: "hobbyfarm.io", Version: "v1", Resource: "onetimeaccesscodes"}
+var onetimeaccesscodesResource = v1.SchemeGroupVersion.WithResource("onetimeaccesscodes")
 
-var onetimeaccesscodesKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version: "v1", Kind: "OneTimeAccessCode"}
+var onetimeaccesscodesKind = v1.SchemeGroupVersion.WithKind("OneTimeAccessCode")
 
 // Get takes name of the oneTimeAccessCode, and returns the corresponding oneTimeAccessCode object, and an error if there is any.
-func (c *FakeOneTimeAccessCodes) Get(ctx context.Context, name string, options v1.GetOptions) (result *hobbyfarmiov1.OneTimeAccessCode, err error) {
+func (c *FakeOneTimeAccessCodes) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.OneTimeAccessCode, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(onetimeaccesscodesResource, c.ns, name), &hobbyfarmiov1.OneTimeAccessCode{})
+		Invokes(testing.NewGetAction(onetimeaccesscodesResource, c.ns, name), &v1.OneTimeAccessCode{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.OneTimeAccessCode), err
+	return obj.(*v1.OneTimeAccessCode), err
 }
 
 // List takes label and field selectors, and returns the list of OneTimeAccessCodes that match those selectors.
-func (c *FakeOneTimeAccessCodes) List(ctx context.Context, opts v1.ListOptions) (result *hobbyfarmiov1.OneTimeAccessCodeList, err error) {
+func (c *FakeOneTimeAccessCodes) List(ctx context.Context, opts metav1.ListOptions) (result *v1.OneTimeAccessCodeList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(onetimeaccesscodesResource, onetimeaccesscodesKind, c.ns, opts), &hobbyfarmiov1.OneTimeAccessCodeList{})
+		Invokes(testing.NewListAction(onetimeaccesscodesResource, onetimeaccesscodesKind, c.ns, opts), &v1.OneTimeAccessCodeList{})
 
 	if obj == nil {
 		return nil, err
@@ -64,8 +63,8 @@ func (c *FakeOneTimeAccessCodes) List(ctx context.Context, opts v1.ListOptions) 
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &hobbyfarmiov1.OneTimeAccessCodeList{ListMeta: obj.(*hobbyfarmiov1.OneTimeAccessCodeList).ListMeta}
-	for _, item := range obj.(*hobbyfarmiov1.OneTimeAccessCodeList).Items {
+	list := &v1.OneTimeAccessCodeList{ListMeta: obj.(*v1.OneTimeAccessCodeList).ListMeta}
+	for _, item := range obj.(*v1.OneTimeAccessCodeList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -74,57 +73,57 @@ func (c *FakeOneTimeAccessCodes) List(ctx context.Context, opts v1.ListOptions) 
 }
 
 // Watch returns a watch.Interface that watches the requested oneTimeAccessCodes.
-func (c *FakeOneTimeAccessCodes) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeOneTimeAccessCodes) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(onetimeaccesscodesResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a oneTimeAccessCode and creates it.  Returns the server's representation of the oneTimeAccessCode, and an error, if there is any.
-func (c *FakeOneTimeAccessCodes) Create(ctx context.Context, oneTimeAccessCode *hobbyfarmiov1.OneTimeAccessCode, opts v1.CreateOptions) (result *hobbyfarmiov1.OneTimeAccessCode, err error) {
+func (c *FakeOneTimeAccessCodes) Create(ctx context.Context, oneTimeAccessCode *v1.OneTimeAccessCode, opts metav1.CreateOptions) (result *v1.OneTimeAccessCode, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(onetimeaccesscodesResource, c.ns, oneTimeAccessCode), &hobbyfarmiov1.OneTimeAccessCode{})
+		Invokes(testing.NewCreateAction(onetimeaccesscodesResource, c.ns, oneTimeAccessCode), &v1.OneTimeAccessCode{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.OneTimeAccessCode), err
+	return obj.(*v1.OneTimeAccessCode), err
 }
 
 // Update takes the representation of a oneTimeAccessCode and updates it. Returns the server's representation of the oneTimeAccessCode, and an error, if there is any.
-func (c *FakeOneTimeAccessCodes) Update(ctx context.Context, oneTimeAccessCode *hobbyfarmiov1.OneTimeAccessCode, opts v1.UpdateOptions) (result *hobbyfarmiov1.OneTimeAccessCode, err error) {
+func (c *FakeOneTimeAccessCodes) Update(ctx context.Context, oneTimeAccessCode *v1.OneTimeAccessCode, opts metav1.UpdateOptions) (result *v1.OneTimeAccessCode, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(onetimeaccesscodesResource, c.ns, oneTimeAccessCode), &hobbyfarmiov1.OneTimeAccessCode{})
+		Invokes(testing.NewUpdateAction(onetimeaccesscodesResource, c.ns, oneTimeAccessCode), &v1.OneTimeAccessCode{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.OneTimeAccessCode), err
+	return obj.(*v1.OneTimeAccessCode), err
 }
 
 // Delete takes name of the oneTimeAccessCode and deletes it. Returns an error if one occurs.
-func (c *FakeOneTimeAccessCodes) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+func (c *FakeOneTimeAccessCodes) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(onetimeaccesscodesResource, c.ns, name, opts), &hobbyfarmiov1.OneTimeAccessCode{})
+		Invokes(testing.NewDeleteActionWithOptions(onetimeaccesscodesResource, c.ns, name, opts), &v1.OneTimeAccessCode{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeOneTimeAccessCodes) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+func (c *FakeOneTimeAccessCodes) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(onetimeaccesscodesResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &hobbyfarmiov1.OneTimeAccessCodeList{})
+	_, err := c.Fake.Invokes(action, &v1.OneTimeAccessCodeList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched oneTimeAccessCode.
-func (c *FakeOneTimeAccessCodes) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *hobbyfarmiov1.OneTimeAccessCode, err error) {
+func (c *FakeOneTimeAccessCodes) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.OneTimeAccessCode, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(onetimeaccesscodesResource, c.ns, name, pt, data, subresources...), &hobbyfarmiov1.OneTimeAccessCode{})
+		Invokes(testing.NewPatchSubresourceAction(onetimeaccesscodesResource, c.ns, name, pt, data, subresources...), &v1.OneTimeAccessCode{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.OneTimeAccessCode), err
+	return obj.(*v1.OneTimeAccessCode), err
 }

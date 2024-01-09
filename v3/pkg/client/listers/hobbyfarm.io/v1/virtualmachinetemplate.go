@@ -19,7 +19,7 @@ limitations under the License.
 package v1
 
 import (
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -30,7 +30,7 @@ import (
 type VirtualMachineTemplateLister interface {
 	// List lists all VirtualMachineTemplates in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.VirtualMachineTemplate, err error)
+	List(selector labels.Selector) (ret []*v1.VirtualMachineTemplate, err error)
 	// VirtualMachineTemplates returns an object that can list and get VirtualMachineTemplates.
 	VirtualMachineTemplates(namespace string) VirtualMachineTemplateNamespaceLister
 	VirtualMachineTemplateListerExpansion
@@ -47,9 +47,9 @@ func NewVirtualMachineTemplateLister(indexer cache.Indexer) VirtualMachineTempla
 }
 
 // List lists all VirtualMachineTemplates in the indexer.
-func (s *virtualMachineTemplateLister) List(selector labels.Selector) (ret []*v12.VirtualMachineTemplate, err error) {
+func (s *virtualMachineTemplateLister) List(selector labels.Selector) (ret []*v1.VirtualMachineTemplate, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.VirtualMachineTemplate))
+		ret = append(ret, m.(*v1.VirtualMachineTemplate))
 	})
 	return ret, err
 }
@@ -64,10 +64,10 @@ func (s *virtualMachineTemplateLister) VirtualMachineTemplates(namespace string)
 type VirtualMachineTemplateNamespaceLister interface {
 	// List lists all VirtualMachineTemplates in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.VirtualMachineTemplate, err error)
+	List(selector labels.Selector) (ret []*v1.VirtualMachineTemplate, err error)
 	// Get retrieves the VirtualMachineTemplate from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v12.VirtualMachineTemplate, error)
+	Get(name string) (*v1.VirtualMachineTemplate, error)
 	VirtualMachineTemplateNamespaceListerExpansion
 }
 
@@ -79,21 +79,21 @@ type virtualMachineTemplateNamespaceLister struct {
 }
 
 // List lists all VirtualMachineTemplates in the indexer for a given namespace.
-func (s virtualMachineTemplateNamespaceLister) List(selector labels.Selector) (ret []*v12.VirtualMachineTemplate, err error) {
+func (s virtualMachineTemplateNamespaceLister) List(selector labels.Selector) (ret []*v1.VirtualMachineTemplate, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.VirtualMachineTemplate))
+		ret = append(ret, m.(*v1.VirtualMachineTemplate))
 	})
 	return ret, err
 }
 
 // Get retrieves the VirtualMachineTemplate from the indexer for a given namespace and name.
-func (s virtualMachineTemplateNamespaceLister) Get(name string) (*v12.VirtualMachineTemplate, error) {
+func (s virtualMachineTemplateNamespaceLister) Get(name string) (*v1.VirtualMachineTemplate, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v12.Resource("virtualmachinetemplate"), name)
+		return nil, errors.NewNotFound(v1.Resource("virtualmachinetemplate"), name)
 	}
-	return obj.(*v12.VirtualMachineTemplate), nil
+	return obj.(*v1.VirtualMachineTemplate), nil
 }

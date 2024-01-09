@@ -19,8 +19,8 @@ limitations under the License.
 package terraformcontroller
 
 import (
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/terraformcontroller.cattle.io/v1"
+	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/terraformcontroller.cattle.io/v1"
 )
 
 // Interface provides access to each of this group's versions.

@@ -20,12 +20,12 @@ package v2
 
 import (
 	"context"
-	hobbyfarmiov2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v2"
 	time "time"
 
+	hobbyfarmiov2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
+	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
+	v2 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"

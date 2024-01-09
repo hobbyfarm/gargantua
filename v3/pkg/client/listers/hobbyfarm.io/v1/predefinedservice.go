@@ -19,7 +19,7 @@ limitations under the License.
 package v1
 
 import (
-	v12 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -30,7 +30,7 @@ import (
 type PredefinedServiceLister interface {
 	// List lists all PredefinedServices in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.PredefinedService, err error)
+	List(selector labels.Selector) (ret []*v1.PredefinedService, err error)
 	// PredefinedServices returns an object that can list and get PredefinedServices.
 	PredefinedServices(namespace string) PredefinedServiceNamespaceLister
 	PredefinedServiceListerExpansion
@@ -47,9 +47,9 @@ func NewPredefinedServiceLister(indexer cache.Indexer) PredefinedServiceLister {
 }
 
 // List lists all PredefinedServices in the indexer.
-func (s *predefinedServiceLister) List(selector labels.Selector) (ret []*v12.PredefinedService, err error) {
+func (s *predefinedServiceLister) List(selector labels.Selector) (ret []*v1.PredefinedService, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.PredefinedService))
+		ret = append(ret, m.(*v1.PredefinedService))
 	})
 	return ret, err
 }
@@ -64,10 +64,10 @@ func (s *predefinedServiceLister) PredefinedServices(namespace string) Predefine
 type PredefinedServiceNamespaceLister interface {
 	// List lists all PredefinedServices in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v12.PredefinedService, err error)
+	List(selector labels.Selector) (ret []*v1.PredefinedService, err error)
 	// Get retrieves the PredefinedService from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v12.PredefinedService, error)
+	Get(name string) (*v1.PredefinedService, error)
 	PredefinedServiceNamespaceListerExpansion
 }
 
@@ -79,21 +79,21 @@ type predefinedServiceNamespaceLister struct {
 }
 
 // List lists all PredefinedServices in the indexer for a given namespace.
-func (s predefinedServiceNamespaceLister) List(selector labels.Selector) (ret []*v12.PredefinedService, err error) {
+func (s predefinedServiceNamespaceLister) List(selector labels.Selector) (ret []*v1.PredefinedService, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v12.PredefinedService))
+		ret = append(ret, m.(*v1.PredefinedService))
 	})
 	return ret, err
 }
 
 // Get retrieves the PredefinedService from the indexer for a given namespace and name.
-func (s predefinedServiceNamespaceLister) Get(name string) (*v12.PredefinedService, error) {
+func (s predefinedServiceNamespaceLister) Get(name string) (*v1.PredefinedService, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v12.Resource("predefinedservice"), name)
+		return nil, errors.NewNotFound(v1.Resource("predefinedservice"), name)
 	}
-	return obj.(*v12.PredefinedService), nil
+	return obj.(*v1.PredefinedService), nil
 }

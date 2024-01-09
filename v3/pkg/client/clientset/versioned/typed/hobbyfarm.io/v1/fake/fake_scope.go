@@ -20,11 +20,10 @@ package fake
 
 import (
 	"context"
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,25 +35,25 @@ type FakeScopes struct {
 	ns   string
 }
 
-var scopesResource = schema.GroupVersionResource{Group: "hobbyfarm.io", Version: "v1", Resource: "scopes"}
+var scopesResource = v1.SchemeGroupVersion.WithResource("scopes")
 
-var scopesKind = schema.GroupVersionKind{Group: "hobbyfarm.io", Version: "v1", Kind: "Scope"}
+var scopesKind = v1.SchemeGroupVersion.WithKind("Scope")
 
 // Get takes name of the scope, and returns the corresponding scope object, and an error if there is any.
-func (c *FakeScopes) Get(ctx context.Context, name string, options v1.GetOptions) (result *hobbyfarmiov1.Scope, err error) {
+func (c *FakeScopes) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Scope, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(scopesResource, c.ns, name), &hobbyfarmiov1.Scope{})
+		Invokes(testing.NewGetAction(scopesResource, c.ns, name), &v1.Scope{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.Scope), err
+	return obj.(*v1.Scope), err
 }
 
 // List takes label and field selectors, and returns the list of Scopes that match those selectors.
-func (c *FakeScopes) List(ctx context.Context, opts v1.ListOptions) (result *hobbyfarmiov1.ScopeList, err error) {
+func (c *FakeScopes) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ScopeList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(scopesResource, scopesKind, c.ns, opts), &hobbyfarmiov1.ScopeList{})
+		Invokes(testing.NewListAction(scopesResource, scopesKind, c.ns, opts), &v1.ScopeList{})
 
 	if obj == nil {
 		return nil, err
@@ -64,8 +63,8 @@ func (c *FakeScopes) List(ctx context.Context, opts v1.ListOptions) (result *hob
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &hobbyfarmiov1.ScopeList{ListMeta: obj.(*hobbyfarmiov1.ScopeList).ListMeta}
-	for _, item := range obj.(*hobbyfarmiov1.ScopeList).Items {
+	list := &v1.ScopeList{ListMeta: obj.(*v1.ScopeList).ListMeta}
+	for _, item := range obj.(*v1.ScopeList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -74,57 +73,57 @@ func (c *FakeScopes) List(ctx context.Context, opts v1.ListOptions) (result *hob
 }
 
 // Watch returns a watch.Interface that watches the requested scopes.
-func (c *FakeScopes) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeScopes) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(scopesResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a scope and creates it.  Returns the server's representation of the scope, and an error, if there is any.
-func (c *FakeScopes) Create(ctx context.Context, scope *hobbyfarmiov1.Scope, opts v1.CreateOptions) (result *hobbyfarmiov1.Scope, err error) {
+func (c *FakeScopes) Create(ctx context.Context, scope *v1.Scope, opts metav1.CreateOptions) (result *v1.Scope, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(scopesResource, c.ns, scope), &hobbyfarmiov1.Scope{})
+		Invokes(testing.NewCreateAction(scopesResource, c.ns, scope), &v1.Scope{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.Scope), err
+	return obj.(*v1.Scope), err
 }
 
 // Update takes the representation of a scope and updates it. Returns the server's representation of the scope, and an error, if there is any.
-func (c *FakeScopes) Update(ctx context.Context, scope *hobbyfarmiov1.Scope, opts v1.UpdateOptions) (result *hobbyfarmiov1.Scope, err error) {
+func (c *FakeScopes) Update(ctx context.Context, scope *v1.Scope, opts metav1.UpdateOptions) (result *v1.Scope, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(scopesResource, c.ns, scope), &hobbyfarmiov1.Scope{})
+		Invokes(testing.NewUpdateAction(scopesResource, c.ns, scope), &v1.Scope{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.Scope), err
+	return obj.(*v1.Scope), err
 }
 
 // Delete takes name of the scope and deletes it. Returns an error if one occurs.
-func (c *FakeScopes) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+func (c *FakeScopes) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(scopesResource, c.ns, name, opts), &hobbyfarmiov1.Scope{})
+		Invokes(testing.NewDeleteActionWithOptions(scopesResource, c.ns, name, opts), &v1.Scope{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeScopes) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+func (c *FakeScopes) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(scopesResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &hobbyfarmiov1.ScopeList{})
+	_, err := c.Fake.Invokes(action, &v1.ScopeList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched scope.
-func (c *FakeScopes) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *hobbyfarmiov1.Scope, err error) {
+func (c *FakeScopes) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Scope, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(scopesResource, c.ns, name, pt, data, subresources...), &hobbyfarmiov1.Scope{})
+		Invokes(testing.NewPatchSubresourceAction(scopesResource, c.ns, name, pt, data, subresources...), &v1.Scope{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*hobbyfarmiov1.Scope), err
+	return obj.(*v1.Scope), err
 }
