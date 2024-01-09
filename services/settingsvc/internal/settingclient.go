@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
-	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	v1 "github.com/hobbyfarm/gargantua/v3/v3/pkg/apis/hobbyfarm.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/v3/pkg/client/informers/externalversions"
+	settingUtil "github.com/hobbyfarm/gargantua/v3/v3/pkg/setting"
+	"github.com/hobbyfarm/gargantua/v3/v3/pkg/util"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

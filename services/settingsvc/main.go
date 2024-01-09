@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"github.com/ebauman/crder"
-	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
-	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
-	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
-	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/v3/pkg/crd"
+	"github.com/hobbyfarm/gargantua/v3/v3/pkg/microservices"
+	"github.com/hobbyfarm/gargantua/v3/v3/pkg/signals"
+	"github.com/hobbyfarm/gargantua/v3/v3/pkg/util"
 
 	"github.com/golang/glog"
 	settingservice "github.com/hobbyfarm/gargantua/services/settingsvc/v3/internal"
-	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/v3/pkg/client/informers/externalversions"
 
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"

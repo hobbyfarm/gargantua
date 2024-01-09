@@ -3,7 +3,7 @@ package main
 import (
 	"sync"
 
-	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+	"github.com/hobbyfarm/gargantua/v3/v3/pkg/microservices"
 
 	authrservice "github.com/hobbyfarm/gargantua/services/authrsvc/v3/internal"
 

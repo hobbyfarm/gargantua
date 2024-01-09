@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/ebauman/crder"
-	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+	"github.com/hobbyfarm/gargantua/v3/v3/pkg/microservices"
 
 	"github.com/golang/glog"
 	accesscodeservice "github.com/hobbyfarm/gargantua/services/accesscodesvc/v3/internal"

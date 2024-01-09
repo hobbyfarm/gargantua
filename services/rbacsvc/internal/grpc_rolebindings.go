@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
-	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
-	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	"github.com/hobbyfarm/gargantua/v3/v3/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/v3/v3/pkg/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"

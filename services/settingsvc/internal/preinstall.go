@@ -5,10 +5,10 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
-	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
-	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
+	"github.com/hobbyfarm/gargantua/v3/v3/pkg/labels"
+	settingUtil "github.com/hobbyfarm/gargantua/v3/v3/pkg/setting"
+	"github.com/hobbyfarm/gargantua/v3/v3/pkg/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
