@@ -406,6 +406,10 @@ func (sp ShellProxy) ConnectGuacFunc(w http.ResponseWriter, r *http.Request) {
 	q.Set("height", optimalHeight)
 	q.Set("security", "")
 
+	// Resize Method has to be set in order to resize RDP Connections on the fly
+	// see https://guacamole.apache.org/doc/gug/configuring-guacamole.html#rdp-display-settings
+	q.Set("resize-method", "display-update")
+
 	backendURL += "?" + q.Encode()
 	//Replace to keep the password out of the logs! Replacing "password=<password>" instead of only "<password>", for cases where the password is short and/or is contained in other parameters
 	glog.V(6).Infof("Build query " + strings.Replace(backendURL, "password="+password, "password=XXX_PASSWORD_XXX", 1))
