@@ -56,7 +56,7 @@ type PreparedScenario struct {
 	StepCount       int                 `json:"stepcount"`
 	VirtualMachines []map[string]string `json:"virtualmachines"`
 	Pauseable       bool                `json:"pauseable"`
-	Printable       bool                `json:"printable"`
+	Printable       bool                `json:"printable"`	
 }
 
 type AdminPreparedScenario struct {
@@ -111,7 +111,6 @@ func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario, printable bool) 
 	ps.Pauseable = scenario.Spec.Pauseable
 	ps.Printable = printable
 	ps.StepCount = len(scenario.Spec.Steps)
-
 	return ps, nil
 }
 
