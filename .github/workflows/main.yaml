@@ -10,42 +10,42 @@ jobs:
   build-accesscode-service:
     uses: ./.github/workflows/build.yaml
     with:
-      path: ./services/accesscodesvc
+      path: ./v3/services/accesscodesvc
       image: accesscode-service
     secrets: inherit
   build-authn-service:
     uses: ./.github/workflows/build.yaml
     with:
-      path: ./services/authnsvc
+      path: ./v3/services/authnsvc
       image: authn-service
     secrets: inherit
   build-authr-service:
     uses: ./.github/workflows/build.yaml
     with:
-      path: ./services/authrsvc
+      path: ./v3/services/authrsvc
       image: authr-service
     secrets: inherit
   build-conversion-service:
     uses: ./.github/workflows/build.yaml
     with:
-      path: ./services/conversionsvc
+      path: ./v3/services/conversionsvc
       image: conversion-service
     secrets: inherit
   build-rbac-service:
     uses: ./.github/workflows/build.yaml
     with:
-      path: ./services/rbacsvc
+      path: ./v3/services/rbacsvc
       image: rbac-service
     secrets: inherit
   build-setting-service:
     uses: ./.github/workflows/build.yaml
     with:
-      path: ./services/settingsvc
+      path: ./v3/services/settingsvc
       image: setting-service
     secrets: inherit
   build-user-service:
     uses: ./.github/workflows/build.yaml
     with:
-      path: ./services/usersvc
+      path: ./v3/services/usersvc
       image: user-service
     secrets: inherit
