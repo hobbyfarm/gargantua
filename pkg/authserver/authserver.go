@@ -38,6 +38,13 @@ func (a AuthServer) SetupRoutes(r *mux.Router) {
 	glog.V(2).Infof("set up route")
 }
 
+type PreparedScheduledEvent struct {
+	Id          string `json:"id"`
+	Description string `json:"description"`
+	Name        string `json:"name"`
+	EndDate     string `json:"end_timestamp"`
+}
+
 func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := rbac.AuthenticateRequest(r, a.authClient)
 	if err != nil {
@@ -46,7 +53,7 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 	}
 
 	// This holds a map of AC -> SE
-	accessCodeScheduledEvent := make(map[string]string)
+	accessCodeScheduledEvent := make(map[string]PreparedScheduledEvent)
 
 	// First we add ScheduledEvents based on OneTimeAccessCodes
 	otacReq, _ := labels.NewRequirement(util.OneTimeAccessCodeLabel, selection.In, user.GetAccessCodes())
@@ -63,7 +70,8 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 			if err != nil {
 				continue
 			}
-			accessCodeScheduledEvent[otac.Name] = se.Spec.Name
+			// TODO: When OTAC with duration is implemented we need to set the PreparedScheduledEvent.EndDate to OTACs timestamp + duration of days allowed
+			accessCodeScheduledEvent[otac.Name] = PreparedScheduledEvent{se.Name, se.Spec.Description, se.Spec.Name, se.Spec.EndTime}
 		}
 	}
 
@@ -77,7 +85,7 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 			glog.Error(err)
 			continue
 		}
-		accessCodeScheduledEvent[ac.Spec.Code] = se.Spec.Name
+		accessCodeScheduledEvent[ac.Spec.Code] = PreparedScheduledEvent{se.Name, se.Spec.Description, se.Spec.Name, se.Spec.EndTime}
 	}
 
 	encodedMap, err := json.Marshal(accessCodeScheduledEvent)
