@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [[ "$(PWD)" != */github.com/hobbyfarm/gargantua ]]
+if [[ "$(pwd)" != */github.com/hobbyfarm/gargantua ]]
 then
   echo "You must run this script from within a path that ends in /github.com/hobbyfarm/gargantua"
   exit 1
