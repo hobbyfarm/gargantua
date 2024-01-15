@@ -7,7 +7,7 @@ WORKDIR /app
 COPY . .
 
 # Change to the directory of the service.
-WORKDIR /app/services/rbacsvc
+WORKDIR /app/v3/services/rbacsvc
 RUN go mod download
 
 # Build the service. The output binary is named "app".
