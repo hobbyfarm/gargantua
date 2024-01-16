@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
-	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"
@@ -700,6 +701,8 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	maxDurationValue := vars["max_duration"]
+
 	scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util2.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		glog.Error(err)
@@ -736,6 +739,7 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 			Spec: hfv1.OneTimeAccessCodeSpec{
 				User:              "",
 				RedeemedTimestamp: "",
+				MaxDuration:       maxDurationValue,
 			},
 		}
 		otac, err = s.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util2.GetReleaseNamespace()).Create(s.ctx, otac, metav1.CreateOptions{})
