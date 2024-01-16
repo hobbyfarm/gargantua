@@ -7,17 +7,19 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"slices"
+	"strconv"
+	"strings"
+
 	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfv2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseclient"
 	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"net/http"
-	"slices"
-	"strconv"
-	"strings"
 
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"
@@ -50,18 +52,19 @@ type PreparedScenarioStep struct {
 }
 
 type PreparedScenario struct {
-	Id              string              `json:"id"`
-	Name            string              `json:"name"`
-	Description     string              `json:"description"`
-	StepCount       int                 `json:"stepcount"`
-	VirtualMachines []map[string]string `json:"virtualmachines"`
-	Pauseable       bool                `json:"pauseable"`
-	Printable       bool                `json:"printable"`
+	Id              string                     `json:"id"`
+	Name            string                     `json:"name"`
+	Description     string                     `json:"description"`
+	StepCount       int                        `json:"stepcount"`
+	VirtualMachines []map[string]string        `json:"virtualmachines"`
+	Pauseable       bool                       `json:"pauseable"`
+	Printable       bool                       `json:"printable"`
+	Tasks           []hfv2.VirtualMachineTasks `json:"vm_tasks"`
 }
 
 type AdminPreparedScenario struct {
 	ID string `json:"id"`
-	hfv1.ScenarioSpec
+	hfv2.ScenarioSpec
 }
 
 func NewScenarioServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context, courseClient *courseclient.CourseClient) (*ScenarioServer, error) {
@@ -73,7 +76,7 @@ func NewScenarioServer(authnClient authn.AuthNClient, authrClient authr.AuthRCli
 	scenario.hfClientSet = hfClientset
 	scenario.acClient = acClient
 	scenario.courseClient = courseClient
-	inf := hfInformerFactory.Hobbyfarm().V1().Scenarios().Informer()
+	inf := hfInformerFactory.Hobbyfarm().V2().Scenarios().Informer()
 	indexers := map[string]cache.IndexFunc{idIndex: idIndexer}
 	err := inf.AddIndexers(indexers)
 	if err != nil {
@@ -101,7 +104,7 @@ func (s ScenarioServer) SetupRoutes(r *mux.Router) {
 	glog.V(2).Infof("set up route")
 }
 
-func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario, printable bool) (PreparedScenario, error) {
+func (s ScenarioServer) prepareScenario(scenario hfv2.Scenario, printable bool) (PreparedScenario, error) {
 	ps := PreparedScenario{}
 
 	ps.Id = scenario.Name
@@ -111,7 +114,7 @@ func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario, printable bool) 
 	ps.Pauseable = scenario.Spec.Pauseable
 	ps.Printable = printable
 	ps.StepCount = len(scenario.Spec.Steps)
-
+	ps.Tasks = scenario.Spec.Tasks
 	return ps, nil
 }
 
@@ -336,7 +339,7 @@ func (s ScenarioServer) AdminDeleteFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).Delete(s.ctx, id, metav1.DeleteOptions{})
+	err = s.hfClientSet.HobbyfarmV2().Scenarios(util.GetReleaseNamespace()).Delete(s.ctx, id, metav1.DeleteOptions{})
 
 	if err != nil {
 		glog.Errorf("error while deleting scenario %v", err)
@@ -464,7 +467,7 @@ func (s ScenarioServer) ListFunc(w http.ResponseWriter, r *http.Request, categor
 		}
 	}
 
-	scenarios, err := s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).List(s.ctx, categorySelector)
+	scenarios, err := s.hfClientSet.HobbyfarmV2().Scenarios(util.GetReleaseNamespace()).List(s.ctx, categorySelector)
 
 	if err != nil {
 		glog.Errorf("error while retrieving scenarios %v", err)
@@ -502,7 +505,7 @@ func (s ScenarioServer) ListCategories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scenarios, err := s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
+	scenarios, err := s.hfClientSet.HobbyfarmV2().Scenarios(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while retrieving scenarios %v", err)
@@ -690,7 +693,7 @@ func (s ScenarioServer) CopyFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		scenario, err := s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
+		scenario, err := s.hfClientSet.HobbyfarmV2().Scenarios(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "badrequest", "no scenario found with given ID")
@@ -710,7 +713,7 @@ func (s ScenarioServer) CopyFunc(w http.ResponseWriter, r *http.Request) {
 		scenario.Spec.Name = copyName
 		scenario.Name = "s-" + strings.ToLower(sha)
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).Create(s.ctx, scenario, metav1.CreateOptions{})
+		_, updateErr := s.hfClientSet.HobbyfarmV2().Scenarios(util.GetReleaseNamespace()).Create(s.ctx, scenario, metav1.CreateOptions{})
 		return updateErr
 	})
 
@@ -721,6 +724,31 @@ func (s ScenarioServer) CopyFunc(w http.ResponseWriter, r *http.Request) {
 
 	util.ReturnHTTPMessage(w, r, 200, "copied scenario", "")
 	return
+}
+
+func VerifyTaskContent(vm_tasks []hfv2.VirtualMachineTasks) error {
+	//Verify that name, description, command must not empty
+	for _, vm_task := range vm_tasks {
+		if vm_task.VMName == "" {
+			glog.Errorf("error while vm_name empty")
+			return fmt.Errorf("bad")
+		}
+		for _, task := range vm_task.Tasks {
+			if task.Name == "" {
+				glog.Errorf("error while Name of task empty")
+				return fmt.Errorf("bad")
+			}
+			if task.Description == "" {
+				glog.Errorf("error while Description of task empty")
+				return fmt.Errorf("bad")
+			}
+			if task.Command == "" || task.Command == "[]" {
+				glog.Errorf("error while Command of task empty")
+				return fmt.Errorf("bad")
+			}
+		}
+	}
+	return nil
 }
 
 func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
@@ -751,7 +779,7 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	keepaliveDuration := r.PostFormValue("keepalive_duration")
 	// we won't error if no keep alive duration is passed in or if it's blank because we'll default elsewhere
 
-	steps := []hfv1.ScenarioStep{}
+	steps := []hfv2.ScenarioStep{}
 	virtualmachines := []map[string]string{}
 	categories := []string{}
 	tags := []string{}
@@ -799,7 +827,7 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	pauseable := r.PostFormValue("pauseable")
 	pauseDuration := r.PostFormValue("pause_duration")
 
-	scenario := &hfv1.Scenario{}
+	scenario := &hfv2.Scenario{}
 
 	hasher := sha256.New()
 	hasher.Write([]byte(name))
@@ -813,6 +841,22 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	scenario.Spec.Categories = categories
 	scenario.Spec.Tags = tags
 	scenario.Spec.KeepAliveDuration = keepaliveDuration
+	rawVMTasks := r.PostFormValue("vm_tasks")
+	if rawVMTasks != "" {
+		vm_tasks := []hfv2.VirtualMachineTasks{}
+
+		err = json.Unmarshal([]byte(rawVMTasks), &vm_tasks)
+		if err != nil {
+			glog.Errorf("error while unmarshaling tasks %v", err)
+			return
+		}
+		err = VerifyTaskContent(vm_tasks)
+		if err != nil {
+			glog.Errorf("error tasks content %v", err)
+			return
+		}
+		scenario.Spec.Tasks = vm_tasks
+	}
 
 	scenario.Spec.Pauseable = false
 	if pauseable != "" {
@@ -825,7 +869,7 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		scenario.Spec.PauseDuration = pauseDuration
 	}
 
-	scenario, err = s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).Create(s.ctx, scenario, metav1.CreateOptions{})
+	scenario, err = s.hfClientSet.HobbyfarmV2().Scenarios(util.GetReleaseNamespace()).Create(s.ctx, scenario, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating scenario %v", err)
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scenario")
@@ -859,7 +903,7 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		scenario, err := s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
+		scenario, err := s.hfClientSet.HobbyfarmV2().Scenarios(util.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "badrequest", "no scenario found with given ID")
@@ -875,6 +919,7 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		rawVirtualMachines := r.PostFormValue("virtualmachines")
 		rawCategories := r.PostFormValue("categories")
 		rawTags := r.PostFormValue("tags")
+		rawVMTasks := r.PostFormValue("vm_tasks")
 
 		if name != "" {
 			scenario.Spec.Name = name
@@ -899,7 +944,7 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if rawSteps != "" {
-			steps := []hfv1.ScenarioStep{}
+			steps := []hfv2.ScenarioStep{}
 
 			err = json.Unmarshal([]byte(rawSteps), &steps)
 			if err != nil {
@@ -956,7 +1001,24 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 			scenario.Spec.Tags = tagsSlice
 		}
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).Update(s.ctx, scenario, metav1.UpdateOptions{})
+		if rawVMTasks != "" {
+			vm_tasks := []hfv2.VirtualMachineTasks{}
+
+			err = json.Unmarshal([]byte(rawVMTasks), &vm_tasks)
+			if err != nil {
+				glog.Errorf("error while unmarshaling tasks %v", err)
+				return fmt.Errorf("bad")
+			}
+
+			err = VerifyTaskContent(vm_tasks)
+			if err != nil {
+				glog.Errorf("error tasks content %v", err)
+				return err
+			}
+			scenario.Spec.Tasks = vm_tasks
+		}
+
+		_, updateErr := s.hfClientSet.HobbyfarmV2().Scenarios(util.GetReleaseNamespace()).Update(s.ctx, scenario, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -969,24 +1031,24 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (s ScenarioServer) GetScenarioById(id string) (hfv1.Scenario, error) {
+func (s ScenarioServer) GetScenarioById(id string) (hfv2.Scenario, error) {
 	if len(id) == 0 {
-		return hfv1.Scenario{}, fmt.Errorf("scenario id passed in was blank")
+		return hfv2.Scenario{}, fmt.Errorf("scenario id passed in was blank")
 	}
 	obj, err := s.scenarioIndexer.ByIndex(idIndex, id)
 
 	if err != nil {
-		return hfv1.Scenario{}, fmt.Errorf("error while retrieving scenario by ID %s %v", id, err)
+		return hfv2.Scenario{}, fmt.Errorf("error while retrieving scenario by ID %s %v", id, err)
 	}
 
 	if len(obj) < 1 {
-		return hfv1.Scenario{}, fmt.Errorf("error while retrieving scenario by ID %s", id)
+		return hfv2.Scenario{}, fmt.Errorf("error while retrieving scenario by ID %s", id)
 	}
 
-	scenario, ok := obj[0].(*hfv1.Scenario)
+	scenario, ok := obj[0].(*hfv2.Scenario)
 
 	if !ok {
-		return hfv1.Scenario{}, fmt.Errorf("error while retrieving scenario by ID %s %v", id, ok)
+		return hfv2.Scenario{}, fmt.Errorf("error while retrieving scenario by ID %s %v", id, ok)
 	}
 
 	return *scenario, nil
@@ -1038,7 +1100,7 @@ func filterCourses(scenario string, list *hfv1.CourseList) *[]hfv1.Course {
 }
 
 func idIndexer(obj interface{}) ([]string, error) {
-	scenario, ok := obj.(*hfv1.Scenario)
+	scenario, ok := obj.(*hfv2.Scenario)
 	if !ok {
 		return []string{}, nil
 	}

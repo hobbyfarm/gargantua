@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfv2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseclient"
@@ -126,7 +127,7 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	}
 	random := util2.RandStringRunes(10)
 	var course hfv1.Course
-	var scenario hfv1.Scenario
+	var scenario hfv2.Scenario
 
 	// get the course and/or scenario objects
 	if courseid != "" {
@@ -525,7 +526,7 @@ func (sss SessionServer) KeepAliveSessionFunc(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	var scenario hfv1.Scenario
+	var scenario hfv2.Scenario
 	var course hfv1.Course
 
 	if ss.Spec.ScenarioId != "" {
@@ -606,7 +607,7 @@ func (sss SessionServer) PauseSessionFunc(w http.ResponseWriter, r *http.Request
 	}
 
 	var course hfv1.Course
-	var scenario hfv1.Scenario
+	var scenario hfv2.Scenario
 
 	if ss.Spec.CourseId != "" {
 		course, err = sss.courseClient.GetCourseById(ss.Spec.CourseId)
@@ -693,7 +694,7 @@ func (sss SessionServer) ResumeSessionFunc(w http.ResponseWriter, r *http.Reques
 	}
 
 	var course hfv1.Course
-	var scenario hfv1.Scenario
+	var scenario hfv2.Scenario
 
 	if ss.Spec.CourseId != "" {
 		course, err = sss.courseClient.GetCourseById(ss.Spec.CourseId)

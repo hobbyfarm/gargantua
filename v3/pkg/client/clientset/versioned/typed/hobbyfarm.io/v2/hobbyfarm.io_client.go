@@ -28,12 +28,17 @@ import (
 
 type HobbyfarmV2Interface interface {
 	RESTClient() rest.Interface
+	ScenariosGetter
 	UsersGetter
 }
 
 // HobbyfarmV2Client is used to interact with features provided by the hobbyfarm.io group.
 type HobbyfarmV2Client struct {
 	restClient rest.Interface
+}
+
+func (c *HobbyfarmV2Client) Scenarios(namespace string) ScenarioInterface {
+	return newScenarios(c, namespace)
 }
 
 func (c *HobbyfarmV2Client) Users(namespace string) UserInterface {

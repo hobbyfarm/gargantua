@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
+
 	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
 	"github.com/hobbyfarm/gargantua/v3/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
@@ -34,7 +36,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 	"github.com/hobbyfarm/gargantua/v3/protos/setting"
-	"os"
 
 	"github.com/ebauman/crder"
 	"golang.org/x/sync/errgroup"
@@ -97,7 +98,14 @@ func main() {
 	namespace := util.GetReleaseNamespace()
 
 	if !shellServer {
-		crds := crd.GenerateCRDs()
+		ca, err := os.ReadFile(tlsCA)
+		if err != nil {
+			glog.Fatalf("error reading ca certificate: %s", err.Error())
+		}
+		crds := crd.GenerateCRDs(string(ca), crd.ServiceReference{
+			Namespace: util.GetReleaseNamespace(),
+			Name:      "hobbyfarm-webhook",
+		})
 
 		glog.Info("installing/updating CRDs")
 		err = crder.InstallUpdateCRDs(cfg, crds...)
