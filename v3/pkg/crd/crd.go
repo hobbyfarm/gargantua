@@ -58,11 +58,6 @@ func GenerateCRDs(caBundle string, reference ServiceReference) []crder.CRD {
 				IsNamespaced(true).
 				AddVersion("v1", &v1.Course{}, nil)
 		}),
-		// hobbyfarmCRD(&v1.Scenario{}, func(c *crder.CRD) {
-		// 	c.
-		// 		IsNamespaced(true).
-		// 		AddVersion("v1", &v1.Scenario{}, nil)
-		// }),
 		hobbyfarmCRD(&v1.Scenario{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
@@ -82,32 +77,6 @@ func GenerateCRDs(caBundle string, reference ServiceReference) []crder.CRD {
 						WithVersions("v2", "v1")
 				})
 		}),
-//-----------------------------------------------------------------------------------		
-		hobbyfarmCRD(&v1.User{}, func(c *crder.CRD) {
-			c.
-				IsNamespaced(true).
-				AddVersion("v1", &v1.User{}, func(cv *crder.Version) {
-					cv.
-						WithColumn("Email", ".spec.email")
-
-					cv.IsServed(true)
-					cv.IsStored(false)
-				}).
-				AddVersion("v2", &v2.User{}, func(cv *crder.Version) {
-					cv.WithColumn("Email", ".spec.email")
-
-					cv.IsServed(true)
-					cv.IsStored(true)
-				}).
-				WithConversion(func(cc *crder.Conversion) {
-					cc.
-						StrategyWebhook().
-						WithCABundle(caBundle).
-						WithService(reference.Toapiextv1WithPath("/conversion/users.hobbyfarm.io")).
-						WithVersions("v2", "v1")
-				})
-		}),
-//------------------------------------------------------------------------------------		
 		hobbyfarmCRD(&v1.Session{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
