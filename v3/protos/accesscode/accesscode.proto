@@ -19,12 +19,12 @@ service AccessCodeSvc {
 
     // TODO: Implement missing OTAC RPCs
 
-    // rpc CreateOtac (CreateOtacRequest) returns (OneTimeAccessCodeId);
+    rpc CreateOtac (CreateOtacRequest) returns (OneTimeAccessCode);
     rpc GetOtac (ResourceId) returns (OneTimeAccessCode);
     rpc UpdateOtac (OneTimeAccessCode) returns (google.protobuf.Empty);
-    // rpc DeleteOtac (OneTimeAccessCodeId) returns (google.protobuf.Empty);
-    // rpc DeleteCollectionOtac (ListOptions) returns (google.protobuf.Empty);
-    // rpc ListOtac (ListOptions) returns (OneTimeAccessCodes);
+    rpc DeleteOtac (ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionOtac (ListOptions) returns (google.protobuf.Empty);
+    rpc ListOtac (ListOptions) returns (ListOtacsResponse);
 
     rpc ValidateExistence (ResourceId) returns (ResourceValidation);
 }
@@ -41,4 +41,17 @@ message OneTimeAccessCode {
     string id = 1;
     string user = 2;
     string redeemed_timestamp = 3;
+}
+
+message ListOptions {
+    string label_selector = 1;
+}
+
+message ListOtacsResponse {
+    repeated OneTimeAccessCode otacs = 1;
+}
+
+message CreateOtacRequest {
+    string se_name = 1;
+    string se_uid = 2;
 }

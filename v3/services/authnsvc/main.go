@@ -23,7 +23,6 @@ func init() {
 	serviceConfig = microservices.BuildServiceConfig()
 }
 
-// TODO: Remove rbacClient, hfClientSet etc.
 func main() {
 	services := []microservices.MicroService{
 		microservices.AccessCode,

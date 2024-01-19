@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	accessCodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
@@ -12,6 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -152,4 +154,153 @@ func (a *GrpcAccessCodeServer) ValidateExistence(ctx context.Context, gor *acces
 	}
 
 	return &accessCodeProto.ResourceValidation{Valid: true}, nil
+}
+
+func (a *GrpcAccessCodeServer) ListOtac(ctx context.Context, listOptions *accessCodeProto.ListOptions) (*accessCodeProto.ListOtacsResponse, error) {
+	// LabelSelector: fmt.Sprintf("%s=%s", util2.ScheduledEventLabel, id)
+	otacList, err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).List(ctx, metav1.ListOptions{
+		LabelSelector: listOptions.GetLabelSelector(),
+	})
+
+	if err != nil {
+		glog.Error(err)
+		newErr := status.Newf(
+			codes.Internal,
+			"error retreiving OTACs",
+		)
+		return &accessCodeProto.ListOtacsResponse{}, newErr.Err()
+	}
+
+	preparedOtacs := []*accessCodeProto.OneTimeAccessCode{} // must be declared this way so as to JSON marshal into [] instead of null
+	for _, otac := range otacList.Items {
+		preparedOtacs = append(preparedOtacs, &accessCodeProto.OneTimeAccessCode{
+			Id:                otac.Name,
+			User:              otac.Spec.User,
+			RedeemedTimestamp: otac.Spec.RedeemedTimestamp,
+		})
+	}
+
+	glog.V(2).Infof("listed otacs")
+
+	return &accessCodeProto.ListOtacsResponse{Otacs: preparedOtacs}, nil
+}
+
+func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accessCodeProto.CreateOtacRequest) (*accessCodeProto.OneTimeAccessCode, error) {
+	// Generate an access code that can not be guessed
+	genName := ""
+	for genParts := 0; genParts < 3; genParts++ {
+		genName += util.GenerateResourceName("", util.RandStringRunes(16), 4)
+	}
+	genName = genName[1:]
+
+	scheduledEventName := cr.GetSeName()
+	if scheduledEventName == "" {
+		newErr := status.Newf(
+			codes.InvalidArgument,
+			"error creating otac, se_name field blank",
+		)
+		newErr, wde := newErr.WithDetails(cr)
+		if wde != nil {
+			return &accessCodeProto.OneTimeAccessCode{}, wde
+		}
+		return &accessCodeProto.OneTimeAccessCode{}, newErr.Err()
+	}
+
+	scheduledUid := cr.GetSeUid()
+	if scheduledUid == "" {
+		newErr := status.Newf(
+			codes.InvalidArgument,
+			"error creating otac, se_uid field blank",
+		)
+		newErr, wde := newErr.WithDetails(cr)
+		if wde != nil {
+			return &accessCodeProto.OneTimeAccessCode{}, wde
+		}
+		return &accessCodeProto.OneTimeAccessCode{}, newErr.Err()
+	}
+
+	otac := &hfv1.OneTimeAccessCode{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: genName,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "hobbyfarm.io/v1",
+					Kind:       "ScheduledEvent",
+					Name:       scheduledEventName,
+					UID:        types.UID(scheduledUid),
+				},
+			},
+			Labels: map[string]string{
+				util.UserLabel:              "",
+				util.ScheduledEventLabel:    scheduledEventName,
+				util.OneTimeAccessCodeLabel: genName,
+			},
+		},
+		Spec: hfv1.OneTimeAccessCodeSpec{
+			User:              "",
+			RedeemedTimestamp: "",
+		},
+	}
+	otac, err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Create(ctx, otac, metav1.CreateOptions{})
+	if err != nil {
+		glog.Errorf("error creating one time access code %v", err)
+		// error handling
+	}
+	return &accessCodeProto.OneTimeAccessCode{
+		Id:                otac.Name,
+		User:              otac.Spec.User,
+		RedeemedTimestamp: otac.Spec.RedeemedTimestamp,
+	}, nil
+}
+
+func (a *GrpcAccessCodeServer) DeleteOtac(ctx context.Context, dr *accessCodeProto.ResourceId) (*empty.Empty, error) {
+	otacId := dr.GetId()
+	if otacId == "" {
+		newErr := status.Newf(
+			codes.InvalidArgument,
+			"no ID passed in",
+		)
+		newErr, wde := newErr.WithDetails(dr)
+		if wde != nil {
+			return &empty.Empty{}, wde
+		}
+		return &empty.Empty{}, newErr.Err()
+	}
+
+	err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Delete(ctx, otacId, metav1.DeleteOptions{})
+	if err != nil {
+		newErr := status.Newf(
+			codes.Internal,
+			"error deleting otac %s",
+			otacId,
+		)
+		newErr, wde := newErr.WithDetails(dr)
+		if wde != nil {
+			return &empty.Empty{}, wde
+		}
+		glog.Errorf("error deleting otac %s: %s", otacId, err)
+		return &empty.Empty{}, newErr.Err()
+	}
+	return &empty.Empty{}, nil
+}
+
+func (a *GrpcAccessCodeServer) DeleteCollectionOtac(ctx context.Context, listOptions *accessCodeProto.ListOptions) (*empty.Empty, error) {
+
+	// delete the access code for the corresponding ScheduledEvent
+	err := a.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: listOptions.GetLabelSelector(),
+	})
+	if err != nil {
+		newErr := status.Newf(
+			codes.Internal,
+			"error deleting otacs",
+		)
+		newErr, wde := newErr.WithDetails(listOptions)
+		if wde != nil {
+			return &empty.Empty{}, wde
+		}
+		return &empty.Empty{}, newErr.Err()
+	}
+
+	return &empty.Empty{}, nil
 }
