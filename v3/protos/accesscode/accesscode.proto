@@ -17,8 +17,7 @@ service AccessCodeSvc {
     // rpc DeleteCollectionAc (ListOptions) returns (google.protobuf.Empty);
     // rpc ListAc (ListOptions) returns (AccessCodes);
 
-    // TODO: Implement missing OTAC RPCs
-
+    // Resource oriented RPCs for otacs:
     rpc CreateOtac (CreateOtacRequest) returns (OneTimeAccessCode);
     rpc GetOtac (ResourceId) returns (OneTimeAccessCode);
     rpc UpdateOtac (OneTimeAccessCode) returns (google.protobuf.Empty);
