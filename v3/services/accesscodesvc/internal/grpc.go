@@ -43,6 +43,7 @@ func (a *GrpcAccessCodeServer) getOtac(id string) (*accessCodeProto.OneTimeAcces
 		Id:                obj.Name,
 		User:              obj.Spec.User,
 		RedeemedTimestamp: obj.Spec.RedeemedTimestamp,
+		Labels:            obj.Labels,
 	}, nil
 }
 
@@ -177,6 +178,7 @@ func (a *GrpcAccessCodeServer) ListOtac(ctx context.Context, listOptions *access
 			Id:                otac.Name,
 			User:              otac.Spec.User,
 			RedeemedTimestamp: otac.Spec.RedeemedTimestamp,
+			Labels:            otac.Labels,
 		})
 	}
 
@@ -250,6 +252,7 @@ func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accessCodePro
 		Id:                otac.Name,
 		User:              otac.Spec.User,
 		RedeemedTimestamp: otac.Spec.RedeemedTimestamp,
+		Labels:            otac.Labels,
 	}, nil
 }
 

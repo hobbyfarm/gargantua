@@ -33,12 +33,14 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AccessCodeSvcClient interface {
+	// Resource oriented RPCs for otacs:
 	CreateOtac(ctx context.Context, in *CreateOtacRequest, opts ...grpc.CallOption) (*OneTimeAccessCode, error)
 	GetOtac(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*OneTimeAccessCode, error)
 	UpdateOtac(ctx context.Context, in *OneTimeAccessCode, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteOtac(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteCollectionOtac(ctx context.Context, in *ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListOtac(ctx context.Context, in *ListOptions, opts ...grpc.CallOption) (*ListOtacsResponse, error)
+	// Helper functions
 	ValidateExistence(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*ResourceValidation, error)
 }
 
@@ -117,12 +119,14 @@ func (c *accessCodeSvcClient) ValidateExistence(ctx context.Context, in *Resourc
 // All implementations must embed UnimplementedAccessCodeSvcServer
 // for forward compatibility
 type AccessCodeSvcServer interface {
+	// Resource oriented RPCs for otacs:
 	CreateOtac(context.Context, *CreateOtacRequest) (*OneTimeAccessCode, error)
 	GetOtac(context.Context, *ResourceId) (*OneTimeAccessCode, error)
 	UpdateOtac(context.Context, *OneTimeAccessCode) (*emptypb.Empty, error)
 	DeleteOtac(context.Context, *ResourceId) (*emptypb.Empty, error)
 	DeleteCollectionOtac(context.Context, *ListOptions) (*emptypb.Empty, error)
 	ListOtac(context.Context, *ListOptions) (*ListOtacsResponse, error)
+	// Helper functions
 	ValidateExistence(context.Context, *ResourceId) (*ResourceValidation, error)
 	mustEmbedUnimplementedAccessCodeSvcServer()
 }

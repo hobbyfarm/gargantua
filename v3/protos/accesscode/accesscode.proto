@@ -24,7 +24,7 @@ service AccessCodeSvc {
     rpc DeleteOtac (ResourceId) returns (google.protobuf.Empty);
     rpc DeleteCollectionOtac (ListOptions) returns (google.protobuf.Empty);
     rpc ListOtac (ListOptions) returns (ListOtacsResponse);
-
+    // Helper functions
     rpc ValidateExistence (ResourceId) returns (ResourceValidation);
 }
 
@@ -40,6 +40,7 @@ message OneTimeAccessCode {
     string id = 1;
     string user = 2;
     string redeemed_timestamp = 3;
+    map<string, string> labels = 4;
 }
 
 message ListOptions {
