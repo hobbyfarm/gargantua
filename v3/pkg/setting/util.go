@@ -3,9 +3,10 @@ package setting
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hobbyfarm/gargantua/v3/pkg/property"
 	"strconv"
 	"strings"
+
+	"github.com/hobbyfarm/gargantua/v3/pkg/property"
 
 	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
 )
@@ -24,6 +25,7 @@ const (
 	ImprintLink                              SettingName = "imprint-link"
 	ImprintLinkName                          SettingName = "imprint-linkname"
 	AboutModalButtons                        SettingName = "aboutmodal-buttons"
+	UserTokenExpiration                      SettingName = "user-token-expiration"
 )
 
 var DataTypeMappingToProto = map[property.DataType]settingProto.DataType{
