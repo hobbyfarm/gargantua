@@ -504,6 +504,7 @@ type TaskInputCommand struct {
 	Command             string `json:"command"`
 	ExpectedOutputValue string `json:"expected_output_value"`
 	ExpectedReturnCode  int    `json:"expected_return_code"`
+	ReturnType 			string `json:"return_type"`
 }
 
 type VirtualMachineOutputTask struct {
@@ -521,6 +522,7 @@ type TaskOutputCommand struct {
 	ActualOutputValue   string `json:"actual_output_value"`
 	ActualReturnCode    int    `json:"actual_return_code"`
 	Success             bool   `json:"success"`
+	ReturnType 			string `json:"return_type"`
 }
 
 func VMTaskCommandRun(task_cmd *TaskInputCommand, sess *ssh.Session) (*TaskOutputCommand, error) {
@@ -546,6 +548,7 @@ func VMTaskCommandRun(task_cmd *TaskInputCommand, sess *ssh.Session) (*TaskOutpu
 		ActualOutputValue:   actual_output_value,
 		ActualReturnCode:    actual_return_code,
 		Success:             task_cmd.ExpectedOutputValue == actual_output_value && task_cmd.ExpectedReturnCode == actual_return_code,
+		ReturnType: 		 task_cmd.ReturnType,
 	}
 	return task_cmd_res, nil
 }
