@@ -6,14 +6,15 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
-	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"net"
 	"net/http"
 	"os"
 	"sync"
 	"time"
+
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
@@ -25,6 +26,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/leaderelection"
 )
 
 // Add type MicroService based on string that is used to define constants for every service
@@ -341,4 +343,37 @@ func BuildServiceConfig() *ServiceConfig {
 	cfg.ServerCert = serverCert
 
 	return cfg
+}
+
+type onStartedLeading func(context.Context)
+
+func ElectLeaderOrDie(svc MicroService, cfg *rest.Config, ctx context.Context, stopControllersCh <-chan struct{}, onStartedLeadingFunc onStartedLeading) {
+	lock, err := util.GetLock(string(svc), cfg)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
+		Lock:            lock,
+		ReleaseOnCancel: true,
+		LeaseDuration:   10 * time.Second,
+		RenewDeadline:   5 * time.Second,
+		RetryPeriod:     2 * time.Second,
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: onStartedLeadingFunc,
+			OnStoppedLeading: func() {
+				// Need to start informer factory since even when not leader to ensure api layer
+				// keeps working.
+				glog.Info("Stopped being the leader. Shutting down controllers")
+				<-stopControllersCh // Send the stopControllers Signal
+			},
+			OnNewLeader: func(current_id string) {
+				if current_id == lock.Identity() {
+					glog.Info("I am currently the leader")
+					return
+				}
+				glog.Infof("Leader changed to %s", current_id)
+
+			},
+		},
+	})
 }

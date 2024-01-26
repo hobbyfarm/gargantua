@@ -555,3 +555,27 @@ type ScopeList struct {
 
 	Items []Scope `json:"items"`
 }
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type PasswordResetToken struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              PasswordResetTokenSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type PasswordResetTokenList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []PasswordResetToken `json:"items"`
+}
+
+type PasswordResetTokenSpec struct {
+	UserId    string `json:"user"`
+	Timestamp string `json:"timestamp"`
+	Duration  string `json:"duration"`
+}

@@ -11,9 +11,11 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/golang/glog"
 	userservice "github.com/hobbyfarm/gargantua/services/usersvc/v3/internal"
+	userservicecontroller "github.com/hobbyfarm/gargantua/services/usersvc/v3/internal/controllers"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
@@ -94,6 +96,23 @@ func main() {
 		}
 		microservices.StartAPIServer(userServer)
 	}()
+
+	stopControllersCh := signals.SetupSignalHandler()
+	g, gctx := errgroup.WithContext(ctx)
+	passwordResetTokenController, err := userservicecontroller.NewPasswordResetTokenController(us, hfInformerFactory, gctx)
+	if err != nil {
+		glog.Fatalf("starting grpc user server failed: %v", err)
+	}
+
+	microservices.ElectLeaderOrDie(microservices.User, cfg, gctx, stopControllersCh, func(c context.Context) {
+		glog.Info("Started being the leader. Starting controllers")
+		g.Go(func() error {
+			return passwordResetTokenController.Run(stopControllersCh)
+		})
+		if err != nil {
+			glog.Fatal(err)
+		}
+	})
 
 	stopCh := signals.SetupSignalHandler()
 	hfInformerFactory.Start(stopCh)

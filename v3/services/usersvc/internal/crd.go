@@ -33,6 +33,16 @@ func GenerateUserCRD(caBundle string, reference crd.ServiceReference) []crder.CR
 						WithVersions("v2", "v1")
 				})
 		}),
+		hobbyfarmCRD(&v1.PasswordResetToken{}, func(c *crder.CRD) {
+			c.IsNamespaced(true).AddVersion("v1", &v1.PasswordResetToken{}, func(cv *crder.Version) {
+				cv.
+					WithColumn("User", ".spec.user").
+					WithColumn("Timestamp", ".spec.timestamp").
+					WithColumn("Duration", ".spec.duration").
+					IsServed(true).
+					IsStored(true)
+			})
+		}),
 	}
 }
 
