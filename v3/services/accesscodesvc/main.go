@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"sync"
 
 	"github.com/ebauman/crder"
@@ -10,6 +9,7 @@ import (
 	"github.com/golang/glog"
 	accesscodeservice "github.com/hobbyfarm/gargantua/services/accesscodesvc/v3/internal"
 	accessCodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	"github.com/hobbyfarm/gargantua/v3/protos/user"
 )
 
 var (
@@ -31,9 +31,18 @@ func main() {
 	}
 	glog.Info("finished installing/updating access code CRDs")
 
+	services := []microservices.MicroService{
+		microservices.User,
+	}
+	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
+	for _, conn := range connections {
+		defer conn.Close()
+	}
+
+	userClient := user.NewUserSvcClient(connections[microservices.User])
+
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
-	ctx := context.Background()
-	as := accesscodeservice.NewGrpcAccessCodeServer(hfClient, ctx)
+	as := accesscodeservice.NewGrpcAccessCodeServer(hfClient, userClient)
 	accessCodeProto.RegisterAccessCodeSvcServer(gs, as)
 
 	var wg sync.WaitGroup
