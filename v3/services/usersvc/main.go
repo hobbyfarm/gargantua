@@ -97,7 +97,7 @@ func main() {
 		microservices.StartAPIServer(userServer)
 	}()
 
-	stopControllersCh := signals.SetupSignalHandler()
+	stopControllersCh := make(chan struct{}, 1)
 	g, gctx := errgroup.WithContext(ctx)
 	passwordResetTokenController, err := userservicecontroller.NewPasswordResetTokenController(us, hfInformerFactory, gctx)
 	if err != nil {
@@ -114,7 +114,7 @@ func main() {
 		}
 	})
 
-	stopCh := signals.SetupSignalHandler()
-	hfInformerFactory.Start(stopCh)
+	stopInformerFactoryCh := signals.SetupSignalHandler()
+	hfInformerFactory.Start(stopInformerFactoryCh)
 	wg.Wait()
 }

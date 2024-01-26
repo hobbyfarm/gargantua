@@ -58,6 +58,7 @@ func NewPasswordResetTokenController(internalUserServer *userservice.GrpcUserSer
 
 func (s *PasswordResetTokenController) enqueue(obj interface{}) {
 	if s.workqueue.ShuttingDown() || !s.started {
+		glog.V(8).Infof("token is not being added to the workqueue while controller is not started")
 		return
 	}
 
@@ -65,6 +66,7 @@ func (s *PasswordResetTokenController) enqueue(obj interface{}) {
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
 		//utilruntime.HandleError(err)
+		glog.V(8).Infof("Error enquing token %s: %v", key, err)
 		return
 	}
 	glog.V(8).Infof("Enqueueing PRT %s", key)
@@ -115,7 +117,7 @@ func (s *PasswordResetTokenController) processNextSession() bool {
 			glog.Error(err)
 		}
 
-		glog.V(8).Infof("PRT processed by PasswordResetToken controller: %v", objName)
+		glog.V(8).Infof("token processed by Token controller: %v", objName)
 		return nil
 
 	}()
@@ -128,7 +130,7 @@ func (s *PasswordResetTokenController) processNextSession() bool {
 }
 
 func (s *PasswordResetTokenController) reconcile(token string) error {
-	glog.V(4).Infof("reconciling PRT %s", token)
+	glog.V(4).Infof("reconciling token %s", token)
 
 	passwordResetToken, err := s.prtLister.PasswordResetTokens(util2.GetReleaseNamespace()).Get(token)
 
