@@ -558,17 +558,12 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWrit
 	const MAX_COMMANDS_GO = 3
 	// TODO: settings for define max try command run in VM if return code 141
 	const MAX_TRY_COMMAND_RUN = 5
-	user, err := rbac2.AuthenticateWS(r, sp.authnClient)
+	user, err := rbac2.AuthenticateRequest(r, sp.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
 		return
 	}
-	// user, err := sp.authnClient.AuthN(w, r)
-	// if err != nil {
-	// 	util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
-	// 	return
-	// }
-
+	
 	var vm_input_tasks []VirtualMachineInputTask
 
 	err = json.NewDecoder(r.Body).Decode(&vm_input_tasks)
@@ -614,23 +609,7 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWrit
 					return
 				}
 			}
-			// if vm.Spec.UserId != user.Name {
-			// 	// check if the user has access to access user sessions
-			// 	// TODO: add permission like 'virtualmachine/shell' similar to 'pod/exec'
-			// 	_, err := sp.auth.AuthGrantWS(
-			// 		rbacclient.RbacRequest().
-			// 			HobbyfarmPermission("users", rbacclient.VerbGet).
-			// 			HobbyfarmPermission("sessions", rbacclient.VerbGet).
-			// 			HobbyfarmPermission("virtualmachines", rbacclient.VerbGet),
-			// 		w, r)
-			// 	if err != nil {
-			// 		glog.Infof("Error doing authGrantWS %s", err)
-			// 		if len(errorChan) < cap(errorChan) {
-			// 			errChan <- err
-			// 		}
-			// 		return
-			// 	}
-			// }
+
 			// ok first get the secret for the vm
 			secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?
 			if err != nil {
@@ -638,15 +617,7 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWrit
 				util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
 				return
 			}
-			// // ok first get the secret for the vm
-			// secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?
-			// if err != nil {
-			// 	glog.Errorf("did not find secret for virtual machine")
-			// 	if len(errorChan) < cap(errorChan) {
-			// 		errChan <- err
-			// 	}
-			// 	return
-			// }
+
 			// parse the private key
 			signer, err := ssh.ParsePrivateKey(secret.Data["private_key"])
 			if err != nil {
@@ -654,15 +625,7 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWrit
 				util.ReturnHTTPMessage(w, r, 500, "error", "unable to parse private key")
 				return
 			}
-			// parse the private key
-			// signer, err := ssh.ParsePrivateKey(secret.Data["private_key"])
-			// if err != nil {
-			// 	glog.Errorf("did not correctly parse private key")
-			// 	if len(errorChan) < cap(errorChan) {
-			// 		errChan <- err
-			// 	}
-			// 	return
-			// }
+			
 			sshUsername := vm.Spec.SshUsername
 			if len(sshUsername) < 1 {
 				sshUsername = defaultSshUsername
