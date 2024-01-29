@@ -2,6 +2,7 @@ package userservicecontroller
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	userservice "github.com/hobbyfarm/gargantua/services/usersvc/v3/internal"
@@ -43,20 +44,13 @@ func NewPasswordResetTokenController(internalUserServer *userservice.GrpcUserSer
 		Name: "prt-queue",
 	})
 	prtController.prtLister = hfInformerFactory.Hobbyfarm().V1().PasswordResetTokens().Lister()
-
-	prtInformer := hfInformerFactory.Hobbyfarm().V1().PasswordResetTokens().Informer()
-
-	prtInformer.AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
-		AddFunc: prtController.enqueue,
-		UpdateFunc: func(old, new interface{}) {
-			prtController.enqueue(new)
-		},
-	}, time.Minute*30)
-
+	prtController.prtInformer = hfInformerFactory.Hobbyfarm().V1().PasswordResetTokens().Informer()
 	return &prtController, nil
 }
 
 func (s *PasswordResetTokenController) enqueue(obj interface{}) {
+	glog.V(8).Infof("Trying to enqueue PRT %v", obj)
+
 	if s.workqueue.ShuttingDown() || !s.started {
 		glog.V(8).Infof("token is not being added to the workqueue while controller is not started")
 		return
@@ -65,45 +59,62 @@ func (s *PasswordResetTokenController) enqueue(obj interface{}) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		//utilruntime.HandleError(err)
 		glog.V(8).Infof("Error enquing token %s: %v", key, err)
 		return
 	}
 	glog.V(8).Infof("Enqueueing PRT %s", key)
-	//s.ssWorkqueue.AddRateLimited(key)
 	s.workqueue.Add(key)
 }
 
-func (s *PasswordResetTokenController) Run(stopCh <-chan struct{}) error {
-	defer s.workqueue.ShutDown()
-	s.started = true
-
+func (c *PasswordResetTokenController) Run(stopCh <-chan struct{}) error {
+	defer c.workqueue.ShutDown()
 	glog.V(4).Infof("Starting Token controller")
-	go wait.Until(s.runWorker, time.Second, stopCh)
+	reg, err := c.prtInformer.AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
+		AddFunc: c.enqueue,
+		UpdateFunc: func(old, new interface{}) {
+			c.enqueue(new)
+		},
+	}, time.Minute*30)
+
+	if err != nil {
+		glog.V(4).Infof("Event Handler could not be started. Aborting controller start")
+		return err
+	}
+
+	glog.Info("Waiting for informer caches to sync")
+	if ok := cache.WaitForCacheSync(stopCh, c.prtSynced); !ok {
+		glog.V(4).Infof("Error: failed to wait for informer caches to sync")
+		return fmt.Errorf("failed to wait for informer caches to sync")
+	}
+
+	go wait.Until(c.runWorker, time.Second, stopCh)
 	glog.Info("Started Token controller workers")
+	c.started = true
 
 	<-stopCh
-	s.started = false
 	glog.V(4).Infof("Stopping Token controller due to stop signal")
+	c.prtInformer.RemoveEventHandler(reg)
+	c.started = false
+	glog.V(4).Infof("Token controller was stopped.")
 	return nil
 }
 
-func (s *PasswordResetTokenController) runWorker() {
+func (c *PasswordResetTokenController) runWorker() {
 	glog.V(6).Infof("Starting Token worker")
-	for s.processNextSession() {
+	for c.processNextToken() {
 
 	}
 }
 
-func (s *PasswordResetTokenController) processNextSession() bool {
-	obj, shutdown := s.workqueue.Get()
+func (c *PasswordResetTokenController) processNextToken() bool {
+	obj, shutdown := c.workqueue.Get()
 
 	if shutdown {
 		return false
 	}
 
 	err := func() error {
-		defer s.workqueue.Done(obj)
+		defer c.workqueue.Done(obj)
 		glog.V(8).Infof("processing token in token controller: %v", obj)
 		_, objName, err := cache.SplitMetaNamespaceKey(obj.(string))
 		if err != nil {
@@ -111,7 +122,7 @@ func (s *PasswordResetTokenController) processNextSession() bool {
 			return nil
 		}
 
-		err = s.reconcile(objName)
+		err = c.reconcile(objName)
 
 		if err != nil {
 			glog.Error(err)
@@ -129,10 +140,10 @@ func (s *PasswordResetTokenController) processNextSession() bool {
 	return true
 }
 
-func (s *PasswordResetTokenController) reconcile(token string) error {
+func (c *PasswordResetTokenController) reconcile(token string) error {
 	glog.V(4).Infof("reconciling token %s", token)
 
-	passwordResetToken, err := s.prtLister.PasswordResetTokens(util2.GetReleaseNamespace()).Get(token)
+	passwordResetToken, err := c.prtLister.PasswordResetTokens(util2.GetReleaseNamespace()).Get(token)
 
 	if err != nil {
 		return err
@@ -152,9 +163,9 @@ func (s *PasswordResetTokenController) reconcile(token string) error {
 	if timeUntilExpires < 0 {
 		glog.V(4).Infof("PRT %s seems to old, can be deleted", passwordResetToken.Name)
 	} else {
-		// requeue the session at the correct expiration time
+		// requeue the token at the correct expiration time
 		glog.V(4).Infof("Requeueing PRT %s", passwordResetToken.Name)
-		s.workqueue.AddAfter(passwordResetToken, timeUntilExpires)
+		c.workqueue.AddAfter(passwordResetToken, timeUntilExpires)
 	}
 
 	return nil

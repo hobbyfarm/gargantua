@@ -347,7 +347,7 @@ func BuildServiceConfig() *ServiceConfig {
 
 type onStartedLeading func(context.Context)
 
-func ElectLeaderOrDie(svc MicroService, cfg *rest.Config, ctx context.Context, stopControllersCh <-chan struct{}, onStartedLeadingFunc onStartedLeading) {
+func ElectLeaderOrDie(svc MicroService, cfg *rest.Config, ctx context.Context, stopControllersCh chan<- struct{}, onStartedLeadingFunc onStartedLeading) {
 	lock, err := util.GetLock(string(svc), cfg)
 	if err != nil {
 		glog.Fatal(err)
@@ -364,7 +364,7 @@ func ElectLeaderOrDie(svc MicroService, cfg *rest.Config, ctx context.Context, s
 				// Need to start informer factory since even when not leader to ensure api layer
 				// keeps working.
 				glog.Info("Stopped being the leader. Shutting down controllers")
-				<-stopControllersCh // Send the stopControllers Signal
+				stopControllersCh <- struct{}{} // Send the stopControllers Signal
 			},
 			OnNewLeader: func(current_id string) {
 				if current_id == lock.Identity() {

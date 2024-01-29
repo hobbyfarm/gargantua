@@ -97,12 +97,15 @@ func main() {
 		microservices.StartAPIServer(userServer)
 	}()
 
-	stopControllersCh := make(chan struct{}, 1)
+	stopControllersCh := make(chan struct{})
 	g, gctx := errgroup.WithContext(ctx)
 	passwordResetTokenController, err := userservicecontroller.NewPasswordResetTokenController(us, hfInformerFactory, gctx)
 	if err != nil {
 		glog.Fatalf("starting grpc user server failed: %v", err)
 	}
+
+	stopInformerFactoryCh := signals.SetupSignalHandler()
+	hfInformerFactory.Start(stopInformerFactoryCh)
 
 	microservices.ElectLeaderOrDie(microservices.User, cfg, gctx, stopControllersCh, func(c context.Context) {
 		glog.Info("Started being the leader. Starting controllers")
@@ -114,7 +117,5 @@ func main() {
 		}
 	})
 
-	stopInformerFactoryCh := signals.SetupSignalHandler()
-	hfInformerFactory.Start(stopInformerFactoryCh)
 	wg.Wait()
 }
