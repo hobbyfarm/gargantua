@@ -68,7 +68,7 @@ type Task struct {
 	Command             string `json:"command"`
 	ExpectedOutputValue string `json:"expected_output_value"`
 	ExpectedReturnCode  int    `json:"expected_return_code"`
-//	ReturnType 			string `json:"return_type"`
+	ReturnType 			string `json:"return_type"`
 }
 
 type ScenarioStep struct {

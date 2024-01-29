@@ -29,6 +29,7 @@ import (
 	"golang.org/x/sync/semaphore"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 )
 
 type ShellProxy struct {
@@ -495,16 +496,7 @@ func copyResponse(rw http.ResponseWriter, resp *http.Response) error {
 type VirtualMachineInputTask struct {
 	VMId              string             `json:"vm_id"`
 	VMName            string             `json:"vm_name"`
-	TaskInputCommands []TaskInputCommand `json:"task_command"`
-}
-
-type TaskInputCommand struct {
-	Name                string `json:"name"`
-	Description         string `json:"description"`
-	Command             string `json:"command"`
-	ExpectedOutputValue string `json:"expected_output_value"`
-	ExpectedReturnCode  int    `json:"expected_return_code"`
-	ReturnType 			string `json:"return_type"`
+	TaskInputCommands []v2.Task          `json:"task_command"`
 }
 
 type VirtualMachineOutputTask struct {
@@ -514,18 +506,14 @@ type VirtualMachineOutputTask struct {
 }
 
 type TaskOutputCommand struct {
-	Name                string `json:"name"`
-	Description         string `json:"description"`
-	Command             string `json:"command"`
-	ExpectedOutputValue string `json:"expected_output_value"`
-	ExpectedReturnCode  int    `json:"expected_return_code"`
+	TaskInputCommand    v2.Task   `json:"task_command_input"`	
 	ActualOutputValue   string `json:"actual_output_value"`
 	ActualReturnCode    int    `json:"actual_return_code"`
 	Success             bool   `json:"success"`
-	ReturnType 			string `json:"return_type"`
+	
 }
 
-func VMTaskCommandRun(task_cmd *TaskInputCommand, sess *ssh.Session) (*TaskOutputCommand, error) {
+func VMTaskCommandRun(task_cmd *v2.Task, sess *ssh.Session) (*TaskOutputCommand, error) {
 	out, err := sess.CombinedOutput(task_cmd.Command)
 	actual_output_value := strings.TrimRight(string(out), "\r\n")
 	actual_return_code := 0
@@ -540,15 +528,11 @@ func VMTaskCommandRun(task_cmd *TaskInputCommand, sess *ssh.Session) (*TaskOutpu
 
 	}
 	task_cmd_res := &TaskOutputCommand{
-		Name:                task_cmd.Name,
-		Description:         task_cmd.Description,
-		Command:             task_cmd.Command,
-		ExpectedOutputValue: task_cmd.ExpectedOutputValue,
-		ExpectedReturnCode:  task_cmd.ExpectedReturnCode,
+		TaskInputCommand:    *task_cmd,		
 		ActualOutputValue:   actual_output_value,
 		ActualReturnCode:    actual_return_code,
 		Success:             task_cmd.ExpectedOutputValue == actual_output_value && task_cmd.ExpectedReturnCode == actual_return_code,
-		ReturnType: 		 task_cmd.ReturnType,
+		
 	}
 	return task_cmd_res, nil
 }
@@ -679,7 +663,7 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWrit
 					glog.Errorf("did not acquire vm_semafore")
 				}
 				glog.Infof("before go vm: %v, sem: %v", vmId, commands_semaphore)
-				go func(closure_task_command TaskInputCommand, errChan chan<- error, max_try_command_run int) {
+				go func(closure_task_command v2.Task, errChan chan<- error, max_try_command_run int) {
 					defer commands_wg.Done()
 					defer commands_semaphore.Release(1)
 					glog.Infof("vm: %v, sem: %v", vmId, commands_semaphore)
