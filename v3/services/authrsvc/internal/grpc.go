@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
+	"github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	authrProto "github.com/hobbyfarm/gargantua/v3/protos/authr"
@@ -151,19 +152,11 @@ func (a *GrpcAuthRServer) createSubjectAccessReview(userName string, releaseName
 }
 
 func (a *GrpcAuthRServer) returnResponseFailedAuthrWithError(ar *authrProto.AuthRRequest, msg string, err error) (*authrProto.AuthRResponse, error) {
-	newErr := status.Newf(
+	return &authrProto.AuthRResponse{}, errors.GrpcError(
 		codes.Internal,
 		"%s %s",
+		ar,
 		msg,
 		err,
 	)
-	newErr, wde := newErr.WithDetails(ar)
-	if wde != nil {
-		return &authrProto.AuthRResponse{
-			Success: false,
-		}, wde
-	}
-	return &authrProto.AuthRResponse{
-		Success: false,
-	}, newErr.Err()
 }

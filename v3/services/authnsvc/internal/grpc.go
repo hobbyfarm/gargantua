@@ -7,36 +7,30 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
+	"github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	authnProto "github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/user"
 	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type GrpcAuthnServer struct {
 	authnProto.UnimplementedAuthNServer
-	userClient user.UserSvcClient
+	userClient userProto.UserSvcClient
 }
 
-func NewGrpcAuthNServer(userClient user.UserSvcClient) *GrpcAuthnServer {
+func NewGrpcAuthNServer(userClient userProto.UserSvcClient) *GrpcAuthnServer {
 	return &GrpcAuthnServer{userClient: userClient}
 }
 
 func (a *GrpcAuthnServer) AuthN(c context.Context, ar *authnProto.AuthNRequest) (*userProto.User, error) {
 	token := ar.GetToken()
 	if len(token) == 0 {
-		err := status.Newf(
+		glog.Errorf("no bearer token passed, authentication failed")
+		return &userProto.User{}, errors.GrpcError(
 			codes.InvalidArgument,
 			"missing the following properties from type 'AuthNRequest': token",
+			ar,
 		)
-
-		err, wde := err.WithDetails(ar)
-		if wde != nil {
-			return &userProto.User{}, wde
-		}
-		glog.Errorf("no bearer token passed, authentication failed")
-		return &userProto.User{}, err.Err()
 	}
 
 	var finalToken string
@@ -50,17 +44,13 @@ func (a *GrpcAuthnServer) AuthN(c context.Context, ar *authnProto.AuthNRequest) 
 
 	user, err := a.validateToken(c, finalToken)
 	if err != nil {
-		newErr := status.Newf(
+		glog.Infof("could not validate token: %s", err)
+		return &userProto.User{}, errors.GrpcError(
 			codes.Unauthenticated,
 			"could not validate token: %s",
+			ar,
 			err,
 		)
-		newErr, wde := newErr.WithDetails(ar)
-		if wde != nil {
-			return &userProto.User{}, wde
-		}
-		glog.Infof("could not validate token: %s", err)
-		return &userProto.User{}, newErr.Err()
 	}
 	return user, nil
 }

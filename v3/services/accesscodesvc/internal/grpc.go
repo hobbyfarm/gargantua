@@ -9,11 +9,11 @@ import (
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	"github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	accessCodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
 	"github.com/hobbyfarm/gargantua/v3/protos/user"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -98,32 +98,24 @@ func (a *GrpcAccessCodeServer) CreateAc(ctx context.Context, cr *accessCodeProto
 
 func (a *GrpcAccessCodeServer) GetAc(ctx context.Context, id *accessCodeProto.ResourceId) (*accessCodeProto.AccessCode, error) {
 	if len(id.GetId()) == 0 {
-		newErr := status.Newf(
+		return &accessCodeProto.AccessCode{}, errors.GrpcError(
 			codes.InvalidArgument,
 			"no id passed in",
+			id,
 		)
-		newErr, wde := newErr.WithDetails(id)
-		if wde != nil {
-			return &accessCodeProto.AccessCode{}, wde
-		}
-		return &accessCodeProto.AccessCode{}, newErr.Err()
 	}
 
 	ac, err := a.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Get(ctx, id.GetId(), metav1.GetOptions{})
 
 	if err != nil {
 		glog.V(2).Infof("error while retrieving accesscode: %v", err)
-		newErr := status.Newf(
+		return &accessCodeProto.AccessCode{}, errors.GrpcError(
 			codes.Internal,
 			"error while retrieving accesscode by id: %s with error: %v",
+			id,
 			id.GetId(),
 			err,
 		)
-		newErr, wde := newErr.WithDetails(id)
-		if wde != nil {
-			return &accessCodeProto.AccessCode{}, wde
-		}
-		return &accessCodeProto.AccessCode{}, newErr.Err()
 	}
 
 	return &accessCodeProto.AccessCode{
@@ -142,15 +134,11 @@ func (a *GrpcAccessCodeServer) GetAc(ctx context.Context, id *accessCodeProto.Re
 func (a *GrpcAccessCodeServer) UpdateAc(ctx context.Context, acRequest *accessCodeProto.UpdateAccessCodeRequest) (*empty.Empty, error) {
 	id := acRequest.GetId()
 	if id == "" {
-		newErr := status.Newf(
+		return &empty.Empty{}, errors.GrpcError(
 			codes.InvalidArgument,
 			"no ID passed in",
+			acRequest,
 		)
-		newErr, wde := newErr.WithDetails(acRequest)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
 	description := acRequest.GetDescription()
@@ -165,17 +153,13 @@ func (a *GrpcAccessCodeServer) UpdateAc(ctx context.Context, acRequest *accessCo
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		ac, err := a.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Get(ctx, id, metav1.GetOptions{})
 		if err != nil {
-			newErr := status.Newf(
+			glog.Error(err)
+			return errors.GrpcError(
 				codes.Internal,
 				"error while retrieving accesscode %s",
+				acRequest,
 				acRequest.GetId(),
 			)
-			newErr, wde := newErr.WithDetails(acRequest)
-			if wde != nil {
-				return wde
-			}
-			glog.Error(err)
-			return newErr.Err()
 		}
 
 		// In the current implementation the code from  the access code spec equals the object's kubernetes name/id.
@@ -218,15 +202,11 @@ func (a *GrpcAccessCodeServer) UpdateAc(ctx context.Context, acRequest *accessCo
 	})
 
 	if retryErr != nil {
-		newErr := status.Newf(
+		return &empty.Empty{}, errors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
+			acRequest,
 		)
-		newErr, wde := newErr.WithDetails(acRequest)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
 	return &empty.Empty{}, nil
@@ -235,30 +215,22 @@ func (a *GrpcAccessCodeServer) UpdateAc(ctx context.Context, acRequest *accessCo
 func (a *GrpcAccessCodeServer) DeleteAc(ctx context.Context, dr *accessCodeProto.ResourceId) (*empty.Empty, error) {
 	acId := dr.GetId()
 	if acId == "" {
-		newErr := status.Newf(
+		return &empty.Empty{}, errors.GrpcError(
 			codes.InvalidArgument,
 			"no ID passed in",
+			dr,
 		)
-		newErr, wde := newErr.WithDetails(dr)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
 	err := a.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Delete(ctx, acId, metav1.DeleteOptions{})
 	if err != nil {
-		newErr := status.Newf(
+		glog.Errorf("error deleting accesscode %s: %s", acId, err)
+		return &empty.Empty{}, errors.GrpcError(
 			codes.Internal,
 			"error deleting accesscode %s",
+			dr,
 			acId,
 		)
-		newErr, wde := newErr.WithDetails(dr)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		glog.Errorf("error deleting accesscode %s: %s", acId, err)
-		return &empty.Empty{}, newErr.Err()
 	}
 	return &empty.Empty{}, nil
 }
@@ -270,15 +242,11 @@ func (a *GrpcAccessCodeServer) DeleteCollectionAc(ctx context.Context, listOptio
 		LabelSelector: listOptions.GetLabelSelector(),
 	})
 	if err != nil {
-		newErr := status.Newf(
+		return &empty.Empty{}, errors.GrpcError(
 			codes.Internal,
 			"error deleting access codes",
+			listOptions,
 		)
-		newErr, wde := newErr.WithDetails(listOptions)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
 	return &empty.Empty{}, nil
@@ -292,11 +260,11 @@ func (a *GrpcAccessCodeServer) ListAc(ctx context.Context, listOptions *accessCo
 
 	if err != nil {
 		glog.Error(err)
-		newErr := status.Newf(
+		return &accessCodeProto.ListAcsResponse{}, errors.GrpcError(
 			codes.Internal,
 			"error retreiving access codes",
+			listOptions,
 		)
-		return &accessCodeProto.ListAcsResponse{}, newErr.Err()
 	}
 	preparedAcs := []*accessCodeProto.AccessCode{}
 
@@ -306,13 +274,13 @@ func (a *GrpcAccessCodeServer) ListAc(ctx context.Context, listOptions *accessCo
 			expiration, err := time.Parse(time.UnixDate, accessCode.Spec.Expiration)
 
 			if err != nil {
-				newErr := status.Newf(
+				return &accessCodeProto.ListAcsResponse{}, errors.GrpcError(
 					codes.Internal,
 					"error while parsing expiration time for access code %s %v",
+					listOptions,
 					accessCode.Name,
 					err,
 				)
-				return &accessCodeProto.ListAcsResponse{}, newErr.Err()
 			}
 
 			if time.Now().After(expiration) { // if the access code is expired don't return any scenarios
@@ -355,28 +323,20 @@ func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accessCodePro
 
 	scheduledEventName := cr.GetSeName()
 	if scheduledEventName == "" {
-		newErr := status.Newf(
+		return &accessCodeProto.OneTimeAccessCode{}, errors.GrpcError(
 			codes.InvalidArgument,
 			"error creating otac, se_name field blank",
+			cr,
 		)
-		newErr, wde := newErr.WithDetails(cr)
-		if wde != nil {
-			return &accessCodeProto.OneTimeAccessCode{}, wde
-		}
-		return &accessCodeProto.OneTimeAccessCode{}, newErr.Err()
 	}
 
 	scheduledUid := cr.GetSeUid()
 	if scheduledUid == "" {
-		newErr := status.Newf(
+		return &accessCodeProto.OneTimeAccessCode{}, errors.GrpcError(
 			codes.InvalidArgument,
 			"error creating otac, se_uid field blank",
+			cr,
 		)
-		newErr, wde := newErr.WithDetails(cr)
-		if wde != nil {
-			return &accessCodeProto.OneTimeAccessCode{}, wde
-		}
-		return &accessCodeProto.OneTimeAccessCode{}, newErr.Err()
 	}
 
 	otac := &hfv1.OneTimeAccessCode{
@@ -416,31 +376,23 @@ func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accessCodePro
 
 func (a *GrpcAccessCodeServer) GetOtac(ctx context.Context, id *accessCodeProto.ResourceId) (*accessCodeProto.OneTimeAccessCode, error) {
 	if len(id.GetId()) == 0 {
-		newErr := status.Newf(
+		return &accessCodeProto.OneTimeAccessCode{}, errors.GrpcError(
 			codes.InvalidArgument,
 			"no id passed in",
+			id,
 		)
-		newErr, wde := newErr.WithDetails(id)
-		if wde != nil {
-			return &accessCodeProto.OneTimeAccessCode{}, wde
-		}
-		return &accessCodeProto.OneTimeAccessCode{}, newErr.Err()
 	}
 
 	otac, err := a.getOtac(ctx, id.GetId())
 
 	if err != nil {
 		glog.V(2).Infof("%v is not an OTAC, returning status NotFound", err)
-		newErr := status.Newf(
+		return &accessCodeProto.OneTimeAccessCode{}, errors.GrpcError(
 			codes.NotFound,
 			"no OTAC %s found",
+			id,
 			id.GetId(),
 		)
-		newErr, wde := newErr.WithDetails(id)
-		if wde != nil {
-			return &accessCodeProto.OneTimeAccessCode{}, wde
-		}
-		return &accessCodeProto.OneTimeAccessCode{}, newErr.Err()
 	}
 	glog.V(2).Infof("retrieved OTAC %s", id.GetId())
 	return otac, nil
@@ -449,31 +401,23 @@ func (a *GrpcAccessCodeServer) GetOtac(ctx context.Context, id *accessCodeProto.
 func (a *GrpcAccessCodeServer) UpdateOtac(ctx context.Context, otacRequest *accessCodeProto.OneTimeAccessCode) (*empty.Empty, error) {
 	id := otacRequest.GetId()
 	if id == "" {
-		newErr := status.Newf(
+		return &empty.Empty{}, errors.GrpcError(
 			codes.InvalidArgument,
 			"no ID passed in",
+			otacRequest,
 		)
-		newErr, wde := newErr.WithDetails(otacRequest)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		otac, err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Get(ctx, id, metav1.GetOptions{})
 		if err != nil {
-			newErr := status.Newf(
+			glog.Error(err)
+			return errors.GrpcError(
 				codes.Internal,
 				"error while retrieving OTAC %s",
+				otacRequest,
 				otacRequest.GetId(),
 			)
-			newErr, wde := newErr.WithDetails(otacRequest)
-			if wde != nil {
-				return wde
-			}
-			glog.Error(err)
-			return newErr.Err()
 		}
 
 		otac.Spec.User = otacRequest.GetUser()
@@ -485,15 +429,11 @@ func (a *GrpcAccessCodeServer) UpdateOtac(ctx context.Context, otacRequest *acce
 	})
 
 	if retryErr != nil {
-		newErr := status.Newf(
+		return &empty.Empty{}, errors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
+			otacRequest,
 		)
-		newErr, wde := newErr.WithDetails(otacRequest)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
 	return &empty.Empty{}, nil
@@ -502,30 +442,22 @@ func (a *GrpcAccessCodeServer) UpdateOtac(ctx context.Context, otacRequest *acce
 func (a *GrpcAccessCodeServer) DeleteOtac(ctx context.Context, dr *accessCodeProto.ResourceId) (*empty.Empty, error) {
 	otacId := dr.GetId()
 	if otacId == "" {
-		newErr := status.Newf(
+		return &empty.Empty{}, errors.GrpcError(
 			codes.InvalidArgument,
 			"no ID passed in",
+			dr,
 		)
-		newErr, wde := newErr.WithDetails(dr)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
 	err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Delete(ctx, otacId, metav1.DeleteOptions{})
 	if err != nil {
-		newErr := status.Newf(
+		glog.Errorf("error deleting otac %s: %s", otacId, err)
+		return &empty.Empty{}, errors.GrpcError(
 			codes.Internal,
 			"error deleting otac %s",
+			dr,
 			otacId,
 		)
-		newErr, wde := newErr.WithDetails(dr)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		glog.Errorf("error deleting otac %s: %s", otacId, err)
-		return &empty.Empty{}, newErr.Err()
 	}
 	return &empty.Empty{}, nil
 }
@@ -537,15 +469,11 @@ func (a *GrpcAccessCodeServer) DeleteCollectionOtac(ctx context.Context, listOpt
 		LabelSelector: listOptions.GetLabelSelector(),
 	})
 	if err != nil {
-		newErr := status.Newf(
+		return &empty.Empty{}, errors.GrpcError(
 			codes.Internal,
 			"error deleting otacs",
+			listOptions,
 		)
-		newErr, wde := newErr.WithDetails(listOptions)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
 	return &empty.Empty{}, nil
@@ -559,11 +487,11 @@ func (a *GrpcAccessCodeServer) ListOtac(ctx context.Context, listOptions *access
 
 	if err != nil {
 		glog.Error(err)
-		newErr := status.Newf(
+		return &accessCodeProto.ListOtacsResponse{}, errors.GrpcError(
 			codes.Internal,
 			"error retreiving OTACs",
+			listOptions,
 		)
-		return &accessCodeProto.ListOtacsResponse{}, newErr.Err()
 	}
 
 	preparedOtacs := []*accessCodeProto.OneTimeAccessCode{} // must be declared this way so as to JSON marshal into [] instead of null
@@ -590,15 +518,11 @@ func (a *GrpcAccessCodeServer) ListOtac(ctx context.Context, listOptions *access
 
 func (a *GrpcAccessCodeServer) ValidateExistence(ctx context.Context, gor *accessCodeProto.ResourceId) (*accessCodeProto.ResourceValidation, error) {
 	if len(gor.GetId()) == 0 {
-		newErr := status.Newf(
+		return &accessCodeProto.ResourceValidation{Valid: false}, errors.GrpcError(
 			codes.InvalidArgument,
 			"no id passed in",
+			gor,
 		)
-		newErr, wde := newErr.WithDetails(gor)
-		if wde != nil {
-			return &accessCodeProto.ResourceValidation{Valid: false}, wde
-		}
-		return &accessCodeProto.ResourceValidation{Valid: false}, newErr.Err()
 	}
 
 	_, err := a.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Get(ctx, gor.GetId(), metav1.GetOptions{})
@@ -617,15 +541,11 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 	ids := codeIds.GetIds()
 	otacReq, err := labels.NewRequirement(util.OneTimeAccessCodeLabel, selection.In, ids)
 	if err != nil {
-		newErr := status.Newf(
+		return &accessCodeProto.ListAcsResponse{}, errors.GrpcError(
 			codes.Internal,
 			"Unable to create label selector from access code ids",
+			codeIds,
 		)
-		newErr, wde := newErr.WithDetails(codeIds)
-		if wde != nil {
-			return &accessCodeProto.ListAcsResponse{}, wde
-		}
-		return &accessCodeProto.ListAcsResponse{}, newErr.Err()
 	}
 	selector := labels.NewSelector()
 	selector = selector.Add(*otacReq)
@@ -644,12 +564,12 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 		se, err := a.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(ctx, otac.Labels[util.ScheduledEventLabel], metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
-			newErr := status.Newf(
+			return &accessCodeProto.ListAcsResponse{}, errors.GrpcError(
 				codes.Internal,
 				"error retreiving scheduled event from OTAC: %v",
+				codeIds,
 				err,
 			)
-			return &accessCodeProto.ListAcsResponse{}, newErr.Err()
 		}
 		ids = append(ids, se.Spec.AccessCode)
 	}
@@ -657,15 +577,11 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 	// Update the label selector
 	otacReq, err = labels.NewRequirement(util.OneTimeAccessCodeLabel, selection.In, ids)
 	if err != nil {
-		newErr := status.Newf(
+		return &accessCodeProto.ListAcsResponse{}, errors.GrpcError(
 			codes.Internal,
 			"Unable to create label selector from access code ids",
+			codeIds,
 		)
-		newErr, wde := newErr.WithDetails(codeIds)
-		if wde != nil {
-			return &accessCodeProto.ListAcsResponse{}, wde
-		}
-		return &accessCodeProto.ListAcsResponse{}, newErr.Err()
 	}
 	selector = labels.NewSelector()
 	selector = selector.Add(*otacReq)
@@ -678,45 +594,33 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 func (a *GrpcAccessCodeServer) GetAccessCodeWithOTACs(ctx context.Context, codeId *accessCodeProto.ResourceId) (*accessCodeProto.AccessCode, error) {
 	accessCodeId := codeId.GetId()
 	if len(accessCodeId) == 0 {
-		newErr := status.Newf(
+		return &accessCodeProto.AccessCode{}, errors.GrpcError(
 			codes.InvalidArgument,
 			"no id passed in",
+			codeId,
 		)
-		newErr, wde := newErr.WithDetails(codeId)
-		if wde != nil {
-			return &accessCodeProto.AccessCode{}, wde
-		}
-		return &accessCodeProto.AccessCode{}, newErr.Err()
 	}
 
 	accessCodeList, err := a.GetAccessCodesWithOTACs(ctx, &accessCodeProto.ResourceIds{Ids: []string{accessCodeId}})
 
 	if err != nil {
-		newErr := status.Newf(
+		return &accessCodeProto.AccessCode{}, errors.GrpcError(
 			codes.NotFound,
 			"access code (%s) not found: %v",
+			codeId,
 			accessCodeId,
 			err,
 		)
-		newErr, wde := newErr.WithDetails(codeId)
-		if wde != nil {
-			return &accessCodeProto.AccessCode{}, wde
-		}
-		return &accessCodeProto.AccessCode{}, newErr.Err()
 	}
 
 	accessCodes := accessCodeList.GetAccessCodes()
 
 	if len(accessCodes) != 1 {
-		newErr := status.Newf(
+		return &accessCodeProto.AccessCode{}, errors.GrpcError(
 			codes.Internal,
 			"insane result found",
+			codeId,
 		)
-		newErr, wde := newErr.WithDetails(codeId)
-		if wde != nil {
-			return &accessCodeProto.AccessCode{}, wde
-		}
-		return &accessCodeProto.AccessCode{}, newErr.Err()
 	}
 
 	return accessCodes[0], nil
@@ -729,46 +633,34 @@ func (a *GrpcAccessCodeServer) GetClosestAccessCode(ctx context.Context, closest
 	courseOrScenarioId := closestAcReq.GetCourseOrScenarioId()
 
 	if len(userId) == 0 || len(courseOrScenarioId) == 0 {
-		newErr := status.Newf(
+		return &accessCodeProto.ResourceId{}, errors.GrpcError(
 			codes.InvalidArgument,
 			"no user_id or course_or_scneario_id passed in",
+			closestAcReq,
 		)
-		newErr, wde := newErr.WithDetails(closestAcReq)
-		if wde != nil {
-			return &accessCodeProto.ResourceId{}, wde
-		}
-		return &accessCodeProto.ResourceId{}, newErr.Err()
 	}
 
 	user, err := a.userClient.GetUserById(ctx, &user.UserId{Id: userId})
 
 	if err != nil {
-		newErr := status.Newf(
+		return &accessCodeProto.ResourceId{}, errors.GrpcError(
 			codes.Internal,
 			"error while retrieving user by id: %s with error: %v",
+			closestAcReq,
 			userId,
 			err,
 		)
-		newErr, wde := newErr.WithDetails(closestAcReq)
-		if wde != nil {
-			return &accessCodeProto.ResourceId{}, wde
-		}
-		return &accessCodeProto.ResourceId{}, newErr.Err()
 	}
 
 	rawAccessCodeList, err := a.GetAccessCodesWithOTACs(ctx, &accessCodeProto.ResourceIds{Ids: user.GetAccessCodes()})
 
 	if err != nil {
-		newErr := status.Newf(
+		return &accessCodeProto.ResourceId{}, errors.GrpcError(
 			codes.NotFound,
 			"access codes were not found %v",
+			closestAcReq,
 			err,
 		)
-		newErr, wde := newErr.WithDetails(closestAcReq)
-		if wde != nil {
-			return &accessCodeProto.ResourceId{}, wde
-		}
-		return &accessCodeProto.ResourceId{}, newErr.Err()
 	}
 
 	rawAccessCodes := rawAccessCodeList.GetAccessCodes()
@@ -791,17 +683,13 @@ func (a *GrpcAccessCodeServer) GetClosestAccessCode(ctx context.Context, closest
 	}
 
 	if len(accessCodes) == 0 {
-		newErr := status.Newf(
+		return &accessCodeProto.ResourceId{}, errors.GrpcError(
 			codes.NotFound,
 			"access codes were not found for user %s with scenario or course id %s",
+			closestAcReq,
 			userId,
 			courseOrScenarioId,
 		)
-		newErr, wde := newErr.WithDetails(closestAcReq)
-		if wde != nil {
-			return &accessCodeProto.ResourceId{}, wde
-		}
-		return &accessCodeProto.ResourceId{}, newErr.Err()
 	}
 
 	sort.Slice(accessCodes, func(i, j int) bool {
@@ -866,15 +754,11 @@ func (a *GrpcAccessCodeServer) checkInputParamsForCreateAc(cr *accessCodeProto.C
 		cr.GetSeUid() == "" ||
 		(cr.GetRestrictedBind() && cr.GetRestrictedBindValue() == "") {
 
-		newErr := status.Newf(
+		return errors.GrpcError(
 			codes.InvalidArgument,
 			"error creating accesscode, required input field is blank",
+			cr,
 		)
-		newErr, wde := newErr.WithDetails(cr)
-		if wde != nil {
-			return wde
-		}
-		return newErr.Err()
 	}
 	return nil
 }

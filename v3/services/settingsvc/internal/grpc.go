@@ -8,13 +8,13 @@ import (
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	labels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/property"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -44,15 +44,11 @@ func (s *GrpcSettingServer) CreateScope(ctx context.Context, creq *settingProto.
 	}
 	_, err := s.hfClientSet.HobbyfarmV1().Scopes(util.GetReleaseNamespace()).Create(ctx, hfScope, metav1.CreateOptions{})
 	if err != nil {
-		newErr := status.Newf(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
+			creq,
 		)
-		newErr, wde := newErr.WithDetails(creq)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 	return &empty.Empty{}, nil
 }
@@ -61,16 +57,12 @@ func (s *GrpcSettingServer) GetScope(ctx context.Context, id *settingProto.Id) (
 	scope, err := s.hfClientSet.HobbyfarmV1().Scopes(util.GetReleaseNamespace()).Get(s.ctx, id.GetName(), metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		glog.Errorf("scope %s not found", id.GetName())
-		newErr := status.Newf(
+		return &settingProto.Scope{}, hferrors.GrpcError(
 			codes.NotFound,
 			"scope %s not found",
+			id,
 			id.GetName(),
 		)
-		newErr, wde := newErr.WithDetails(id)
-		if wde != nil {
-			return &settingProto.Scope{}, wde
-		}
-		return &settingProto.Scope{}, newErr.Err()
 	}
 	return &settingProto.Scope{Name: scope.Name, DisplayName: scope.DisplayName}, nil
 }
@@ -79,11 +71,11 @@ func (s *GrpcSettingServer) ListScopes(ctx context.Context, empty *empty.Empty) 
 	scopes, err := s.hfClientSet.HobbyfarmV1().Scopes(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("error while listing scopes: %s", err.Error())
-		newErr := status.Newf(
+		return &settingProto.Scopes{}, hferrors.GrpcError(
 			codes.Internal,
 			"error listing scopes",
+			empty,
 		)
-		return &settingProto.Scopes{}, newErr.Err()
 	}
 
 	var preparedScopes = make([]*settingProto.Scope, len(scopes.Items))
@@ -113,15 +105,11 @@ func (s *GrpcSettingServer) CreateSetting(ctx context.Context, creq *settingProt
 	}
 	_, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Create(ctx, hfSetting, metav1.CreateOptions{})
 	if err != nil {
-		newErr := status.Newf(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
+			creq,
 		)
-		newErr, wde := newErr.WithDetails(creq)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 	return &empty.Empty{}, nil
 }
@@ -131,31 +119,23 @@ func (s *GrpcSettingServer) GetSettingValue(ctx context.Context, sreq *settingPr
 	setting, err := GetSetting(settingUtil.SettingName(sreq.GetName()))
 
 	if err != nil {
-		newErr := status.Newf(
+		return &settingProto.SettingValue{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			err.Error(),
+			sreq,
 		)
-		newErr, wde := newErr.WithDetails(sreq)
-		if wde != nil {
-			return resp, wde
-		}
-		return resp, newErr.Err()
 	}
 
 	settingValue, err := setting.FromJSON(setting.Value)
 
 	if err != nil {
 		glog.Error("could not parse JSON value")
-		newErr := status.Newf(
+		return &settingProto.SettingValue{}, hferrors.GrpcError(
 			codes.Internal,
 			"error parsing JSON value for setting %s",
+			sreq,
 			sreq.GetName(),
 		)
-		newErr, wde := newErr.WithDetails(sreq)
-		if wde != nil {
-			return resp, wde
-		}
-		return resp, newErr.Err()
 	}
 
 	switch v := settingValue.(type) {
@@ -168,16 +148,12 @@ func (s *GrpcSettingServer) GetSettingValue(ctx context.Context, sreq *settingPr
 	case int:
 		resp.Value = &settingProto.SettingValue_Int64Value{Int64Value: int64(v)}
 	default:
-		newErr := status.Newf(
+		return &settingProto.SettingValue{}, hferrors.GrpcError(
 			codes.Internal,
 			"error setting %s did not match any of the following types: bool, string, float64, int",
+			sreq,
 			sreq.GetName(),
 		)
-		newErr, wde := newErr.WithDetails(sreq)
-		if wde != nil {
-			return resp, wde
-		}
-		return resp, newErr.Err()
 	}
 	return resp, nil
 }
@@ -188,15 +164,11 @@ func (s *GrpcSettingServer) ListSettings(ctx context.Context, lreq *settingProto
 	})
 	if err != nil {
 		glog.Errorf("error listing settings: %s", err.Error())
-		newErr := status.Newf(
+		return &settingProto.ListSettingsResponse{}, hferrors.GrpcError(
 			codes.Internal,
 			"error listing settings",
+			lreq,
 		)
-		newErr, wde := newErr.WithDetails(lreq)
-		if wde != nil {
-			return &settingProto.ListSettingsResponse{}, wde
-		}
-		return &settingProto.ListSettingsResponse{}, newErr.Err()
 	}
 
 	var settings []*settingProto.PreparedListSetting
@@ -244,43 +216,31 @@ func (s *GrpcSettingServer) GetSetting(ctx context.Context, id *settingProto.Id)
 	kSetting, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Get(s.ctx, id.GetName(), metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		glog.Errorf("setting %s not found", id.GetName())
-		newErr := status.Newf(
+		return &settingProto.Setting{}, hferrors.GrpcError(
 			codes.NotFound,
 			"setting %s not found",
+			id,
 			id.GetName(),
 		)
-		newErr, wde := newErr.WithDetails(id)
-		if wde != nil {
-			return &settingProto.Setting{}, wde
-		}
-		return &settingProto.Setting{}, newErr.Err()
 	}
 	if err != nil {
 		glog.Errorf("error getting setting from database: %s", err.Error())
-		newErr := status.Newf(
+		return &settingProto.Setting{}, hferrors.GrpcError(
 			codes.Internal,
 			"error retrieving setting",
+			id,
 		)
-		newErr, wde := newErr.WithDetails(id)
-		if wde != nil {
-			return &settingProto.Setting{}, wde
-		}
-		return &settingProto.Setting{}, newErr.Err()
 	}
 
 	// check if the user has permissions to do this action
 	scope, ok := kSetting.Labels[labels.SettingScope]
 	if !ok {
 		glog.Errorf("setting %s does not have scope label", kSetting.Name)
-		newErr := status.Newf(
+		return &settingProto.Setting{}, hferrors.GrpcError(
 			codes.Internal,
 			"error retrieving scope label",
+			id,
 		)
-		newErr, wde := newErr.WithDetails(id)
-		if wde != nil {
-			return &settingProto.Setting{}, wde
-		}
-		return &settingProto.Setting{}, newErr.Err()
 	}
 
 	prepSetting := &settingProto.Setting{Name: kSetting.Name, Property: &settingProto.Property{
@@ -320,31 +280,23 @@ func (s *GrpcSettingServer) GetSetting(ctx context.Context, id *settingProto.Id)
 func (s *GrpcSettingServer) UpdateSetting(ctx context.Context, setting *settingProto.Setting) (*empty.Empty, error) {
 	kSetting, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Get(s.ctx, setting.GetName(), metav1.GetOptions{})
 	if err != nil {
-		newErr := status.Newf(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"error updating setting: %s",
+			setting,
 			err.Error(),
 		)
-		newErr, wde := newErr.WithDetails(setting)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
 	// validate the value
 	if err := kSetting.Validate(setting.GetValue()); err != nil {
 		glog.Errorf("error validating value: %s", err.Error())
-		newErr := status.Newf(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"error updating setting: %s",
+			setting,
 			err.Error(),
 		)
-		newErr, wde := newErr.WithDetails(setting)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
 	kSetting.Value = setting.GetValue()
@@ -352,15 +304,11 @@ func (s *GrpcSettingServer) UpdateSetting(ctx context.Context, setting *settingP
 	_, err = s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Update(s.ctx, kSetting, metav1.UpdateOptions{})
 	if err != nil {
 		glog.Errorf("error updating setting: %s", err.Error())
-		newErr := status.Newf(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error updating setting",
+			setting,
 		)
-		newErr, wde := newErr.WithDetails(setting)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
 	return &empty.Empty{}, nil

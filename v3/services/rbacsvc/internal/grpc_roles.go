@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -20,29 +20,21 @@ func (rs *GrpcRbacServer) CreateRole(c context.Context, cr *rbacProto.Role) (*em
 	role, err := marshalRole(cr)
 	if err != nil {
 		glog.Errorf("invalid role: %v", err)
-		newErr := status.Newf(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"invalid role",
+			cr,
 		)
-		newErr, wde := newErr.WithDetails(cr)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
 	_, err = rs.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Create(c, role, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating role in kubernetes: %v", err)
-		newErr := status.Newf(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
-			"internal error",
+			"error creating role",
+			cr,
 		)
-		newErr, wde := newErr.WithDetails(cr)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
 	return &empty.Empty{}, nil
@@ -60,30 +52,22 @@ func (rs *GrpcRbacServer) UpdateRole(c context.Context, ur *rbacProto.Role) (*em
 	role, err := marshalRole(ur)
 	if err != nil {
 		glog.Errorf("invalid role: %v", err)
-		newErr := status.Newf(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"invalid role",
+			ur,
 		)
-		newErr, wde := newErr.WithDetails(ur)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		_, err := rs.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Update(c, role, metav1.UpdateOptions{})
 		if err != nil {
 			glog.Errorf("error while updating role in kubernetes: %v", err)
-			newErr := status.Newf(
+			return hferrors.GrpcError(
 				codes.Internal,
-				"internal error",
+				"error updating role",
+				ur,
 			)
-			newErr, wde := newErr.WithDetails(ur)
-			if wde != nil {
-				return wde
-			}
-			return newErr.Err()
 		}
 		return nil
 	})
@@ -107,15 +91,11 @@ func (rs *GrpcRbacServer) DeleteRole(c context.Context, dr *rbacProto.ResourceId
 	err = rs.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Delete(c, role.Name, metav1.DeleteOptions{})
 	if err != nil {
 		glog.Errorf("error deleting role in kubernetes: %v", err)
-		newErr := status.Newf(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
-			"internal error",
+			"error deleting role",
+			dr,
 		)
-		newErr, wde := newErr.WithDetails(dr)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 	return &empty.Empty{}, nil
 }
@@ -129,18 +109,18 @@ func (rs *GrpcRbacServer) ListRole(c context.Context, lr *empty.Empty) (*rbacPro
 	if err != nil {
 		if errors.IsNotFound(err) {
 			glog.Errorf("error: roles not found")
-			newErr := status.Newf(
+			return &rbacProto.Roles{}, hferrors.GrpcError(
 				codes.NotFound,
 				"roles not found",
+				lr,
 			)
-			return &rbacProto.Roles{}, newErr.Err()
 		}
 		glog.Errorf("error in kubernetes while listing roles %v", err)
-		newErr := status.Newf(
+		return &rbacProto.Roles{}, hferrors.GrpcError(
 			codes.Internal,
-			"internal error",
+			"error listing roles",
+			lr,
 		)
-		return &rbacProto.Roles{}, newErr.Err()
 	}
 
 	var preparedRoles = make([]*rbacProto.Role, 0)
@@ -199,55 +179,39 @@ func unmarshalRole(role *rbacv1.Role) (preparedRole *rbacProto.Role) {
 func (rs *GrpcRbacServer) getRole(c context.Context, gr *rbacProto.ResourceId) (*rbacv1.Role, error) {
 	if gr.GetId() == "" {
 		glog.Errorf("invalid role id")
-		newErr := status.Newf(
+		return &rbacv1.Role{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"invalid role id",
+			gr,
 		)
-		newErr, wde := newErr.WithDetails(gr)
-		if wde != nil {
-			return nil, wde
-		}
-		return nil, newErr.Err()
 	}
 
 	role, err := rs.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Get(c, gr.GetId(), metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			glog.Errorf("role not found")
-			newErr := status.Newf(
+			return &rbacv1.Role{}, hferrors.GrpcError(
 				codes.NotFound,
 				"role not found",
+				gr,
 			)
-			newErr, wde := newErr.WithDetails(gr)
-			if wde != nil {
-				return nil, wde
-			}
-			return nil, newErr.Err()
 		}
 		glog.Errorf("kubernetes error while getting role: %v", err)
-		newErr := status.Newf(
+		return &rbacv1.Role{}, hferrors.GrpcError(
 			codes.Internal,
-			"internal server error",
+			"error retrieving role",
+			gr,
 		)
-		newErr, wde := newErr.WithDetails(gr)
-		if wde != nil {
-			return nil, wde
-		}
-		return nil, newErr.Err()
 	}
 
 	if _, ok := role.Labels[util.RBACManagedLabel]; !ok {
 		// this isn't a hobbyfarm role. we don't serve your kind here
 		glog.Error("permission denied: role not managed by hobbyfarm")
-		newErr := status.Newf(
+		return &rbacv1.Role{}, hferrors.GrpcError(
 			codes.PermissionDenied,
 			"role not managed by hobbyfarm",
+			gr,
 		)
-		newErr, wde := newErr.WithDetails(gr)
-		if wde != nil {
-			return nil, wde
-		}
-		return nil, newErr.Err()
 	}
 
 	return role, nil
