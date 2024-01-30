@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package access_code;
+package accesscode;
 
 option go_package = "github.com/hobbyfarm/gargantua/v3/protos/accesscode";
 

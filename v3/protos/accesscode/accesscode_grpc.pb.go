@@ -20,22 +20,22 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	AccessCodeSvc_CreateAc_FullMethodName                = "/access_code.AccessCodeSvc/CreateAc"
-	AccessCodeSvc_GetAc_FullMethodName                   = "/access_code.AccessCodeSvc/GetAc"
-	AccessCodeSvc_UpdateAc_FullMethodName                = "/access_code.AccessCodeSvc/UpdateAc"
-	AccessCodeSvc_DeleteAc_FullMethodName                = "/access_code.AccessCodeSvc/DeleteAc"
-	AccessCodeSvc_DeleteCollectionAc_FullMethodName      = "/access_code.AccessCodeSvc/DeleteCollectionAc"
-	AccessCodeSvc_ListAc_FullMethodName                  = "/access_code.AccessCodeSvc/ListAc"
-	AccessCodeSvc_CreateOtac_FullMethodName              = "/access_code.AccessCodeSvc/CreateOtac"
-	AccessCodeSvc_GetOtac_FullMethodName                 = "/access_code.AccessCodeSvc/GetOtac"
-	AccessCodeSvc_UpdateOtac_FullMethodName              = "/access_code.AccessCodeSvc/UpdateOtac"
-	AccessCodeSvc_DeleteOtac_FullMethodName              = "/access_code.AccessCodeSvc/DeleteOtac"
-	AccessCodeSvc_DeleteCollectionOtac_FullMethodName    = "/access_code.AccessCodeSvc/DeleteCollectionOtac"
-	AccessCodeSvc_ListOtac_FullMethodName                = "/access_code.AccessCodeSvc/ListOtac"
-	AccessCodeSvc_ValidateExistence_FullMethodName       = "/access_code.AccessCodeSvc/ValidateExistence"
-	AccessCodeSvc_GetAccessCodesWithOTACs_FullMethodName = "/access_code.AccessCodeSvc/GetAccessCodesWithOTACs"
-	AccessCodeSvc_GetAccessCodeWithOTACs_FullMethodName  = "/access_code.AccessCodeSvc/GetAccessCodeWithOTACs"
-	AccessCodeSvc_GetClosestAccessCode_FullMethodName    = "/access_code.AccessCodeSvc/GetClosestAccessCode"
+	AccessCodeSvc_CreateAc_FullMethodName                = "/accesscode.AccessCodeSvc/CreateAc"
+	AccessCodeSvc_GetAc_FullMethodName                   = "/accesscode.AccessCodeSvc/GetAc"
+	AccessCodeSvc_UpdateAc_FullMethodName                = "/accesscode.AccessCodeSvc/UpdateAc"
+	AccessCodeSvc_DeleteAc_FullMethodName                = "/accesscode.AccessCodeSvc/DeleteAc"
+	AccessCodeSvc_DeleteCollectionAc_FullMethodName      = "/accesscode.AccessCodeSvc/DeleteCollectionAc"
+	AccessCodeSvc_ListAc_FullMethodName                  = "/accesscode.AccessCodeSvc/ListAc"
+	AccessCodeSvc_CreateOtac_FullMethodName              = "/accesscode.AccessCodeSvc/CreateOtac"
+	AccessCodeSvc_GetOtac_FullMethodName                 = "/accesscode.AccessCodeSvc/GetOtac"
+	AccessCodeSvc_UpdateOtac_FullMethodName              = "/accesscode.AccessCodeSvc/UpdateOtac"
+	AccessCodeSvc_DeleteOtac_FullMethodName              = "/accesscode.AccessCodeSvc/DeleteOtac"
+	AccessCodeSvc_DeleteCollectionOtac_FullMethodName    = "/accesscode.AccessCodeSvc/DeleteCollectionOtac"
+	AccessCodeSvc_ListOtac_FullMethodName                = "/accesscode.AccessCodeSvc/ListOtac"
+	AccessCodeSvc_ValidateExistence_FullMethodName       = "/accesscode.AccessCodeSvc/ValidateExistence"
+	AccessCodeSvc_GetAccessCodesWithOTACs_FullMethodName = "/accesscode.AccessCodeSvc/GetAccessCodesWithOTACs"
+	AccessCodeSvc_GetAccessCodeWithOTACs_FullMethodName  = "/accesscode.AccessCodeSvc/GetAccessCodeWithOTACs"
+	AccessCodeSvc_GetClosestAccessCode_FullMethodName    = "/accesscode.AccessCodeSvc/GetClosestAccessCode"
 )
 
 // AccessCodeSvcClient is the client API for AccessCodeSvc service.
@@ -598,7 +598,7 @@ func _AccessCodeSvc_GetClosestAccessCode_Handler(srv interface{}, ctx context.Co
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AccessCodeSvc_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "access_code.AccessCodeSvc",
+	ServiceName: "accesscode.AccessCodeSvc",
 	HandlerType: (*AccessCodeSvcServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
