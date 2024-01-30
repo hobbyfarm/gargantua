@@ -7,6 +7,7 @@ import (
 	"github.com/golang/glog"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"google.golang.org/grpc/codes"
 	empty "google.golang.org/protobuf/types/known/emptypb"
@@ -40,7 +41,7 @@ func (rs *GrpcRbacServer) CreateRole(c context.Context, cr *rbacProto.Role) (*em
 	return &empty.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) GetRole(c context.Context, gr *rbacProto.ResourceId) (*rbacProto.Role, error) {
+func (rs *GrpcRbacServer) GetRole(c context.Context, gr *general.ResourceId) (*rbacProto.Role, error) {
 	role, err := rs.getRole(c, gr)
 	if err != nil {
 		return nil, err
@@ -79,7 +80,7 @@ func (rs *GrpcRbacServer) UpdateRole(c context.Context, ur *rbacProto.Role) (*em
 	return &empty.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) DeleteRole(c context.Context, dr *rbacProto.ResourceId) (*empty.Empty, error) {
+func (rs *GrpcRbacServer) DeleteRole(c context.Context, dr *general.ResourceId) (*empty.Empty, error) {
 	// we want to get the role first as this allows us to run it through the various checks before we attempt deletion
 	// most important of which is checking that we have labeled it correctly
 	// but it doesn't hurt to check if it exists before
@@ -100,9 +101,9 @@ func (rs *GrpcRbacServer) DeleteRole(c context.Context, dr *rbacProto.ResourceId
 	return &empty.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) ListRole(c context.Context, lr *empty.Empty) (*rbacProto.Roles, error) {
+func (rs *GrpcRbacServer) ListRole(c context.Context, lr *general.ListOptions) (*rbacProto.Roles, error) {
 	listOptions := metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%t", util.RBACManagedLabel, true),
+		LabelSelector: lr.GetLabelSelector(),
 	}
 
 	roles, err := rs.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).List(c, listOptions)
@@ -176,7 +177,7 @@ func unmarshalRole(role *rbacv1.Role) (preparedRole *rbacProto.Role) {
 	return preparedRole
 }
 
-func (rs *GrpcRbacServer) getRole(c context.Context, gr *rbacProto.ResourceId) (*rbacv1.Role, error) {
+func (rs *GrpcRbacServer) getRole(c context.Context, gr *general.ResourceId) (*rbacv1.Role, error) {
 	if gr.GetId() == "" {
 		glog.Errorf("invalid role id")
 		return &rbacv1.Role{}, hferrors.GrpcError(

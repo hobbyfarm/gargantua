@@ -8,6 +8,7 @@ package accesscode
 
 import (
 	context "context"
+	general "github.com/hobbyfarm/gargantua/v3/protos/general"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -44,23 +45,23 @@ const (
 type AccessCodeSvcClient interface {
 	// Resource oriented RPCs for AccessCodes:
 	CreateAc(ctx context.Context, in *CreateAcRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetAc(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*AccessCode, error)
+	GetAc(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*AccessCode, error)
 	UpdateAc(ctx context.Context, in *UpdateAccessCodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	DeleteAc(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	DeleteCollectionAc(ctx context.Context, in *ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	ListAc(ctx context.Context, in *ListOptions, opts ...grpc.CallOption) (*ListAcsResponse, error)
+	DeleteAc(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DeleteCollectionAc(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListAc(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*ListAcsResponse, error)
 	// Resource oriented RPCs for OneTimeAccessCodes:
 	CreateOtac(ctx context.Context, in *CreateOtacRequest, opts ...grpc.CallOption) (*OneTimeAccessCode, error)
-	GetOtac(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*OneTimeAccessCode, error)
+	GetOtac(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*OneTimeAccessCode, error)
 	UpdateOtac(ctx context.Context, in *OneTimeAccessCode, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	DeleteOtac(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	DeleteCollectionOtac(ctx context.Context, in *ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	ListOtac(ctx context.Context, in *ListOptions, opts ...grpc.CallOption) (*ListOtacsResponse, error)
+	DeleteOtac(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DeleteCollectionOtac(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListOtac(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*ListOtacsResponse, error)
 	// Helper functions
-	ValidateExistence(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*ResourceValidation, error)
+	ValidateExistence(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*ResourceValidation, error)
 	GetAccessCodesWithOTACs(ctx context.Context, in *ResourceIds, opts ...grpc.CallOption) (*ListAcsResponse, error)
-	GetAccessCodeWithOTACs(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*AccessCode, error)
-	GetClosestAccessCode(ctx context.Context, in *ClosestAcRequest, opts ...grpc.CallOption) (*ResourceId, error)
+	GetAccessCodeWithOTACs(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*AccessCode, error)
+	GetClosestAccessCode(ctx context.Context, in *ClosestAcRequest, opts ...grpc.CallOption) (*general.ResourceId, error)
 }
 
 type accessCodeSvcClient struct {
@@ -80,7 +81,7 @@ func (c *accessCodeSvcClient) CreateAc(ctx context.Context, in *CreateAcRequest,
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) GetAc(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*AccessCode, error) {
+func (c *accessCodeSvcClient) GetAc(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*AccessCode, error) {
 	out := new(AccessCode)
 	err := c.cc.Invoke(ctx, AccessCodeSvc_GetAc_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -98,7 +99,7 @@ func (c *accessCodeSvcClient) UpdateAc(ctx context.Context, in *UpdateAccessCode
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) DeleteAc(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *accessCodeSvcClient) DeleteAc(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, AccessCodeSvc_DeleteAc_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -107,7 +108,7 @@ func (c *accessCodeSvcClient) DeleteAc(ctx context.Context, in *ResourceId, opts
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) DeleteCollectionAc(ctx context.Context, in *ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *accessCodeSvcClient) DeleteCollectionAc(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, AccessCodeSvc_DeleteCollectionAc_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -116,7 +117,7 @@ func (c *accessCodeSvcClient) DeleteCollectionAc(ctx context.Context, in *ListOp
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) ListAc(ctx context.Context, in *ListOptions, opts ...grpc.CallOption) (*ListAcsResponse, error) {
+func (c *accessCodeSvcClient) ListAc(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*ListAcsResponse, error) {
 	out := new(ListAcsResponse)
 	err := c.cc.Invoke(ctx, AccessCodeSvc_ListAc_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -134,7 +135,7 @@ func (c *accessCodeSvcClient) CreateOtac(ctx context.Context, in *CreateOtacRequ
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) GetOtac(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*OneTimeAccessCode, error) {
+func (c *accessCodeSvcClient) GetOtac(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*OneTimeAccessCode, error) {
 	out := new(OneTimeAccessCode)
 	err := c.cc.Invoke(ctx, AccessCodeSvc_GetOtac_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -152,7 +153,7 @@ func (c *accessCodeSvcClient) UpdateOtac(ctx context.Context, in *OneTimeAccessC
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) DeleteOtac(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *accessCodeSvcClient) DeleteOtac(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, AccessCodeSvc_DeleteOtac_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -161,7 +162,7 @@ func (c *accessCodeSvcClient) DeleteOtac(ctx context.Context, in *ResourceId, op
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) DeleteCollectionOtac(ctx context.Context, in *ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *accessCodeSvcClient) DeleteCollectionOtac(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, AccessCodeSvc_DeleteCollectionOtac_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -170,7 +171,7 @@ func (c *accessCodeSvcClient) DeleteCollectionOtac(ctx context.Context, in *List
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) ListOtac(ctx context.Context, in *ListOptions, opts ...grpc.CallOption) (*ListOtacsResponse, error) {
+func (c *accessCodeSvcClient) ListOtac(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*ListOtacsResponse, error) {
 	out := new(ListOtacsResponse)
 	err := c.cc.Invoke(ctx, AccessCodeSvc_ListOtac_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -179,7 +180,7 @@ func (c *accessCodeSvcClient) ListOtac(ctx context.Context, in *ListOptions, opt
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) ValidateExistence(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*ResourceValidation, error) {
+func (c *accessCodeSvcClient) ValidateExistence(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*ResourceValidation, error) {
 	out := new(ResourceValidation)
 	err := c.cc.Invoke(ctx, AccessCodeSvc_ValidateExistence_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -197,7 +198,7 @@ func (c *accessCodeSvcClient) GetAccessCodesWithOTACs(ctx context.Context, in *R
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) GetAccessCodeWithOTACs(ctx context.Context, in *ResourceId, opts ...grpc.CallOption) (*AccessCode, error) {
+func (c *accessCodeSvcClient) GetAccessCodeWithOTACs(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*AccessCode, error) {
 	out := new(AccessCode)
 	err := c.cc.Invoke(ctx, AccessCodeSvc_GetAccessCodeWithOTACs_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -206,8 +207,8 @@ func (c *accessCodeSvcClient) GetAccessCodeWithOTACs(ctx context.Context, in *Re
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) GetClosestAccessCode(ctx context.Context, in *ClosestAcRequest, opts ...grpc.CallOption) (*ResourceId, error) {
-	out := new(ResourceId)
+func (c *accessCodeSvcClient) GetClosestAccessCode(ctx context.Context, in *ClosestAcRequest, opts ...grpc.CallOption) (*general.ResourceId, error) {
+	out := new(general.ResourceId)
 	err := c.cc.Invoke(ctx, AccessCodeSvc_GetClosestAccessCode_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -221,23 +222,23 @@ func (c *accessCodeSvcClient) GetClosestAccessCode(ctx context.Context, in *Clos
 type AccessCodeSvcServer interface {
 	// Resource oriented RPCs for AccessCodes:
 	CreateAc(context.Context, *CreateAcRequest) (*emptypb.Empty, error)
-	GetAc(context.Context, *ResourceId) (*AccessCode, error)
+	GetAc(context.Context, *general.ResourceId) (*AccessCode, error)
 	UpdateAc(context.Context, *UpdateAccessCodeRequest) (*emptypb.Empty, error)
-	DeleteAc(context.Context, *ResourceId) (*emptypb.Empty, error)
-	DeleteCollectionAc(context.Context, *ListOptions) (*emptypb.Empty, error)
-	ListAc(context.Context, *ListOptions) (*ListAcsResponse, error)
+	DeleteAc(context.Context, *general.ResourceId) (*emptypb.Empty, error)
+	DeleteCollectionAc(context.Context, *general.ListOptions) (*emptypb.Empty, error)
+	ListAc(context.Context, *general.ListOptions) (*ListAcsResponse, error)
 	// Resource oriented RPCs for OneTimeAccessCodes:
 	CreateOtac(context.Context, *CreateOtacRequest) (*OneTimeAccessCode, error)
-	GetOtac(context.Context, *ResourceId) (*OneTimeAccessCode, error)
+	GetOtac(context.Context, *general.ResourceId) (*OneTimeAccessCode, error)
 	UpdateOtac(context.Context, *OneTimeAccessCode) (*emptypb.Empty, error)
-	DeleteOtac(context.Context, *ResourceId) (*emptypb.Empty, error)
-	DeleteCollectionOtac(context.Context, *ListOptions) (*emptypb.Empty, error)
-	ListOtac(context.Context, *ListOptions) (*ListOtacsResponse, error)
+	DeleteOtac(context.Context, *general.ResourceId) (*emptypb.Empty, error)
+	DeleteCollectionOtac(context.Context, *general.ListOptions) (*emptypb.Empty, error)
+	ListOtac(context.Context, *general.ListOptions) (*ListOtacsResponse, error)
 	// Helper functions
-	ValidateExistence(context.Context, *ResourceId) (*ResourceValidation, error)
+	ValidateExistence(context.Context, *general.ResourceId) (*ResourceValidation, error)
 	GetAccessCodesWithOTACs(context.Context, *ResourceIds) (*ListAcsResponse, error)
-	GetAccessCodeWithOTACs(context.Context, *ResourceId) (*AccessCode, error)
-	GetClosestAccessCode(context.Context, *ClosestAcRequest) (*ResourceId, error)
+	GetAccessCodeWithOTACs(context.Context, *general.ResourceId) (*AccessCode, error)
+	GetClosestAccessCode(context.Context, *ClosestAcRequest) (*general.ResourceId, error)
 	mustEmbedUnimplementedAccessCodeSvcServer()
 }
 
@@ -248,49 +249,49 @@ type UnimplementedAccessCodeSvcServer struct {
 func (UnimplementedAccessCodeSvcServer) CreateAc(context.Context, *CreateAcRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAc not implemented")
 }
-func (UnimplementedAccessCodeSvcServer) GetAc(context.Context, *ResourceId) (*AccessCode, error) {
+func (UnimplementedAccessCodeSvcServer) GetAc(context.Context, *general.ResourceId) (*AccessCode, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAc not implemented")
 }
 func (UnimplementedAccessCodeSvcServer) UpdateAc(context.Context, *UpdateAccessCodeRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateAc not implemented")
 }
-func (UnimplementedAccessCodeSvcServer) DeleteAc(context.Context, *ResourceId) (*emptypb.Empty, error) {
+func (UnimplementedAccessCodeSvcServer) DeleteAc(context.Context, *general.ResourceId) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAc not implemented")
 }
-func (UnimplementedAccessCodeSvcServer) DeleteCollectionAc(context.Context, *ListOptions) (*emptypb.Empty, error) {
+func (UnimplementedAccessCodeSvcServer) DeleteCollectionAc(context.Context, *general.ListOptions) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteCollectionAc not implemented")
 }
-func (UnimplementedAccessCodeSvcServer) ListAc(context.Context, *ListOptions) (*ListAcsResponse, error) {
+func (UnimplementedAccessCodeSvcServer) ListAc(context.Context, *general.ListOptions) (*ListAcsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListAc not implemented")
 }
 func (UnimplementedAccessCodeSvcServer) CreateOtac(context.Context, *CreateOtacRequest) (*OneTimeAccessCode, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateOtac not implemented")
 }
-func (UnimplementedAccessCodeSvcServer) GetOtac(context.Context, *ResourceId) (*OneTimeAccessCode, error) {
+func (UnimplementedAccessCodeSvcServer) GetOtac(context.Context, *general.ResourceId) (*OneTimeAccessCode, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOtac not implemented")
 }
 func (UnimplementedAccessCodeSvcServer) UpdateOtac(context.Context, *OneTimeAccessCode) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateOtac not implemented")
 }
-func (UnimplementedAccessCodeSvcServer) DeleteOtac(context.Context, *ResourceId) (*emptypb.Empty, error) {
+func (UnimplementedAccessCodeSvcServer) DeleteOtac(context.Context, *general.ResourceId) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteOtac not implemented")
 }
-func (UnimplementedAccessCodeSvcServer) DeleteCollectionOtac(context.Context, *ListOptions) (*emptypb.Empty, error) {
+func (UnimplementedAccessCodeSvcServer) DeleteCollectionOtac(context.Context, *general.ListOptions) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteCollectionOtac not implemented")
 }
-func (UnimplementedAccessCodeSvcServer) ListOtac(context.Context, *ListOptions) (*ListOtacsResponse, error) {
+func (UnimplementedAccessCodeSvcServer) ListOtac(context.Context, *general.ListOptions) (*ListOtacsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListOtac not implemented")
 }
-func (UnimplementedAccessCodeSvcServer) ValidateExistence(context.Context, *ResourceId) (*ResourceValidation, error) {
+func (UnimplementedAccessCodeSvcServer) ValidateExistence(context.Context, *general.ResourceId) (*ResourceValidation, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ValidateExistence not implemented")
 }
 func (UnimplementedAccessCodeSvcServer) GetAccessCodesWithOTACs(context.Context, *ResourceIds) (*ListAcsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAccessCodesWithOTACs not implemented")
 }
-func (UnimplementedAccessCodeSvcServer) GetAccessCodeWithOTACs(context.Context, *ResourceId) (*AccessCode, error) {
+func (UnimplementedAccessCodeSvcServer) GetAccessCodeWithOTACs(context.Context, *general.ResourceId) (*AccessCode, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAccessCodeWithOTACs not implemented")
 }
-func (UnimplementedAccessCodeSvcServer) GetClosestAccessCode(context.Context, *ClosestAcRequest) (*ResourceId, error) {
+func (UnimplementedAccessCodeSvcServer) GetClosestAccessCode(context.Context, *ClosestAcRequest) (*general.ResourceId, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetClosestAccessCode not implemented")
 }
 func (UnimplementedAccessCodeSvcServer) mustEmbedUnimplementedAccessCodeSvcServer() {}
@@ -325,7 +326,7 @@ func _AccessCodeSvc_CreateAc_Handler(srv interface{}, ctx context.Context, dec f
 }
 
 func _AccessCodeSvc_GetAc_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ResourceId)
+	in := new(general.ResourceId)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -337,7 +338,7 @@ func _AccessCodeSvc_GetAc_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: AccessCodeSvc_GetAc_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessCodeSvcServer).GetAc(ctx, req.(*ResourceId))
+		return srv.(AccessCodeSvcServer).GetAc(ctx, req.(*general.ResourceId))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -361,7 +362,7 @@ func _AccessCodeSvc_UpdateAc_Handler(srv interface{}, ctx context.Context, dec f
 }
 
 func _AccessCodeSvc_DeleteAc_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ResourceId)
+	in := new(general.ResourceId)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -373,13 +374,13 @@ func _AccessCodeSvc_DeleteAc_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: AccessCodeSvc_DeleteAc_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessCodeSvcServer).DeleteAc(ctx, req.(*ResourceId))
+		return srv.(AccessCodeSvcServer).DeleteAc(ctx, req.(*general.ResourceId))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _AccessCodeSvc_DeleteCollectionAc_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListOptions)
+	in := new(general.ListOptions)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -391,13 +392,13 @@ func _AccessCodeSvc_DeleteCollectionAc_Handler(srv interface{}, ctx context.Cont
 		FullMethod: AccessCodeSvc_DeleteCollectionAc_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessCodeSvcServer).DeleteCollectionAc(ctx, req.(*ListOptions))
+		return srv.(AccessCodeSvcServer).DeleteCollectionAc(ctx, req.(*general.ListOptions))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _AccessCodeSvc_ListAc_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListOptions)
+	in := new(general.ListOptions)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -409,7 +410,7 @@ func _AccessCodeSvc_ListAc_Handler(srv interface{}, ctx context.Context, dec fun
 		FullMethod: AccessCodeSvc_ListAc_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessCodeSvcServer).ListAc(ctx, req.(*ListOptions))
+		return srv.(AccessCodeSvcServer).ListAc(ctx, req.(*general.ListOptions))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -433,7 +434,7 @@ func _AccessCodeSvc_CreateOtac_Handler(srv interface{}, ctx context.Context, dec
 }
 
 func _AccessCodeSvc_GetOtac_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ResourceId)
+	in := new(general.ResourceId)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -445,7 +446,7 @@ func _AccessCodeSvc_GetOtac_Handler(srv interface{}, ctx context.Context, dec fu
 		FullMethod: AccessCodeSvc_GetOtac_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessCodeSvcServer).GetOtac(ctx, req.(*ResourceId))
+		return srv.(AccessCodeSvcServer).GetOtac(ctx, req.(*general.ResourceId))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -469,7 +470,7 @@ func _AccessCodeSvc_UpdateOtac_Handler(srv interface{}, ctx context.Context, dec
 }
 
 func _AccessCodeSvc_DeleteOtac_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ResourceId)
+	in := new(general.ResourceId)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -481,13 +482,13 @@ func _AccessCodeSvc_DeleteOtac_Handler(srv interface{}, ctx context.Context, dec
 		FullMethod: AccessCodeSvc_DeleteOtac_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessCodeSvcServer).DeleteOtac(ctx, req.(*ResourceId))
+		return srv.(AccessCodeSvcServer).DeleteOtac(ctx, req.(*general.ResourceId))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _AccessCodeSvc_DeleteCollectionOtac_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListOptions)
+	in := new(general.ListOptions)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -499,13 +500,13 @@ func _AccessCodeSvc_DeleteCollectionOtac_Handler(srv interface{}, ctx context.Co
 		FullMethod: AccessCodeSvc_DeleteCollectionOtac_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessCodeSvcServer).DeleteCollectionOtac(ctx, req.(*ListOptions))
+		return srv.(AccessCodeSvcServer).DeleteCollectionOtac(ctx, req.(*general.ListOptions))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _AccessCodeSvc_ListOtac_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListOptions)
+	in := new(general.ListOptions)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -517,13 +518,13 @@ func _AccessCodeSvc_ListOtac_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: AccessCodeSvc_ListOtac_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessCodeSvcServer).ListOtac(ctx, req.(*ListOptions))
+		return srv.(AccessCodeSvcServer).ListOtac(ctx, req.(*general.ListOptions))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _AccessCodeSvc_ValidateExistence_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ResourceId)
+	in := new(general.ResourceId)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -535,7 +536,7 @@ func _AccessCodeSvc_ValidateExistence_Handler(srv interface{}, ctx context.Conte
 		FullMethod: AccessCodeSvc_ValidateExistence_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessCodeSvcServer).ValidateExistence(ctx, req.(*ResourceId))
+		return srv.(AccessCodeSvcServer).ValidateExistence(ctx, req.(*general.ResourceId))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -559,7 +560,7 @@ func _AccessCodeSvc_GetAccessCodesWithOTACs_Handler(srv interface{}, ctx context
 }
 
 func _AccessCodeSvc_GetAccessCodeWithOTACs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ResourceId)
+	in := new(general.ResourceId)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -571,7 +572,7 @@ func _AccessCodeSvc_GetAccessCodeWithOTACs_Handler(srv interface{}, ctx context.
 		FullMethod: AccessCodeSvc_GetAccessCodeWithOTACs_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessCodeSvcServer).GetAccessCodeWithOTACs(ctx, req.(*ResourceId))
+		return srv.(AccessCodeSvcServer).GetAccessCodeWithOTACs(ctx, req.(*general.ResourceId))
 	}
 	return interceptor(ctx, in, info, handler)
 }

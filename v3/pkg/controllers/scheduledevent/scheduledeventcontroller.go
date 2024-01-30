@@ -3,17 +3,19 @@ package scheduledevent
 import (
 	"context"
 	"fmt"
-	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
-	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"math/rand"
 	"os"
 	"strings"
 	"time"
 
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
+	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
+
 	"github.com/golang/glog"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	"github.com/hobbyfarm/gargantua/v3/protos/setting"
 	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -620,7 +622,7 @@ func (s *ScheduledEventController) reconcileScheduledEvent(seName string) error 
 
 	if endTime.Before(now) && se.Status.Finished {
 		// scheduled event is finished and nothing to do
-		setting, err := s.settingClient.GetSettingValue(s.ctx, &settingProto.Id{Name: string(settingUtil.ScheduledEventRetentionTime)})
+		setting, err := s.settingClient.GetSettingValue(s.ctx, &general.ResourceId{Id: string(settingUtil.ScheduledEventRetentionTime)})
 
 		if set, ok := setting.GetValue().(*settingProto.SettingValue_Int64Value); err != nil || !ok || setting == nil {
 			return fmt.Errorf("error retreiving retention Time setting")

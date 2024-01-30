@@ -6,8 +6,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	authrProto "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
-	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"google.golang.org/grpc/codes"
 )
 
@@ -26,11 +26,11 @@ func (rs *GrpcRbacServer) Grants(c context.Context, gr *rbacProto.GrantRequest) 
 	return &authrProto.AuthRResponse{Success: Grants(gr.GetPermission(), as)}, nil
 }
 
-func (rs *GrpcRbacServer) GetAccessSet(c context.Context, uid *userProto.UserId) (*rbacProto.AccessSet, error) {
+func (rs *GrpcRbacServer) GetAccessSet(c context.Context, uid *general.ResourceId) (*rbacProto.AccessSet, error) {
 	return rs.userIndex.GetAccessSet(uid.GetId())
 }
 
-func (rs *GrpcRbacServer) GetHobbyfarmRoleBindings(c context.Context, uid *userProto.UserId) (*rbacProto.RoleBindings, error) {
+func (rs *GrpcRbacServer) GetHobbyfarmRoleBindings(c context.Context, uid *general.ResourceId) (*rbacProto.RoleBindings, error) {
 	rbs, err := rs.userIndex.getPreparedRoleBindings(uid.GetId())
 	if err != nil {
 		glog.Errorf("failed to retrieve rolebindings for user %s with error: %s", uid.GetId(), err.Error())

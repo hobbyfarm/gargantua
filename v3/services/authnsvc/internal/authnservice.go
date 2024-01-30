@@ -14,8 +14,8 @@ import (
 	"github.com/gorilla/mux"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	accessCodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
 	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"golang.org/x/crypto/bcrypt"
@@ -155,7 +155,7 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	set, err := a.settingClient.GetSettingValue(r.Context(), &settingProto.Id{Name: string(settingUtil.StrictAccessCodeValidation)})
+	set, err := a.settingClient.GetSettingValue(r.Context(), &general.ResourceId{Id: string(settingUtil.StrictAccessCodeValidation)})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error adding accesscode")
 		return
@@ -165,7 +165,7 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error adding accesscode")
 		return
 	} else if s.BoolValue {
-		validation, err := a.acClient.ValidateExistence(r.Context(), &accessCodeProto.ResourceId{Id: accessCode})
+		validation, err := a.acClient.ValidateExistence(r.Context(), &general.ResourceId{Id: accessCode})
 		if err != nil {
 			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error adding accesscode")
 			return
@@ -224,7 +224,7 @@ func (a AuthServer) AddAccessCode(user *userProto.User, accessCode string, ctx c
 	accessCode = strings.ToLower(accessCode)
 
 	// check if this is an otac
-	otac, err := a.acClient.GetOtac(ctx, &accessCodeProto.ResourceId{Id: accessCode})
+	otac, err := a.acClient.GetOtac(ctx, &general.ResourceId{Id: accessCode})
 	if err != nil {
 		//otac does not exist. normal access code
 	} else {
@@ -360,7 +360,7 @@ func (a AuthServer) UpdateSettings(user *userProto.User, newSettings map[string]
 }
 
 func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
-	set, err := a.settingClient.GetSettingValue(r.Context(), &settingProto.Id{Name: string(settingUtil.SettingRegistrationDisabled)})
+	set, err := a.settingClient.GetSettingValue(r.Context(), &general.ResourceId{Id: string(settingUtil.SettingRegistrationDisabled)})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
 		return
@@ -396,7 +396,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	set, err = a.settingClient.GetSettingValue(r.Context(), &settingProto.Id{Name: string(settingUtil.StrictAccessCodeValidation)})
+	set, err = a.settingClient.GetSettingValue(r.Context(), &general.ResourceId{Id: string(settingUtil.StrictAccessCodeValidation)})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
 		return
@@ -406,7 +406,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
 		return
 	} else if s.BoolValue {
-		validation, err := a.acClient.ValidateExistence(r.Context(), &accessCodeProto.ResourceId{Id: accessCode})
+		validation, err := a.acClient.ValidateExistence(r.Context(), &general.ResourceId{Id: accessCode})
 		if err != nil {
 			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
 			return
@@ -446,13 +446,13 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	// from this point, the user is created
 	// we are now trying to add the access code he provided
 
-	user, err := a.userClient.GetUserById(r.Context(), &userProto.UserId{
+	user, err := a.userClient.GetUserById(r.Context(), &general.ResourceId{
 		Id: userId.GetId(),
 	})
 
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
-			details := s.Details()[0].(*userProto.UserId)
+			details := s.Details()[0].(*general.ResourceId)
 			if s.Code() == codes.InvalidArgument {
 				glog.Error("error retrieving created user, no id passed in")
 			} else {
@@ -532,7 +532,7 @@ func (a *AuthServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// need to get the user's access set and publish to front end
-	as, err := a.rbacClient.GetAccessSet(r.Context(), &userProto.UserId{Id: user.GetId()})
+	as, err := a.rbacClient.GetAccessSet(r.Context(), &general.ResourceId{Id: user.GetId()})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error fetching access set")
 		glog.Error(err)

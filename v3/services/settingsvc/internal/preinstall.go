@@ -8,6 +8,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,7 +33,7 @@ func installResources(ctx context.Context, internalSettingServer *GrpcSettingSer
 	defer wg.Done()
 
 	for _, scope := range scopes() {
-		_, err := internalSettingServer.GetScope(ctx, &settingProto.Id{Name: scope.GetName()})
+		_, err := internalSettingServer.GetScope(ctx, &general.ResourceId{Id: scope.GetName()})
 		if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
 			if _, err := internalSettingServer.CreateScope(ctx, scope); err != nil {
 				return err
@@ -45,7 +46,7 @@ func installResources(ctx context.Context, internalSettingServer *GrpcSettingSer
 	}
 
 	for _, setting := range predefinedSettings() {
-		_, err := internalSettingServer.GetSetting(ctx, &settingProto.Id{Name: setting.GetName()})
+		_, err := internalSettingServer.GetSetting(ctx, &general.ResourceId{Id: setting.GetName()})
 		if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
 			if _, err := internalSettingServer.CreateSetting(ctx, setting); err != nil {
 				return err

@@ -2,7 +2,6 @@ package settingservice
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	"github.com/golang/glog"
@@ -13,6 +12,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/property"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
 	"google.golang.org/grpc/codes"
 	empty "google.golang.org/protobuf/types/known/emptypb"
@@ -53,28 +53,30 @@ func (s *GrpcSettingServer) CreateScope(ctx context.Context, creq *settingProto.
 	return &empty.Empty{}, nil
 }
 
-func (s *GrpcSettingServer) GetScope(ctx context.Context, id *settingProto.Id) (*settingProto.Scope, error) {
-	scope, err := s.hfClientSet.HobbyfarmV1().Scopes(util.GetReleaseNamespace()).Get(s.ctx, id.GetName(), metav1.GetOptions{})
+func (s *GrpcSettingServer) GetScope(ctx context.Context, id *general.ResourceId) (*settingProto.Scope, error) {
+	scope, err := s.hfClientSet.HobbyfarmV1().Scopes(util.GetReleaseNamespace()).Get(s.ctx, id.GetId(), metav1.GetOptions{})
 	if errors.IsNotFound(err) {
-		glog.Errorf("scope %s not found", id.GetName())
+		glog.Errorf("scope %s not found", id.GetId())
 		return &settingProto.Scope{}, hferrors.GrpcError(
 			codes.NotFound,
 			"scope %s not found",
 			id,
-			id.GetName(),
+			id.GetId(),
 		)
 	}
 	return &settingProto.Scope{Name: scope.Name, DisplayName: scope.DisplayName}, nil
 }
 
-func (s *GrpcSettingServer) ListScopes(ctx context.Context, empty *empty.Empty) (*settingProto.Scopes, error) {
-	scopes, err := s.hfClientSet.HobbyfarmV1().Scopes(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{})
+func (s *GrpcSettingServer) ListScopes(ctx context.Context, listOptions *general.ListOptions) (*settingProto.Scopes, error) {
+	scopes, err := s.hfClientSet.HobbyfarmV1().Scopes(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
+		LabelSelector: listOptions.GetLabelSelector(),
+	})
 	if err != nil {
 		glog.Errorf("error while listing scopes: %s", err.Error())
 		return &settingProto.Scopes{}, hferrors.GrpcError(
 			codes.Internal,
 			"error listing scopes",
-			empty,
+			listOptions,
 		)
 	}
 
@@ -114,9 +116,9 @@ func (s *GrpcSettingServer) CreateSetting(ctx context.Context, creq *settingProt
 	return &empty.Empty{}, nil
 }
 
-func (s *GrpcSettingServer) GetSettingValue(ctx context.Context, sreq *settingProto.Id) (*settingProto.SettingValue, error) {
+func (s *GrpcSettingServer) GetSettingValue(ctx context.Context, sreq *general.ResourceId) (*settingProto.SettingValue, error) {
 	resp := &settingProto.SettingValue{}
-	setting, err := GetSetting(settingUtil.SettingName(sreq.GetName()))
+	setting, err := GetSetting(settingUtil.SettingName(sreq.GetId()))
 
 	if err != nil {
 		return &settingProto.SettingValue{}, hferrors.GrpcError(
@@ -134,7 +136,7 @@ func (s *GrpcSettingServer) GetSettingValue(ctx context.Context, sreq *settingPr
 			codes.Internal,
 			"error parsing JSON value for setting %s",
 			sreq,
-			sreq.GetName(),
+			sreq.GetId(),
 		)
 	}
 
@@ -152,15 +154,15 @@ func (s *GrpcSettingServer) GetSettingValue(ctx context.Context, sreq *settingPr
 			codes.Internal,
 			"error setting %s did not match any of the following types: bool, string, float64, int",
 			sreq,
-			sreq.GetName(),
+			sreq.GetId(),
 		)
 	}
 	return resp, nil
 }
 
-func (s *GrpcSettingServer) ListSettings(ctx context.Context, lreq *settingProto.ListSettingsRequest) (*settingProto.ListSettingsResponse, error) {
+func (s *GrpcSettingServer) ListSettings(ctx context.Context, lreq *general.ListOptions) (*settingProto.ListSettingsResponse, error) {
 	kSettings, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", labels.SettingScope, lreq.GetScope()),
+		LabelSelector: lreq.GetLabelSelector(),
 	})
 	if err != nil {
 		glog.Errorf("error listing settings: %s", err.Error())
@@ -212,15 +214,15 @@ func (s *GrpcSettingServer) ListSettings(ctx context.Context, lreq *settingProto
 
 }
 
-func (s *GrpcSettingServer) GetSetting(ctx context.Context, id *settingProto.Id) (*settingProto.Setting, error) {
-	kSetting, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Get(s.ctx, id.GetName(), metav1.GetOptions{})
+func (s *GrpcSettingServer) GetSetting(ctx context.Context, id *general.ResourceId) (*settingProto.Setting, error) {
+	kSetting, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Get(s.ctx, id.GetId(), metav1.GetOptions{})
 	if errors.IsNotFound(err) {
-		glog.Errorf("setting %s not found", id.GetName())
+		glog.Errorf("setting %s not found", id.GetId())
 		return &settingProto.Setting{}, hferrors.GrpcError(
 			codes.NotFound,
 			"setting %s not found",
 			id,
-			id.GetName(),
+			id.GetId(),
 		)
 	}
 	if err != nil {

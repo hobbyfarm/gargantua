@@ -4,17 +4,18 @@ package user;
 
 option go_package = "github.com/hobbyfarm/gargantua/v3/protos/user";
 
+import "general/general.proto";
 import "google/protobuf/empty.proto";
 
 // Service definition
 service UserSvc {
-    rpc CreateUser (CreateUserRequest) returns (UserId);
-    rpc GetUserById (UserId) returns (User);
+    rpc CreateUser (CreateUserRequest) returns (general.ResourceId);
+    rpc GetUserById (general.ResourceId) returns (User);
     rpc GetUserByEmail (GetUserByEmailRequest) returns (User);
     rpc UpdateUser (User) returns (User);
     rpc UpdateAccessCodes (UpdateAccessCodesRequest) returns (User);
-    rpc DeleteUser (UserId) returns (google.protobuf.Empty);
-    rpc ListUser (google.protobuf.Empty) returns (ListUsersResponse);
+    rpc DeleteUser (general.ResourceId) returns (google.protobuf.Empty);
+    rpc ListUser (general.ListOptions) returns (ListUsersResponse);
 }
 
 message CreateUserRequest {
@@ -25,10 +26,6 @@ message CreateUserRequest {
 message UpdateAccessCodesRequest {
     string id = 1;
     repeated string access_codes = 2;
-}
-
-message UserId {
-    string id = 1;
 }
 
 message GetUserByEmailRequest {

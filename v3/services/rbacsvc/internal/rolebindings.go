@@ -2,16 +2,17 @@ package rbac
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type PreparedRoleBinding struct {
@@ -39,7 +40,8 @@ func (s Server) ListRoleBindings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bindings, err := s.internalRbacServer.ListRolebinding(r.Context(), &emptypb.Empty{})
+	labelSelector := fmt.Sprintf("%s=%t", util.RBACManagedLabel, true)
+	bindings, err := s.internalRbacServer.ListRolebinding(r.Context(), &general.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			switch s.Code() {
@@ -84,7 +86,7 @@ func (s Server) GetRoleBinding(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	rolebindingId := vars["id"]
 
-	preparedRoleBinding, err := s.internalRbacServer.GetRolebinding(r.Context(), &rbacProto.ResourceId{Id: rolebindingId})
+	preparedRoleBinding, err := s.internalRbacServer.GetRolebinding(r.Context(), &general.ResourceId{Id: rolebindingId})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			switch s.Code() {
@@ -204,7 +206,7 @@ func (s Server) DeleteRoleBinding(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	rolebindingId := vars["id"]
 
-	_, err = s.internalRbacServer.DeleteRolebinding(r.Context(), &rbacProto.ResourceId{Id: rolebindingId})
+	_, err = s.internalRbacServer.DeleteRolebinding(r.Context(), &general.ResourceId{Id: rolebindingId})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			if s.Code() == codes.InvalidArgument {

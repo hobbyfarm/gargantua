@@ -4,6 +4,8 @@ package general;
 
 option go_package = "github.com/hobbyfarm/gargantua/v3/protos/general";
 
+// messages which are used across multiple services should be defined here
+
 message ResourceId {
     string id = 1;
 }

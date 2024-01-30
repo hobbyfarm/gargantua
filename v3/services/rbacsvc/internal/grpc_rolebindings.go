@@ -8,6 +8,7 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"google.golang.org/grpc/codes"
 	empty "google.golang.org/protobuf/types/known/emptypb"
@@ -41,7 +42,7 @@ func (rs *GrpcRbacServer) CreateRolebinding(c context.Context, cr *rbacProto.Rol
 	return &empty.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) GetRolebinding(c context.Context, gr *rbacProto.ResourceId) (*rbacProto.RoleBinding, error) {
+func (rs *GrpcRbacServer) GetRolebinding(c context.Context, gr *general.ResourceId) (*rbacProto.RoleBinding, error) {
 	rolebinding, err := rs.getRolebinding(c, gr)
 	if err != nil {
 		return nil, err
@@ -60,7 +61,7 @@ func (rs *GrpcRbacServer) UpdateRolebinding(c context.Context, ur *rbacProto.Rol
 		)
 	}
 
-	k8sRolebinding, err := rs.getRolebinding(c, &rbacProto.ResourceId{Id: ur.GetName()})
+	k8sRolebinding, err := rs.getRolebinding(c, &general.ResourceId{Id: ur.GetName()})
 	if err != nil {
 		return &empty.Empty{}, err
 	}
@@ -88,7 +89,7 @@ func (rs *GrpcRbacServer) UpdateRolebinding(c context.Context, ur *rbacProto.Rol
 	return &empty.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) DeleteRolebinding(c context.Context, dr *rbacProto.ResourceId) (*empty.Empty, error) {
+func (rs *GrpcRbacServer) DeleteRolebinding(c context.Context, dr *general.ResourceId) (*empty.Empty, error) {
 	// we want to get the rolebinding first as this allows us to run it through the various checks before we attempt deletion
 	// most important of which is checking that we have labeled it correctly
 	// but it doesn't hurt to check if it exists before
@@ -109,9 +110,9 @@ func (rs *GrpcRbacServer) DeleteRolebinding(c context.Context, dr *rbacProto.Res
 	return &empty.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) ListRolebinding(c context.Context, lr *empty.Empty) (*rbacProto.RoleBindings, error) {
+func (rs *GrpcRbacServer) ListRolebinding(c context.Context, lr *general.ListOptions) (*rbacProto.RoleBindings, error) {
 	listOptions := metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%t", util.RBACManagedLabel, true),
+		LabelSelector: lr.GetLabelSelector(),
 	}
 
 	rolebindings, err := rs.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).List(c, listOptions)
@@ -204,7 +205,7 @@ func unmarshalRolebinding(roleBinding *rbacv1.RoleBinding) *rbacProto.RoleBindin
 	return prb
 }
 
-func (rs *GrpcRbacServer) getRolebinding(c context.Context, gr *rbacProto.ResourceId) (*rbacv1.RoleBinding, error) {
+func (rs *GrpcRbacServer) getRolebinding(c context.Context, gr *general.ResourceId) (*rbacv1.RoleBinding, error) {
 	if gr.GetId() == "" {
 		glog.Errorf("invalid rolebinding id")
 		return &rbacv1.RoleBinding{}, hferrors.GrpcError(

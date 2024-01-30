@@ -4,23 +4,20 @@ package setting;
 
 option go_package = "github.com/hobbyfarm/gargantua/v3/protos/setting";
 
+import "general/general.proto";
 import "google/protobuf/wrappers.proto";
 import "google/protobuf/empty.proto";
 
 service SettingSvc {
     rpc CreateSetting(CreateSettingRequest) returns (google.protobuf.Empty);
-    rpc GetSetting (Id) returns (Setting);
-    rpc GetSettingValue(Id) returns (SettingValue);
+    rpc GetSetting (general.ResourceId) returns (Setting);
+    rpc GetSettingValue(general.ResourceId) returns (SettingValue);
     rpc UpdateSetting (Setting) returns (google.protobuf.Empty);
-    // rpc DeleteSetting (Id) returns (google.protobuf.Empty); TODO
-    rpc ListSettings(ListSettingsRequest) returns (ListSettingsResponse);
+    // rpc DeleteSetting (general.ResourceId) returns (google.protobuf.Empty); TODO
+    rpc ListSettings(general.ListOptions) returns (ListSettingsResponse);
     rpc CreateScope (CreateScopeRequest) returns (google.protobuf.Empty);
-    rpc GetScope (Id) returns (Scope);
-    rpc ListScopes (google.protobuf.Empty) returns (Scopes);
-}
-
-message Id {
-    string name = 1;
+    rpc GetScope (general.ResourceId) returns (Scope);
+    rpc ListScopes (general.ListOptions) returns (Scopes);
 }
 
 message CreateSettingRequest {
@@ -45,10 +42,6 @@ message SettingValue {
         int64 int64_value = 3;
         double float64_value = 4;
     }
-}
-
-message ListSettingsRequest {
-    string scope = 1;
 }
 
 message ListSettingsResponse {

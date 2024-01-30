@@ -2,20 +2,22 @@ package settingservice
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/property"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 const (
@@ -61,7 +63,8 @@ func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	kSettings, err := s.internalSettingServer.ListSettings(r.Context(), &settingProto.ListSettingsRequest{Scope: scope})
+	labelSelector := fmt.Sprintf("%s=%s", labels.SettingScope, scope)
+	kSettings, err := s.internalSettingServer.ListSettings(r.Context(), &general.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		glog.Errorf("error listing settings: %s", err.Error())
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing settings")
@@ -147,7 +150,7 @@ func (s SettingServer) UpdateCollection(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s SettingServer) update(w http.ResponseWriter, r *http.Request, updatedSetting PreparedSetting) bool {
-	setting, err := s.internalSettingServer.GetSetting(r.Context(), &settingProto.Id{Name: updatedSetting.Name})
+	setting, err := s.internalSettingServer.GetSetting(r.Context(), &general.ResourceId{Id: updatedSetting.Name})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			if s.Code() == codes.NotFound {
@@ -224,7 +227,7 @@ func (s SettingServer) ListScopeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scopes, err := s.internalSettingServer.ListScopes(r.Context(), &emptypb.Empty{})
+	scopes, err := s.internalSettingServer.ListScopes(r.Context(), &general.ListOptions{})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "error listing scopes")
 		glog.Errorf("error while listing scopes: %s", err.Error())

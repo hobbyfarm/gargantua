@@ -2,16 +2,17 @@ package rbac
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type PreparedRole struct {
@@ -39,7 +40,8 @@ func (s Server) ListRoles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	roles, err := s.internalRbacServer.ListRole(r.Context(), &emptypb.Empty{})
+	labelSelector := fmt.Sprintf("%s=%t", util.RBACManagedLabel, true)
+	roles, err := s.internalRbacServer.ListRole(r.Context(), &general.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			switch s.Code() {
@@ -84,7 +86,7 @@ func (s Server) GetRole(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	roleId := vars["id"]
 
-	preparedRole, err := s.internalRbacServer.GetRole(r.Context(), &rbacProto.ResourceId{Id: roleId})
+	preparedRole, err := s.internalRbacServer.GetRole(r.Context(), &general.ResourceId{Id: roleId})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			switch s.Code() {
@@ -204,7 +206,7 @@ func (s Server) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	roleId := vars["id"]
 
-	_, err = s.internalRbacServer.DeleteRole(r.Context(), &rbacProto.ResourceId{Id: roleId})
+	_, err = s.internalRbacServer.DeleteRole(r.Context(), &general.ResourceId{Id: roleId})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			if s.Code() == codes.InvalidArgument {

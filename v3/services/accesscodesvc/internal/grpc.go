@@ -12,6 +12,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	accessCodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	"github.com/hobbyfarm/gargantua/v3/protos/user"
 	"google.golang.org/grpc/codes"
 	empty "google.golang.org/protobuf/types/known/emptypb"
@@ -96,7 +97,7 @@ func (a *GrpcAccessCodeServer) CreateAc(ctx context.Context, cr *accessCodeProto
 	return &empty.Empty{}, nil
 }
 
-func (a *GrpcAccessCodeServer) GetAc(ctx context.Context, id *accessCodeProto.ResourceId) (*accessCodeProto.AccessCode, error) {
+func (a *GrpcAccessCodeServer) GetAc(ctx context.Context, id *general.ResourceId) (*accessCodeProto.AccessCode, error) {
 	if len(id.GetId()) == 0 {
 		return &accessCodeProto.AccessCode{}, errors.GrpcError(
 			codes.InvalidArgument,
@@ -212,7 +213,7 @@ func (a *GrpcAccessCodeServer) UpdateAc(ctx context.Context, acRequest *accessCo
 	return &empty.Empty{}, nil
 }
 
-func (a *GrpcAccessCodeServer) DeleteAc(ctx context.Context, dr *accessCodeProto.ResourceId) (*empty.Empty, error) {
+func (a *GrpcAccessCodeServer) DeleteAc(ctx context.Context, dr *general.ResourceId) (*empty.Empty, error) {
 	acId := dr.GetId()
 	if acId == "" {
 		return &empty.Empty{}, errors.GrpcError(
@@ -235,7 +236,7 @@ func (a *GrpcAccessCodeServer) DeleteAc(ctx context.Context, dr *accessCodeProto
 	return &empty.Empty{}, nil
 }
 
-func (a *GrpcAccessCodeServer) DeleteCollectionAc(ctx context.Context, listOptions *accessCodeProto.ListOptions) (*empty.Empty, error) {
+func (a *GrpcAccessCodeServer) DeleteCollectionAc(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
 
 	// delete the access code for the corresponding ScheduledEvent
 	err := a.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
@@ -252,7 +253,7 @@ func (a *GrpcAccessCodeServer) DeleteCollectionAc(ctx context.Context, listOptio
 	return &empty.Empty{}, nil
 }
 
-func (a *GrpcAccessCodeServer) ListAc(ctx context.Context, listOptions *accessCodeProto.ListOptions) (*accessCodeProto.ListAcsResponse, error) {
+func (a *GrpcAccessCodeServer) ListAc(ctx context.Context, listOptions *general.ListOptions) (*accessCodeProto.ListAcsResponse, error) {
 
 	accessCodeList, err := a.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).List(ctx, metav1.ListOptions{
 		LabelSelector: listOptions.GetLabelSelector(),
@@ -374,7 +375,7 @@ func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accessCodePro
 	}, nil
 }
 
-func (a *GrpcAccessCodeServer) GetOtac(ctx context.Context, id *accessCodeProto.ResourceId) (*accessCodeProto.OneTimeAccessCode, error) {
+func (a *GrpcAccessCodeServer) GetOtac(ctx context.Context, id *general.ResourceId) (*accessCodeProto.OneTimeAccessCode, error) {
 	if len(id.GetId()) == 0 {
 		return &accessCodeProto.OneTimeAccessCode{}, errors.GrpcError(
 			codes.InvalidArgument,
@@ -439,7 +440,7 @@ func (a *GrpcAccessCodeServer) UpdateOtac(ctx context.Context, otacRequest *acce
 	return &empty.Empty{}, nil
 }
 
-func (a *GrpcAccessCodeServer) DeleteOtac(ctx context.Context, dr *accessCodeProto.ResourceId) (*empty.Empty, error) {
+func (a *GrpcAccessCodeServer) DeleteOtac(ctx context.Context, dr *general.ResourceId) (*empty.Empty, error) {
 	otacId := dr.GetId()
 	if otacId == "" {
 		return &empty.Empty{}, errors.GrpcError(
@@ -462,7 +463,7 @@ func (a *GrpcAccessCodeServer) DeleteOtac(ctx context.Context, dr *accessCodePro
 	return &empty.Empty{}, nil
 }
 
-func (a *GrpcAccessCodeServer) DeleteCollectionOtac(ctx context.Context, listOptions *accessCodeProto.ListOptions) (*empty.Empty, error) {
+func (a *GrpcAccessCodeServer) DeleteCollectionOtac(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
 
 	// delete the access code for the corresponding ScheduledEvent
 	err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
@@ -479,7 +480,7 @@ func (a *GrpcAccessCodeServer) DeleteCollectionOtac(ctx context.Context, listOpt
 	return &empty.Empty{}, nil
 }
 
-func (a *GrpcAccessCodeServer) ListOtac(ctx context.Context, listOptions *accessCodeProto.ListOptions) (*accessCodeProto.ListOtacsResponse, error) {
+func (a *GrpcAccessCodeServer) ListOtac(ctx context.Context, listOptions *general.ListOptions) (*accessCodeProto.ListOtacsResponse, error) {
 	// LabelSelector: fmt.Sprintf("%s=%s", util2.ScheduledEventLabel, id)
 	otacList, err := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).List(ctx, metav1.ListOptions{
 		LabelSelector: listOptions.GetLabelSelector(),
@@ -516,7 +517,7 @@ func (a *GrpcAccessCodeServer) ListOtac(ctx context.Context, listOptions *access
  * These RPCs provide advanced functionalities beyond basic resource-related operations.
  **************************************************************************************************************/
 
-func (a *GrpcAccessCodeServer) ValidateExistence(ctx context.Context, gor *accessCodeProto.ResourceId) (*accessCodeProto.ResourceValidation, error) {
+func (a *GrpcAccessCodeServer) ValidateExistence(ctx context.Context, gor *general.ResourceId) (*accessCodeProto.ResourceValidation, error) {
 	if len(gor.GetId()) == 0 {
 		return &accessCodeProto.ResourceValidation{Valid: false}, errors.GrpcError(
 			codes.InvalidArgument,
@@ -552,7 +553,7 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 	selectorString := selector.String()
 
 	// First get the oneTimeAccessCodes
-	otacList, err := a.ListOtac(ctx, &accessCodeProto.ListOptions{LabelSelector: selectorString})
+	otacList, err := a.ListOtac(ctx, &general.ListOptions{LabelSelector: selectorString})
 
 	if err != nil {
 		return nil, err
@@ -587,11 +588,11 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 	selector = selector.Add(*otacReq)
 	selectorString = selector.String()
 
-	accessCodes, err := a.ListAc(ctx, &accessCodeProto.ListOptions{LabelSelector: selectorString})
+	accessCodes, err := a.ListAc(ctx, &general.ListOptions{LabelSelector: selectorString})
 	return accessCodes, err
 }
 
-func (a *GrpcAccessCodeServer) GetAccessCodeWithOTACs(ctx context.Context, codeId *accessCodeProto.ResourceId) (*accessCodeProto.AccessCode, error) {
+func (a *GrpcAccessCodeServer) GetAccessCodeWithOTACs(ctx context.Context, codeId *general.ResourceId) (*accessCodeProto.AccessCode, error) {
 	accessCodeId := codeId.GetId()
 	if len(accessCodeId) == 0 {
 		return &accessCodeProto.AccessCode{}, errors.GrpcError(
@@ -626,24 +627,24 @@ func (a *GrpcAccessCodeServer) GetAccessCodeWithOTACs(ctx context.Context, codeI
 	return accessCodes[0], nil
 }
 
-func (a *GrpcAccessCodeServer) GetClosestAccessCode(ctx context.Context, closestAcReq *accessCodeProto.ClosestAcRequest) (*accessCodeProto.ResourceId, error) {
+func (a *GrpcAccessCodeServer) GetClosestAccessCode(ctx context.Context, closestAcReq *accessCodeProto.ClosestAcRequest) (*general.ResourceId, error) {
 	// basically let's get all of the access codes, sort them by expiration, and start going down the list looking for access codes.
 
 	userId := closestAcReq.GetUserId()
 	courseOrScenarioId := closestAcReq.GetCourseOrScenarioId()
 
 	if len(userId) == 0 || len(courseOrScenarioId) == 0 {
-		return &accessCodeProto.ResourceId{}, errors.GrpcError(
+		return &general.ResourceId{}, errors.GrpcError(
 			codes.InvalidArgument,
 			"no user_id or course_or_scneario_id passed in",
 			closestAcReq,
 		)
 	}
 
-	user, err := a.userClient.GetUserById(ctx, &user.UserId{Id: userId})
+	user, err := a.userClient.GetUserById(ctx, &general.ResourceId{Id: userId})
 
 	if err != nil {
-		return &accessCodeProto.ResourceId{}, errors.GrpcError(
+		return &general.ResourceId{}, errors.GrpcError(
 			codes.Internal,
 			"error while retrieving user by id: %s with error: %v",
 			closestAcReq,
@@ -655,7 +656,7 @@ func (a *GrpcAccessCodeServer) GetClosestAccessCode(ctx context.Context, closest
 	rawAccessCodeList, err := a.GetAccessCodesWithOTACs(ctx, &accessCodeProto.ResourceIds{Ids: user.GetAccessCodes()})
 
 	if err != nil {
-		return &accessCodeProto.ResourceId{}, errors.GrpcError(
+		return &general.ResourceId{}, errors.GrpcError(
 			codes.NotFound,
 			"access codes were not found %v",
 			closestAcReq,
@@ -683,7 +684,7 @@ func (a *GrpcAccessCodeServer) GetClosestAccessCode(ctx context.Context, closest
 	}
 
 	if len(accessCodes) == 0 {
-		return &accessCodeProto.ResourceId{}, errors.GrpcError(
+		return &general.ResourceId{}, errors.GrpcError(
 			codes.NotFound,
 			"access codes were not found for user %s with scenario or course id %s",
 			closestAcReq,
@@ -720,7 +721,7 @@ func (a *GrpcAccessCodeServer) GetClosestAccessCode(ctx context.Context, closest
 		glog.Infof("Access code list was %v", accessCodesList)
 	}
 
-	return &accessCodeProto.ResourceId{Id: accessCodes[0].GetId()}, nil
+	return &general.ResourceId{Id: accessCodes[0].GetId()}, nil
 }
 
 /**************************************************************************************************************

@@ -8,6 +8,7 @@ package user
 
 import (
 	context "context"
+	general "github.com/hobbyfarm/gargantua/v3/protos/general"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -33,13 +34,13 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserSvcClient interface {
-	CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*UserId, error)
-	GetUserById(ctx context.Context, in *UserId, opts ...grpc.CallOption) (*User, error)
+	CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*general.ResourceId, error)
+	GetUserById(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*User, error)
 	GetUserByEmail(ctx context.Context, in *GetUserByEmailRequest, opts ...grpc.CallOption) (*User, error)
 	UpdateUser(ctx context.Context, in *User, opts ...grpc.CallOption) (*User, error)
 	UpdateAccessCodes(ctx context.Context, in *UpdateAccessCodesRequest, opts ...grpc.CallOption) (*User, error)
-	DeleteUser(ctx context.Context, in *UserId, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	ListUser(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListUsersResponse, error)
+	DeleteUser(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListUser(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*ListUsersResponse, error)
 }
 
 type userSvcClient struct {
@@ -50,8 +51,8 @@ func NewUserSvcClient(cc grpc.ClientConnInterface) UserSvcClient {
 	return &userSvcClient{cc}
 }
 
-func (c *userSvcClient) CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*UserId, error) {
-	out := new(UserId)
+func (c *userSvcClient) CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*general.ResourceId, error) {
+	out := new(general.ResourceId)
 	err := c.cc.Invoke(ctx, UserSvc_CreateUser_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -59,7 +60,7 @@ func (c *userSvcClient) CreateUser(ctx context.Context, in *CreateUserRequest, o
 	return out, nil
 }
 
-func (c *userSvcClient) GetUserById(ctx context.Context, in *UserId, opts ...grpc.CallOption) (*User, error) {
+func (c *userSvcClient) GetUserById(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*User, error) {
 	out := new(User)
 	err := c.cc.Invoke(ctx, UserSvc_GetUserById_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -95,7 +96,7 @@ func (c *userSvcClient) UpdateAccessCodes(ctx context.Context, in *UpdateAccessC
 	return out, nil
 }
 
-func (c *userSvcClient) DeleteUser(ctx context.Context, in *UserId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *userSvcClient) DeleteUser(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, UserSvc_DeleteUser_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -104,7 +105,7 @@ func (c *userSvcClient) DeleteUser(ctx context.Context, in *UserId, opts ...grpc
 	return out, nil
 }
 
-func (c *userSvcClient) ListUser(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListUsersResponse, error) {
+func (c *userSvcClient) ListUser(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*ListUsersResponse, error) {
 	out := new(ListUsersResponse)
 	err := c.cc.Invoke(ctx, UserSvc_ListUser_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -117,13 +118,13 @@ func (c *userSvcClient) ListUser(ctx context.Context, in *emptypb.Empty, opts ..
 // All implementations must embed UnimplementedUserSvcServer
 // for forward compatibility
 type UserSvcServer interface {
-	CreateUser(context.Context, *CreateUserRequest) (*UserId, error)
-	GetUserById(context.Context, *UserId) (*User, error)
+	CreateUser(context.Context, *CreateUserRequest) (*general.ResourceId, error)
+	GetUserById(context.Context, *general.ResourceId) (*User, error)
 	GetUserByEmail(context.Context, *GetUserByEmailRequest) (*User, error)
 	UpdateUser(context.Context, *User) (*User, error)
 	UpdateAccessCodes(context.Context, *UpdateAccessCodesRequest) (*User, error)
-	DeleteUser(context.Context, *UserId) (*emptypb.Empty, error)
-	ListUser(context.Context, *emptypb.Empty) (*ListUsersResponse, error)
+	DeleteUser(context.Context, *general.ResourceId) (*emptypb.Empty, error)
+	ListUser(context.Context, *general.ListOptions) (*ListUsersResponse, error)
 	mustEmbedUnimplementedUserSvcServer()
 }
 
@@ -131,10 +132,10 @@ type UserSvcServer interface {
 type UnimplementedUserSvcServer struct {
 }
 
-func (UnimplementedUserSvcServer) CreateUser(context.Context, *CreateUserRequest) (*UserId, error) {
+func (UnimplementedUserSvcServer) CreateUser(context.Context, *CreateUserRequest) (*general.ResourceId, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateUser not implemented")
 }
-func (UnimplementedUserSvcServer) GetUserById(context.Context, *UserId) (*User, error) {
+func (UnimplementedUserSvcServer) GetUserById(context.Context, *general.ResourceId) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUserById not implemented")
 }
 func (UnimplementedUserSvcServer) GetUserByEmail(context.Context, *GetUserByEmailRequest) (*User, error) {
@@ -146,10 +147,10 @@ func (UnimplementedUserSvcServer) UpdateUser(context.Context, *User) (*User, err
 func (UnimplementedUserSvcServer) UpdateAccessCodes(context.Context, *UpdateAccessCodesRequest) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateAccessCodes not implemented")
 }
-func (UnimplementedUserSvcServer) DeleteUser(context.Context, *UserId) (*emptypb.Empty, error) {
+func (UnimplementedUserSvcServer) DeleteUser(context.Context, *general.ResourceId) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteUser not implemented")
 }
-func (UnimplementedUserSvcServer) ListUser(context.Context, *emptypb.Empty) (*ListUsersResponse, error) {
+func (UnimplementedUserSvcServer) ListUser(context.Context, *general.ListOptions) (*ListUsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListUser not implemented")
 }
 func (UnimplementedUserSvcServer) mustEmbedUnimplementedUserSvcServer() {}
@@ -184,7 +185,7 @@ func _UserSvc_CreateUser_Handler(srv interface{}, ctx context.Context, dec func(
 }
 
 func _UserSvc_GetUserById_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UserId)
+	in := new(general.ResourceId)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -196,7 +197,7 @@ func _UserSvc_GetUserById_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: UserSvc_GetUserById_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserSvcServer).GetUserById(ctx, req.(*UserId))
+		return srv.(UserSvcServer).GetUserById(ctx, req.(*general.ResourceId))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -256,7 +257,7 @@ func _UserSvc_UpdateAccessCodes_Handler(srv interface{}, ctx context.Context, de
 }
 
 func _UserSvc_DeleteUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UserId)
+	in := new(general.ResourceId)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -268,13 +269,13 @@ func _UserSvc_DeleteUser_Handler(srv interface{}, ctx context.Context, dec func(
 		FullMethod: UserSvc_DeleteUser_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserSvcServer).DeleteUser(ctx, req.(*UserId))
+		return srv.(UserSvcServer).DeleteUser(ctx, req.(*general.ResourceId))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _UserSvc_ListUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
+	in := new(general.ListOptions)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -286,7 +287,7 @@ func _UserSvc_ListUser_Handler(srv interface{}, ctx context.Context, dec func(in
 		FullMethod: UserSvc_ListUser_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserSvcServer).ListUser(ctx, req.(*emptypb.Empty))
+		return srv.(UserSvcServer).ListUser(ctx, req.(*general.ListOptions))
 	}
 	return interceptor(ctx, in, info, handler)
 }

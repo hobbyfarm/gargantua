@@ -8,11 +8,11 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 const (
@@ -53,11 +53,11 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	user, err := u.internalUserServer.GetUserById(r.Context(), &userProto.UserId{Id: id})
+	user, err := u.internalUserServer.GetUserById(r.Context(), &general.ResourceId{Id: id})
 
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
-			details := s.Details()[0].(*userProto.UserId)
+			details := s.Details()[0].(*general.ResourceId)
 			if s.Code() == codes.InvalidArgument {
 				util.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
 				return
@@ -105,7 +105,7 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users, err := u.internalUserServer.ListUser(r.Context(), &emptypb.Empty{})
+	users, err := u.internalUserServer.ListUser(r.Context(), &general.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while retrieving users %v", err)
@@ -211,11 +211,11 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = u.internalUserServer.DeleteUser(r.Context(), &userProto.UserId{Id: id})
+	_, err = u.internalUserServer.DeleteUser(r.Context(), &general.ResourceId{Id: id})
 
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
-			details := s.Details()[0].(*userProto.UserId)
+			details := s.Details()[0].(*general.ResourceId)
 			if s.Code() == codes.InvalidArgument {
 				util.ReturnHTTPMessage(w, r, 400, "error", "no id passed in")
 				return
@@ -248,7 +248,7 @@ func (u UserServer) ListRoleBindingsForUser(w http.ResponseWriter, r *http.Reque
 
 	user := vars["user"]
 
-	bindings, err := u.rbacClient.GetHobbyfarmRoleBindings(r.Context(), &userProto.UserId{
+	bindings, err := u.rbacClient.GetHobbyfarmRoleBindings(r.Context(), &general.ResourceId{
 		Id: user,
 	})
 

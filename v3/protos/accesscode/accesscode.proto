@@ -4,6 +4,7 @@ package accesscode;
 
 option go_package = "github.com/hobbyfarm/gargantua/v3/protos/accesscode";
 
+import "general/general.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/wrappers.proto";
 
@@ -11,29 +12,25 @@ import "google/protobuf/wrappers.proto";
 service AccessCodeSvc {
     // Resource oriented RPCs for AccessCodes:
     rpc CreateAc (CreateAcRequest) returns (google.protobuf.Empty);
-    rpc GetAc (ResourceId) returns (AccessCode);
+    rpc GetAc (general.ResourceId) returns (AccessCode);
     rpc UpdateAc (UpdateAccessCodeRequest) returns (google.protobuf.Empty);
-    rpc DeleteAc (ResourceId) returns (google.protobuf.Empty);
-    rpc DeleteCollectionAc (ListOptions) returns (google.protobuf.Empty);
-    rpc ListAc (ListOptions) returns (ListAcsResponse);
+    rpc DeleteAc (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionAc (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListAc (general.ListOptions) returns (ListAcsResponse);
 
     // Resource oriented RPCs for OneTimeAccessCodes:
     rpc CreateOtac (CreateOtacRequest) returns (OneTimeAccessCode);
-    rpc GetOtac (ResourceId) returns (OneTimeAccessCode);
+    rpc GetOtac (general.ResourceId) returns (OneTimeAccessCode);
     rpc UpdateOtac (OneTimeAccessCode) returns (google.protobuf.Empty);
-    rpc DeleteOtac (ResourceId) returns (google.protobuf.Empty);
-    rpc DeleteCollectionOtac (ListOptions) returns (google.protobuf.Empty);
-    rpc ListOtac (ListOptions) returns (ListOtacsResponse);
+    rpc DeleteOtac (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionOtac (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListOtac (general.ListOptions) returns (ListOtacsResponse);
 
     // Helper functions
-    rpc ValidateExistence (ResourceId) returns (ResourceValidation);
+    rpc ValidateExistence (general.ResourceId) returns (ResourceValidation);
     rpc GetAccessCodesWithOTACs (ResourceIds) returns (ListAcsResponse);
-    rpc GetAccessCodeWithOTACs (ResourceId) returns (AccessCode);
-    rpc GetClosestAccessCode (ClosestAcRequest) returns (ResourceId);
-}
-
-message ResourceId {
-    string id = 1;
+    rpc GetAccessCodeWithOTACs (general.ResourceId) returns (AccessCode);
+    rpc GetClosestAccessCode (ClosestAcRequest) returns (general.ResourceId);
 }
 
 message ResourceIds {
@@ -49,10 +46,6 @@ message OneTimeAccessCode {
     string user = 2;
     string redeemed_timestamp = 3;
     map<string, string> labels = 4;
-}
-
-message ListOptions {
-    string label_selector = 1;
 }
 
 message ListOtacsResponse {

@@ -14,6 +14,7 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
@@ -57,9 +58,9 @@ func emailIndexer(obj interface{}) ([]string, error) {
 	return []string{user.Spec.Email}, nil
 }
 
-func (u *GrpcUserServer) CreateUser(c context.Context, cur *userProto.CreateUserRequest) (*userProto.UserId, error) {
+func (u *GrpcUserServer) CreateUser(c context.Context, cur *userProto.CreateUserRequest) (*general.ResourceId, error) {
 	if len(cur.GetEmail()) == 0 || len(cur.GetPassword()) == 0 {
-		return &userProto.UserId{}, errors.GrpcError(
+		return &general.ResourceId{}, errors.GrpcError(
 			codes.InvalidArgument,
 			"error creating user, email or password field blank",
 			cur,
@@ -70,7 +71,7 @@ func (u *GrpcUserServer) CreateUser(c context.Context, cur *userProto.CreateUser
 
 	if err == nil {
 		// the user was found, we should return info
-		return &userProto.UserId{}, errors.GrpcError(
+		return &general.ResourceId{}, errors.GrpcError(
 			codes.AlreadyExists,
 			"user %s already exists",
 			cur,
@@ -94,7 +95,7 @@ func (u *GrpcUserServer) CreateUser(c context.Context, cur *userProto.CreateUser
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(cur.GetPassword()), bcrypt.DefaultCost)
 	if err != nil {
-		return &userProto.UserId{}, errors.GrpcError(
+		return &general.ResourceId{}, errors.GrpcError(
 			codes.Internal,
 			"error while hashing password for email %s",
 			cur,
@@ -107,14 +108,14 @@ func (u *GrpcUserServer) CreateUser(c context.Context, cur *userProto.CreateUser
 	_, err = u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Create(u.ctx, &newUser, metav1.CreateOptions{})
 
 	if err != nil {
-		return &userProto.UserId{}, errors.GrpcError(
+		return &general.ResourceId{}, errors.GrpcError(
 			codes.Internal,
 			"error creating user",
 			cur,
 		)
 	}
 
-	return &userProto.UserId{Id: id}, nil
+	return &general.ResourceId{Id: id}, nil
 }
 
 func (u *GrpcUserServer) getUser(id string) (*userProto.User, error) {
@@ -135,7 +136,7 @@ func (u *GrpcUserServer) getUser(id string) (*userProto.User, error) {
 	}, nil
 }
 
-func (u *GrpcUserServer) GetUserById(ctx context.Context, gur *userProto.UserId) (*userProto.User, error) {
+func (u *GrpcUserServer) GetUserById(ctx context.Context, gur *general.ResourceId) (*userProto.User, error) {
 	if len(gur.GetId()) == 0 {
 		return &userProto.User{}, errors.GrpcError(
 			codes.InvalidArgument,
@@ -159,15 +160,17 @@ func (u *GrpcUserServer) GetUserById(ctx context.Context, gur *userProto.UserId)
 	return user, nil
 }
 
-func (u *GrpcUserServer) ListUser(ctx context.Context, empty *empty.Empty) (*userProto.ListUsersResponse, error) {
-	users, err := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).List(u.ctx, metav1.ListOptions{})
+func (u *GrpcUserServer) ListUser(ctx context.Context, listOptions *general.ListOptions) (*userProto.ListUsersResponse, error) {
+	users, err := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).List(u.ctx, metav1.ListOptions{
+		LabelSelector: listOptions.GetLabelSelector(),
+	})
 
 	if err != nil {
 		glog.Errorf("error while retrieving users %v", err)
 		return &userProto.ListUsersResponse{}, errors.GrpcError(
 			codes.Internal,
 			"no users found",
-			empty,
+			listOptions,
 		)
 	}
 
@@ -335,7 +338,7 @@ func (u *GrpcUserServer) GetUserByEmail(c context.Context, gur *userProto.GetUse
 	}, nil
 }
 
-func (u *GrpcUserServer) DeleteUser(c context.Context, userId *userProto.UserId) (*empty.Empty, error) {
+func (u *GrpcUserServer) DeleteUser(c context.Context, userId *general.ResourceId) (*empty.Empty, error) {
 	id := userId.GetId()
 
 	if len(id) == 0 {
