@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package general;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/general";
+
+message ResourceId {
+    string id = 1;
+}
+
+message ListOptions {
+    string label_selector = 1;
+}
