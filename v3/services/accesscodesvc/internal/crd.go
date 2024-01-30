@@ -3,11 +3,12 @@ package accesscodeservice
 import (
 	"github.com/ebauman/crder"
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 )
 
 func GenerateAccessCodeCRD() []crder.CRD {
 	return []crder.CRD{
-		hobbyfarmCRD(&v1.AccessCode{}, func(c *crder.CRD) {
+		crd.HobbyfarmCRD(&v1.AccessCode{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.AccessCode{}, func(cv *crder.Version) {
@@ -16,7 +17,7 @@ func GenerateAccessCodeCRD() []crder.CRD {
 						WithColumn("Expiration", ".spec.expiration")
 				})
 		}),
-		hobbyfarmCRD(&v1.OneTimeAccessCode{}, func(c *crder.CRD) {
+		crd.HobbyfarmCRD(&v1.OneTimeAccessCode{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.OneTimeAccessCode{}, func(cv *crder.Version) {
@@ -26,8 +27,4 @@ func GenerateAccessCodeCRD() []crder.CRD {
 				})
 		}),
 	}
-}
-
-func hobbyfarmCRD(obj interface{}, customize func(c *crder.CRD)) crder.CRD {
-	return *crder.NewCRD(obj, "hobbyfarm.io", customize)
 }

@@ -9,7 +9,7 @@ import (
 
 func GenerateUserCRD(caBundle string, reference crd.ServiceReference) []crder.CRD {
 	return []crder.CRD{
-		hobbyfarmCRD(&v1.User{}, func(c *crder.CRD) {
+		crd.HobbyfarmCRD(&v1.User{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.User{}, func(cv *crder.Version) {
@@ -34,8 +34,4 @@ func GenerateUserCRD(caBundle string, reference crd.ServiceReference) []crder.CR
 				})
 		}),
 	}
-}
-
-func hobbyfarmCRD(obj interface{}, customize func(c *crder.CRD)) crder.CRD {
-	return *crder.NewCRD(obj, "hobbyfarm.io", customize)
 }
