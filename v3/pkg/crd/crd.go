@@ -2,13 +2,13 @@ package crd
 
 import (
 	"github.com/ebauman/crder"
-	"github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	terraformv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
 )
 
 func GenerateCRDs() []crder.CRD {
 	return []crder.CRD{
-		hobbyfarmCRD(&v1.VirtualMachine{}, func(c *crder.CRD) {
+		HobbyfarmCRD(&v1.VirtualMachine{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.VirtualMachine{}, func(cv *crder.Version) {
@@ -20,7 +20,7 @@ func GenerateCRDs() []crder.CRD {
 						WithStatus()
 				})
 		}),
-		hobbyfarmCRD(&v1.VirtualMachineClaim{}, func(c *crder.CRD) {
+		HobbyfarmCRD(&v1.VirtualMachineClaim{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.VirtualMachineClaim{}, func(cv *crder.Version) {
@@ -31,17 +31,17 @@ func GenerateCRDs() []crder.CRD {
 						WithStatus()
 				})
 		}),
-		hobbyfarmCRD(&v1.VirtualMachineTemplate{}, func(c *crder.CRD) {
+		HobbyfarmCRD(&v1.VirtualMachineTemplate{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.VirtualMachineTemplate{}, nil)
 		}),
-		hobbyfarmCRD(&v1.Environment{}, func(c *crder.CRD) {
+		HobbyfarmCRD(&v1.Environment{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.Environment{}, nil)
 		}),
-		hobbyfarmCRD(&v1.VirtualMachineSet{}, func(c *crder.CRD) {
+		HobbyfarmCRD(&v1.VirtualMachineSet{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.VirtualMachineSet{}, func(cv *crder.Version) {
@@ -51,17 +51,17 @@ func GenerateCRDs() []crder.CRD {
 						WithStatus()
 				})
 		}),
-		hobbyfarmCRD(&v1.Course{}, func(c *crder.CRD) {
+		HobbyfarmCRD(&v1.Course{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.Course{}, nil)
 		}),
-		hobbyfarmCRD(&v1.Scenario{}, func(c *crder.CRD) {
+		HobbyfarmCRD(&v1.Scenario{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.Scenario{}, nil)
 		}),
-		hobbyfarmCRD(&v1.Session{}, func(c *crder.CRD) {
+		HobbyfarmCRD(&v1.Session{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.Session{}, func(cv *crder.Version) {
@@ -74,7 +74,7 @@ func GenerateCRDs() []crder.CRD {
 						WithStatus()
 				})
 		}),
-		hobbyfarmCRD(&v1.Progress{}, func(c *crder.CRD) {
+		HobbyfarmCRD(&v1.Progress{}, func(c *crder.CRD) {
 			c.
 				WithNames("progress", "progresses").
 				IsNamespaced(true).
@@ -88,7 +88,7 @@ func GenerateCRDs() []crder.CRD {
 						WithColumn("LastUpdate", ".spec.last_update")
 				})
 		}),
-		hobbyfarmCRD(&v1.ScheduledEvent{}, func(c *crder.CRD) {
+		HobbyfarmCRD(&v1.ScheduledEvent{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.ScheduledEvent{}, func(cv *crder.Version) {
@@ -99,7 +99,7 @@ func GenerateCRDs() []crder.CRD {
 						WithStatus()
 				})
 		}),
-		hobbyfarmCRD(&v1.PredefinedService{}, func(c *crder.CRD) {
+		HobbyfarmCRD(&v1.PredefinedService{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.PredefinedService{}, func(cv *crder.Version) {
@@ -107,11 +107,6 @@ func GenerateCRDs() []crder.CRD {
 						WithColumn("Name", ".spec.name").
 						WithColumn("Port", ".spec.port")
 				})
-		}),
-		hobbyfarmCRD(&v1.DynamicBindConfiguration{}, func(c *crder.CRD) {
-			c.
-				IsNamespaced(true).
-				AddVersion("v1", &v1.DynamicBindConfiguration{}, nil)
 		}),
 		terraformCRD(&terraformv1.Module{}, func(c *crder.CRD) {
 			c.
@@ -143,7 +138,7 @@ func GenerateCRDs() []crder.CRD {
 	}
 }
 
-func hobbyfarmCRD(obj interface{}, customize func(c *crder.CRD)) crder.CRD {
+func HobbyfarmCRD(obj interface{}, customize func(c *crder.CRD)) crder.CRD {
 	return *crder.NewCRD(obj, "hobbyfarm.io", customize)
 }
 
