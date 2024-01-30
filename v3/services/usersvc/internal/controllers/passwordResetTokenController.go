@@ -18,6 +18,7 @@ import (
 
 const (
 	TOKEN_MAX_VALID_DURATION = time.Hour * 1
+	WORKQUEUE_NAME           = "workqueue-token"
 )
 
 type PasswordResetTokenController struct {
@@ -25,55 +26,58 @@ type PasswordResetTokenController struct {
 
 	workqueue workqueue.DelayingInterface
 
-	prtLister   v1.PasswordResetTokenLister
-	prtInformer cache.SharedIndexInformer
-	prtSynced   cache.InformerSynced
+	prtLister              v1.PasswordResetTokenLister
+	prtInformer            cache.SharedIndexInformer
+	prtHandlerRegistration cache.ResourceEventHandlerRegistration
 
 	started bool
 
 	ctx context.Context
 }
 
-func NewPasswordResetTokenController(internalUserServer *userservice.GrpcUserServer, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*PasswordResetTokenController, error) {
+func NewPasswordResetTokenController(hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*PasswordResetTokenController, error) {
 	prtController := PasswordResetTokenController{}
-	prtController.internalUserServer = internalUserServer
 	prtController.ctx = ctx
-	prtController.prtSynced = hfInformerFactory.Hobbyfarm().V1().PasswordResetTokens().Informer().HasSynced
-
-	prtController.workqueue = workqueue.NewDelayingQueueWithConfig(workqueue.DelayingQueueConfig{
-		Name: "prt-queue",
-	})
 	prtController.prtLister = hfInformerFactory.Hobbyfarm().V1().PasswordResetTokens().Lister()
 	prtController.prtInformer = hfInformerFactory.Hobbyfarm().V1().PasswordResetTokens().Informer()
+
 	return &prtController, nil
 }
 
-func (s *PasswordResetTokenController) enqueue(obj interface{}) {
-	glog.V(8).Infof("Trying to enqueue PRT %v", obj)
+func (c *PasswordResetTokenController) enqueue(obj interface{}) {
+	glog.V(4).Infof("Trying to enqueue PRT %v", obj) // TODO remove
 
-	if s.workqueue.ShuttingDown() || !s.started {
-		glog.V(8).Infof("token is not being added to the workqueue while controller is not started")
+	if !c.started || c.workqueue == nil || c.workqueue.ShuttingDown() {
+		glog.V(4).Infof("token is not being added to the workqueue while controller is not started")
 		return
 	}
 
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		glog.V(8).Infof("Error enquing token %s: %v", key, err)
+		glog.V(4).Infof("Error enquing token %s: %v", key, err)
 		return
 	}
-	glog.V(8).Infof("Enqueueing PRT %s", key)
-	s.workqueue.Add(key)
+	glog.V(4).Infof("Enqueueing PRT %s", key)
+	c.workqueue.Add(key)
 }
 
 func (c *PasswordResetTokenController) Run(stopCh <-chan struct{}) error {
-	defer c.workqueue.ShutDown()
+	defer c.stopWorker()
+
 	glog.V(4).Infof("Starting Token controller")
+
+	c.workqueue = workqueue.NewDelayingQueueWithConfig(workqueue.DelayingQueueConfig{
+		Name: WORKQUEUE_NAME,
+	})
+	defer c.workqueue.ShutDown()
+
 	reg, err := c.prtInformer.AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.enqueue,
 		UpdateFunc: func(old, new interface{}) {
 			c.enqueue(new)
 		},
+		DeleteFunc: c.enqueue,
 	}, time.Minute*30)
 
 	if err != nil {
@@ -81,21 +85,20 @@ func (c *PasswordResetTokenController) Run(stopCh <-chan struct{}) error {
 		return err
 	}
 
+	c.prtHandlerRegistration = reg
+	defer c.prtInformer.RemoveEventHandler(c.prtHandlerRegistration)
+
 	glog.Info("Waiting for informer caches to sync")
-	if ok := cache.WaitForCacheSync(stopCh, c.prtSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, c.prtInformer.HasSynced); !ok {
 		glog.V(4).Infof("Error: failed to wait for informer caches to sync")
 		return fmt.Errorf("failed to wait for informer caches to sync")
 	}
 
 	go wait.Until(c.runWorker, time.Second, stopCh)
-	glog.Info("Started Token controller workers")
 	c.started = true
-
+	glog.Info("Started Token controller worker")
 	<-stopCh
 	glog.V(4).Infof("Stopping Token controller due to stop signal")
-	c.prtInformer.RemoveEventHandler(reg)
-	c.started = false
-	glog.V(4).Infof("Token controller was stopped.")
 	return nil
 }
 
@@ -169,4 +172,8 @@ func (c *PasswordResetTokenController) reconcile(token string) error {
 	}
 
 	return nil
+}
+
+func (c *PasswordResetTokenController) stopWorker() {
+	c.started = false
 }

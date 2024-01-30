@@ -16,6 +16,7 @@ import (
 	"github.com/golang/glog"
 	userservice "github.com/hobbyfarm/gargantua/services/usersvc/v3/internal"
 	userservicecontroller "github.com/hobbyfarm/gargantua/services/usersvc/v3/internal/controllers"
+	"github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
@@ -98,24 +99,39 @@ func main() {
 	}()
 
 	stopControllersCh := make(chan struct{})
-	g, gctx := errgroup.WithContext(ctx)
-	passwordResetTokenController, err := userservicecontroller.NewPasswordResetTokenController(us, hfInformerFactory, gctx)
-	if err != nil {
-		glog.Fatalf("starting grpc user server failed: %v", err)
-	}
 
 	stopInformerFactoryCh := signals.SetupSignalHandler()
 	hfInformerFactory.Start(stopInformerFactoryCh)
 
-	microservices.ElectLeaderOrDie(microservices.User, cfg, gctx, stopControllersCh, func(c context.Context) {
+	microservices.ElectLeaderOrDie(microservices.User, cfg, ctx, stopControllersCh, func(c context.Context) {
 		glog.Info("Started being the leader. Starting controllers")
-		g.Go(func() error {
-			return passwordResetTokenController.Run(stopControllersCh)
-		})
+		startControllers(ctx, hfClient, stopControllersCh)
 		if err != nil {
 			glog.Fatal(err)
 		}
 	})
 
 	wg.Wait()
+}
+
+func startControllers(ctx context.Context, hfClient *versioned.Clientset, stopControllersCh <-chan struct{}) error {
+	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(util.GetReleaseNamespace()))
+	g, gctx := errgroup.WithContext(ctx)
+
+	passwordResetTokenController, err := userservicecontroller.NewPasswordResetTokenController(hfInformerFactory, gctx)
+	if err != nil {
+		glog.Fatalf("starting passwordResetTokenController failed: %v", err)
+	}
+
+	g.Go(func() error {
+		return passwordResetTokenController.Run(stopControllersCh)
+	})
+
+	hfInformerFactory.Start(stopControllersCh)
+
+	if err = g.Wait(); err != nil {
+		glog.Errorf("Error starting up the controllers: %v", err)
+		return err
+	}
+	return nil
 }
