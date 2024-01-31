@@ -3,11 +3,12 @@ package accesscode
 import (
 	"context"
 	"fmt"
+	"sort"
+	"time"
+
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"sort"
-	"time"
 
 	"github.com/golang/glog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,6 +48,25 @@ func (acc AccessCodeClient) GetAccessCodesWithOTACs(codes []string) ([]hfv1.Acce
 		se, err := acc.hfClientSet.HobbyfarmV1().ScheduledEvents(util2.GetReleaseNamespace()).Get(acc.ctx, otac.Labels[util2.ScheduledEventLabel], metav1.GetOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("error while retrieving one time access codes %v", err)
+		}
+		if otac.Spec.MaxDuration != "" {
+			otac.Spec.MaxDuration, err = util2.GetDurationWithDays(otac.Spec.MaxDuration)
+
+			maxDuration, err := time.ParseDuration(otac.Spec.MaxDuration)
+			if err != nil {
+				glog.V(4).Infof("Error parsing OTAC %s MaxDuration '%s': %s", otac.Name, otac.Spec.MaxDuration, err)
+				continue
+			}
+			redeemedTimestamp, err := time.Parse(time.UnixDate, otac.Spec.RedeemedTimestamp)
+
+			if err != nil {
+				return nil, fmt.Errorf("error while parsing redeemedTimestamp time for OTAC %s: %v", otac.Name, err)
+			}
+
+			if time.Now().After(redeemedTimestamp.Add(maxDuration)) { // if the access code is expired don't return any scenarios
+				glog.V(4).Infof("OTAC %s reached MaxDuration of %s", otac.Name, otac.Spec.MaxDuration)
+				continue
+			}
 		}
 		codes = append(codes, se.Spec.AccessCode)
 	}
