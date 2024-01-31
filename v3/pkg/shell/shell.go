@@ -29,7 +29,7 @@ import (
 	"golang.org/x/sync/semaphore"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 )
 
 type ShellProxy struct {
@@ -496,24 +496,24 @@ func copyResponse(rw http.ResponseWriter, resp *http.Response) error {
 type VirtualMachineInputTask struct {
 	VMId              string             `json:"vm_id"`
 	VMName            string             `json:"vm_name"`
-	TaskInputCommands []v2.Task          `json:"task_command"`
+	TaskInputCommands []hfv1.Task        `json:"task_command"`
 }
 
 type VirtualMachineOutputTask struct {
 	VMId               string              `json:"vm_id"`
 	VMName             string              `json:"vm_name"`
-	TaskOutputCommands []TaskOutputCommand `json:"task_command_output"`
+	TaskOutputCommands []TaskOutputCommand `json:"task_commands_output"`
 }
 
 type TaskOutputCommand struct {
-	TaskInputCommand    v2.Task   `json:"task_command_input"`	
+	TaskInputCommand    hfv1.Task   `json:"task_command_input"`	
 	ActualOutputValue   string `json:"actual_output_value"`
 	ActualReturnCode    int    `json:"actual_return_code"`
 	Success             bool   `json:"success"`
 	
 }
 
-func VMTaskCommandRun(task_cmd *v2.Task, sess *ssh.Session) (*TaskOutputCommand, error) {
+func VMTaskCommandRun(task_cmd *hfv1.Task, sess *ssh.Session) (*TaskOutputCommand, error) {
 	out, err := sess.CombinedOutput(task_cmd.Command)
 	actual_output_value := strings.TrimRight(string(out), "\r\n")
 	actual_return_code := 0
@@ -537,46 +537,83 @@ func VMTaskCommandRun(task_cmd *v2.Task, sess *ssh.Session) (*TaskOutputCommand,
 	return task_cmd_res, nil
 }
 
-func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWriter, r *http.Request) {
+
+
+func GetVMOutputTask(sshConn *ssh.Client, closure_vm_input_task VirtualMachineInputTask, errorChan chan<- error)(*VirtualMachineOutputTask, error){
 	// TODO: settings for define max command go routine run in same time in VM
-	const MAX_COMMANDS_GO = 3
+	const MAX_COMMANDS_GO = 3		
 	// TODO: settings for define max try command run in VM if return code 141
 	const MAX_TRY_COMMAND_RUN = 5
-	user, err := rbac2.AuthenticateRequest(r, sp.authnClient)
-	if err != nil {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
-		return
+
+	commands_resp := make([]TaskOutputCommand, 0)
+	var commands_mutex = &sync.Mutex{}
+	var commands_wg sync.WaitGroup
+	// Semaphore for count go routine run in same time in VM
+	// a context is required for the weighted semaphore pkg.
+	ctx := context.Background()
+	var commands_semaphore = semaphore.NewWeighted(int64(MAX_COMMANDS_GO))
+
+	for _, task_command := range closure_vm_input_task.TaskInputCommands {
+		commands_wg.Add(1)
+		if err := commands_semaphore.Acquire(ctx, 1); err != nil {
+			glog.Errorf("did not acquire vm_semafore")
+		}
+		go func(closure_task_command hfv1.Task, errChan chan<- error) {
+			defer commands_wg.Done()
+			defer commands_semaphore.Release(1)
+			// try command run again when exit code == 141
+			count_try_command_run := MAX_TRY_COMMAND_RUN
+			for count_try_command_run > 0 {
+				sess, err := sshConn.NewSession()
+				if err != nil {
+					glog.Errorf("did not setup ssh session properly")
+					if len(errorChan) < cap(errorChan) {
+						errChan <- err
+					}
+					return
+				}
+				if err != nil {
+					glog.Infof("%s", err)
+				}
+				vm_task_output, err := VMTaskCommandRun(&closure_task_command, sess)
+
+				if err != nil {
+					glog.Infof("error sending command: %v", err)
+					if len(errorChan) < cap(errorChan) {
+						errChan <- err
+					}
+					return
+				}
+				sess.Close()
+				count_try_command_run -= 1
+				if vm_task_output.ActualReturnCode != 141 || count_try_command_run == 0 {
+					commands_mutex.Lock()
+					commands_resp = append(commands_resp, *vm_task_output)
+					commands_mutex.Unlock()
+					break
+				}
+			}
+		}(task_command, errorChan)
 	}
-	
-	var vm_input_tasks []VirtualMachineInputTask
-
-	err = json.NewDecoder(r.Body).Decode(&vm_input_tasks)
-	if err != nil {
-		glog.Infof("%s", err)
+	commands_wg.Wait()
+	vm_output_task := VirtualMachineOutputTask{
+		VMId:               closure_vm_input_task.VMId,
+		VMName:             closure_vm_input_task.VMName,
+		TaskOutputCommands: commands_resp,
 	}
-	glog.Infof("vm_input_tasks: %+v", vm_input_tasks)
+	return &vm_output_task, nil
+}
 
-	errorChan := make(chan error, 1)
-
-	vm_output_tasks := make([]*VirtualMachineOutputTask, 0)
-	var vm_mutex = &sync.Mutex{}
-	var vm_wg sync.WaitGroup
-
-	for _, vm_input_task := range vm_input_tasks {
-		vm_wg.Add(1)
-
-		go func(closure_vm_input_task VirtualMachineInputTask, errChan chan<- error, max_commands_go int) {
-			defer vm_wg.Done()
-
-			vmId := closure_vm_input_task.VMId
+func (sp ShellProxy) GetSSHConn( w http.ResponseWriter, r *http.Request, user *userProto.User, vmId string, errorChan chan<- error)(*ssh.Client, error){
+			
 			vm, err := sp.vmClient.GetVirtualMachineById(vmId)
 
 			if err != nil {
 				glog.Errorf("did not find the right virtual machine ID")
 				if len(errorChan) < cap(errorChan) {
-					errChan <- err
+					errorChan <- err
 				}
-				return
+				return nil, err
 			}
 			if vm.Spec.UserId != user.GetId() {
 				// check if the user has access to access user sessions
@@ -590,7 +627,7 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWrit
 				if err != nil || !authrResponse.Success {
 					glog.Infof("Error doing authGrantWS %s", err)
 					util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to connect to ssh shell session")
-					return
+					return nil, err
 				}
 			}
 
@@ -599,7 +636,7 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWrit
 			if err != nil {
 				glog.Errorf("did not find secret for virtual machine")
 				util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
-				return
+				return nil, err
 			}
 
 			// parse the private key
@@ -607,7 +644,7 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWrit
 			if err != nil {
 				glog.Errorf("did not correctly parse private key")
 				util.ReturnHTTPMessage(w, r, 500, "error", "unable to parse private key")
-				return
+				return nil, err
 			}
 			
 			sshUsername := vm.Spec.SshUsername
@@ -644,74 +681,51 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWrit
 			if err != nil {
 				glog.Errorf("did not connect ssh successfully: %s", err)
 				if len(errorChan) < cap(errorChan) {
-					errChan <- err
+					errorChan <- err
 				}
+				return nil, err
+			}
+			return sshConn, err
+}
+
+func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWriter, r *http.Request) {
+	user, err := rbac2.AuthenticateRequest(r, sp.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
+		return
+	}
+	
+	var vm_input_tasks []VirtualMachineInputTask
+
+	err = json.NewDecoder(r.Body).Decode(&vm_input_tasks)
+	if err != nil {
+		glog.Infof("%s", err)
+	}
+	glog.Infof("vm_input_tasks: %+v", vm_input_tasks)
+
+	errorChan := make(chan error, 1)
+
+	vm_output_tasks := make([]*VirtualMachineOutputTask, 0)
+	var vm_mutex = &sync.Mutex{}
+	var vm_wg sync.WaitGroup
+
+	for _, vm_input_task := range vm_input_tasks {
+		vm_wg.Add(1)
+		go func(closure_vm_input_task VirtualMachineInputTask) {
+			defer vm_wg.Done()			
+			
+			sshConn, err := sp.GetSSHConn(w, r, user, closure_vm_input_task.VMId, errorChan)
+			if err != nil {				
 				return
 			}
-
-			commands_resp := make([]TaskOutputCommand, 0)
-			var commands_mutex = &sync.Mutex{}
-			var commands_wg sync.WaitGroup
-			// Semaphore for count go routine run in same time in VM
-			// a context is required for the weighted semaphore pkg.
-			ctx := context.Background()
-			var commands_semaphore = semaphore.NewWeighted(int64(max_commands_go))
-
-			for _, task_command := range closure_vm_input_task.TaskInputCommands {
-				commands_wg.Add(1)
-				if err := commands_semaphore.Acquire(ctx, 1); err != nil {
-					glog.Errorf("did not acquire vm_semafore")
-				}
-				glog.Infof("before go vm: %v, sem: %v", vmId, commands_semaphore)
-				go func(closure_task_command v2.Task, errChan chan<- error, max_try_command_run int) {
-					defer commands_wg.Done()
-					defer commands_semaphore.Release(1)
-					glog.Infof("vm: %v, sem: %v", vmId, commands_semaphore)
-					// try command run again when exit code == 141
-					count_try_command_run := max_try_command_run
-					for count_try_command_run > 0 {
-						sess, err = sshConn.NewSession()
-						if err != nil {
-							glog.Errorf("did not setup ssh session properly")
-							if len(errorChan) < cap(errorChan) {
-								errChan <- err
-							}
-							return
-						}
-						if err != nil {
-							glog.Infof("%s", err)
-						}
-						vm_task_output, err := VMTaskCommandRun(&closure_task_command, sess)
-
-						if err != nil {
-							glog.Infof("error sending command: %v", err)
-							if len(errorChan) < cap(errorChan) {
-								errChan <- err
-							}
-							return
-						}
-						sess.Close()
-						count_try_command_run -= 1
-						if vm_task_output.ActualReturnCode != 141 || count_try_command_run == 0 {
-							commands_mutex.Lock()
-							commands_resp = append(commands_resp, *vm_task_output)
-							commands_mutex.Unlock()
-							break
-						}
-					}
-				}(task_command, errorChan, MAX_TRY_COMMAND_RUN)
+			vm_output_task, err := GetVMOutputTask(sshConn, closure_vm_input_task, errorChan)
+			if err != nil {				
+				return
 			}
-			commands_wg.Wait()
-			vm_output_task := VirtualMachineOutputTask{
-				VMId:               closure_vm_input_task.VMId,
-				VMName:             closure_vm_input_task.VMName,
-				TaskOutputCommands: commands_resp,
-			}
-
 			vm_mutex.Lock()
-			vm_output_tasks = append(vm_output_tasks, &vm_output_task)
+			vm_output_tasks = append(vm_output_tasks, vm_output_task)
 			vm_mutex.Unlock()
-		}(vm_input_task, errorChan, MAX_COMMANDS_GO)
+		}(vm_input_task)
 	}
 	vm_wg.Wait()
 

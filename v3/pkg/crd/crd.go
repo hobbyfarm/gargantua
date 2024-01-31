@@ -4,7 +4,7 @@ import (
 	"github.com/ebauman/crder"
 //	"github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
+//	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 	terraformv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
 )
 
@@ -61,22 +61,8 @@ func GenerateCRDs(caBundle string, reference ServiceReference) []crder.CRD {
 		hobbyfarmCRD(&v1.Scenario{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
-				AddVersion("v1", &v1.Scenario{}, func(cv *crder.Version) {
-					cv.IsServed(true)
-					cv.IsStored(false)
-				}).
-				AddVersion("v2", &v2.Scenario{}, func(cv *crder.Version) {
-					cv.IsServed(true)
-					cv.IsStored(true)
-				 }).
-				WithConversion(func(cc *crder.Conversion) {
-					cc.
-						StrategyWebhook().
-						WithCABundle(caBundle).
-						WithService(reference.Toapiextv1WithPath("/conversion/scenarios.hobbyfarm.io")).
-						WithVersions("v2", "v1")
-				})
-		}),
+				AddVersion("v1", &v1.Scenario{}, nil)
+		}),		
 		hobbyfarmCRD(&v1.Session{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).

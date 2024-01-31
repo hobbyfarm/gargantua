@@ -18,6 +18,4 @@ limitations under the License.
 
 package v2
 
-type ScenarioExpansion interface{}
-
 type UserExpansion interface{}
