@@ -22,7 +22,8 @@ func GenerateAccessCodeCRD() []crder.CRD {
 				AddVersion("v1", &v1.OneTimeAccessCode{}, func(cv *crder.Version) {
 					cv.
 						WithColumn("User", ".spec.user").
-						WithColumn("Redeemed", ".spec.redeemed_timestamp")
+						WithColumn("Redeemed", ".spec.redeemed_timestamp").
+						WithColumn("MaxDuration", ".spec.max_duration")
 				})
 		}),
 	}
