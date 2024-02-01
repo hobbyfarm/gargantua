@@ -104,10 +104,9 @@ func main() {
 	hfInformerFactory.Start(stopInformerFactoryCh)
 
 	microservices.ElectLeaderOrDie(microservices.User, cfg, ctx, stopControllersCh, func(c context.Context) {
-		glog.Info("Started being the leader. Starting controllers")
-		startControllers(ctx, hfClient, stopControllersCh)
-		if err != nil {
-			glog.Fatal(err)
+		_err := startControllers(ctx, hfClient, stopControllersCh)
+		if _err != nil {
+			glog.Fatal(_err)
 		}
 	})
 
@@ -115,6 +114,7 @@ func main() {
 }
 
 func startControllers(ctx context.Context, hfClient *versioned.Clientset, stopControllersCh <-chan struct{}) error {
+	glog.Info("Starting controllers")
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(util.GetReleaseNamespace()))
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -122,6 +122,8 @@ func startControllers(ctx context.Context, hfClient *versioned.Clientset, stopCo
 	if err != nil {
 		glog.Fatalf("starting passwordResetTokenController failed: %v", err)
 	}
+
+	passwordResetTokenController.SetWorkerThreadCount(2)
 
 	g.Go(func() error {
 		return passwordResetTokenController.Run(stopControllersCh)

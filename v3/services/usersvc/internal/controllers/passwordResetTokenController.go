@@ -38,7 +38,7 @@ func NewPasswordResetTokenController(hfInformerFactory hfInformers.SharedInforme
 }
 
 func (dwq *TokenController) Reconcile(objName string) error {
-	glog.V(4).Infof("reconciling token inside specific token controller %s", objName)
+	glog.V(8).Infof("reconciling token inside specific token controller %s", objName)
 	token, err := dwq.tokenLister.PasswordResetTokens(util.GetReleaseNamespace()).Get(objName)
 
 	if err != nil {

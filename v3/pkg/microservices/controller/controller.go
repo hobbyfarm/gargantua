@@ -25,6 +25,7 @@ type BaseController struct {
 	InformerHandlerRegistration cache.ResourceEventHandlerRegistration // We save the Registration here to unregister when shutting down
 	ResyncPeriod                time.Duration
 	reconciler                  Reconciler
+	threads                     int
 }
 
 // Should not be instiantiated on its own, use specific implementation of delayingWorkqueueController or RateLimitingWorkqueueController
@@ -34,6 +35,7 @@ func newBaseController(name string, ctx context.Context, informer cache.SharedIn
 		Context:      ctx,
 		Informer:     informer,
 		ResyncPeriod: resyncPeriod,
+		threads:      1,
 	}
 	return &baseController
 }
@@ -78,7 +80,7 @@ func (c *BaseController) Run(stopCh <-chan struct{}) error {
 	defer c.workqueue.ShutDown()
 	defer c.stopWorker()
 
-	glog.Info("Starting controller: %s", c.name)
+	glog.Infof("Starting controller: %s", c.name)
 	c.Started = true
 
 	err := c.AddEventHandlerWithResyncPeriod()
@@ -92,7 +94,10 @@ func (c *BaseController) Run(stopCh <-chan struct{}) error {
 		return err
 	}
 
-	go wait.Until(c.runWorker, time.Second, stopCh)
+	glog.Infof("Starting %d worker threads for %s", c.threads, c.name)
+	for i := 0; i < c.threads; i++ {
+		go wait.Until(c.runWorker, time.Second, stopCh)
+	}
 
 	<-stopCh
 	glog.Info("Stopping base controller")
@@ -116,6 +121,7 @@ func (c *BaseController) enqueue(obj interface{}) {
 }
 
 func (c *BaseController) runWorker() {
+	glog.V(4).Infof("Starting worker thread for %s", c.name)
 	for c.processNextWorkItem() {
 	}
 }
@@ -167,4 +173,8 @@ func (c *BaseController) SetWorkqueue(w workqueue.Interface) {
 
 func (c *BaseController) GetWorkqueue() workqueue.Interface {
 	return c.workqueue
+}
+
+func (c *BaseController) SetWorkerThreadCount(threads int) {
+	c.threads = threads
 }
