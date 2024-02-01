@@ -513,6 +513,23 @@ type TaskOutputCommand struct {
 	
 }
 
+func isMatchRegex(text, pattern string) bool {
+	// Compile the regular expression pattern
+	re := regexp.MustCompile(pattern)
+	// Use the MatchString method to check if the text matches the pattern
+	return re.MatchString(text)
+}
+
+func verifyOutputWithRegex(text, returnType string) string {
+	if (strings.Contains(returnType, "Match_Regex:")){
+		parts := strings.Split(returnType, ":");
+		if (parts[0]=="Match_Regex"&& !isMatchRegex(text, parts[1])) {
+			return "regex:error"
+		}
+	}	
+	return text
+}
+
 func VMTaskCommandRun(task_cmd *hfv1.Task, sess *ssh.Session) (*TaskOutputCommand, error) {
 	out, err := sess.CombinedOutput(task_cmd.Command)
 	actual_output_value := strings.TrimRight(string(out), "\r\n")
@@ -525,13 +542,34 @@ func VMTaskCommandRun(task_cmd *hfv1.Task, sess *ssh.Session) (*TaskOutputComman
 		default:
 			return nil, err
 		}
-
 	}
+
+	is_task_success := false
+	switch task_cmd.ReturnType {
+		case "Return_Code_And_Text": 
+			is_task_success = task_cmd.ExpectedOutputValue == actual_output_value && task_cmd.ExpectedReturnCode == actual_return_code
+			break
+		case "Return_Code":	
+			is_task_success = task_cmd.ExpectedReturnCode == actual_return_code
+			break
+		case "Return_Text":	
+			is_task_success = task_cmd.ExpectedOutputValue == actual_output_value
+			break
+		default:
+			if (strings.Contains(task_cmd.ReturnType, "Match_Regex:")){
+				actual_output_value = verifyOutputWithRegex(actual_output_value, task_cmd.ReturnType)
+				is_task_success = actual_output_value != "regex:error"
+			}else{
+				actual_output_value = "undefined ReturnType"
+				is_task_success = false
+			}
+	}	
+
 	task_cmd_res := &TaskOutputCommand{
 		TaskInputCommand:    *task_cmd,		
 		ActualOutputValue:   actual_output_value,
 		ActualReturnCode:    actual_return_code,
-		Success:             task_cmd.ExpectedOutputValue == actual_output_value && task_cmd.ExpectedReturnCode == actual_return_code,
+		Success:             is_task_success,
 		
 	}
 	return task_cmd_res, nil
