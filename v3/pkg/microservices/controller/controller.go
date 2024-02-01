@@ -11,29 +11,35 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-type BaseController struct {
-	Workqueue                   workqueue.Interface
-	Started                     bool
-	Context                     context.Context
-	Informer                    cache.SharedIndexInformer
-	InformerHandlerRegistration cache.ResourceEventHandlerRegistration
-	ResyncPeriod                time.Duration
-	ReconcileFunc               func(objName string) error
+// Reconciler required Reconcile method.
+type Reconciler interface {
+	Reconcile(objName string) error
 }
 
-// Should not be instiantiated in its own, use specific implementation of delayingWorkqueueController or RateLimitingWorkqueueController
-func NewBaseController(ctx context.Context, informer cache.SharedIndexInformer, reconcileFunc func(objName string) error, resyncPeriod time.Duration) *BaseController {
-	return &BaseController{
-		Workqueue:     workqueue.New(),
-		Context:       ctx,
-		Informer:      informer,
-		ResyncPeriod:  resyncPeriod,
-		ReconcileFunc: reconcileFunc,
+type BaseController struct {
+	name                        string
+	workqueue                   workqueue.Interface
+	Started                     bool
+	Context                     context.Context
+	Informer                    cache.SharedIndexInformer              // The informer to attach to
+	InformerHandlerRegistration cache.ResourceEventHandlerRegistration // We save the Registration here to unregister when shutting down
+	ResyncPeriod                time.Duration
+	reconciler                  Reconciler
+}
+
+// Should not be instiantiated on its own, use specific implementation of delayingWorkqueueController or RateLimitingWorkqueueController
+func newBaseController(name string, ctx context.Context, informer cache.SharedIndexInformer, resyncPeriod time.Duration) *BaseController {
+	baseController := BaseController{
+		name:         name,
+		Context:      ctx,
+		Informer:     informer,
+		ResyncPeriod: resyncPeriod,
 	}
+	return &baseController
 }
 
 func (c *BaseController) AddEventHandlerWithResyncPeriod() error {
-	glog.Info("Add EventHandlerWithResyncPeriod")
+	glog.V(4).Infof("Add EventHandlerWithResyncPeriod")
 	reg, err := c.Informer.AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.enqueue,
 		UpdateFunc: func(old, new interface{}) {
@@ -43,7 +49,7 @@ func (c *BaseController) AddEventHandlerWithResyncPeriod() error {
 	}, c.ResyncPeriod)
 
 	if err != nil {
-		glog.V(4).Infof("Event Handler could not be started. Aborting controller start")
+		glog.Errorf("Event Handler could not be started. Aborting controller start")
 		return err
 	}
 
@@ -54,7 +60,7 @@ func (c *BaseController) AddEventHandlerWithResyncPeriod() error {
 // Override this method if you need to wait for other informers aswell
 func (c *BaseController) WaitForCacheSync(stopCh <-chan struct{}) error {
 	// Wait for the caches to be synced before starting workers
-	glog.Info("Waiting for informer caches to sync")
+	glog.V(4).Info("Waiting for informer caches to sync")
 	if ok := cache.WaitForCacheSync(stopCh, c.Informer.HasSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
@@ -62,10 +68,17 @@ func (c *BaseController) WaitForCacheSync(stopCh <-chan struct{}) error {
 }
 
 func (c *BaseController) Run(stopCh <-chan struct{}) error {
-	defer c.Workqueue.ShutDown()
+	if c.workqueue == nil {
+		return fmt.Errorf("Workqueue not instantiated.")
+	}
+	if c.reconciler == nil {
+		return fmt.Errorf("Reconciler not instantiated. Call SetReconciler(r Reconciler) to set it")
+	}
+
+	defer c.workqueue.ShutDown()
 	defer c.stopWorker()
 
-	glog.Info("Starting controller")
+	glog.Info("Starting controller: %s", c.name)
 	c.Started = true
 
 	err := c.AddEventHandlerWithResyncPeriod()
@@ -87,7 +100,7 @@ func (c *BaseController) Run(stopCh <-chan struct{}) error {
 }
 
 func (c *BaseController) enqueue(obj interface{}) {
-	if !c.Started || c.Workqueue == nil || c.Workqueue.ShuttingDown() {
+	if !c.Started || c.workqueue == nil || c.workqueue.ShuttingDown() {
 		glog.V(4).Infof("Object is not being added to the workqueue while controller is not started")
 		return
 	}
@@ -99,7 +112,7 @@ func (c *BaseController) enqueue(obj interface{}) {
 		return
 	}
 	glog.V(4).Infof("Enqueueing: %s", key)
-	c.Workqueue.Add(key)
+	c.workqueue.Add(key)
 }
 
 func (c *BaseController) runWorker() {
@@ -108,14 +121,14 @@ func (c *BaseController) runWorker() {
 }
 
 func (c *BaseController) processNextWorkItem() bool {
-	obj, shutdown := c.Workqueue.Get()
+	obj, shutdown := c.workqueue.Get()
 
 	if shutdown {
 		return false
 	}
 
 	err := func() error {
-		defer c.Workqueue.Done(obj)
+		defer c.workqueue.Done(obj)
 		glog.V(8).Infof("processing next token in queue: %v", obj)
 		_, objName, err := cache.SplitMetaNamespaceKey(obj.(string))
 		if err != nil {
@@ -123,13 +136,13 @@ func (c *BaseController) processNextWorkItem() bool {
 			return nil
 		}
 
-		err = c.ReconcileFunc(objName)
+		err = c.reconciler.Reconcile(objName)
 
 		if err != nil {
 			glog.Error(err)
 		}
 
-		glog.Infof("Successfully processed: %s", objName)
+		glog.V(8).Infof("Successfully processed: %s", objName)
 		return nil
 	}()
 
@@ -142,4 +155,16 @@ func (c *BaseController) processNextWorkItem() bool {
 
 func (c *BaseController) stopWorker() {
 	c.Started = false
+}
+
+func (c *BaseController) SetReconciler(r Reconciler) {
+	c.reconciler = r
+}
+
+func (c *BaseController) SetWorkqueue(w workqueue.Interface) {
+	c.workqueue = w
+}
+
+func (c *BaseController) GetWorkqueue() workqueue.Interface {
+	return c.workqueue
 }
