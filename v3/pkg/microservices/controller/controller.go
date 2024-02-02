@@ -16,6 +16,11 @@ type Reconciler interface {
 	Reconcile(objName string) error
 }
 
+// LoadScheduler probvides enqueue method to only enqueue objects it is suited for.
+type LoadScheduler interface {
+	enqueue(obj interface{})
+}
+
 type BaseController struct {
 	name                        string
 	workqueue                   workqueue.Interface
@@ -25,29 +30,32 @@ type BaseController struct {
 	InformerHandlerRegistration cache.ResourceEventHandlerRegistration // We save the Registration here to unregister when shutting down
 	ResyncPeriod                time.Duration
 	reconciler                  Reconciler
+	loadScheduler               LoadScheduler
 	threads                     int
 }
 
 // Should not be instiantiated on its own, use specific implementation of delayingWorkqueueController or RateLimitingWorkqueueController
 func newBaseController(name string, ctx context.Context, informer cache.SharedIndexInformer, resyncPeriod time.Duration) *BaseController {
-	baseController := BaseController{
+	baseController := &BaseController{
 		name:         name,
 		Context:      ctx,
 		Informer:     informer,
 		ResyncPeriod: resyncPeriod,
 		threads:      1,
 	}
-	return &baseController
+
+	baseController.loadScheduler = baseController // Default is to schedule for itself
+	return baseController
 }
 
 func (c *BaseController) AddEventHandlerWithResyncPeriod() error {
 	glog.V(4).Infof("Add EventHandlerWithResyncPeriod")
 	reg, err := c.Informer.AddEventHandlerWithResyncPeriod(cache.ResourceEventHandlerFuncs{
-		AddFunc: c.enqueue,
+		AddFunc: c.loadScheduler.enqueue,
 		UpdateFunc: func(old, new interface{}) {
-			c.enqueue(new)
+			c.loadScheduler.enqueue(new)
 		},
-		DeleteFunc: c.enqueue,
+		DeleteFunc: c.loadScheduler.enqueue,
 	}, c.ResyncPeriod)
 
 	if err != nil {
@@ -69,7 +77,11 @@ func (c *BaseController) WaitForCacheSync(stopCh <-chan struct{}) error {
 	return nil
 }
 
-func (c *BaseController) Run(stopCh <-chan struct{}) error {
+func (c *BaseController) run(stopCh <-chan struct{}) error {
+	if c.Started {
+		glog.Infof("Controller %s was already started. Not starting again", c.name)
+		return nil
+	}
 	if c.workqueue == nil {
 		return fmt.Errorf("Workqueue not instantiated.")
 	}
@@ -104,6 +116,7 @@ func (c *BaseController) Run(stopCh <-chan struct{}) error {
 	return nil
 }
 
+// enqueue will add an object to the local workqueue
 func (c *BaseController) enqueue(obj interface{}) {
 	if !c.Started || c.workqueue == nil || c.workqueue.ShuttingDown() {
 		glog.V(4).Infof("Object is not being added to the workqueue while controller is not started")
@@ -120,12 +133,14 @@ func (c *BaseController) enqueue(obj interface{}) {
 	c.workqueue.Add(key)
 }
 
+// runWorker starts a simple worker that processes the workqueue inside a loop
 func (c *BaseController) runWorker() {
 	glog.V(4).Infof("Starting worker thread for %s", c.name)
 	for c.processNextWorkItem() {
 	}
 }
 
+// this method processes the next workqueue item. It calls the reconcile method on it
 func (c *BaseController) processNextWorkItem() bool {
 	obj, shutdown := c.workqueue.Get()
 
@@ -163,6 +178,7 @@ func (c *BaseController) stopWorker() {
 	c.Started = false
 }
 
+// Set the reconciler interface with the controller specific reconcile logic
 func (c *BaseController) SetReconciler(r Reconciler) {
 	c.reconciler = r
 }
@@ -171,10 +187,15 @@ func (c *BaseController) SetWorkqueue(w workqueue.Interface) {
 	c.workqueue = w
 }
 
+func (c *BaseController) SetWorkScheduler(s LoadScheduler) {
+	c.loadScheduler = s
+}
+
 func (c *BaseController) GetWorkqueue() workqueue.Interface {
 	return c.workqueue
 }
 
+// Set the thread count of workers processing the local queue. This has to be defined before starting the controller
 func (c *BaseController) SetWorkerThreadCount(threads int) {
 	c.threads = threads
 }

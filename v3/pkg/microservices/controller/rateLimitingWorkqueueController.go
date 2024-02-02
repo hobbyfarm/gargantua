@@ -5,17 +5,18 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
 
 type RateLimitingWorkqueueController struct {
-	BaseController
+	DistributedController
 }
 
-func NewRateLimitingWorkqueueController(ctx context.Context, informer cache.SharedIndexInformer, reconcileFunc func(objName string) error, name string, resyncPeriod time.Duration, rateLimiter workqueue.RateLimiter) *RateLimitingWorkqueueController {
+func NewRateLimitingWorkqueueController(ctx context.Context, informer cache.SharedIndexInformer, kubeClient *kubernetes.Clientset, reconcileFunc func(objName string) error, name string, resyncPeriod time.Duration, rateLimiter workqueue.RateLimiter) *RateLimitingWorkqueueController {
 	rlwq := &RateLimitingWorkqueueController{
-		*newBaseController(name, ctx, informer, resyncPeriod),
+		*NewDistributedController(ctx, informer, kubeClient, name, resyncPeriod),
 	}
 
 	rlwq.SetWorkqueue(workqueue.NewRateLimitingQueueWithConfig(rateLimiter, workqueue.RateLimitingQueueConfig{Name: name}))

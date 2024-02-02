@@ -5,17 +5,18 @@ import (
 	"fmt"
 	"time"
 
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
 
 type DelayingWorkqueueController struct {
-	BaseController
+	DistributedController
 }
 
-func NewDelayingWorkqueueController(ctx context.Context, informer cache.SharedIndexInformer, name string, resyncPeriod time.Duration) *DelayingWorkqueueController {
+func NewDelayingWorkqueueController(ctx context.Context, informer cache.SharedIndexInformer, kubeClient *kubernetes.Clientset, name string, resyncPeriod time.Duration) *DelayingWorkqueueController {
 	dwqc := &DelayingWorkqueueController{
-		*newBaseController(name, ctx, informer, resyncPeriod),
+		*NewDistributedController(ctx, informer, kubeClient, name, resyncPeriod),
 	}
 
 	dwqc.SetWorkqueue(workqueue.NewDelayingQueueWithConfig(workqueue.DelayingQueueConfig{Name: name}))

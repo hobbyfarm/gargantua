@@ -12,6 +12,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"golang.org/x/sync/errgroup"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/golang/glog"
 	userservice "github.com/hobbyfarm/gargantua/services/usersvc/v3/internal"
@@ -34,7 +35,7 @@ func init() {
 }
 
 func main() {
-	cfg, hfClient := microservices.BuildClusterConfig(serviceConfig)
+	cfg, hfClient, kubeClient := microservices.BuildClusterConfig(serviceConfig)
 
 	namespace := util.GetReleaseNamespace()
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
@@ -103,22 +104,20 @@ func main() {
 	stopInformerFactoryCh := signals.SetupSignalHandler()
 	hfInformerFactory.Start(stopInformerFactoryCh)
 
-	microservices.ElectLeaderOrDie(microservices.User, cfg, ctx, stopControllersCh, func(c context.Context) {
-		_err := startControllers(ctx, hfClient, stopControllersCh)
-		if _err != nil {
-			glog.Fatal(_err)
-		}
-	})
+	_err := startControllers(ctx, hfClient, kubeClient, stopControllersCh)
+	if _err != nil {
+		glog.Fatal(_err)
+	}
 
 	wg.Wait()
 }
 
-func startControllers(ctx context.Context, hfClient *versioned.Clientset, stopControllersCh <-chan struct{}) error {
+func startControllers(ctx context.Context, hfClient *versioned.Clientset, kubeClient *kubernetes.Clientset, stopControllersCh <-chan struct{}) error {
 	glog.Info("Starting controllers")
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(util.GetReleaseNamespace()))
 	g, gctx := errgroup.WithContext(ctx)
 
-	passwordResetTokenController, err := userservicecontroller.NewPasswordResetTokenController(hfInformerFactory, gctx)
+	passwordResetTokenController, err := userservicecontroller.NewPasswordResetTokenController(hfInformerFactory, kubeClient, gctx)
 	if err != nil {
 		glog.Fatalf("starting passwordResetTokenController failed: %v", err)
 	}
@@ -126,8 +125,11 @@ func startControllers(ctx context.Context, hfClient *versioned.Clientset, stopCo
 	passwordResetTokenController.SetWorkerThreadCount(2)
 
 	g.Go(func() error {
-		return passwordResetTokenController.Run(stopControllersCh)
+		// TODO replica name
+		return passwordResetTokenController.RunDistributed(stopControllersCh)
 	})
+
+	// TODO start informer for ReplicaSets
 
 	hfInformerFactory.Start(stopControllersCh)
 

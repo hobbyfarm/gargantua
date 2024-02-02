@@ -25,7 +25,7 @@ func init() {
 }
 
 func main() {
-	cfg, hfClient := microservices.BuildClusterConfig(serviceConfig)
+	cfg, hfClient, _ := microservices.BuildClusterConfig(serviceConfig)
 
 	ca, err := os.ReadFile(serviceConfig.TLSCA)
 	if err != nil {

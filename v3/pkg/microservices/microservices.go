@@ -24,9 +24,9 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/leaderelection"
 )
 
 // Add type MicroService based on string that is used to define constants for every service
@@ -292,7 +292,7 @@ func buildTLSServerCredentials(certPath string, keyPath string) (credentials.Tra
 	}), nil
 }
 
-func BuildClusterConfig(serviceConfig *ServiceConfig) (*rest.Config, *hfClientset.Clientset) {
+func BuildClusterConfig(serviceConfig *ServiceConfig) (*rest.Config, *hfClientset.Clientset, *kubernetes.Clientset) {
 	const (
 		ClientGoQPS   = 100
 		ClientGoBurst = 100
@@ -312,7 +312,12 @@ func BuildClusterConfig(serviceConfig *ServiceConfig) (*rest.Config, *hfClientse
 		glog.Fatal(err)
 	}
 
-	return cfg, hfClient
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
+	}
+
+	return cfg, hfClient, kubeClient
 }
 
 // ParseFlags declares the flags and parses them, then returns a ServiceConfig struct.
@@ -344,6 +349,8 @@ func BuildServiceConfig() *ServiceConfig {
 
 	return cfg
 }
+
+/*
 
 type onStartedLeading func(context.Context)
 
@@ -377,3 +384,5 @@ func ElectLeaderOrDie(svc MicroService, cfg *rest.Config, ctx context.Context, s
 		},
 	})
 }
+
+*/

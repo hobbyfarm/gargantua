@@ -21,7 +21,7 @@ func init() {
 }
 
 func main() {
-	cfg, hfClient := microservices.BuildClusterConfig(serviceConfig)
+	cfg, hfClient, _ := microservices.BuildClusterConfig(serviceConfig)
 
 	crds := accesscodeservice.GenerateAccessCodeCRD()
 	glog.Info("installing/updating access code CRDs")

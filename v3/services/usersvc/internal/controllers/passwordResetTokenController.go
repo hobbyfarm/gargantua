@@ -8,6 +8,7 @@ import (
 	informerV1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	controllers "github.com/hobbyfarm/gargantua/v3/pkg/microservices/controller"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/golang/glog"
 )
@@ -22,17 +23,19 @@ type TokenController struct {
 	tokenLister informerV1.PasswordResetTokenLister
 }
 
-func NewPasswordResetTokenController(hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*TokenController, error) {
+func NewPasswordResetTokenController(hfInformerFactory hfInformers.SharedInformerFactory, kubeClient *kubernetes.Clientset, ctx context.Context) (*TokenController, error) {
 	tokenController := &TokenController{
 		DelayingWorkqueueController: *controllers.NewDelayingWorkqueueController(
 			ctx,
 			hfInformerFactory.Hobbyfarm().V1().PasswordResetTokens().Informer(),
+			kubeClient,
 			NAME,
 			30*time.Minute),
 	}
 
 	tokenController.tokenLister = hfInformerFactory.Hobbyfarm().V1().PasswordResetTokens().Lister()
 	tokenController.SetReconciler(tokenController)
+	tokenController.SetWorkScheduler(tokenController)
 
 	return tokenController, nil
 }
