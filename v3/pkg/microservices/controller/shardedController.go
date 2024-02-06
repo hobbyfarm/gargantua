@@ -90,7 +90,7 @@ func (c *ShardedController) getShardPlacement(obj interface{}) (int, error) {
 	return truncatedHash % c.replica_count, nil
 }
 
-// RunDistributed will start a distributed controller concept
+// RunSharded will start a sharded controller that watches the parent StatefulSet and applies sharding based on the total replica count
 func (c *ShardedController) RunSharded(stopCh <-chan struct{}, statefulSetName string, shardIdentity string) error {
 	c.statefulset_name = statefulSetName
 	podIdentityName := shardIdentity
