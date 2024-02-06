@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -63,6 +64,7 @@ const (
 	defaultGrpcPort          string        = "8080"
 	defaultApiPort           string        = "80"
 	InitialConnectionTimeout time.Duration = 30 * time.Second
+	defaultThreadCount       int           = 1
 )
 
 var CORS_ALLOWED_METHODS_ALL = [...]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"}
@@ -350,39 +352,20 @@ func BuildServiceConfig() *ServiceConfig {
 	return cfg
 }
 
-/*
+// This method tries to retreive the controller thread count from an environment variable CONTROLLER_THREAD_COUNT
+// otherwise it sets the thread count to the default value
+func GetWorkerThreadCount() int {
+	workerThreadCountString := os.Getenv("CONTROLLER_THREAD_COUNT")
+	workerThreads := defaultThreadCount
+	if workerThreadCountString != "" {
+		i, err := strconv.Atoi(workerThreadCountString)
+		if err != nil {
+			glog.Infof("Error parsing env var CONTROLLER_THREAD_COUNT, using default thread count %d", workerThreads)
+		} else {
 
-type onStartedLeading func(context.Context)
-
-func ElectLeaderOrDie(svc MicroService, cfg *rest.Config, ctx context.Context, stopControllersCh chan<- struct{}, onStartedLeadingFunc onStartedLeading) {
-	lock, err := util.GetLock(string(svc), cfg)
-	if err != nil {
-		glog.Fatal(err)
+		}
+		workerThreads = i
 	}
-	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
-		Lock:            lock,
-		ReleaseOnCancel: true,
-		LeaseDuration:   10 * time.Second,
-		RenewDeadline:   5 * time.Second,
-		RetryPeriod:     2 * time.Second,
-		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: onStartedLeadingFunc,
-			OnStoppedLeading: func() {
-				// Need to start informer factory since even when not leader to ensure api layer
-				// keeps working.
-				glog.Info("Stopped being the leader. Shutting down controllers")
-				stopControllersCh <- struct{}{} // Send the stopControllers Signal
-			},
-			OnNewLeader: func(current_id string) {
-				if current_id == lock.Identity() {
-					glog.Info("I am currently the leader")
-					return
-				}
-				glog.Infof("Leader changed to %s", current_id)
 
-			},
-		},
-	})
+	return workerThreads
 }
-
-*/

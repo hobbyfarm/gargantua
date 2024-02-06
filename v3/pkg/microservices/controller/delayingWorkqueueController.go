@@ -11,12 +11,12 @@ import (
 )
 
 type DelayingWorkqueueController struct {
-	DistributedController
+	ShardedController
 }
 
 func NewDelayingWorkqueueController(ctx context.Context, informer cache.SharedIndexInformer, kubeClient *kubernetes.Clientset, name string, resyncPeriod time.Duration) *DelayingWorkqueueController {
 	dwqc := &DelayingWorkqueueController{
-		*NewDistributedController(ctx, informer, kubeClient, name, resyncPeriod),
+		*NewShardedController(ctx, informer, kubeClient, name, resyncPeriod),
 	}
 
 	dwqc.SetWorkqueue(workqueue.NewDelayingQueueWithConfig(workqueue.DelayingQueueConfig{Name: name}))

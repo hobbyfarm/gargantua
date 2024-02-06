@@ -11,13 +11,10 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"golang.org/x/sync/errgroup"
-	"k8s.io/client-go/kubernetes"
 
 	"github.com/golang/glog"
 	userservice "github.com/hobbyfarm/gargantua/services/usersvc/v3/internal"
 	userservicecontroller "github.com/hobbyfarm/gargantua/services/usersvc/v3/internal/controllers"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
@@ -81,6 +78,12 @@ func main() {
 
 	user.RegisterUserSvcServer(gs, us)
 
+	passwordResetTokenController, err := userservicecontroller.NewPasswordResetTokenController(hfInformerFactory, kubeClient, ctx)
+	if err != nil {
+		glog.Fatalf("creating passwordResetTokenController failed: %v", err)
+	}
+	passwordResetTokenController.SetWorkerThreadCount(microservices.GetWorkerThreadCount())
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 
@@ -99,43 +102,18 @@ func main() {
 		microservices.StartAPIServer(userServer)
 	}()
 
-	stopControllersCh := make(chan struct{})
+	go func() {
+		defer wg.Done()
+		glog.Info("Starting controllers")
+		stopControllersCh := make(chan struct{})
+		err := passwordResetTokenController.RunSharded(stopControllersCh, os.Getenv("STATEFULSET_NAME"), os.Getenv("POD_IDENTITY"))
+		if err != nil {
+			glog.Errorf("Error starting up the controllers: %v", err)
+		}
+	}()
 
 	stopInformerFactoryCh := signals.SetupSignalHandler()
 	hfInformerFactory.Start(stopInformerFactoryCh)
 
-	_err := startControllers(ctx, hfClient, kubeClient, stopControllersCh)
-	if _err != nil {
-		glog.Fatal(_err)
-	}
-
 	wg.Wait()
-}
-
-func startControllers(ctx context.Context, hfClient *versioned.Clientset, kubeClient *kubernetes.Clientset, stopControllersCh <-chan struct{}) error {
-	glog.Info("Starting controllers")
-	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(util.GetReleaseNamespace()))
-	g, gctx := errgroup.WithContext(ctx)
-
-	passwordResetTokenController, err := userservicecontroller.NewPasswordResetTokenController(hfInformerFactory, kubeClient, gctx)
-	if err != nil {
-		glog.Fatalf("starting passwordResetTokenController failed: %v", err)
-	}
-
-	passwordResetTokenController.SetWorkerThreadCount(2)
-
-	g.Go(func() error {
-		// TODO replica name
-		return passwordResetTokenController.RunDistributed(stopControllersCh)
-	})
-
-	// TODO start informer for ReplicaSets
-
-	hfInformerFactory.Start(stopControllersCh)
-
-	if err = g.Wait(); err != nil {
-		glog.Errorf("Error starting up the controllers: %v", err)
-		return err
-	}
-	return nil
 }

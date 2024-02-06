@@ -11,12 +11,12 @@ import (
 )
 
 type RateLimitingWorkqueueController struct {
-	DistributedController
+	ShardedController
 }
 
 func NewRateLimitingWorkqueueController(ctx context.Context, informer cache.SharedIndexInformer, kubeClient *kubernetes.Clientset, reconcileFunc func(objName string) error, name string, resyncPeriod time.Duration, rateLimiter workqueue.RateLimiter) *RateLimitingWorkqueueController {
 	rlwq := &RateLimitingWorkqueueController{
-		*NewDistributedController(ctx, informer, kubeClient, name, resyncPeriod),
+		*NewShardedController(ctx, informer, kubeClient, name, resyncPeriod),
 	}
 
 	rlwq.SetWorkqueue(workqueue.NewRateLimitingQueueWithConfig(rateLimiter, workqueue.RateLimitingQueueConfig{Name: name}))

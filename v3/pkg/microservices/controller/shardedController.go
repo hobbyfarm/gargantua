@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -19,7 +18,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-type DistributedController struct {
+type ShardedController struct {
 	BaseController
 	LoadScheduler
 	kubeClient       *kubernetes.Clientset
@@ -28,37 +27,39 @@ type DistributedController struct {
 	replica_identity int
 }
 
-func NewDistributedController(ctx context.Context, informer cache.SharedIndexInformer, kubeclient *kubernetes.Clientset, name string, resyncPeriod time.Duration) *DistributedController {
-	dc := &DistributedController{
+func NewShardedController(ctx context.Context, informer cache.SharedIndexInformer, kubeclient *kubernetes.Clientset, name string, resyncPeriod time.Duration) *ShardedController {
+	dc := &ShardedController{
 		BaseController: *newBaseController(name, ctx, informer, resyncPeriod),
 		kubeClient:     kubeclient,
 	}
 	return dc
 }
 
-func (c *DistributedController) enqueue(obj interface{}) {
+// This method calculates if the object will be reconciled on this shard and adds it to the local queue
+// otherwise it will be ignored
+func (c *ShardedController) enqueue(obj interface{}) {
 	if c.replica_identity > c.replica_count || c.replica_count == 0 {
 		// we have likely scaled down. No longer enqueue in this replica.
 		return
 	}
 
 	// calculate the placement of the object
-	placement, err := c.getReplicaPlacement(obj)
+	shardPlacement, err := c.getShardPlacement(obj)
 
 	if err != nil {
 		glog.Errorf("Could not enqueue object due to error in placement calculation: %v", err)
 		return
 	}
 
-	// is this object placed on this replica then enqueue it
-	if placement == c.replica_identity {
+	// if this object is placed on this replica then enqueue it
+	if shardPlacement == c.replica_identity {
 		c.BaseController.enqueue(obj)
 	}
 }
 
 // This method calculates on which replica an object needs to be reoconciled.
 // It uses a hash of the objects name to guarantee an almost equally distribution between replicas.
-func (c *DistributedController) getReplicaPlacement(obj interface{}) (int, error) {
+func (c *ShardedController) getShardPlacement(obj interface{}) (int, error) {
 	hasher := md5.New()
 	var key string
 	var err error
@@ -90,9 +91,9 @@ func (c *DistributedController) getReplicaPlacement(obj interface{}) (int, error
 }
 
 // RunDistributed will start a distributed controller concept
-func (c *DistributedController) RunDistributed(stopCh <-chan struct{}) error {
-	c.statefulset_name = os.Getenv("STATEFULSET_NAME")
-	podIdentityName := os.Getenv("POD_IDENTITY")
+func (c *ShardedController) RunSharded(stopCh <-chan struct{}, statefulSetName string, shardIdentity string) error {
+	c.statefulset_name = statefulSetName
+	podIdentityName := shardIdentity
 
 	parts := strings.Split(podIdentityName, "-")
 	ordinalIndex, err := strconv.Atoi(parts[len(parts)-1])
@@ -100,9 +101,33 @@ func (c *DistributedController) RunDistributed(stopCh <-chan struct{}) error {
 	if err != nil {
 		return fmt.Errorf("Error in getting a ordinal pod identity from string: %s", podIdentityName)
 	}
-
 	c.replica_identity = ordinalIndex
 
+	err = c.watchStatefulSetUpdates(stopCh)
+	if err != nil {
+		return err
+	}
+
+	return c.run(stopCh)
+}
+
+// handle updates to the statefulset. set the replica count to the current total replica count
+func (c *ShardedController) handleStatefulsetUpdate(obj interface{}) {
+	statefulset, ok := obj.(*v1.StatefulSet)
+	if !ok {
+		glog.V(4).Infof("Not a StatefulSet: %v", obj)
+		return
+	}
+
+	replicaCount := int(*statefulset.Spec.Replicas)
+	if replicaCount != c.replica_count {
+		glog.V(8).Infof("Statefulset %s updated replica count from %d to %d replicas", statefulset.Name, c.replica_count, replicaCount)
+		c.replica_count = replicaCount
+	}
+}
+
+// handle updates to the parent StatefulSet of this replica. Set the replica count to the current total replica count
+func (c *ShardedController) watchStatefulSetUpdates(stopCh <-chan struct{}) error {
 	// client to watch for updates of the parent statefulset object
 	watchlist := cache.NewListWatchFromClient(
 		c.kubeClient.AppsV1().RESTClient(),
@@ -131,25 +156,10 @@ func (c *DistributedController) RunDistributed(stopCh <-chan struct{}) error {
 
 	go controller.Run(stopCh)
 
-	glog.V(4).Info("Waiting for informer caches to sync")
+	glog.V(4).Info("Waiting for StatefulSet Informer caches to sync")
 	if ok := cache.WaitForCacheSync(stopCh, controller.HasSynced); !ok {
-		return fmt.Errorf("failed to wait for caches to sync")
+		return fmt.Errorf("failed to wait for StatefulSet Informer caches to sync")
 	}
 
-	return c.run(stopCh)
-}
-
-// handle updates to the statefulset. set the replica count to the current total replica count
-func (c *DistributedController) handleStatefulsetUpdate(obj interface{}) {
-	statefulset, ok := obj.(*v1.StatefulSet)
-	if !ok {
-		glog.V(4).Infof("Not a StatefulSet: %v", obj)
-		return
-	}
-
-	replicaCount := int(*statefulset.Spec.Replicas)
-	if replicaCount != c.replica_count {
-		glog.V(8).Infof("Statefulset %s updated replica count from %d to %d replicas", statefulset.Name, c.replica_count, replicaCount)
-		c.replica_count = replicaCount
-	}
+	return nil
 }
