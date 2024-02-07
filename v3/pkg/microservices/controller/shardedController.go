@@ -2,9 +2,9 @@ package microservices
 
 import (
 	"context"
-	"crypto/md5"
 	"encoding/binary"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"strconv"
 	"strings"
@@ -60,7 +60,7 @@ func (c *ShardedController) enqueue(obj interface{}) {
 // This method calculates on which replica an object needs to be reoconciled.
 // It uses a hash of the objects name to guarantee an almost equally distribution between replicas.
 func (c *ShardedController) getShardPlacement(obj interface{}) (int, error) {
-	hasher := md5.New()
+	hasher := fnv.New32a()
 	var key string
 	var err error
 	// Get the objects cache name
