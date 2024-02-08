@@ -191,7 +191,7 @@ func (a *GrpcAccessCodeServer) UpdateAc(ctx context.Context, acRequest *accessCo
 		} else if restrictedBindValue != "" {
 			ac.Spec.RestrictedBindValue = restrictedBindValue
 		}
-		if restrictedBind != nil {
+		if printable != nil {
 			ac.Spec.Printable = printable.Value
 		}
 		if len(labels) > 0 {
