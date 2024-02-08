@@ -147,9 +147,7 @@ func (a *GrpcAccessCodeServer) UpdateAc(ctx context.Context, acRequest *accessCo
 	courses := acRequest.GetCourses()
 	expiration := acRequest.GetExpiration()
 	restrictedBind := acRequest.GetRestrictedBind()
-	restrictedBindValue := acRequest.GetRestrictedBindValue()
 	printable := acRequest.GetPrintable()
-	labels := acRequest.GetLabels()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		ac, err := a.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Get(ctx, id, metav1.GetOptions{})
@@ -188,14 +186,11 @@ func (a *GrpcAccessCodeServer) UpdateAc(ctx context.Context, acRequest *accessCo
 		// else update restricted bind value if specified
 		if !ac.Spec.RestrictedBind {
 			ac.Spec.RestrictedBindValue = ""
-		} else if restrictedBindValue != "" {
-			ac.Spec.RestrictedBindValue = restrictedBindValue
+		} else if ac.Spec.RestrictedBindValue == "" {
+			ac.Spec.RestrictedBindValue = ac.ObjectMeta.Labels[util.ScheduledEventLabel]
 		}
 		if printable != nil {
 			ac.Spec.Printable = printable.Value
-		}
-		if len(labels) > 0 {
-			ac.Labels = labels
 		}
 
 		_, updateErr := a.hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()).Update(ctx, ac, metav1.UpdateOptions{})

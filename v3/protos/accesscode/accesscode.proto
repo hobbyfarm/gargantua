@@ -91,9 +91,7 @@ message UpdateAccessCodeRequest {
     repeated string courses = 4;
     string expiration = 5;
     google.protobuf.BoolValue restricted_bind = 6;
-    string restricted_bind_value = 7;
-    google.protobuf.BoolValue printable = 8;
-    map<string, string> labels = 9;
+    google.protobuf.BoolValue printable = 7;
 }
 
 message ListAcsResponse {
