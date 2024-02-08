@@ -4,10 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	informerV1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	controllers "github.com/hobbyfarm/gargantua/v3/pkg/microservices/controller"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/golang/glog"
@@ -21,9 +23,10 @@ type TokenController struct {
 	controllers.DelayingWorkqueueController
 	controllers.Reconciler
 	tokenLister informerV1.PasswordResetTokenLister
+	hfClient    *versioned.Clientset
 }
 
-func NewPasswordResetTokenController(hfInformerFactory hfInformers.SharedInformerFactory, kubeClient *kubernetes.Clientset, ctx context.Context) (*TokenController, error) {
+func NewPasswordResetTokenController(hfInformerFactory hfInformers.SharedInformerFactory, kubeClient *kubernetes.Clientset, hfClient *versioned.Clientset, ctx context.Context) (*TokenController, error) {
 	tokenController := &TokenController{
 		DelayingWorkqueueController: *controllers.NewDelayingWorkqueueController(
 			ctx,
@@ -31,9 +34,10 @@ func NewPasswordResetTokenController(hfInformerFactory hfInformers.SharedInforme
 			kubeClient,
 			NAME,
 			30*time.Minute),
+		hfClient:    hfClient,
+		tokenLister: hfInformerFactory.Hobbyfarm().V1().PasswordResetTokens().Lister(),
 	}
 
-	tokenController.tokenLister = hfInformerFactory.Hobbyfarm().V1().PasswordResetTokens().Lister()
 	tokenController.SetReconciler(tokenController)
 	tokenController.SetWorkScheduler(tokenController)
 
@@ -71,6 +75,7 @@ func (dwq *TokenController) Reconcile(objName string) error {
 
 	if timeUntilExpires < 0 {
 		glog.V(4).Infof("Token %s seems to old, can be deleted", token.Name)
+		dwq.hfClient.HobbyfarmV1().PasswordResetTokens(util.GetReleaseNamespace()).Delete(dwq.Context, token.Name, metav1.DeleteOptions{})
 	} else {
 		// requeue the token at the correct expiration time
 		glog.V(4).Infof("Requeueing token %s as the duration is not reached", token.Name)
@@ -78,7 +83,7 @@ func (dwq *TokenController) Reconcile(objName string) error {
 		if err != nil {
 			return err
 		}
-		delayingWorkqueue.AddAfter(token, timeUntilExpires)
+		delayingWorkqueue.AddAfter(token.Name, timeUntilExpires)
 	}
 
 	return nil

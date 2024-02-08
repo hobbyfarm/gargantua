@@ -78,7 +78,7 @@ func main() {
 
 	user.RegisterUserSvcServer(gs, us)
 
-	passwordResetTokenController, err := userservicecontroller.NewPasswordResetTokenController(hfInformerFactory, kubeClient, ctx)
+	passwordResetTokenController, err := userservicecontroller.NewPasswordResetTokenController(hfInformerFactory, kubeClient, hfClient, ctx)
 	if err != nil {
 		glog.Fatalf("creating passwordResetTokenController failed: %v", err)
 	}
@@ -106,7 +106,7 @@ func main() {
 		defer wg.Done()
 		glog.Info("Starting controllers")
 		stopControllersCh := make(chan struct{})
-		err := passwordResetTokenController.RunSharded(stopControllersCh, os.Getenv("STATEFULSET_NAME"), os.Getenv("POD_IDENTITY"))
+		err := passwordResetTokenController.RunSharded(stopControllersCh, os.Getenv("STATEFULSET_NAME"))
 		if err != nil {
 			glog.Errorf("Error starting up the controllers: %v", err)
 		}

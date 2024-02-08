@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -91,9 +92,12 @@ func (c *ShardedController) getShardPlacement(obj interface{}) (int, error) {
 }
 
 // RunSharded will start a sharded controller that watches the parent StatefulSet and applies sharding based on the total replica count
-func (c *ShardedController) RunSharded(stopCh <-chan struct{}, statefulSetName string, shardIdentity string) error {
+func (c *ShardedController) RunSharded(stopCh <-chan struct{}, statefulSetName string) error {
 	c.statefulset_name = statefulSetName
-	podIdentityName := shardIdentity
+	podIdentityName, err := os.Hostname()
+	if err != nil {
+		return fmt.Errorf("Error in getting Hostname")
+	}
 
 	parts := strings.Split(podIdentityName, "-")
 	ordinalIndex, err := strconv.Atoi(parts[len(parts)-1])
