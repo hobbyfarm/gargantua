@@ -501,16 +501,20 @@ type VirtualMachineInputTask struct {
 }
 
 type VirtualMachineOutputTask struct {
-	VMId       string            `json:"vm_id"`
-	VMName     string            `json:"vm_name"`
-	Task       hfv1.Task         `json:"task"`
-	TaskOutput TaskOutputCommand `json:"task_output"`
+	VMId               string              `json:"vm_id"`
+	VMName             string              `json:"vm_name"`
+	TaskOutputs        []TaskWithOutput    `json:"task_outputs"`
 }
 
 type TaskOutputCommand struct {
 	ActualOutputValue string `json:"actual_output_value"`
 	ActualReturnCode  int    `json:"actual_return_code"`
 	Success           bool   `json:"success"`
+}
+
+type TaskWithOutput struct {
+    Task       hfv1.Task         `json:"task"`
+    TaskOutput TaskOutputCommand `json:"task_output"`
 }
 
 func isMatchRegex(text, pattern string) bool {
@@ -564,13 +568,13 @@ func VMTaskCommandRun(task_cmd *hfv1.Task, sess *ssh.Session) (*TaskOutputComman
 	return task_cmd_res, nil
 }
 
-func GetVMOutputTask(sshConn *ssh.Client, closure_vm_input_task VirtualMachineInputTask, errorChan chan<- error) ([]VirtualMachineOutputTask, error) {
+func GetVMOutputTask(sshConn *ssh.Client, closure_vm_input_task VirtualMachineInputTask, errorChan chan<- error) (*VirtualMachineOutputTask, error) {
 	// TODO: settings for define max command go routine run in same time in VM
 	const MAX_COMMANDS_GO = 3
 	// TODO: settings for define max try command run in VM if return code 141
 	const MAX_TRY_COMMAND_RUN = 5
 
-	vm_commands_resp := make([]VirtualMachineOutputTask, 0)
+	commands_resp := make([]TaskWithOutput, 0)
 	var commands_mutex = &sync.Mutex{}
 	var commands_wg sync.WaitGroup
 	// Semaphore for count go routine run in same time in VM
@@ -614,13 +618,11 @@ func GetVMOutputTask(sshConn *ssh.Client, closure_vm_input_task VirtualMachineIn
 				count_try_command_run -= 1
 				if task_output.ActualReturnCode != 141 || count_try_command_run == 0 {
 					commands_mutex.Lock()
-					vm_task_output := VirtualMachineOutputTask{
-						VMId:       closure_vm_input_task.VMId,
-						VMName:     closure_vm_input_task.VMName,
+					vm_task_with_output := TaskWithOutput{						
 						Task:       closure_task_command,
 						TaskOutput: *task_output,
 					}
-					vm_commands_resp = append(vm_commands_resp, vm_task_output)
+					commands_resp = append(commands_resp, vm_task_with_output)
 					commands_mutex.Unlock()
 					break
 				}
@@ -628,7 +630,12 @@ func GetVMOutputTask(sshConn *ssh.Client, closure_vm_input_task VirtualMachineIn
 		}(task_command, errorChan)
 	}
 	commands_wg.Wait()
-	return vm_commands_resp, nil
+	vm_output_task := &VirtualMachineOutputTask{
+		VMId:               closure_vm_input_task.VMId,
+		VMName:             closure_vm_input_task.VMName,
+		TaskOutputs: 		commands_resp,
+	}
+	return vm_output_task, nil
 }
 
 func (sp ShellProxy) GetSSHConn(w http.ResponseWriter, r *http.Request, user *userProto.User, vmId string, errorChan chan<- error) (*ssh.Client, error) {
@@ -750,7 +757,7 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWrit
 				return
 			}
 			vm_mutex.Lock()
-			vm_output_tasks = append(vm_output_tasks, vm_output_task...)
+			vm_output_tasks = append(vm_output_tasks, *vm_output_task)
 			vm_mutex.Unlock()
 		}(vm_input_task)
 	}
