@@ -2,7 +2,6 @@ package scenarioclient
 
 import (
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-//	hfv2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/v3/pkg/scenarioserver"
 )
 

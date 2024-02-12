@@ -501,9 +501,9 @@ type VirtualMachineInputTask struct {
 }
 
 type VirtualMachineOutputTask struct {
-	VMId               string              `json:"vm_id"`
-	VMName             string              `json:"vm_name"`
-	TaskOutputs        []TaskWithOutput    `json:"task_outputs"`
+	VMId        string           `json:"vm_id"`
+	VMName      string           `json:"vm_name"`
+	TaskOutputs []TaskWithOutput `json:"task_outputs"`
 }
 
 type TaskOutputCommand struct {
@@ -513,17 +513,20 @@ type TaskOutputCommand struct {
 }
 
 type TaskWithOutput struct {
-    Task       hfv1.Task         `json:"task"`
-    TaskOutput TaskOutputCommand `json:"task_output"`
+	Task       hfv1.Task         `json:"task"`
+	TaskOutput TaskOutputCommand `json:"task_output"`
+	Error      string            `json:"error"`
 }
 
 func isMatchRegex(text, pattern string) bool {
-	// Compile the regular expression pattern
 	re := regexp.MustCompile(pattern)
-	// Use the MatchString method to check if the text matches the pattern
 	return re.MatchString(text)
 }
 
+/*
+Function executes a command on a remote server session and checks for success based on the provided task command.
+It returns TaskOutputCommand struct containing the actual output value, return code, and success status, depen of ReturnType.
+*/
 func VMTaskCommandRun(task_cmd *hfv1.Task, sess *ssh.Session) (*TaskOutputCommand, error) {
 	out, err := sess.CombinedOutput(task_cmd.Command)
 	actual_output_value := strings.TrimRight(string(out), "\r\n")
@@ -568,16 +571,22 @@ func VMTaskCommandRun(task_cmd *hfv1.Task, sess *ssh.Session) (*TaskOutputComman
 	return task_cmd_res, nil
 }
 
+/*
+Function retrieves output tasks from a virtual machine by executing multiple commands concurrently on the SSH connection.
+It takes an SSH client connection, a VirtualMachineInputTask representing input tasks for the VM,
+and an error channel to report any errors encountered during execution.
+It returns a VirtualMachineOutputTask containing the output of the executed tasks, along with any errors encountered.
+*/
 func GetVMOutputTask(sshConn *ssh.Client, closure_vm_input_task VirtualMachineInputTask, errorChan chan<- error) (*VirtualMachineOutputTask, error) {
 	// TODO: settings for define max command go routine run in same time in VM
 	const MAX_COMMANDS_GO = 3
-	// TODO: settings for define max try command run in VM if return code 141
-	const MAX_TRY_COMMAND_RUN = 5
-
+	// Initialize slice to store task outputs
 	commands_resp := make([]TaskWithOutput, 0)
+	// Mutex for synchronizing access to commands_resp slice
 	var commands_mutex = &sync.Mutex{}
+	// WaitGroup to wait for all goroutines in VM to finish
 	var commands_wg sync.WaitGroup
-	// Semaphore for count go routine run in same time in VM
+	// Semaphore for count goroutine run in same time in VM
 	// a context is required for the weighted semaphore pkg.
 	ctx := context.Background()
 	var commands_semaphore = semaphore.NewWeighted(int64(MAX_COMMANDS_GO))
@@ -587,55 +596,85 @@ func GetVMOutputTask(sshConn *ssh.Client, closure_vm_input_task VirtualMachineIn
 		if err := commands_semaphore.Acquire(ctx, 1); err != nil {
 			glog.Errorf("did not acquire vm_semafore")
 		}
-		go func(closure_task_command hfv1.Task, errChan chan<- error) {
+		go func(closure_task_command hfv1.Task) {
 			defer commands_wg.Done()
 			defer commands_semaphore.Release(1)
-			// try command run again when exit code == 141
-			count_try_command_run := MAX_TRY_COMMAND_RUN
-			for count_try_command_run > 0 {
-				sess, err := sshConn.NewSession()
-				if err != nil {
-					glog.Errorf("did not setup ssh session properly")
-					if len(errorChan) < cap(errorChan) {
-						errChan <- err
-					}
-					return
-				}
-				if err != nil {
-					glog.Infof("%s", err)
-				}
-				task_output, err := VMTaskCommandRun(&closure_task_command, sess)
+			vm_task_with_output, _ := GetTaskWithOutput(sshConn, errorChan, closure_task_command)
+			commands_mutex.Lock()
+			commands_resp = append(commands_resp, *vm_task_with_output)
+			commands_mutex.Unlock()
 
-				if err != nil {
-					glog.Infof("error sending command: %v", err)
-					if len(errorChan) < cap(errorChan) {
-						errChan <- err
-					}
-					return
-				}
-
-				sess.Close()
-				count_try_command_run -= 1
-				if task_output.ActualReturnCode != 141 || count_try_command_run == 0 {
-					commands_mutex.Lock()
-					vm_task_with_output := TaskWithOutput{						
-						Task:       closure_task_command,
-						TaskOutput: *task_output,
-					}
-					commands_resp = append(commands_resp, vm_task_with_output)
-					commands_mutex.Unlock()
-					break
-				}
-			}
-		}(task_command, errorChan)
+		}(task_command)
 	}
 	commands_wg.Wait()
 	vm_output_task := &VirtualMachineOutputTask{
-		VMId:               closure_vm_input_task.VMId,
-		VMName:             closure_vm_input_task.VMName,
-		TaskOutputs: 		commands_resp,
+		VMId:        closure_vm_input_task.VMId,
+		VMName:      closure_vm_input_task.VMName,
+		TaskOutputs: commands_resp,
 	}
 	return vm_output_task, nil
+}
+
+/*
+Function executes a task command on the SSH connection with number of attempts MAX_TRY_COMMAND_RUN
+to retrieve output when the task command execute with return code 141.
+*/
+func GetTaskWithOutput(sshConn *ssh.Client, errorChan chan<- error, task_command hfv1.Task) (*TaskWithOutput, error) {
+	// TODO: settings for define max try command run in VM if return code 141
+	const MAX_TRY_COMMAND_RUN = 5
+	count_try_command_run := MAX_TRY_COMMAND_RUN
+	var errRun error
+	// try command run again when exit code == 141
+	for count_try_command_run > 0 {
+		task_output, err := GetOutputTask(sshConn, errorChan, task_command)
+		count_try_command_run -= 1
+		if task_output.ActualReturnCode != 141 {
+			vm_task_with_output := &TaskWithOutput{
+				Task:       task_command,
+				TaskOutput: *task_output,
+			}
+			return vm_task_with_output, nil
+		}
+		if count_try_command_run == 0 {
+			glog.Errorf("error try run command: %v", err)
+			vm_task_with_output := &TaskWithOutput{
+				Task:  task_command,
+				Error: "error try run command",
+			}
+			return vm_task_with_output, err
+		}
+		errRun = err
+	}
+	return nil, errRun
+}
+
+func GetOutputTask(sshConn *ssh.Client, errorChan chan<- error, closure_task_command hfv1.Task) (*TaskOutputCommand, error) {
+	sess, err := CreateNewSession(sshConn, errorChan)
+	if err != nil {
+		return nil, err
+	}
+	task_output, err := VMTaskCommandRun(&closure_task_command, sess)
+	if err != nil {
+		glog.Infof("error sending command: %v", err)
+		if len(errorChan) < cap(errorChan) {
+			errorChan <- err
+		}
+		return nil, err
+	}
+	sess.Close()
+	return task_output, nil
+}
+
+func CreateNewSession(sshConn *ssh.Client, errorChan chan<- error) (*ssh.Session, error) {
+	sess, err := sshConn.NewSession()
+	if err != nil {
+		glog.Errorf("did not setup ssh session properly")
+		if len(errorChan) < cap(errorChan) {
+			errorChan <- err
+		}
+		return nil, err
+	}
+	return sess, nil
 }
 
 func (sp ShellProxy) GetSSHConn(w http.ResponseWriter, r *http.Request, user *userProto.User, vmId string, errorChan chan<- error) (*ssh.Client, error) {
@@ -722,6 +761,11 @@ func (sp ShellProxy) GetSSHConn(w http.ResponseWriter, r *http.Request, user *us
 	return sshConn, err
 }
 
+/*
+Function handles the HTTP request to verify tasks for a group of virtual machines using a semaphore for concurrency control.
+It authenticates the request, decodes the incoming JSON payload containing VirtualMachineInputTasks,
+and executes the tasks concurrently on the corresponding virtual machines.
+*/
 func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWriter, r *http.Request) {
 	user, err := rbac2.AuthenticateRequest(r, sp.authnClient)
 	if err != nil {
@@ -729,18 +773,21 @@ func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWrit
 		return
 	}
 
+	// Decode the incoming JSON payload containing VirtualMachineInputTasks
 	var vm_input_tasks []VirtualMachineInputTask
-
 	err = json.NewDecoder(r.Body).Decode(&vm_input_tasks)
 	if err != nil {
 		glog.Infof("%s", err)
 	}
-	glog.Infof("vm_input_tasks: %+v", vm_input_tasks)
 
+	// Create an error channel to report errors encountered during task execution
 	errorChan := make(chan error, 1)
 
+	// Initialize slice to store the output tasks for each virtual machine
 	vm_output_tasks := make([]VirtualMachineOutputTask, 0)
+	// Mutex for synchronizing access to vm_output_tasks slice
 	var vm_mutex = &sync.Mutex{}
+	// WaitGroup to wait for all goroutines of VMs to finish
 	var vm_wg sync.WaitGroup
 
 	for _, vm_input_task := range vm_input_tasks {

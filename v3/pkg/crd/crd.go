@@ -4,7 +4,6 @@ import (
 	"github.com/ebauman/crder"
 //	"github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-//	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 	terraformv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
 )
 
