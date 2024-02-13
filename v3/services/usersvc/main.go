@@ -31,7 +31,7 @@ func init() {
 }
 
 func main() {
-	cfg, hfClient := microservices.BuildClusterConfig(serviceConfig)
+	cfg, hfClient, _ := microservices.BuildClusterConfig(serviceConfig)
 
 	namespace := util.GetReleaseNamespace()
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
@@ -95,7 +95,8 @@ func main() {
 		microservices.StartAPIServer(userServer)
 	}()
 
-	stopCh := signals.SetupSignalHandler()
-	hfInformerFactory.Start(stopCh)
+	stopInformerFactoryCh := signals.SetupSignalHandler()
+	hfInformerFactory.Start(stopInformerFactoryCh)
+
 	wg.Wait()
 }

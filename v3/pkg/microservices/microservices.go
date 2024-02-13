@@ -6,14 +6,16 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
-	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
+
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	tls2 "github.com/hobbyfarm/gargantua/v3/pkg/tls"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/handlers"
@@ -23,6 +25,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -61,6 +64,7 @@ const (
 	defaultGrpcPort          string        = "8080"
 	defaultApiPort           string        = "80"
 	InitialConnectionTimeout time.Duration = 30 * time.Second
+	defaultThreadCount       int           = 1
 )
 
 var CORS_ALLOWED_METHODS_ALL = [...]string{"GET", "POST", "PUT", "HEAD", "OPTIONS", "DELETE"}
@@ -290,7 +294,7 @@ func buildTLSServerCredentials(certPath string, keyPath string) (credentials.Tra
 	}), nil
 }
 
-func BuildClusterConfig(serviceConfig *ServiceConfig) (*rest.Config, *hfClientset.Clientset) {
+func BuildClusterConfig(serviceConfig *ServiceConfig) (*rest.Config, *hfClientset.Clientset, *kubernetes.Clientset) {
 	const (
 		ClientGoQPS   = 100
 		ClientGoBurst = 100
@@ -310,7 +314,12 @@ func BuildClusterConfig(serviceConfig *ServiceConfig) (*rest.Config, *hfClientse
 		glog.Fatal(err)
 	}
 
-	return cfg, hfClient
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
+	}
+
+	return cfg, hfClient, kubeClient
 }
 
 // ParseFlags declares the flags and parses them, then returns a ServiceConfig struct.
@@ -341,4 +350,22 @@ func BuildServiceConfig() *ServiceConfig {
 	cfg.ServerCert = serverCert
 
 	return cfg
+}
+
+// This method tries to retreive the controller thread count from an environment variable CONTROLLER_THREAD_COUNT
+// otherwise it sets the thread count to the default value
+func GetWorkerThreadCount() int {
+	workerThreadCountString := os.Getenv("CONTROLLER_THREAD_COUNT")
+	workerThreads := defaultThreadCount
+	if workerThreadCountString != "" {
+		i, err := strconv.Atoi(workerThreadCountString)
+		if err != nil {
+			glog.Infof("Error parsing env var CONTROLLER_THREAD_COUNT, using default thread count %d", workerThreads)
+		} else {
+
+		}
+		workerThreads = i
+	}
+
+	return workerThreads
 }
