@@ -58,14 +58,6 @@ type OneTimeAccessCodeListerExpansion interface{}
 // OneTimeAccessCodeNamespaceLister.
 type OneTimeAccessCodeNamespaceListerExpansion interface{}
 
-// PasswordResetTokenListerExpansion allows custom methods to be added to
-// PasswordResetTokenLister.
-type PasswordResetTokenListerExpansion interface{}
-
-// PasswordResetTokenNamespaceListerExpansion allows custom methods to be added to
-// PasswordResetTokenNamespaceLister.
-type PasswordResetTokenNamespaceListerExpansion interface{}
-
 // PredefinedServiceListerExpansion allows custom methods to be added to
 // PredefinedServiceLister.
 type PredefinedServiceListerExpansion interface{}
