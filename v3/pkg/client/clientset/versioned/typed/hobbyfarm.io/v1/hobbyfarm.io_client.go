@@ -33,7 +33,6 @@ type HobbyfarmV1Interface interface {
 	DynamicBindConfigurationsGetter
 	EnvironmentsGetter
 	OneTimeAccessCodesGetter
-	PasswordResetTokensGetter
 	PredefinedServicesGetter
 	ProgressesGetter
 	ScenariosGetter
@@ -71,10 +70,6 @@ func (c *HobbyfarmV1Client) Environments(namespace string) EnvironmentInterface 
 
 func (c *HobbyfarmV1Client) OneTimeAccessCodes(namespace string) OneTimeAccessCodeInterface {
 	return newOneTimeAccessCodes(c, namespace)
-}
-
-func (c *HobbyfarmV1Client) PasswordResetTokens(namespace string) PasswordResetTokenInterface {
-	return newPasswordResetTokens(c, namespace)
 }
 
 func (c *HobbyfarmV1Client) PredefinedServices(namespace string) PredefinedServiceInterface {
