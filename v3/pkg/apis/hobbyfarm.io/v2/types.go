@@ -21,8 +21,9 @@ type UserList struct {
 }
 
 type UserSpec struct {
-	Email       string            `json:"email"`
-	Password    string            `json:"password"`
-	AccessCodes []string          `json:"access_codes"`
-	Settings    map[string]string `json:"settings"`
+	Email              string            `json:"email"`
+	Password           string            `json:"password"`
+	AccessCodes        []string          `json:"access_codes"`
+	Settings           map[string]string `json:"settings"`
+	LastLoginTimestamp string            `json:"last_login_timestamp"`
 }

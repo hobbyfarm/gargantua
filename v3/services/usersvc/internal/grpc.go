@@ -6,6 +6,7 @@ import (
 	"encoding/base32"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
@@ -119,6 +120,7 @@ func (u *GrpcUserServer) CreateUser(c context.Context, cur *userProto.CreateUser
 	}
 
 	newUser.Spec.Password = string(passwordHash)
+	newUser.Spec.LastLoginTimestamp = time.Now().Format(time.UnixDate)
 
 	_, err = u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Create(u.ctx, &newUser, metav1.CreateOptions{})
 
@@ -147,11 +149,13 @@ func (u *GrpcUserServer) getUser(id string) (*userProto.User, error) {
 	}
 
 	return &userProto.User{
-		Id:          obj.Name,
-		Email:       obj.Spec.Email,
-		Password:    obj.Spec.Password,
-		AccessCodes: obj.Spec.AccessCodes,
-		Settings:    obj.Spec.Settings,
+		Id:                  obj.Name,
+		Email:               obj.Spec.Email,
+		Password:            obj.Spec.Password,
+		AccessCodes:         obj.Spec.AccessCodes,
+		Settings:            obj.Spec.Settings,
+		LastLoginTimestamp:  obj.Spec.LastLoginTimestamp,
+		RegisteredTimestamp: obj.GetCreationTimestamp().Time.Format(time.UnixDate),
 	}, nil
 }
 
@@ -203,11 +207,13 @@ func (u *GrpcUserServer) ListUser(ctx context.Context, empty *empty.Empty) (*use
 	preparedUsers := []*userProto.User{} // must be declared this way so as to JSON marshal into [] instead of null
 	for _, s := range users {
 		preparedUsers = append(preparedUsers, &userProto.User{
-			Id:          s.Name,
-			Email:       s.Spec.Email,
-			Password:    s.Spec.Password,
-			AccessCodes: s.Spec.AccessCodes,
-			Settings:    s.Spec.Settings,
+			Id:                  s.Name,
+			Email:               s.Spec.Email,
+			Password:            s.Spec.Password,
+			AccessCodes:         s.Spec.AccessCodes,
+			Settings:            s.Spec.Settings,
+			LastLoginTimestamp:  s.Spec.LastLoginTimestamp,
+			RegisteredTimestamp: s.GetCreationTimestamp().Time.Format(time.UnixDate),
 		})
 	}
 
@@ -337,6 +343,58 @@ func (u *GrpcUserServer) UpdateAccessCodes(ctx context.Context, updateAccessCode
 	}
 
 	return &userProto.User{}, nil
+}
+
+func (u *GrpcUserServer) SetLastLoginTimestamp(ctx context.Context, userId *userProto.UserId) (*empty.Empty, error) {
+	id := userId.GetId()
+
+	if len(id) == 0 {
+		newErr := status.Newf(
+			codes.InvalidArgument,
+			"no id passed in",
+		)
+		newErr, wde := newErr.WithDetails(userId)
+		if wde != nil {
+			return &empty.Empty{}, wde
+		}
+		return &empty.Empty{}, newErr.Err()
+	}
+
+	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		user, err := u.userLister.Users(util.GetReleaseNamespace()).Get(id)
+		if err != nil {
+			newErr := status.Newf(
+				codes.Internal,
+				"error while retrieving user %s",
+				id,
+			)
+			newErr, wde := newErr.WithDetails(userId)
+			if wde != nil {
+				return wde
+			}
+			glog.Error(err)
+			return newErr.Err()
+		}
+
+		user.Spec.LastLoginTimestamp = time.Now().Format(time.UnixDate)
+
+		_, updateErr := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Update(u.ctx, user, metav1.UpdateOptions{})
+		return updateErr
+	})
+
+	if retryErr != nil {
+		newErr := status.Newf(
+			codes.Internal,
+			"error attempting to update",
+		)
+		newErr, wde := newErr.WithDetails(userId)
+		if wde != nil {
+			return &empty.Empty{}, wde
+		}
+		return &empty.Empty{}, newErr.Err()
+	}
+
+	return &empty.Empty{}, nil
 }
 
 func (u *GrpcUserServer) GetUserByEmail(c context.Context, gur *userProto.GetUserByEmailRequest) (*userProto.User, error) {
