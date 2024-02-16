@@ -3,7 +3,6 @@ package accesscode
 import (
 	"context"
 	"fmt"
-	"sort"
 	"time"
 
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
@@ -183,71 +182,4 @@ func (acc AccessCodeClient) GetCourseIds(code string) ([]string, error) {
 	}
 
 	return accessCode.Spec.Courses, nil
-}
-
-func (acc AccessCodeClient) GetClosestAccessCode(userID string, scenarioOrCourseId string) (string, error) {
-	// basically let's get all of the access codes, sort them by expiration, and start going down the list looking for access codes.
-
-	user, err := acc.hfClientSet.HobbyfarmV2().Users(util2.GetReleaseNamespace()).Get(acc.ctx, userID, metav1.GetOptions{}) // @TODO: FIX THIS TO NOT DIRECTLY CALL USER
-
-	if err != nil {
-		return "", fmt.Errorf("error retrieving user: %v", err)
-	}
-
-	rawAccessCodes, err := acc.GetAccessCodesWithOTACs(user.Spec.AccessCodes)
-
-	if err != nil {
-		return "", fmt.Errorf("access codes were not found %v", err)
-	}
-
-	var accessCodes []hfv1.AccessCode
-	for _, code := range rawAccessCodes {
-		for _, s := range code.Spec.Scenarios {
-			if s == scenarioOrCourseId {
-				accessCodes = append(accessCodes, code)
-				break
-			}
-		}
-
-		for _, c := range code.Spec.Courses {
-			if c == scenarioOrCourseId {
-				accessCodes = append(accessCodes, code)
-				break
-			}
-		}
-	}
-
-	if len(accessCodes) == 0 {
-		return "", fmt.Errorf("access codes were not found for user %s with scenario or course id %s", userID, scenarioOrCourseId)
-	}
-
-	sort.Slice(accessCodes, func(i, j int) bool {
-		if accessCodes[i].Spec.Expiration == "" || accessCodes[j].Spec.Expiration == "" {
-			if accessCodes[i].Spec.Expiration == "" {
-				return false
-			}
-			if accessCodes[j].Spec.Expiration == "" {
-				return true
-			}
-		}
-		iExp, err := time.Parse(time.UnixDate, accessCodes[i].Spec.Expiration)
-		if err != nil {
-			return false
-		}
-		jExp, err := time.Parse(time.UnixDate, accessCodes[j].Spec.Expiration)
-		if err != nil {
-			return true
-		}
-		return iExp.Before(jExp)
-	})
-
-	if glog.V(6) {
-		var accessCodesList []string
-		for _, ac := range accessCodes {
-			accessCodesList = append(accessCodesList, ac.Spec.Code)
-		}
-		glog.Infof("Access code list was %v", accessCodesList)
-	}
-
-	return accessCodes[0].Name, nil
 }
