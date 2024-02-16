@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
@@ -12,9 +16,6 @@ import (
 	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/scenarioclient"
 	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"net/http"
-	"os"
-	"time"
 
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"
@@ -84,28 +85,22 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var id string
 	courseid := r.PostFormValue("course")
 	scenarioid := r.PostFormValue("scenario")
-	if courseid != "" {
-		id = courseid
-	} else {
-		id = scenarioid
+
+	if courseid == "" && scenarioid == "" {
+		util2.ReturnHTTPMessage(w, r, 500, "error", "no course/scenario id passed in")
+		return
 	}
 
 	accessCode := r.PostFormValue("access_code")
-	glog.V(4).Infof("access code passed in was %s", accessCode)
 
 	restrictedBind := false
 	restrictedBindVal := ""
 
 	if accessCode == "" {
-		accessCode, err = sss.accessCodeClient.GetClosestAccessCode(user.GetId(), id)
-		if err != nil {
-			glog.Error(err)
-			util2.ReturnHTTPMessage(w, r, 500, "error", "error retrieving access code applicable to course/scenario")
-			return
-		}
+		util2.ReturnHTTPMessage(w, r, 400, "error", "An accesscode has to be given in order so start a sesion")
+		return
 	}
 
 	// we should validate the user can use this access code
@@ -120,10 +115,6 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		restrictedBindVal = accessCodeObj.Spec.RestrictedBindValue
 	}
 
-	if id == "" {
-		util2.ReturnHTTPMessage(w, r, 500, "error", "no course/scenario id passed in")
-		return
-	}
 	random := util2.RandStringRunes(10)
 	var course hfv1.Course
 	var scenario hfv1.Scenario
@@ -355,7 +346,6 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 		glog.Error(err)
 	}
 	util2.ReturnHTTPContent(w, r, 201, "created", encodedSS)
-	return
 }
 
 func (sss SessionServer) CreateProgress(sessionId string, scheduledEventId string, scenarioId string, courseId string, userId string, totalSteps int) {
@@ -478,7 +468,6 @@ func (sss SessionServer) FinishedSessionFunc(w http.ResponseWriter, r *http.Requ
 	}
 
 	util2.ReturnHTTPMessage(w, r, 200, "updated", "updated session")
-	return
 }
 
 func (sss SessionServer) KeepAliveSessionFunc(w http.ResponseWriter, r *http.Request) {
@@ -581,7 +570,6 @@ func (sss SessionServer) KeepAliveSessionFunc(w http.ResponseWriter, r *http.Req
 	}
 
 	util2.ReturnHTTPMessage(w, r, 202, "keepalived", "keepalive successful")
-	return
 }
 
 func (sss SessionServer) PauseSessionFunc(w http.ResponseWriter, r *http.Request) {
@@ -668,7 +656,6 @@ func (sss SessionServer) PauseSessionFunc(w http.ResponseWriter, r *http.Request
 	}
 
 	util2.ReturnHTTPMessage(w, r, 204, "updated", "updated session")
-	return
 }
 
 func (sss SessionServer) ResumeSessionFunc(w http.ResponseWriter, r *http.Request) {
@@ -750,7 +737,6 @@ func (sss SessionServer) ResumeSessionFunc(w http.ResponseWriter, r *http.Reques
 	}
 
 	util2.ReturnHTTPMessage(w, r, 204, "updated", "resumed session")
-	return
 }
 
 func (sss SessionServer) GetSessionFunc(w http.ResponseWriter, r *http.Request) {
@@ -824,5 +810,4 @@ func (sss SessionServer) GetSessionById(id string) (hfv1.Session, error) {
 	}
 
 	return *Session, nil
-
 }
