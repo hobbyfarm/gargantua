@@ -20,17 +20,6 @@ func GenerateCRDs() []crder.CRD {
 						WithStatus()
 				})
 		}),
-		HobbyfarmCRD(&v1.VirtualMachineClaim{}, func(c *crder.CRD) {
-			c.
-				IsNamespaced(true).
-				AddVersion("v1", &v1.VirtualMachineClaim{}, func(cv *crder.Version) {
-					cv.
-						WithColumn("BindMode", ".status.bind_mode").
-						WithColumn("Bound", ".status.bound").
-						WithColumn("Ready", ".status.ready").
-						WithStatus()
-				})
-		}),
 		HobbyfarmCRD(&v1.VirtualMachineTemplate{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
@@ -40,16 +29,6 @@ func GenerateCRDs() []crder.CRD {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.Environment{}, nil)
-		}),
-		HobbyfarmCRD(&v1.VirtualMachineSet{}, func(c *crder.CRD) {
-			c.
-				IsNamespaced(true).
-				AddVersion("v1", &v1.VirtualMachineSet{}, func(cv *crder.Version) {
-					cv.
-						WithColumn("Available", ".status.available").
-						WithColumn("Provisioned", ".status.provisioned").
-						WithStatus()
-				})
 		}),
 		HobbyfarmCRD(&v1.Course{}, func(c *crder.CRD) {
 			c.
@@ -72,20 +51,6 @@ func GenerateCRDs() []crder.CRD {
 						WithColumn("StartTime", ".status.start_time").
 						WithColumn("ExpirationTime", ".status.end_time").
 						WithStatus()
-				})
-		}),
-		HobbyfarmCRD(&v1.Progress{}, func(c *crder.CRD) {
-			c.
-				WithNames("progress", "progresses").
-				IsNamespaced(true).
-				AddVersion("v1", &v1.Progress{}, func(cv *crder.Version) {
-					cv.
-						WithColumn("CurrentStep", ".spec.current_step").
-						WithColumn("Course", ".spec.course").
-						WithColumn("Scenario", ".spec.scenario").
-						WithColumn("User", ".spec.user").
-						WithColumn("Started", ".spec.started").
-						WithColumn("LastUpdate", ".spec.last_update")
 				})
 		}),
 		HobbyfarmCRD(&v1.ScheduledEvent{}, func(c *crder.CRD) {
