@@ -42,7 +42,6 @@ func init() {
 func NewGrpcDynamicBindConfigurationServer(hfClientSet hfClientset.Interface) *GrpcDynamicBindConfigurationServer {
 	return &GrpcDynamicBindConfigurationServer{
 		hfClientSet: hfClientSet,
-		// ... potentionally more ...
 	}
 }
 

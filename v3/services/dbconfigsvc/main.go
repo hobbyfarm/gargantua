@@ -23,12 +23,12 @@ func main() {
 	cfg, hfClient := microservices.BuildClusterConfig(serviceConfig)
 
 	crds := dbconfigservice.GenerateDynamicBindConfigurationCRD()
-	glog.Info("installing/updating dynamicbindconfiguration CRDs")
+	glog.Info("installing/updating dynamic bind configuration CRDs")
 	err := crder.InstallUpdateCRDs(cfg, crds...)
 	if err != nil {
-		glog.Fatalf("failed installing/updating dynamicbindconfiguration CRDs: %s", err.Error())
+		glog.Fatalf("failed installing/updating dynamic bind configuration CRDs: %s", err.Error())
 	}
-	glog.Info("finished installing/updating dynamicbindconfiguration CRDs")
+	glog.Info("finished installing/updating dynamic bind configuration CRDs")
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
