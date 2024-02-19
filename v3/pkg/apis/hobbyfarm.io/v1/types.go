@@ -288,7 +288,7 @@ type ScenarioStep struct {
 
 type VirtualMachineTasks struct {
 	VMName string `json:"vm_name"`
-	Tasks  []Task `json:"task_command"`
+	Tasks  []Task `json:"tasks"`
 }
 type Task struct {
 	Name                string `json:"name"`
