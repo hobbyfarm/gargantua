@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package progress;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/progress";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+service ProgressSvc {
+    rpc CreateProgress (CreateProgressRequest) returns (google.protobuf.Empty);
+    rpc GetProgress (general.ResourceId) returns (Progress);
+    rpc UpdateProgress (UpdateProgressRequest) returns (google.protobuf.Empty);
+    rpc DeleteProgress (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionProgress (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListProgress (general.ListOptions) returns (ListProgressesResponse);
+}
+
+message CreateProgressRequest {
+    uint32 current_step = 1;
+    uint32 max_step = 2;
+    uint32 total_step = 3;
+    string scenario = 4;
+    string course = 5;
+    string user = 6;
+    map<string, string> labels = 7;
+}
+
+message Progress {
+    string id = 1;
+    uint32 current_step = 2;
+    uint32 max_step = 3;
+    uint32 total_step = 4;
+    string scenario = 5;
+    string course = 6;
+    string user = 7;
+    string started = 8;
+    string last_update = 9;
+    string finished = 10;
+    repeated ProgressStep steps = 11;
+    map<string, string> labels = 12;
+}
+
+message ProgressStep {
+    uint32 step = 1;
+    string timestamp = 2;
+}
+
+message UpdateProgressRequest {
+    string id = 1;
+    google.protobuf.UInt32Value current_step = 2;
+    google.protobuf.UInt32Value max_step = 3;
+    google.protobuf.UInt32Value total_step = 4;
+    string last_update = 5;
+    string finished = 6;
+    repeated ProgressStep steps = 7;
+}
+
+message ListProgressesResponse {
+    repeated Progress progresses = 1;
+}
