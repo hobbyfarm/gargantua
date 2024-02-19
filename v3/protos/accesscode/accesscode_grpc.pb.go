@@ -36,7 +36,6 @@ const (
 	AccessCodeSvc_ValidateExistence_FullMethodName       = "/accesscode.AccessCodeSvc/ValidateExistence"
 	AccessCodeSvc_GetAccessCodesWithOTACs_FullMethodName = "/accesscode.AccessCodeSvc/GetAccessCodesWithOTACs"
 	AccessCodeSvc_GetAccessCodeWithOTACs_FullMethodName  = "/accesscode.AccessCodeSvc/GetAccessCodeWithOTACs"
-	AccessCodeSvc_GetClosestAccessCode_FullMethodName    = "/accesscode.AccessCodeSvc/GetClosestAccessCode"
 )
 
 // AccessCodeSvcClient is the client API for AccessCodeSvc service.
@@ -61,7 +60,6 @@ type AccessCodeSvcClient interface {
 	ValidateExistence(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*ResourceValidation, error)
 	GetAccessCodesWithOTACs(ctx context.Context, in *ResourceIds, opts ...grpc.CallOption) (*ListAcsResponse, error)
 	GetAccessCodeWithOTACs(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*AccessCode, error)
-	GetClosestAccessCode(ctx context.Context, in *ClosestAcRequest, opts ...grpc.CallOption) (*general.ResourceId, error)
 }
 
 type accessCodeSvcClient struct {
@@ -207,15 +205,6 @@ func (c *accessCodeSvcClient) GetAccessCodeWithOTACs(ctx context.Context, in *ge
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) GetClosestAccessCode(ctx context.Context, in *ClosestAcRequest, opts ...grpc.CallOption) (*general.ResourceId, error) {
-	out := new(general.ResourceId)
-	err := c.cc.Invoke(ctx, AccessCodeSvc_GetClosestAccessCode_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // AccessCodeSvcServer is the server API for AccessCodeSvc service.
 // All implementations must embed UnimplementedAccessCodeSvcServer
 // for forward compatibility
@@ -238,7 +227,6 @@ type AccessCodeSvcServer interface {
 	ValidateExistence(context.Context, *general.ResourceId) (*ResourceValidation, error)
 	GetAccessCodesWithOTACs(context.Context, *ResourceIds) (*ListAcsResponse, error)
 	GetAccessCodeWithOTACs(context.Context, *general.ResourceId) (*AccessCode, error)
-	GetClosestAccessCode(context.Context, *ClosestAcRequest) (*general.ResourceId, error)
 	mustEmbedUnimplementedAccessCodeSvcServer()
 }
 
@@ -290,9 +278,6 @@ func (UnimplementedAccessCodeSvcServer) GetAccessCodesWithOTACs(context.Context,
 }
 func (UnimplementedAccessCodeSvcServer) GetAccessCodeWithOTACs(context.Context, *general.ResourceId) (*AccessCode, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAccessCodeWithOTACs not implemented")
-}
-func (UnimplementedAccessCodeSvcServer) GetClosestAccessCode(context.Context, *ClosestAcRequest) (*general.ResourceId, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetClosestAccessCode not implemented")
 }
 func (UnimplementedAccessCodeSvcServer) mustEmbedUnimplementedAccessCodeSvcServer() {}
 
@@ -577,24 +562,6 @@ func _AccessCodeSvc_GetAccessCodeWithOTACs_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AccessCodeSvc_GetClosestAccessCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ClosestAcRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AccessCodeSvcServer).GetClosestAccessCode(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AccessCodeSvc_GetClosestAccessCode_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessCodeSvcServer).GetClosestAccessCode(ctx, req.(*ClosestAcRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // AccessCodeSvc_ServiceDesc is the grpc.ServiceDesc for AccessCodeSvc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -661,10 +628,6 @@ var AccessCodeSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAccessCodeWithOTACs",
 			Handler:    _AccessCodeSvc_GetAccessCodeWithOTACs_Handler,
-		},
-		{
-			MethodName: "GetClosestAccessCode",
-			Handler:    _AccessCodeSvc_GetClosestAccessCode_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

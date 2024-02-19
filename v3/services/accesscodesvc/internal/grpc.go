@@ -3,7 +3,6 @@ package accesscodeservice
 import (
 	"context"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/golang/glog"
@@ -623,103 +622,6 @@ func (a *GrpcAccessCodeServer) GetAccessCodeWithOTACs(ctx context.Context, codeI
 	}
 
 	return accessCodes[0], nil
-}
-
-func (a *GrpcAccessCodeServer) GetClosestAccessCode(ctx context.Context, closestAcReq *accessCodeProto.ClosestAcRequest) (*general.ResourceId, error) {
-	// basically let's get all of the access codes, sort them by expiration, and start going down the list looking for access codes.
-
-	userId := closestAcReq.GetUserId()
-	courseOrScenarioId := closestAcReq.GetCourseOrScenarioId()
-
-	if len(userId) == 0 || len(courseOrScenarioId) == 0 {
-		return &general.ResourceId{}, errors.GrpcError(
-			codes.InvalidArgument,
-			"no user_id or course_or_scneario_id passed in",
-			closestAcReq,
-		)
-	}
-
-	user, err := a.userClient.GetUserById(ctx, &general.ResourceId{Id: userId})
-
-	if err != nil {
-		return &general.ResourceId{}, errors.GrpcError(
-			codes.Internal,
-			"error while retrieving user by id: %s with error: %v",
-			closestAcReq,
-			userId,
-			err,
-		)
-	}
-
-	rawAccessCodeList, err := a.GetAccessCodesWithOTACs(ctx, &accessCodeProto.ResourceIds{Ids: user.GetAccessCodes()})
-
-	if err != nil {
-		return &general.ResourceId{}, errors.GrpcError(
-			codes.NotFound,
-			"access codes were not found %v",
-			closestAcReq,
-			err,
-		)
-	}
-
-	rawAccessCodes := rawAccessCodeList.GetAccessCodes()
-
-	accessCodes := []*accessCodeProto.AccessCode{} // must be declared this way so as to JSON marshal into [] instead of null
-	for _, code := range rawAccessCodes {
-		for _, s := range code.Scenarios {
-			if s == courseOrScenarioId {
-				accessCodes = append(accessCodes, code)
-				break
-			}
-		}
-
-		for _, c := range code.Courses {
-			if c == courseOrScenarioId {
-				accessCodes = append(accessCodes, code)
-				break
-			}
-		}
-	}
-
-	if len(accessCodes) == 0 {
-		return &general.ResourceId{}, errors.GrpcError(
-			codes.NotFound,
-			"access codes were not found for user %s with scenario or course id %s",
-			closestAcReq,
-			userId,
-			courseOrScenarioId,
-		)
-	}
-
-	sort.Slice(accessCodes, func(i, j int) bool {
-		if accessCodes[i].Expiration == "" || accessCodes[j].Expiration == "" {
-			if accessCodes[i].Expiration == "" {
-				return false
-			}
-			if accessCodes[j].Expiration == "" {
-				return true
-			}
-		}
-		iExp, err := time.Parse(time.UnixDate, accessCodes[i].Expiration)
-		if err != nil {
-			return false
-		}
-		jExp, err := time.Parse(time.UnixDate, accessCodes[j].Expiration)
-		if err != nil {
-			return true
-		}
-		return iExp.Before(jExp)
-	})
-
-	if glog.V(6) {
-		var accessCodesList []string
-		for _, ac := range accessCodes {
-			accessCodesList = append(accessCodesList, ac.GetId())
-		}
-		glog.Infof("Access code list was %v", accessCodesList)
-	}
-
-	return &general.ResourceId{Id: accessCodes[0].GetId()}, nil
 }
 
 /**************************************************************************************************************

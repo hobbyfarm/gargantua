@@ -30,7 +30,6 @@ service AccessCodeSvc {
     rpc ValidateExistence (general.ResourceId) returns (ResourceValidation);
     rpc GetAccessCodesWithOTACs (ResourceIds) returns (ListAcsResponse);
     rpc GetAccessCodeWithOTACs (general.ResourceId) returns (AccessCode);
-    rpc GetClosestAccessCode (ClosestAcRequest) returns (general.ResourceId);
 }
 
 message ResourceIds {
