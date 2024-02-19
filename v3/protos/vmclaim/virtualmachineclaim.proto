@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package vmclaim;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/vmclaim";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+service VMClaimSvc {
+    rpc CreateVMClaim (CreateVMClaimRequest) returns (google.protobuf.Empty);
+    rpc GetVMClaim (general.ResourceId) returns (VMClaim);
+    rpc UpdateVMClaim (UpdateVMClaimRequest) returns (google.protobuf.Empty);
+    rpc UpdateVMClaimStatus (UpdateVMClaimStatusRequest) returns (google.protobuf.Empty);
+    rpc DeleteVMClaim (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionVMClaim (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListVMClaim (general.ListOptions) returns (ListVMClaimsResponse);
+}
+
+message VMClaim {
+    string id = 1;
+    string user_id = 2;
+    bool restricted_bind = 3;
+    string restricted_bind_value = 4;
+    map<string, VMClaimVM> vms = 5;
+    bool dynamic_capable = 6;
+    string base_name = 7;
+    map<string, string> labels = 8;
+    VMClaimStatus status = 9;
+}
+
+message CreateVMClaimRequest {
+    string id = 1;
+    string user_name = 2;
+    map<string, string> vmset = 3;
+    bool restricted_bind = 4;
+    string restricted_bind_value = 5;
+    bool dynamic_capable = 6;
+    map<string, string> labels = 7;
+    // string user_name = 2;
+    // string session_name = 3;
+    // string ac_name = 4;
+    // string se_name = 5;
+}
+
+message UpdateVMClaimRequest {
+    string id = 1;
+    map<string, VMClaimVM> vmset = 2;
+    google.protobuf.BoolValue restricted_bind = 3;
+}
+
+message UpdateVMClaimStatusRequest {
+    string id = 1;
+    string bindmode = 2;
+    google.protobuf.UInt32Value static_bind_attempts = 3;
+    google.protobuf.BoolValue bound = 4;
+    google.protobuf.BoolValue ready = 5;
+    google.protobuf.BoolValue tainted = 6;
+}
+
+message VMClaimStatus {
+    string bindmode = 1;
+    uint32 static_bind_attempts = 2;
+    bool bound = 3;
+    bool ready = 4;
+    bool tainted = 5;
+}
+
+message VMClaimVM {
+    string template = 1;
+    string virtual_machine_id = 2;
+}
+
+message ListVMClaimsResponse {
+    repeated VMClaim vmclaims = 1;
+}
