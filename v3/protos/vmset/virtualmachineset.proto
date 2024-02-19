@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package vmset;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/vmset";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+service VMSetSvc {
+    rpc CreateVMSet (CreateVMSetRequest) returns (google.protobuf.Empty);
+    rpc GetVMSet (general.ResourceId) returns (VMSet);
+    rpc UpdateVMSet (UpdateVMSetRequest) returns (google.protobuf.Empty);
+    rpc UpdateVMSetStatus (UpdateVMSetStatusRequest) returns (google.protobuf.Empty);
+    rpc DeleteVMSet (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionVMSet (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListVMSet (general.ListOptions) returns (ListVMSetsResponse);
+}
+
+message VMSet {
+    string id = 1;
+    uint32 count = 2;
+    string environment = 3;
+    string vm_template = 4;
+    string base_name = 5;
+    bool restricted_bind = 6;
+    string restricted_bind_value = 7;
+    VMSetStatus status = 8;
+    map<string, string> labels = 9;
+}
+
+message CreateVMSetRequest {
+    string id = 1;
+    uint32 count = 2;
+    string environment = 3;
+    string vm_template = 4;
+    string base_name = 5;
+    bool restricted_bind = 6;
+    string restricted_bind_value = 7;
+    string se_name = 8;
+    string se_uid = 9;
+    map<string, string> labels = 10;
+}
+
+message VMSetStatus {
+    repeated VMProvision machines = 1;
+    uint32 available = 2;
+    uint32 provisioned = 3;
+}
+
+message UpdateVMSetRequest {
+    string id = 1;
+    google.protobuf.UInt32Value count = 2;
+    string environment = 3;
+    string vm_template = 4;
+    google.protobuf.BoolValue restricted_bind = 5;
+}
+
+message VMProvision {
+    string vm_name = 1;
+    string tfc_state = 2;
+    string tfc_cm = 3;
+}
+
+message UpdateVMSetStatusRequest {
+    string id = 1;
+    repeated VMProvision machines = 2;
+    google.protobuf.UInt32Value available = 3;
+    google.protobuf.UInt32Value provisioned = 4;
+}
+
+message ListVMSetsResponse {
+    repeated VMSet vmsets = 1;
+}
