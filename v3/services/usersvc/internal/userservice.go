@@ -20,9 +20,11 @@ const (
 )
 
 type PreparedUser struct {
-	ID          string   `json:"id"`
-	Email       string   `json:"email"`
-	AccessCodes []string `json:"access_codes"`
+	ID                  string   `json:"id"`
+	Email               string   `json:"email"`
+	AccessCodes         []string `json:"access_codes"`
+	LastLoginTimestamp  string   `json:"last_login_timestamp"`
+	RegisteredTimestamp string   `json:"registered_timestamp"`
 }
 
 type PreparedSubject struct {
@@ -75,9 +77,11 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 		accessCodes = []string{}
 	}
 	preparedUser := PreparedUser{
-		ID:          user.GetId(),
-		Email:       user.GetEmail(),
-		AccessCodes: accessCodes,
+		ID:                  user.GetId(),
+		Email:               user.GetEmail(),
+		AccessCodes:         accessCodes,
+		LastLoginTimestamp:  user.GetLastLoginTimestamp(),
+		RegisteredTimestamp: user.GetRegisteredTimestamp(),
 	}
 
 	encodedUser, err := json.Marshal(preparedUser)
@@ -121,9 +125,11 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 			accessCodes = []string{}
 		}
 		preparedUsers = append(preparedUsers, PreparedUser{
-			ID:          s.GetId(),
-			Email:       s.GetEmail(),
-			AccessCodes: accessCodes,
+			ID:                  s.GetId(),
+			Email:               s.GetEmail(),
+			AccessCodes:         accessCodes,
+			LastLoginTimestamp:  s.GetLastLoginTimestamp(),
+			RegisteredTimestamp: s.GetRegisteredTimestamp(),
 		})
 	}
 

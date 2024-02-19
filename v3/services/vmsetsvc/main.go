@@ -20,7 +20,7 @@ func init() {
 }
 
 func main() {
-	cfg, hfClient := microservices.BuildClusterConfig(serviceConfig)
+	cfg, hfClient, _ := microservices.BuildClusterConfig(serviceConfig)
 
 	crds := vmsetservice.GenerateVMSetCRD()
 	glog.Info("installing/updating vm set CRDs")

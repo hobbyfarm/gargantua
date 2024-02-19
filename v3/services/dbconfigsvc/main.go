@@ -20,7 +20,7 @@ func init() {
 }
 
 func main() {
-	cfg, hfClient := microservices.BuildClusterConfig(serviceConfig)
+	cfg, hfClient, _ := microservices.BuildClusterConfig(serviceConfig)
 
 	crds := dbconfigservice.GenerateDynamicBindConfigurationCRD()
 	glog.Info("installing/updating dynamic bind configuration CRDs")

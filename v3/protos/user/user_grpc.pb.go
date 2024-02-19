@@ -21,13 +21,14 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	UserSvc_CreateUser_FullMethodName        = "/user.UserSvc/CreateUser"
-	UserSvc_GetUserById_FullMethodName       = "/user.UserSvc/GetUserById"
-	UserSvc_GetUserByEmail_FullMethodName    = "/user.UserSvc/GetUserByEmail"
-	UserSvc_UpdateUser_FullMethodName        = "/user.UserSvc/UpdateUser"
-	UserSvc_UpdateAccessCodes_FullMethodName = "/user.UserSvc/UpdateAccessCodes"
-	UserSvc_DeleteUser_FullMethodName        = "/user.UserSvc/DeleteUser"
-	UserSvc_ListUser_FullMethodName          = "/user.UserSvc/ListUser"
+	UserSvc_CreateUser_FullMethodName            = "/user.UserSvc/CreateUser"
+	UserSvc_GetUserById_FullMethodName           = "/user.UserSvc/GetUserById"
+	UserSvc_GetUserByEmail_FullMethodName        = "/user.UserSvc/GetUserByEmail"
+	UserSvc_UpdateUser_FullMethodName            = "/user.UserSvc/UpdateUser"
+	UserSvc_SetLastLoginTimestamp_FullMethodName = "/user.UserSvc/SetLastLoginTimestamp"
+	UserSvc_UpdateAccessCodes_FullMethodName     = "/user.UserSvc/UpdateAccessCodes"
+	UserSvc_DeleteUser_FullMethodName            = "/user.UserSvc/DeleteUser"
+	UserSvc_ListUser_FullMethodName              = "/user.UserSvc/ListUser"
 )
 
 // UserSvcClient is the client API for UserSvc service.
@@ -38,6 +39,7 @@ type UserSvcClient interface {
 	GetUserById(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*User, error)
 	GetUserByEmail(ctx context.Context, in *GetUserByEmailRequest, opts ...grpc.CallOption) (*User, error)
 	UpdateUser(ctx context.Context, in *User, opts ...grpc.CallOption) (*User, error)
+	SetLastLoginTimestamp(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	UpdateAccessCodes(ctx context.Context, in *UpdateAccessCodesRequest, opts ...grpc.CallOption) (*User, error)
 	DeleteUser(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListUser(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*ListUsersResponse, error)
@@ -87,6 +89,15 @@ func (c *userSvcClient) UpdateUser(ctx context.Context, in *User, opts ...grpc.C
 	return out, nil
 }
 
+func (c *userSvcClient) SetLastLoginTimestamp(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserSvc_SetLastLoginTimestamp_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userSvcClient) UpdateAccessCodes(ctx context.Context, in *UpdateAccessCodesRequest, opts ...grpc.CallOption) (*User, error) {
 	out := new(User)
 	err := c.cc.Invoke(ctx, UserSvc_UpdateAccessCodes_FullMethodName, in, out, opts...)
@@ -122,6 +133,7 @@ type UserSvcServer interface {
 	GetUserById(context.Context, *general.ResourceId) (*User, error)
 	GetUserByEmail(context.Context, *GetUserByEmailRequest) (*User, error)
 	UpdateUser(context.Context, *User) (*User, error)
+	SetLastLoginTimestamp(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	UpdateAccessCodes(context.Context, *UpdateAccessCodesRequest) (*User, error)
 	DeleteUser(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	ListUser(context.Context, *general.ListOptions) (*ListUsersResponse, error)
@@ -143,6 +155,9 @@ func (UnimplementedUserSvcServer) GetUserByEmail(context.Context, *GetUserByEmai
 }
 func (UnimplementedUserSvcServer) UpdateUser(context.Context, *User) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateUser not implemented")
+}
+func (UnimplementedUserSvcServer) SetLastLoginTimestamp(context.Context, *general.ResourceId) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetLastLoginTimestamp not implemented")
 }
 func (UnimplementedUserSvcServer) UpdateAccessCodes(context.Context, *UpdateAccessCodesRequest) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateAccessCodes not implemented")
@@ -238,6 +253,24 @@ func _UserSvc_UpdateUser_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserSvc_SetLastLoginTimestamp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(general.ResourceId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserSvcServer).SetLastLoginTimestamp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserSvc_SetLastLoginTimestamp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserSvcServer).SetLastLoginTimestamp(ctx, req.(*general.ResourceId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserSvc_UpdateAccessCodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateAccessCodesRequest)
 	if err := dec(in); err != nil {
@@ -314,6 +347,10 @@ var UserSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateUser",
 			Handler:    _UserSvc_UpdateUser_Handler,
+		},
+		{
+			MethodName: "SetLastLoginTimestamp",
+			Handler:    _UserSvc_SetLastLoginTimestamp_Handler,
 		},
 		{
 			MethodName: "UpdateAccessCodes",

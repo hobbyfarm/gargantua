@@ -11,10 +11,11 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	mrand "math/rand"
+
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
-	mrand "math/rand"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 
 	"github.com/golang/glog"
 	"golang.org/x/crypto/ssh"
@@ -534,4 +535,22 @@ func GetProtoMarshaller() protojson.MarshalOptions {
 
 func StringPtr(s string) *string {
 	return &s
+}
+
+// This Method converts a given duration into a valid duration for time.ParseDuration.
+// time.ParseDuration does not accept "d" for days
+func GetDurationWithDays(s string) (string, error) {
+	// When the duration is given in days, convert it to hours instead as time.ParseDuration does not accept Days
+	if strings.HasSuffix(s, "d") {
+		durationWithoutSuffix := strings.TrimSuffix(s, "d")
+		// string to int
+		durationDays, err := strconv.Atoi(durationWithoutSuffix)
+		if err != nil {
+			return "", err
+		}
+
+		s = fmt.Sprintf("%dh", durationDays*24)
+	}
+
+	return s, nil
 }

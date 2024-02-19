@@ -3,14 +3,15 @@ package vmclaimcontroller
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"time"
+
 	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"math/rand"
-	"time"
 
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/api/errors"

@@ -3,11 +3,13 @@ package authserver
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"time"
+
 	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"net/http"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -38,6 +40,13 @@ func (a AuthServer) SetupRoutes(r *mux.Router) {
 	glog.V(2).Infof("set up route")
 }
 
+type PreparedScheduledEvent struct {
+	Id          string `json:"id"`
+	Description string `json:"description"`
+	Name        string `json:"name"`
+	EndDate     string `json:"end_timestamp"`
+}
+
 func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := rbac.AuthenticateRequest(r, a.authClient)
 	if err != nil {
@@ -46,7 +55,7 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 	}
 
 	// This holds a map of AC -> SE
-	accessCodeScheduledEvent := make(map[string]string)
+	accessCodeScheduledEvent := make(map[string]PreparedScheduledEvent)
 
 	// First we add ScheduledEvents based on OneTimeAccessCodes
 	otacReq, _ := labels.NewRequirement(util2.OneTimeAccessCodeLabel, selection.In, user.GetAccessCodes())
@@ -63,7 +72,24 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 			if err != nil {
 				continue
 			}
-			accessCodeScheduledEvent[otac.Name] = se.Spec.Name
+			endTime := se.Spec.EndTime
+
+			// If OTAC specifies a max Duration we need to calculate the EndTime correctly
+			if otac.Spec.MaxDuration != "" {
+				otacEndTime, err := time.Parse(time.UnixDate, otac.Spec.RedeemedTimestamp)
+				if err != nil {
+					continue
+				}
+				otacDurationWithDays, err := util2.GetDurationWithDays(otac.Spec.MaxDuration)
+				otacDuration, err := time.ParseDuration(otacDurationWithDays)
+				if err != nil {
+					continue
+				}
+				otacEndTime = otacEndTime.Add(otacDuration)
+				endTime = otacEndTime.Format(time.UnixDate)
+			}
+
+			accessCodeScheduledEvent[otac.Name] = PreparedScheduledEvent{se.Name, se.Spec.Description, se.Spec.Name, endTime}
 		}
 	}
 
@@ -77,7 +103,7 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 			glog.Error(err)
 			continue
 		}
-		accessCodeScheduledEvent[ac.Spec.Code] = se.Spec.Name
+		accessCodeScheduledEvent[ac.Spec.Code] = PreparedScheduledEvent{se.Name, se.Spec.Description, se.Spec.Name, se.Spec.EndTime}
 	}
 
 	encodedMap, err := json.Marshal(accessCodeScheduledEvent)

@@ -501,6 +501,8 @@ func (a AuthServer) LoginFunc(w http.ResponseWriter, r *http.Request) {
 		glog.Error(err)
 	}
 
+	a.userClient.SetLastLoginTimestamp(r.Context(), &general.ResourceId{Id: user.GetId()})
+
 	util.ReturnHTTPMessage(w, r, 200, "authorized", token)
 }
 

@@ -30,7 +30,7 @@ func init() {
 }
 
 func main() {
-	cfg, _ := microservices.BuildClusterConfig(serviceConfig)
+	cfg, _, _ := microservices.BuildClusterConfig(serviceConfig)
 
 	// self manage default rbac roles
 	if installRBACRoles {
