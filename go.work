@@ -13,4 +13,5 @@ use (
 	./v3/services/dbconfigsvc
 	./v3/services/vmclaimsvc
 	./v3/services/vmsetsvc
+	./v3/services/progresssvc
 )
