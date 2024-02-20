@@ -2,6 +2,7 @@ package errors
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -49,4 +50,13 @@ func GrpcError[T proto.Message](c codes.Code, format string, details T, a ...any
 		return wde
 	}
 	return err.Err()
+}
+
+func GrpcNotFoundError(resourceId *general.ResourceId, resourceName string) error {
+	id := resourceId.GetId()
+	return GrpcError[*general.ResourceId](codes.NotFound, "could not find %s for id %s", resourceId, resourceName, id)
+}
+
+func IsGrpcNotFound(err error) bool {
+	return status.Code(err) == codes.NotFound
 }
