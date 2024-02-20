@@ -11,9 +11,10 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
@@ -68,7 +69,7 @@ func (s *GrpcProgressServer) CreateProgress(ctx context.Context, req *progressPr
 
 	_, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Create(ctx, progress, v1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, errors.GrpcError(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
@@ -79,16 +80,18 @@ func (s *GrpcProgressServer) CreateProgress(ctx context.Context, req *progressPr
 
 func (s *GrpcProgressServer) GetProgress(ctx context.Context, id *general.ResourceId) (*progressProto.Progress, error) {
 	if len(id.GetId()) == 0 {
-		return &progressProto.Progress{}, errors.GrpcError(
+		return &progressProto.Progress{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"no id passed in",
 			id,
 		)
 	}
 	progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Get(ctx, id.GetId(), v1.GetOptions{})
-	if err != nil {
+	if errors.IsNotFound(err) {
+		return &progressProto.Progress{}, hferrors.GrpcNotFoundError(id, "progress")
+	} else if err != nil {
 		glog.V(2).Infof("error while retrieving progress: %v", err)
-		return &progressProto.Progress{}, errors.GrpcError(
+		return &progressProto.Progress{}, hferrors.GrpcError(
 			codes.Internal,
 			"error while retrieving progress by id: %s with error: %v",
 			id,
@@ -126,7 +129,7 @@ func (s *GrpcProgressServer) GetProgress(ctx context.Context, id *general.Resour
 func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progressProto.UpdateProgressRequest) (*empty.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, errors.GrpcError(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"no id passed in",
 			req,
@@ -144,7 +147,7 @@ func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progressPr
 		progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Get(ctx, id, v1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
-			return errors.GrpcError(
+			return hferrors.GrpcError(
 				codes.Internal,
 				"error while retrieving progress %s",
 				req,
@@ -189,7 +192,7 @@ func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progressPr
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, errors.GrpcError(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			req,
@@ -202,7 +205,7 @@ func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progressPr
 func (s *GrpcProgressServer) DeleteProgress(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, errors.GrpcError(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"no ID passed in",
 			req,
@@ -213,7 +216,7 @@ func (s *GrpcProgressServer) DeleteProgress(ctx context.Context, req *general.Re
 
 	if err != nil {
 		glog.Errorf("error deleting progress %s: %v", id, err)
-		return &empty.Empty{}, errors.GrpcError(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error deleting progress %s",
 			req,
@@ -229,7 +232,7 @@ func (s *GrpcProgressServer) DeleteCollectionProgress(ctx context.Context, listO
 		LabelSelector: listOptions.GetLabelSelector(),
 	})
 	if err != nil {
-		return &empty.Empty{}, errors.GrpcError(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error deleting progresses",
 			listOptions,
@@ -244,7 +247,7 @@ func (s *GrpcProgressServer) ListProgress(ctx context.Context, listOptions *gene
 	})
 	if err != nil {
 		glog.Error(err)
-		return &progressProto.ListProgressesResponse{}, errors.GrpcError(
+		return &progressProto.ListProgressesResponse{}, hferrors.GrpcError(
 			codes.Internal,
 			"error retreiving progresses",
 			listOptions,

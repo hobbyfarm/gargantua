@@ -188,16 +188,11 @@ func (rs *GrpcRbacServer) getRole(c context.Context, gr *general.ResourceId) (*r
 	}
 
 	role, err := rs.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Get(c, gr.GetId(), metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			glog.Errorf("role not found")
-			return &rbacv1.Role{}, hferrors.GrpcError(
-				codes.NotFound,
-				"role not found",
-				gr,
-			)
-		}
-		glog.Errorf("kubernetes error while getting role: %v", err)
+	if errors.IsNotFound(err) {
+		glog.Errorf("role %s not found", gr.GetId())
+		return &rbacv1.Role{}, hferrors.GrpcNotFoundError(gr, "role")
+	} else if err != nil {
+		glog.Errorf("kubernetes error while retrieving role: %v", err)
 		return &rbacv1.Role{}, hferrors.GrpcError(
 			codes.Internal,
 			"error retrieving role",

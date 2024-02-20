@@ -57,11 +57,15 @@ func (s *GrpcSettingServer) GetScope(ctx context.Context, id *general.ResourceId
 	scope, err := s.hfClientSet.HobbyfarmV1().Scopes(util.GetReleaseNamespace()).Get(s.ctx, id.GetId(), metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		glog.Errorf("scope %s not found", id.GetId())
+		return &settingProto.Scope{}, hferrors.GrpcNotFoundError(id, "scope")
+	} else if err != nil {
+		glog.V(2).Infof("error while retrieving scope: %v", err)
 		return &settingProto.Scope{}, hferrors.GrpcError(
-			codes.NotFound,
-			"scope %s not found",
+			codes.Internal,
+			"error while retrieving scope by id: %s with error: %v",
 			id,
 			id.GetId(),
+			err,
 		)
 	}
 	return &settingProto.Scope{Name: scope.Name, DisplayName: scope.DisplayName}, nil
@@ -218,15 +222,9 @@ func (s *GrpcSettingServer) GetSetting(ctx context.Context, id *general.Resource
 	kSetting, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Get(s.ctx, id.GetId(), metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		glog.Errorf("setting %s not found", id.GetId())
-		return &settingProto.Setting{}, hferrors.GrpcError(
-			codes.NotFound,
-			"setting %s not found",
-			id,
-			id.GetId(),
-		)
-	}
-	if err != nil {
-		glog.Errorf("error getting setting from database: %s", err.Error())
+		return &settingProto.Setting{}, hferrors.GrpcNotFoundError(id, "setting")
+	} else if err != nil {
+		glog.Errorf("error retrieving setting from database: %s", err.Error())
 		return &settingProto.Setting{}, hferrors.GrpcError(
 			codes.Internal,
 			"error retrieving setting",

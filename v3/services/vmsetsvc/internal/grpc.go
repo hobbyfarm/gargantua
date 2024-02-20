@@ -10,9 +10,10 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	"github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -70,7 +71,7 @@ func (s *GrpcVMSetServer) CreateVMSet(ctx context.Context, req *vmSetProto.Creat
 
 	_, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Create(ctx, vms, v1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, errors.GrpcError(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
@@ -81,16 +82,18 @@ func (s *GrpcVMSetServer) CreateVMSet(ctx context.Context, req *vmSetProto.Creat
 
 func (s *GrpcVMSetServer) GetVMSet(ctx context.Context, id *general.ResourceId) (*vmSetProto.VMSet, error) {
 	if len(id.GetId()) == 0 {
-		return &vmSetProto.VMSet{}, errors.GrpcError(
+		return &vmSetProto.VMSet{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"no id passed in",
 			id,
 		)
 	}
 	vms, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Get(ctx, id.GetId(), v1.GetOptions{})
-	if err != nil {
+	if errors.IsNotFound(err) {
+		return &vmSetProto.VMSet{}, hferrors.GrpcNotFoundError(id, "virtual machine set")
+	} else if err != nil {
 		glog.V(2).Infof("error while retrieving virtual machine set: %v", err)
-		return &vmSetProto.VMSet{}, errors.GrpcError(
+		return &vmSetProto.VMSet{}, hferrors.GrpcError(
 			codes.Internal,
 			"error while retrieving virtual machine set by id: %s with error: %v",
 			id,
@@ -132,7 +135,7 @@ func (s *GrpcVMSetServer) GetVMSet(ctx context.Context, id *general.ResourceId) 
 func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.UpdateVMSetRequest) (*empty.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, errors.GrpcError(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"no id passed in",
 			req,
@@ -148,7 +151,7 @@ func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.Updat
 		vms, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Get(ctx, id, v1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
-			return errors.GrpcError(
+			return hferrors.GrpcError(
 				codes.Internal,
 				"error while retrieving virtual machine set %s",
 				req,
@@ -182,7 +185,7 @@ func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.Updat
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, errors.GrpcError(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			req,
@@ -195,7 +198,7 @@ func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.Updat
 func (s *GrpcVMSetServer) UpdateVMSetStatus(ctx context.Context, req *vmSetProto.UpdateVMSetStatusRequest) (*empty.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, errors.GrpcError(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"no id passed in",
 			req,
@@ -209,7 +212,7 @@ func (s *GrpcVMSetServer) UpdateVMSetStatus(ctx context.Context, req *vmSetProto
 		vms, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Get(ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
-			return errors.GrpcError(
+			return hferrors.GrpcError(
 				codes.Internal,
 				"error while retrieving virtual machine set %s",
 				req,
@@ -248,7 +251,7 @@ func (s *GrpcVMSetServer) UpdateVMSetStatus(ctx context.Context, req *vmSetProto
 		return nil
 	})
 	if retryErr != nil {
-		return &empty.Empty{}, errors.GrpcError(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update vms status: %v",
 			req,
@@ -261,7 +264,7 @@ func (s *GrpcVMSetServer) UpdateVMSetStatus(ctx context.Context, req *vmSetProto
 func (s *GrpcVMSetServer) DeleteVMSet(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, errors.GrpcError(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"no ID passed in",
 			req,
@@ -272,7 +275,7 @@ func (s *GrpcVMSetServer) DeleteVMSet(ctx context.Context, req *general.Resource
 
 	if err != nil {
 		glog.Errorf("error deleting virtual machine set %s: %v", id, err)
-		return &empty.Empty{}, errors.GrpcError(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error deleting virtual machine set %s",
 			req,
@@ -288,7 +291,7 @@ func (s *GrpcVMSetServer) DeleteCollectionVMSet(ctx context.Context, listOptions
 		LabelSelector: listOptions.GetLabelSelector(),
 	})
 	if err != nil {
-		return &empty.Empty{}, errors.GrpcError(
+		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error deleting virtual machine sets",
 			listOptions,
@@ -303,7 +306,7 @@ func (s *GrpcVMSetServer) ListVMSet(ctx context.Context, listOptions *general.Li
 	})
 	if err != nil {
 		glog.Error(err)
-		return &vmSetProto.ListVMSetsResponse{}, errors.GrpcError(
+		return &vmSetProto.ListVMSetsResponse{}, hferrors.GrpcError(
 			codes.Internal,
 			"error retreiving virtual machine sets",
 			listOptions,

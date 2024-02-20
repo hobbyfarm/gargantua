@@ -216,16 +216,11 @@ func (rs *GrpcRbacServer) getRolebinding(c context.Context, gr *general.Resource
 	}
 
 	rolebinding, err := rs.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).Get(c, gr.GetId(), metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			glog.Errorf("rolebinding not found")
-			return &rbacv1.RoleBinding{}, hferrors.GrpcError(
-				codes.NotFound,
-				"rolebinding not found",
-				gr,
-			)
-		}
-		glog.Errorf("kubernetes error while getting rolebinding: %v", err)
+	if errors.IsNotFound(err) {
+		glog.Errorf("rolebinding %s not found", gr.GetId())
+		return &rbacv1.RoleBinding{}, hferrors.GrpcNotFoundError(gr, "rolebinding")
+	} else if err != nil {
+		glog.Errorf("kubernetes error while retrieving rolebinding: %v", err)
 		return &rbacv1.RoleBinding{}, hferrors.GrpcError(
 			codes.Internal,
 			"error while retrieving rolebinding",
