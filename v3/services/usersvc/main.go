@@ -14,6 +14,7 @@ import (
 
 	"github.com/golang/glog"
 	userservice "github.com/hobbyfarm/gargantua/services/usersvc/v3/internal"
+	userservicecontroller "github.com/hobbyfarm/gargantua/services/usersvc/v3/internal/controllers"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
@@ -31,7 +32,7 @@ func init() {
 }
 
 func main() {
-	cfg, hfClient, _ := microservices.BuildClusterConfig(serviceConfig)
+	cfg, hfClient, kubeClient := microservices.BuildClusterConfig(serviceConfig)
 
 	namespace := util.GetReleaseNamespace()
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
@@ -77,6 +78,12 @@ func main() {
 
 	user.RegisterUserSvcServer(gs, us)
 
+	passwordResetTokenController, err := userservicecontroller.NewPasswordResetTokenController(hfInformerFactory, kubeClient, hfClient, ctx)
+	if err != nil {
+		glog.Fatalf("creating passwordResetTokenController failed: %v", err)
+	}
+	passwordResetTokenController.SetWorkerThreadCount(microservices.GetWorkerThreadCount())
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 
@@ -93,6 +100,16 @@ func main() {
 			glog.Fatalf("Error creating userserver: %v", err)
 		}
 		microservices.StartAPIServer(userServer)
+	}()
+
+	go func() {
+		defer wg.Done()
+		glog.Info("Starting controllers")
+		stopControllersCh := make(chan struct{})
+		err := passwordResetTokenController.RunSharded(stopControllersCh, os.Getenv("STATEFULSET_NAME"))
+		if err != nil {
+			glog.Errorf("Error starting up the controllers: %v", err)
+		}
 	}()
 
 	stopInformerFactoryCh := signals.SetupSignalHandler()
