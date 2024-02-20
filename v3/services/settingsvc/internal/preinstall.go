@@ -241,5 +241,18 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				DisplayName: "Strict AccessCode Validation",
 			},
 		},
+		{
+			Name:      string(settingUtil.UserTokenExpiration),
+			Namespace: util.GetReleaseNamespace(),
+			Labels: map[string]string{
+				labels.SettingScope: "gargantua",
+			},
+			Value: "24",
+			Property: &settingProto.Property{
+				DataType:    settingProto.DataType_DATA_TYPE_INTEGER,
+				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+				DisplayName: "User Token Expiration (hours)",
+			},
+		},
 	}
 }
