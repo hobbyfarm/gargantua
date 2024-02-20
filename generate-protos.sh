@@ -5,7 +5,7 @@ PROTO_DIR="${PROJECT_PATH}/protos"
 
 docker run --rm \
   -v "$(pwd):${PROJECT_PATH}" \
-  -v "$(pwd)/protos:${PROTO_DIR}" \
+  -v "$(pwd)/v3/protos:${PROTO_DIR}" \
   -w "${PROJECT_PATH}" \
   --entrypoint bash \
   golang:latest \

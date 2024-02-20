@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
-	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"
@@ -66,7 +67,7 @@ func (s ScheduledEventServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/scheduledevent/new", s.CreateFunc).Methods("POST")
 	r.HandleFunc("/a/scheduledevent/{id}", s.GetFunc).Methods("GET")
 	r.HandleFunc("/a/scheduledevent/{id}", s.UpdateFunc).Methods("PUT")
-	r.HandleFunc("/a/scheduledevent/{id}/otacs/add/{count}", s.GenerateOTACsFunc).Methods("GET")
+	r.HandleFunc("/a/scheduledevent/{id}/otacs/add/{count}", s.GenerateOTACsFunc).Methods("POST")
 	r.HandleFunc("/a/scheduledevent/{id}/otacs/delete/{otac}", s.DeleteOTACFunc).Methods("GET")
 	r.HandleFunc("/a/scheduledevent/{id}/otacs/list", s.GetOTACsFunc).Methods("GET")
 	r.HandleFunc("/a/scheduledevent/delete/{id}", s.DeleteFunc).Methods("DELETE")
@@ -700,6 +701,8 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	maxDurationValue := r.PostFormValue("max_duration")
+
 	scheduledEvent, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util2.GetReleaseNamespace()).Get(s.ctx, id, metav1.GetOptions{})
 	if err != nil {
 		glog.Error(err)
@@ -736,6 +739,7 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 			Spec: hfv1.OneTimeAccessCodeSpec{
 				User:              "",
 				RedeemedTimestamp: "",
+				MaxDuration:       maxDurationValue,
 			},
 		}
 		otac, err = s.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util2.GetReleaseNamespace()).Create(s.ctx, otac, metav1.CreateOptions{})

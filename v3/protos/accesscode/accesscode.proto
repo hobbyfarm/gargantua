@@ -41,4 +41,5 @@ message OneTimeAccessCode {
     string id = 1;
     string user = 2;
     string redeemed_timestamp = 3;
+    string max_duration = 4;
 }
