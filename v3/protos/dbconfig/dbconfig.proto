@@ -10,7 +10,7 @@ import "google/protobuf/wrappers.proto";
 
 service DynamicBindConfigSvc {
     rpc CreateDynamicBindConfig (CreateDynamicBindConfigRequest) returns (google.protobuf.Empty);
-    rpc GetDynamicBindConfig (general.ResourceId) returns (DynamicBindConfig);
+    rpc GetDynamicBindConfig (general.GetRequest) returns (DynamicBindConfig);
     rpc UpdateDynamicBindConfig (UpdateDynamicBindConfigRequest) returns (google.protobuf.Empty);
     rpc DeleteDynamicBindConfig (general.ResourceId) returns (google.protobuf.Empty);
     rpc DeleteCollectionDynamicBindConfig (general.ListOptions) returns (google.protobuf.Empty);

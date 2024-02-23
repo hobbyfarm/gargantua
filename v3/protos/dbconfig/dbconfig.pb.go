@@ -415,7 +415,7 @@ var file_dbconfig_dbconfig_proto_rawDesc = []byte{
 	0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d,
 	0x70, 0x74, 0x79, 0x12, 0x48, 0x0a, 0x14, 0x47, 0x65, 0x74, 0x44, 0x79, 0x6e, 0x61, 0x6d, 0x69,
 	0x63, 0x42, 0x69, 0x6e, 0x64, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12, 0x13, 0x2e, 0x67, 0x65,
-	0x6e, 0x65, 0x72, 0x61, 0x6c, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x64,
+	0x6e, 0x65, 0x72, 0x61, 0x6c, 0x2e, 0x47, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x1a, 0x1b, 0x2e, 0x64, 0x62, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x2e, 0x44, 0x79, 0x6e, 0x61,
 	0x6d, 0x69, 0x63, 0x42, 0x69, 0x6e, 0x64, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12, 0x5b, 0x0a,
 	0x17, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x44, 0x79, 0x6e, 0x61, 0x6d, 0x69, 0x63, 0x42, 0x69,
@@ -468,9 +468,10 @@ var file_dbconfig_dbconfig_proto_goTypes = []interface{}{
 	nil,                                    // 6: dbconfig.CreateDynamicBindConfigRequest.BurstCountCapacityEntry
 	nil,                                    // 7: dbconfig.UpdateDynamicBindConfigRequest.BurstCountCapacityEntry
 	(*wrapperspb.BoolValue)(nil),           // 8: google.protobuf.BoolValue
-	(*general.ResourceId)(nil),             // 9: general.ResourceId
-	(*general.ListOptions)(nil),            // 10: general.ListOptions
-	(*emptypb.Empty)(nil),                  // 11: google.protobuf.Empty
+	(*general.GetRequest)(nil),             // 9: general.GetRequest
+	(*general.ResourceId)(nil),             // 10: general.ResourceId
+	(*general.ListOptions)(nil),            // 11: general.ListOptions
+	(*emptypb.Empty)(nil),                  // 12: google.protobuf.Empty
 }
 var file_dbconfig_dbconfig_proto_depIdxs = []int32{
 	4,  // 0: dbconfig.DynamicBindConfig.burst_count_capacity:type_name -> dbconfig.DynamicBindConfig.BurstCountCapacityEntry
@@ -480,16 +481,16 @@ var file_dbconfig_dbconfig_proto_depIdxs = []int32{
 	7,  // 4: dbconfig.UpdateDynamicBindConfigRequest.burst_count_capacity:type_name -> dbconfig.UpdateDynamicBindConfigRequest.BurstCountCapacityEntry
 	0,  // 5: dbconfig.ListDynamicBindConfigsResponse.db_config:type_name -> dbconfig.DynamicBindConfig
 	1,  // 6: dbconfig.DynamicBindConfigSvc.CreateDynamicBindConfig:input_type -> dbconfig.CreateDynamicBindConfigRequest
-	9,  // 7: dbconfig.DynamicBindConfigSvc.GetDynamicBindConfig:input_type -> general.ResourceId
+	9,  // 7: dbconfig.DynamicBindConfigSvc.GetDynamicBindConfig:input_type -> general.GetRequest
 	2,  // 8: dbconfig.DynamicBindConfigSvc.UpdateDynamicBindConfig:input_type -> dbconfig.UpdateDynamicBindConfigRequest
-	9,  // 9: dbconfig.DynamicBindConfigSvc.DeleteDynamicBindConfig:input_type -> general.ResourceId
-	10, // 10: dbconfig.DynamicBindConfigSvc.DeleteCollectionDynamicBindConfig:input_type -> general.ListOptions
-	10, // 11: dbconfig.DynamicBindConfigSvc.ListDynamicBindConfig:input_type -> general.ListOptions
-	11, // 12: dbconfig.DynamicBindConfigSvc.CreateDynamicBindConfig:output_type -> google.protobuf.Empty
+	10, // 9: dbconfig.DynamicBindConfigSvc.DeleteDynamicBindConfig:input_type -> general.ResourceId
+	11, // 10: dbconfig.DynamicBindConfigSvc.DeleteCollectionDynamicBindConfig:input_type -> general.ListOptions
+	11, // 11: dbconfig.DynamicBindConfigSvc.ListDynamicBindConfig:input_type -> general.ListOptions
+	12, // 12: dbconfig.DynamicBindConfigSvc.CreateDynamicBindConfig:output_type -> google.protobuf.Empty
 	0,  // 13: dbconfig.DynamicBindConfigSvc.GetDynamicBindConfig:output_type -> dbconfig.DynamicBindConfig
-	11, // 14: dbconfig.DynamicBindConfigSvc.UpdateDynamicBindConfig:output_type -> google.protobuf.Empty
-	11, // 15: dbconfig.DynamicBindConfigSvc.DeleteDynamicBindConfig:output_type -> google.protobuf.Empty
-	11, // 16: dbconfig.DynamicBindConfigSvc.DeleteCollectionDynamicBindConfig:output_type -> google.protobuf.Empty
+	12, // 14: dbconfig.DynamicBindConfigSvc.UpdateDynamicBindConfig:output_type -> google.protobuf.Empty
+	12, // 15: dbconfig.DynamicBindConfigSvc.DeleteDynamicBindConfig:output_type -> google.protobuf.Empty
+	12, // 16: dbconfig.DynamicBindConfigSvc.DeleteCollectionDynamicBindConfig:output_type -> google.protobuf.Empty
 	3,  // 17: dbconfig.DynamicBindConfigSvc.ListDynamicBindConfig:output_type -> dbconfig.ListDynamicBindConfigsResponse
 	12, // [12:18] is the sub-list for method output_type
 	6,  // [6:12] is the sub-list for method input_type

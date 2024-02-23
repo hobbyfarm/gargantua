@@ -2,12 +2,16 @@ package main
 
 import (
 	"sync"
+	"time"
 
 	"github.com/ebauman/crder"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 
 	"github.com/golang/glog"
 	dbconfigservice "github.com/hobbyfarm/gargantua/services/dbconfigsvc/v3/internal"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	dbconfigProto "github.com/hobbyfarm/gargantua/v3/protos/dbconfig"
 )
 
@@ -20,7 +24,11 @@ func init() {
 }
 
 func main() {
+	stopCh := signals.SetupSignalHandler()
 	cfg, hfClient, _ := microservices.BuildClusterConfig(serviceConfig)
+
+	namespace := util.GetReleaseNamespace()
+	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 
 	crds := dbconfigservice.GenerateDynamicBindConfigurationCRD()
 	glog.Info("installing/updating dynamic bind configuration CRDs")
@@ -32,7 +40,7 @@ func main() {
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
-	ds := dbconfigservice.NewGrpcDynamicBindConfigurationServer(hfClient)
+	ds := dbconfigservice.NewGrpcDynamicBindConfigurationServer(hfClient, hfInformerFactory)
 	dbconfigProto.RegisterDynamicBindConfigSvcServer(gs, ds)
 
 	var wg sync.WaitGroup
@@ -42,6 +50,8 @@ func main() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
 	}()
+
+	hfInformerFactory.Start(stopCh)
 
 	wg.Wait()
 }

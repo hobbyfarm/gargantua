@@ -14,6 +14,9 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	listersv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
@@ -21,12 +24,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 type GrpcDynamicBindConfigurationServer struct {
 	dbConfigProto.UnimplementedDynamicBindConfigSvcServer
-	hfClientSet hfClientset.Interface
+	dbConfigClient hfClientsetv1.DynamicBindConfigurationInterface
+	dbConfigLister listersv1.DynamicBindConfigurationLister
+	dbConfigSynced cache.InformerSynced
 }
 
 var baseNameDynamicPrefix string
@@ -40,9 +46,11 @@ func init() {
 	}
 }
 
-func NewGrpcDynamicBindConfigurationServer(hfClientSet hfClientset.Interface) *GrpcDynamicBindConfigurationServer {
+func NewGrpcDynamicBindConfigurationServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) *GrpcDynamicBindConfigurationServer {
 	return &GrpcDynamicBindConfigurationServer{
-		hfClientSet: hfClientSet,
+		dbConfigClient: hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()),
+		dbConfigLister: hfInformerFactory.Hobbyfarm().V1().DynamicBindConfigurations().Lister(),
+		dbConfigSynced: hfInformerFactory.Hobbyfarm().V1().DynamicBindConfigurations().Informer().HasSynced,
 	}
 }
 
@@ -86,33 +94,35 @@ func (s *GrpcDynamicBindConfigurationServer) CreateDynamicBindConfig(ctx context
 		dbc.ObjectMeta.Labels["restrictedbindvalue"] = restrictedBindValue
 	}
 
-	_, err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()).Create(ctx, dbc, v1.CreateOptions{})
+	_, err := s.dbConfigClient.Create(ctx, dbc, v1.CreateOptions{})
 	if err != nil {
 		return &empty.Empty{}, err
 	}
 	return &empty.Empty{}, nil
 }
 
-func (s *GrpcDynamicBindConfigurationServer) GetDynamicBindConfig(ctx context.Context, id *general.ResourceId) (*dbConfigProto.DynamicBindConfig, error) {
-	if len(id.GetId()) == 0 {
-		return &dbConfigProto.DynamicBindConfig{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no id passed in",
-			id,
-		)
+func (s *GrpcDynamicBindConfigurationServer) GetDynamicBindConfig(ctx context.Context, req *general.GetRequest) (*dbConfigProto.DynamicBindConfig, error) {
+	id := req.GetId()
+	doLoadFromCache := req.GetLoadFromCache()
+	if len(id) == 0 {
+		return &dbConfigProto.DynamicBindConfig{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
-	dbc, err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()).Get(ctx, id.GetId(), v1.GetOptions{})
+	var dbc *hfv1.DynamicBindConfiguration
+	var err error
+	if !doLoadFromCache {
+		dbc, err = s.dbConfigClient.Get(ctx, id, v1.GetOptions{})
+	} else if s.dbConfigSynced() {
+		dbc, err = s.dbConfigLister.DynamicBindConfigurations(util.GetReleaseNamespace()).Get(id)
+	} else {
+		glog.V(2).Info("error while retrieving dynamic bind configuration by id: cache is not properly synced yet")
+		// our cache is not properly initialized yet ... returning status unavailable
+		return &dbConfigProto.DynamicBindConfig{}, hferrors.GrpcCacheError(req, "dynamic bind configuration")
+	}
 	if errors.IsNotFound(err) {
-		return &dbConfigProto.DynamicBindConfig{}, hferrors.GrpcNotFoundError(id, "dynamic bind configuation")
+		return &dbConfigProto.DynamicBindConfig{}, hferrors.GrpcNotFoundError(req, "dynamic bind configuation")
 	} else if err != nil {
 		glog.V(2).Infof("error while retrieving dynamic bind configuration: %v", err)
-		return &dbConfigProto.DynamicBindConfig{}, hferrors.GrpcError(
-			codes.Internal,
-			"error while retrieving dynamic bind configuration by id: %s with error: %v",
-			id,
-			id.GetId(),
-			err,
-		)
+		return &dbConfigProto.DynamicBindConfig{}, hferrors.GrpcGetError(req, "dynamic bind configuration", err)
 	}
 
 	return &dbConfigProto.DynamicBindConfig{
@@ -128,11 +138,7 @@ func (s *GrpcDynamicBindConfigurationServer) GetDynamicBindConfig(ctx context.Co
 func (s *GrpcDynamicBindConfigurationServer) UpdateDynamicBindConfig(ctx context.Context, req *dbConfigProto.UpdateDynamicBindConfigRequest) (*empty.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no id passed in",
-			req,
-		)
+		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 
 	environment := req.GetEnvironment()
@@ -140,7 +146,7 @@ func (s *GrpcDynamicBindConfigurationServer) UpdateDynamicBindConfig(ctx context
 	burstCountCapacity := req.GetBurstCountCapacity()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		dbc, err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()).Get(ctx, id, v1.GetOptions{})
+		dbc, err := s.dbConfigClient.Get(ctx, id, v1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			return hferrors.GrpcError(
@@ -173,7 +179,7 @@ func (s *GrpcDynamicBindConfigurationServer) UpdateDynamicBindConfig(ctx context
 			dbc.Spec.BurstCountCapacity = burstCountCapacity
 		}
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()).Update(ctx, dbc, v1.UpdateOptions{})
+		_, updateErr := s.dbConfigClient.Update(ctx, dbc, v1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -198,7 +204,7 @@ func (s *GrpcDynamicBindConfigurationServer) DeleteDynamicBindConfig(ctx context
 		)
 	}
 
-	err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()).Delete(ctx, id, v1.DeleteOptions{})
+	err := s.dbConfigClient.Delete(ctx, id, v1.DeleteOptions{})
 
 	if err != nil {
 		glog.Errorf("error deleting dynamic bind configuration %s: %v", id, err)
@@ -214,7 +220,7 @@ func (s *GrpcDynamicBindConfigurationServer) DeleteDynamicBindConfig(ctx context
 }
 
 func (s *GrpcDynamicBindConfigurationServer) DeleteCollectionDynamicBindConfig(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
-	err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()).DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{
+	err := s.dbConfigClient.DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{
 		LabelSelector: listOptions.GetLabelSelector(),
 	})
 	if err != nil {
@@ -228,20 +234,26 @@ func (s *GrpcDynamicBindConfigurationServer) DeleteCollectionDynamicBindConfig(c
 }
 
 func (s *GrpcDynamicBindConfigurationServer) ListDynamicBindConfig(ctx context.Context, listOptions *general.ListOptions) (*dbConfigProto.ListDynamicBindConfigsResponse, error) {
-	dbcList, err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util.GetReleaseNamespace()).List(ctx, v1.ListOptions{
-		LabelSelector: listOptions.GetLabelSelector(),
-	})
+	doLoadFromCache := listOptions.GetLoadFromCache()
+	var dbConfigs []hfv1.DynamicBindConfiguration
+	var err error
+	if !doLoadFromCache {
+		var dbConfigList *hfv1.DynamicBindConfigurationList
+		dbConfigList, err = util.ListByHfClient(ctx, listOptions, s.dbConfigClient, "dynamic bind configurations")
+		if err == nil {
+			dbConfigs = dbConfigList.Items
+		}
+	} else {
+		dbConfigs, err = util.ListByCache(listOptions, s.dbConfigLister, "dynamic bind configurations", s.dbConfigSynced())
+	}
 	if err != nil {
 		glog.Error(err)
-		return &dbConfigProto.ListDynamicBindConfigsResponse{}, hferrors.GrpcError(
-			codes.Internal,
-			"error retreiving dynamic bind configurations",
-			listOptions,
-		)
+		return &dbConfigProto.ListDynamicBindConfigsResponse{}, err
 	}
+
 	preparedDbcs := []*dbConfigProto.DynamicBindConfig{}
 
-	for _, dbc := range dbcList.Items {
+	for _, dbc := range dbConfigs {
 		preparedDbcs = append(preparedDbcs, &dbConfigProto.DynamicBindConfig{
 			Id:                  dbc.Name,
 			Environment:         dbc.Spec.Environment,

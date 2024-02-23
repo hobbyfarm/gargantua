@@ -34,7 +34,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DynamicBindConfigSvcClient interface {
 	CreateDynamicBindConfig(ctx context.Context, in *CreateDynamicBindConfigRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetDynamicBindConfig(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*DynamicBindConfig, error)
+	GetDynamicBindConfig(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*DynamicBindConfig, error)
 	UpdateDynamicBindConfig(ctx context.Context, in *UpdateDynamicBindConfigRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteDynamicBindConfig(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteCollectionDynamicBindConfig(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -58,7 +58,7 @@ func (c *dynamicBindConfigSvcClient) CreateDynamicBindConfig(ctx context.Context
 	return out, nil
 }
 
-func (c *dynamicBindConfigSvcClient) GetDynamicBindConfig(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*DynamicBindConfig, error) {
+func (c *dynamicBindConfigSvcClient) GetDynamicBindConfig(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*DynamicBindConfig, error) {
 	out := new(DynamicBindConfig)
 	err := c.cc.Invoke(ctx, DynamicBindConfigSvc_GetDynamicBindConfig_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -108,7 +108,7 @@ func (c *dynamicBindConfigSvcClient) ListDynamicBindConfig(ctx context.Context, 
 // for forward compatibility
 type DynamicBindConfigSvcServer interface {
 	CreateDynamicBindConfig(context.Context, *CreateDynamicBindConfigRequest) (*emptypb.Empty, error)
-	GetDynamicBindConfig(context.Context, *general.ResourceId) (*DynamicBindConfig, error)
+	GetDynamicBindConfig(context.Context, *general.GetRequest) (*DynamicBindConfig, error)
 	UpdateDynamicBindConfig(context.Context, *UpdateDynamicBindConfigRequest) (*emptypb.Empty, error)
 	DeleteDynamicBindConfig(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	DeleteCollectionDynamicBindConfig(context.Context, *general.ListOptions) (*emptypb.Empty, error)
@@ -123,7 +123,7 @@ type UnimplementedDynamicBindConfigSvcServer struct {
 func (UnimplementedDynamicBindConfigSvcServer) CreateDynamicBindConfig(context.Context, *CreateDynamicBindConfigRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateDynamicBindConfig not implemented")
 }
-func (UnimplementedDynamicBindConfigSvcServer) GetDynamicBindConfig(context.Context, *general.ResourceId) (*DynamicBindConfig, error) {
+func (UnimplementedDynamicBindConfigSvcServer) GetDynamicBindConfig(context.Context, *general.GetRequest) (*DynamicBindConfig, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDynamicBindConfig not implemented")
 }
 func (UnimplementedDynamicBindConfigSvcServer) UpdateDynamicBindConfig(context.Context, *UpdateDynamicBindConfigRequest) (*emptypb.Empty, error) {
@@ -170,7 +170,7 @@ func _DynamicBindConfigSvc_CreateDynamicBindConfig_Handler(srv interface{}, ctx 
 }
 
 func _DynamicBindConfigSvc_GetDynamicBindConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(general.ResourceId)
+	in := new(general.GetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func _DynamicBindConfigSvc_GetDynamicBindConfig_Handler(srv interface{}, ctx con
 		FullMethod: DynamicBindConfigSvc_GetDynamicBindConfig_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DynamicBindConfigSvcServer).GetDynamicBindConfig(ctx, req.(*general.ResourceId))
+		return srv.(DynamicBindConfigSvcServer).GetDynamicBindConfig(ctx, req.(*general.GetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

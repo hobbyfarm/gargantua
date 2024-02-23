@@ -545,7 +545,7 @@ var file_progress_progress_proto_rawDesc = []byte{
 	0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75,
 	0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x12, 0x36, 0x0a, 0x0b, 0x47, 0x65, 0x74, 0x50, 0x72,
 	0x6f, 0x67, 0x72, 0x65, 0x73, 0x73, 0x12, 0x13, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x6c,
-	0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x64, 0x1a, 0x12, 0x2e, 0x70, 0x72,
+	0x2e, 0x47, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x12, 0x2e, 0x70, 0x72,
 	0x6f, 0x67, 0x72, 0x65, 0x73, 0x73, 0x2e, 0x50, 0x72, 0x6f, 0x67, 0x72, 0x65, 0x73, 0x73, 0x12,
 	0x49, 0x0a, 0x0e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x50, 0x72, 0x6f, 0x67, 0x72, 0x65, 0x73,
 	0x73, 0x12, 0x1f, 0x2e, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x65, 0x73, 0x73, 0x2e, 0x55, 0x70, 0x64,
@@ -593,9 +593,10 @@ var file_progress_progress_proto_goTypes = []interface{}{
 	nil,                            // 5: progress.CreateProgressRequest.LabelsEntry
 	nil,                            // 6: progress.Progress.LabelsEntry
 	(*wrapperspb.UInt32Value)(nil), // 7: google.protobuf.UInt32Value
-	(*general.ResourceId)(nil),     // 8: general.ResourceId
-	(*general.ListOptions)(nil),    // 9: general.ListOptions
-	(*emptypb.Empty)(nil),          // 10: google.protobuf.Empty
+	(*general.GetRequest)(nil),     // 8: general.GetRequest
+	(*general.ResourceId)(nil),     // 9: general.ResourceId
+	(*general.ListOptions)(nil),    // 10: general.ListOptions
+	(*emptypb.Empty)(nil),          // 11: google.protobuf.Empty
 }
 var file_progress_progress_proto_depIdxs = []int32{
 	5,  // 0: progress.CreateProgressRequest.labels:type_name -> progress.CreateProgressRequest.LabelsEntry
@@ -607,16 +608,16 @@ var file_progress_progress_proto_depIdxs = []int32{
 	2,  // 6: progress.UpdateProgressRequest.steps:type_name -> progress.ProgressStep
 	1,  // 7: progress.ListProgressesResponse.progresses:type_name -> progress.Progress
 	0,  // 8: progress.ProgressSvc.CreateProgress:input_type -> progress.CreateProgressRequest
-	8,  // 9: progress.ProgressSvc.GetProgress:input_type -> general.ResourceId
+	8,  // 9: progress.ProgressSvc.GetProgress:input_type -> general.GetRequest
 	3,  // 10: progress.ProgressSvc.UpdateProgress:input_type -> progress.UpdateProgressRequest
-	8,  // 11: progress.ProgressSvc.DeleteProgress:input_type -> general.ResourceId
-	9,  // 12: progress.ProgressSvc.DeleteCollectionProgress:input_type -> general.ListOptions
-	9,  // 13: progress.ProgressSvc.ListProgress:input_type -> general.ListOptions
-	10, // 14: progress.ProgressSvc.CreateProgress:output_type -> google.protobuf.Empty
+	9,  // 11: progress.ProgressSvc.DeleteProgress:input_type -> general.ResourceId
+	10, // 12: progress.ProgressSvc.DeleteCollectionProgress:input_type -> general.ListOptions
+	10, // 13: progress.ProgressSvc.ListProgress:input_type -> general.ListOptions
+	11, // 14: progress.ProgressSvc.CreateProgress:output_type -> google.protobuf.Empty
 	1,  // 15: progress.ProgressSvc.GetProgress:output_type -> progress.Progress
-	10, // 16: progress.ProgressSvc.UpdateProgress:output_type -> google.protobuf.Empty
-	10, // 17: progress.ProgressSvc.DeleteProgress:output_type -> google.protobuf.Empty
-	10, // 18: progress.ProgressSvc.DeleteCollectionProgress:output_type -> google.protobuf.Empty
+	11, // 16: progress.ProgressSvc.UpdateProgress:output_type -> google.protobuf.Empty
+	11, // 17: progress.ProgressSvc.DeleteProgress:output_type -> google.protobuf.Empty
+	11, // 18: progress.ProgressSvc.DeleteCollectionProgress:output_type -> google.protobuf.Empty
 	4,  // 19: progress.ProgressSvc.ListProgress:output_type -> progress.ListProgressesResponse
 	14, // [14:20] is the sub-list for method output_type
 	8,  // [8:14] is the sub-list for method input_type

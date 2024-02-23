@@ -25,7 +25,6 @@ func init() {
 
 func main() {
 	stopCh := signals.SetupSignalHandler()
-	// ctx := context.Background()
 
 	cfg, hfClient, _ := microservices.BuildClusterConfig(serviceConfig)
 

@@ -12,7 +12,7 @@ import "google/protobuf/wrappers.proto";
 service AccessCodeSvc {
     // Resource oriented RPCs for AccessCodes:
     rpc CreateAc (CreateAcRequest) returns (google.protobuf.Empty);
-    rpc GetAc (general.ResourceId) returns (AccessCode);
+    rpc GetAc (general.GetRequest) returns (AccessCode);
     rpc UpdateAc (UpdateAccessCodeRequest) returns (google.protobuf.Empty);
     rpc DeleteAc (general.ResourceId) returns (google.protobuf.Empty);
     rpc DeleteCollectionAc (general.ListOptions) returns (google.protobuf.Empty);
@@ -20,7 +20,7 @@ service AccessCodeSvc {
 
     // Resource oriented RPCs for OneTimeAccessCodes:
     rpc CreateOtac (CreateOtacRequest) returns (OneTimeAccessCode);
-    rpc GetOtac (general.ResourceId) returns (OneTimeAccessCode);
+    rpc GetOtac (general.GetRequest) returns (OneTimeAccessCode);
     rpc UpdateOtac (OneTimeAccessCode) returns (google.protobuf.Empty);
     rpc DeleteOtac (general.ResourceId) returns (google.protobuf.Empty);
     rpc DeleteCollectionOtac (general.ListOptions) returns (google.protobuf.Empty);

@@ -849,8 +849,8 @@ var file_accesscode_accesscode_proto_rawDesc = []byte{
 	0x72, 0x65, 0x61, 0x74, 0x65, 0x41, 0x63, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16,
 	0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66,
 	0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x12, 0x34, 0x0a, 0x05, 0x47, 0x65, 0x74, 0x41, 0x63, 0x12,
-	0x13, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x6c, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72,
-	0x63, 0x65, 0x49, 0x64, 0x1a, 0x16, 0x2e, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x63, 0x6f, 0x64,
+	0x13, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x6c, 0x2e, 0x47, 0x65, 0x74, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x16, 0x2e, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x63, 0x6f, 0x64,
 	0x65, 0x2e, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x43, 0x6f, 0x64, 0x65, 0x12, 0x47, 0x0a, 0x08,
 	0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x41, 0x63, 0x12, 0x23, 0x2e, 0x61, 0x63, 0x63, 0x65, 0x73,
 	0x73, 0x63, 0x6f, 0x64, 0x65, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x41, 0x63, 0x63, 0x65,
@@ -874,7 +874,7 @@ var file_accesscode_accesscode_proto_rawDesc = []byte{
 	0x63, 0x63, 0x65, 0x73, 0x73, 0x63, 0x6f, 0x64, 0x65, 0x2e, 0x4f, 0x6e, 0x65, 0x54, 0x69, 0x6d,
 	0x65, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x43, 0x6f, 0x64, 0x65, 0x12, 0x3d, 0x0a, 0x07, 0x47,
 	0x65, 0x74, 0x4f, 0x74, 0x61, 0x63, 0x12, 0x13, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x6c,
-	0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x64, 0x1a, 0x1d, 0x2e, 0x61, 0x63,
+	0x2e, 0x47, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1d, 0x2e, 0x61, 0x63,
 	0x63, 0x65, 0x73, 0x73, 0x63, 0x6f, 0x64, 0x65, 0x2e, 0x4f, 0x6e, 0x65, 0x54, 0x69, 0x6d, 0x65,
 	0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x43, 0x6f, 0x64, 0x65, 0x12, 0x43, 0x0a, 0x0a, 0x55, 0x70,
 	0x64, 0x61, 0x74, 0x65, 0x4f, 0x74, 0x61, 0x63, 0x12, 0x1d, 0x2e, 0x61, 0x63, 0x63, 0x65, 0x73,
@@ -941,9 +941,10 @@ var file_accesscode_accesscode_proto_goTypes = []interface{}{
 	nil,                             // 10: accesscode.OneTimeAccessCode.LabelsEntry
 	nil,                             // 11: accesscode.AccessCode.LabelsEntry
 	(*wrapperspb.BoolValue)(nil),    // 12: google.protobuf.BoolValue
-	(*general.ResourceId)(nil),      // 13: general.ResourceId
-	(*general.ListOptions)(nil),     // 14: general.ListOptions
-	(*emptypb.Empty)(nil),           // 15: google.protobuf.Empty
+	(*general.GetRequest)(nil),      // 13: general.GetRequest
+	(*general.ResourceId)(nil),      // 14: general.ResourceId
+	(*general.ListOptions)(nil),     // 15: general.ListOptions
+	(*emptypb.Empty)(nil),           // 16: google.protobuf.Empty
 }
 var file_accesscode_accesscode_proto_depIdxs = []int32{
 	10, // 0: accesscode.OneTimeAccessCode.labels:type_name -> accesscode.OneTimeAccessCode.LabelsEntry
@@ -953,31 +954,31 @@ var file_accesscode_accesscode_proto_depIdxs = []int32{
 	12, // 4: accesscode.UpdateAccessCodeRequest.printable:type_name -> google.protobuf.BoolValue
 	6,  // 5: accesscode.ListAcsResponse.access_codes:type_name -> accesscode.AccessCode
 	5,  // 6: accesscode.AccessCodeSvc.CreateAc:input_type -> accesscode.CreateAcRequest
-	13, // 7: accesscode.AccessCodeSvc.GetAc:input_type -> general.ResourceId
+	13, // 7: accesscode.AccessCodeSvc.GetAc:input_type -> general.GetRequest
 	7,  // 8: accesscode.AccessCodeSvc.UpdateAc:input_type -> accesscode.UpdateAccessCodeRequest
-	13, // 9: accesscode.AccessCodeSvc.DeleteAc:input_type -> general.ResourceId
-	14, // 10: accesscode.AccessCodeSvc.DeleteCollectionAc:input_type -> general.ListOptions
-	14, // 11: accesscode.AccessCodeSvc.ListAc:input_type -> general.ListOptions
+	14, // 9: accesscode.AccessCodeSvc.DeleteAc:input_type -> general.ResourceId
+	15, // 10: accesscode.AccessCodeSvc.DeleteCollectionAc:input_type -> general.ListOptions
+	15, // 11: accesscode.AccessCodeSvc.ListAc:input_type -> general.ListOptions
 	4,  // 12: accesscode.AccessCodeSvc.CreateOtac:input_type -> accesscode.CreateOtacRequest
-	13, // 13: accesscode.AccessCodeSvc.GetOtac:input_type -> general.ResourceId
+	13, // 13: accesscode.AccessCodeSvc.GetOtac:input_type -> general.GetRequest
 	2,  // 14: accesscode.AccessCodeSvc.UpdateOtac:input_type -> accesscode.OneTimeAccessCode
-	13, // 15: accesscode.AccessCodeSvc.DeleteOtac:input_type -> general.ResourceId
-	14, // 16: accesscode.AccessCodeSvc.DeleteCollectionOtac:input_type -> general.ListOptions
-	14, // 17: accesscode.AccessCodeSvc.ListOtac:input_type -> general.ListOptions
-	13, // 18: accesscode.AccessCodeSvc.ValidateExistence:input_type -> general.ResourceId
+	14, // 15: accesscode.AccessCodeSvc.DeleteOtac:input_type -> general.ResourceId
+	15, // 16: accesscode.AccessCodeSvc.DeleteCollectionOtac:input_type -> general.ListOptions
+	15, // 17: accesscode.AccessCodeSvc.ListOtac:input_type -> general.ListOptions
+	14, // 18: accesscode.AccessCodeSvc.ValidateExistence:input_type -> general.ResourceId
 	0,  // 19: accesscode.AccessCodeSvc.GetAccessCodesWithOTACs:input_type -> accesscode.ResourceIds
-	13, // 20: accesscode.AccessCodeSvc.GetAccessCodeWithOTACs:input_type -> general.ResourceId
-	15, // 21: accesscode.AccessCodeSvc.CreateAc:output_type -> google.protobuf.Empty
+	14, // 20: accesscode.AccessCodeSvc.GetAccessCodeWithOTACs:input_type -> general.ResourceId
+	16, // 21: accesscode.AccessCodeSvc.CreateAc:output_type -> google.protobuf.Empty
 	6,  // 22: accesscode.AccessCodeSvc.GetAc:output_type -> accesscode.AccessCode
-	15, // 23: accesscode.AccessCodeSvc.UpdateAc:output_type -> google.protobuf.Empty
-	15, // 24: accesscode.AccessCodeSvc.DeleteAc:output_type -> google.protobuf.Empty
-	15, // 25: accesscode.AccessCodeSvc.DeleteCollectionAc:output_type -> google.protobuf.Empty
+	16, // 23: accesscode.AccessCodeSvc.UpdateAc:output_type -> google.protobuf.Empty
+	16, // 24: accesscode.AccessCodeSvc.DeleteAc:output_type -> google.protobuf.Empty
+	16, // 25: accesscode.AccessCodeSvc.DeleteCollectionAc:output_type -> google.protobuf.Empty
 	8,  // 26: accesscode.AccessCodeSvc.ListAc:output_type -> accesscode.ListAcsResponse
 	2,  // 27: accesscode.AccessCodeSvc.CreateOtac:output_type -> accesscode.OneTimeAccessCode
 	2,  // 28: accesscode.AccessCodeSvc.GetOtac:output_type -> accesscode.OneTimeAccessCode
-	15, // 29: accesscode.AccessCodeSvc.UpdateOtac:output_type -> google.protobuf.Empty
-	15, // 30: accesscode.AccessCodeSvc.DeleteOtac:output_type -> google.protobuf.Empty
-	15, // 31: accesscode.AccessCodeSvc.DeleteCollectionOtac:output_type -> google.protobuf.Empty
+	16, // 29: accesscode.AccessCodeSvc.UpdateOtac:output_type -> google.protobuf.Empty
+	16, // 30: accesscode.AccessCodeSvc.DeleteOtac:output_type -> google.protobuf.Empty
+	16, // 31: accesscode.AccessCodeSvc.DeleteCollectionOtac:output_type -> google.protobuf.Empty
 	3,  // 32: accesscode.AccessCodeSvc.ListOtac:output_type -> accesscode.ListOtacsResponse
 	1,  // 33: accesscode.AccessCodeSvc.ValidateExistence:output_type -> accesscode.ResourceValidation
 	8,  // 34: accesscode.AccessCodeSvc.GetAccessCodesWithOTACs:output_type -> accesscode.ListAcsResponse

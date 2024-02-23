@@ -44,14 +44,14 @@ const (
 type AccessCodeSvcClient interface {
 	// Resource oriented RPCs for AccessCodes:
 	CreateAc(ctx context.Context, in *CreateAcRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetAc(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*AccessCode, error)
+	GetAc(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*AccessCode, error)
 	UpdateAc(ctx context.Context, in *UpdateAccessCodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteAc(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteCollectionAc(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListAc(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*ListAcsResponse, error)
 	// Resource oriented RPCs for OneTimeAccessCodes:
 	CreateOtac(ctx context.Context, in *CreateOtacRequest, opts ...grpc.CallOption) (*OneTimeAccessCode, error)
-	GetOtac(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*OneTimeAccessCode, error)
+	GetOtac(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*OneTimeAccessCode, error)
 	UpdateOtac(ctx context.Context, in *OneTimeAccessCode, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteOtac(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteCollectionOtac(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -79,7 +79,7 @@ func (c *accessCodeSvcClient) CreateAc(ctx context.Context, in *CreateAcRequest,
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) GetAc(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*AccessCode, error) {
+func (c *accessCodeSvcClient) GetAc(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*AccessCode, error) {
 	out := new(AccessCode)
 	err := c.cc.Invoke(ctx, AccessCodeSvc_GetAc_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -133,7 +133,7 @@ func (c *accessCodeSvcClient) CreateOtac(ctx context.Context, in *CreateOtacRequ
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) GetOtac(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*OneTimeAccessCode, error) {
+func (c *accessCodeSvcClient) GetOtac(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*OneTimeAccessCode, error) {
 	out := new(OneTimeAccessCode)
 	err := c.cc.Invoke(ctx, AccessCodeSvc_GetOtac_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -211,14 +211,14 @@ func (c *accessCodeSvcClient) GetAccessCodeWithOTACs(ctx context.Context, in *ge
 type AccessCodeSvcServer interface {
 	// Resource oriented RPCs for AccessCodes:
 	CreateAc(context.Context, *CreateAcRequest) (*emptypb.Empty, error)
-	GetAc(context.Context, *general.ResourceId) (*AccessCode, error)
+	GetAc(context.Context, *general.GetRequest) (*AccessCode, error)
 	UpdateAc(context.Context, *UpdateAccessCodeRequest) (*emptypb.Empty, error)
 	DeleteAc(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	DeleteCollectionAc(context.Context, *general.ListOptions) (*emptypb.Empty, error)
 	ListAc(context.Context, *general.ListOptions) (*ListAcsResponse, error)
 	// Resource oriented RPCs for OneTimeAccessCodes:
 	CreateOtac(context.Context, *CreateOtacRequest) (*OneTimeAccessCode, error)
-	GetOtac(context.Context, *general.ResourceId) (*OneTimeAccessCode, error)
+	GetOtac(context.Context, *general.GetRequest) (*OneTimeAccessCode, error)
 	UpdateOtac(context.Context, *OneTimeAccessCode) (*emptypb.Empty, error)
 	DeleteOtac(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	DeleteCollectionOtac(context.Context, *general.ListOptions) (*emptypb.Empty, error)
@@ -237,7 +237,7 @@ type UnimplementedAccessCodeSvcServer struct {
 func (UnimplementedAccessCodeSvcServer) CreateAc(context.Context, *CreateAcRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAc not implemented")
 }
-func (UnimplementedAccessCodeSvcServer) GetAc(context.Context, *general.ResourceId) (*AccessCode, error) {
+func (UnimplementedAccessCodeSvcServer) GetAc(context.Context, *general.GetRequest) (*AccessCode, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAc not implemented")
 }
 func (UnimplementedAccessCodeSvcServer) UpdateAc(context.Context, *UpdateAccessCodeRequest) (*emptypb.Empty, error) {
@@ -255,7 +255,7 @@ func (UnimplementedAccessCodeSvcServer) ListAc(context.Context, *general.ListOpt
 func (UnimplementedAccessCodeSvcServer) CreateOtac(context.Context, *CreateOtacRequest) (*OneTimeAccessCode, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateOtac not implemented")
 }
-func (UnimplementedAccessCodeSvcServer) GetOtac(context.Context, *general.ResourceId) (*OneTimeAccessCode, error) {
+func (UnimplementedAccessCodeSvcServer) GetOtac(context.Context, *general.GetRequest) (*OneTimeAccessCode, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOtac not implemented")
 }
 func (UnimplementedAccessCodeSvcServer) UpdateOtac(context.Context, *OneTimeAccessCode) (*emptypb.Empty, error) {
@@ -311,7 +311,7 @@ func _AccessCodeSvc_CreateAc_Handler(srv interface{}, ctx context.Context, dec f
 }
 
 func _AccessCodeSvc_GetAc_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(general.ResourceId)
+	in := new(general.GetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func _AccessCodeSvc_GetAc_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: AccessCodeSvc_GetAc_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessCodeSvcServer).GetAc(ctx, req.(*general.ResourceId))
+		return srv.(AccessCodeSvcServer).GetAc(ctx, req.(*general.GetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -419,7 +419,7 @@ func _AccessCodeSvc_CreateOtac_Handler(srv interface{}, ctx context.Context, dec
 }
 
 func _AccessCodeSvc_GetOtac_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(general.ResourceId)
+	in := new(general.GetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -431,7 +431,7 @@ func _AccessCodeSvc_GetOtac_Handler(srv interface{}, ctx context.Context, dec fu
 		FullMethod: AccessCodeSvc_GetOtac_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessCodeSvcServer).GetOtac(ctx, req.(*general.ResourceId))
+		return srv.(AccessCodeSvcServer).GetOtac(ctx, req.(*general.GetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

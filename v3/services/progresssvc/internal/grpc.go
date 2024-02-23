@@ -11,23 +11,31 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	listersv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 type GrpcProgressServer struct {
 	progressProto.UnimplementedProgressSvcServer
-	hfClientSet hfClientset.Interface
+	progressClient hfClientsetv1.ProgressInterface
+	progressLister listersv1.ProgressLister
+	progressSynced cache.InformerSynced
 }
 
-func NewGrpcProgressServer(hfClientSet hfClientset.Interface) *GrpcProgressServer {
+func NewGrpcProgressServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) *GrpcProgressServer {
 	return &GrpcProgressServer{
-		hfClientSet: hfClientSet,
+		progressClient: hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()),
+		progressLister: hfInformerFactory.Hobbyfarm().V1().Progresses().Lister(),
+		progressSynced: hfInformerFactory.Hobbyfarm().V1().Progresses().Informer().HasSynced,
 	}
 }
 
@@ -67,7 +75,7 @@ func (s *GrpcProgressServer) CreateProgress(ctx context.Context, req *progressPr
 	steps = append(steps, step)
 	progress.Spec.Steps = steps
 
-	_, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Create(ctx, progress, v1.CreateOptions{})
+	_, err := s.progressClient.Create(ctx, progress, v1.CreateOptions{})
 	if err != nil {
 		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
@@ -78,26 +86,28 @@ func (s *GrpcProgressServer) CreateProgress(ctx context.Context, req *progressPr
 	return &empty.Empty{}, nil
 }
 
-func (s *GrpcProgressServer) GetProgress(ctx context.Context, id *general.ResourceId) (*progressProto.Progress, error) {
-	if len(id.GetId()) == 0 {
-		return &progressProto.Progress{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no id passed in",
-			id,
-		)
+func (s *GrpcProgressServer) GetProgress(ctx context.Context, req *general.GetRequest) (*progressProto.Progress, error) {
+	id := req.GetId()
+	doLoadFromCache := req.GetLoadFromCache()
+	if len(id) == 0 {
+		return &progressProto.Progress{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
-	progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Get(ctx, id.GetId(), v1.GetOptions{})
+	var progress *hfv1.Progress
+	var err error
+	if !doLoadFromCache {
+		progress, err = s.progressClient.Get(ctx, id, v1.GetOptions{})
+	} else if s.progressSynced() {
+		progress, err = s.progressLister.Progresses(util.GetReleaseNamespace()).Get(id)
+	} else {
+		glog.V(2).Info("error while retrieving progress by id: cache is not properly synced yet")
+		// our cache is not properly initialized yet ... returning status unavailable
+		return &progressProto.Progress{}, hferrors.GrpcCacheError(req, "progress")
+	}
 	if errors.IsNotFound(err) {
-		return &progressProto.Progress{}, hferrors.GrpcNotFoundError(id, "progress")
+		return &progressProto.Progress{}, hferrors.GrpcNotFoundError(req, "progress")
 	} else if err != nil {
 		glog.V(2).Infof("error while retrieving progress: %v", err)
-		return &progressProto.Progress{}, hferrors.GrpcError(
-			codes.Internal,
-			"error while retrieving progress by id: %s with error: %v",
-			id,
-			id.GetId(),
-			err,
-		)
+		return &progressProto.Progress{}, hferrors.GrpcGetError(req, "progress", err)
 	}
 
 	progressSteps := []*progressProto.ProgressStep{}
@@ -129,11 +139,7 @@ func (s *GrpcProgressServer) GetProgress(ctx context.Context, id *general.Resour
 func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progressProto.UpdateProgressRequest) (*empty.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no id passed in",
-			req,
-		)
+		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 
 	currentStep := req.GetCurrentStep()
@@ -144,7 +150,7 @@ func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progressPr
 	steps := req.GetSteps()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Get(ctx, id, v1.GetOptions{})
+		progress, err := s.progressClient.Get(ctx, id, v1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			return hferrors.GrpcError(
@@ -187,7 +193,7 @@ func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progressPr
 			progress.Spec.Steps = progressSteps
 		}
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Update(ctx, progress, v1.UpdateOptions{})
+		_, updateErr := s.progressClient.Update(ctx, progress, v1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -212,7 +218,7 @@ func (s *GrpcProgressServer) DeleteProgress(ctx context.Context, req *general.Re
 		)
 	}
 
-	err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).Delete(ctx, id, v1.DeleteOptions{})
+	err := s.progressClient.Delete(ctx, id, v1.DeleteOptions{})
 
 	if err != nil {
 		glog.Errorf("error deleting progress %s: %v", id, err)
@@ -228,7 +234,7 @@ func (s *GrpcProgressServer) DeleteProgress(ctx context.Context, req *general.Re
 }
 
 func (s *GrpcProgressServer) DeleteCollectionProgress(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
-	err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{
+	err := s.progressClient.DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{
 		LabelSelector: listOptions.GetLabelSelector(),
 	})
 	if err != nil {
@@ -242,21 +248,26 @@ func (s *GrpcProgressServer) DeleteCollectionProgress(ctx context.Context, listO
 }
 
 func (s *GrpcProgressServer) ListProgress(ctx context.Context, listOptions *general.ListOptions) (*progressProto.ListProgressesResponse, error) {
-	progressList, err := s.hfClientSet.HobbyfarmV1().Progresses(util.GetReleaseNamespace()).List(ctx, v1.ListOptions{
-		LabelSelector: listOptions.GetLabelSelector(),
-	})
+	doLoadFromCache := listOptions.GetLoadFromCache()
+	var progresses []hfv1.Progress
+	var err error
+	if !doLoadFromCache {
+		var progressList *hfv1.ProgressList
+		progressList, err = util.ListByHfClient(ctx, listOptions, s.progressClient, "progresses")
+		if err == nil {
+			progresses = progressList.Items
+		}
+	} else {
+		progresses, err = util.ListByCache(listOptions, s.progressLister, "progresses", s.progressSynced())
+	}
 	if err != nil {
 		glog.Error(err)
-		return &progressProto.ListProgressesResponse{}, hferrors.GrpcError(
-			codes.Internal,
-			"error retreiving progresses",
-			listOptions,
-		)
+		return &progressProto.ListProgressesResponse{}, err
 	}
 
 	preparedProgress := []*progressProto.Progress{}
 
-	for _, progress := range progressList.Items {
+	for _, progress := range progresses {
 		progressSteps := []*progressProto.ProgressStep{}
 		for _, step := range progress.Spec.Steps {
 			progressStep := &progressProto.ProgressStep{

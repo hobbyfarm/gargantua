@@ -224,7 +224,7 @@ func (a AuthServer) AddAccessCode(user *userProto.User, accessCode string, ctx c
 	accessCode = strings.ToLower(accessCode)
 
 	// check if this is an otac
-	otac, err := a.acClient.GetOtac(ctx, &general.ResourceId{Id: accessCode})
+	otac, err := a.acClient.GetOtac(ctx, &general.GetRequest{Id: accessCode})
 	if err != nil {
 		//otac does not exist. normal access code
 	} else {
