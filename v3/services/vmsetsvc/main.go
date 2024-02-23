@@ -2,12 +2,16 @@ package main
 
 import (
 	"sync"
+	"time"
 
 	"github.com/ebauman/crder"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 
 	"github.com/golang/glog"
 	vmsetservice "github.com/hobbyfarm/gargantua/services/vmsetsvc/v3/internal"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	vmsetProto "github.com/hobbyfarm/gargantua/v3/protos/vmset"
 )
 
@@ -20,7 +24,13 @@ func init() {
 }
 
 func main() {
+	stopCh := signals.SetupSignalHandler()
+	// ctx := context.Background()
+
 	cfg, hfClient, _ := microservices.BuildClusterConfig(serviceConfig)
+
+	namespace := util.GetReleaseNamespace()
+	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 
 	crds := vmsetservice.GenerateVMSetCRD()
 	glog.Info("installing/updating vm set CRDs")
@@ -32,7 +42,7 @@ func main() {
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
-	ds := vmsetservice.NewGrpcVMSetServer(hfClient)
+	ds := vmsetservice.NewGrpcVMSetServer(hfClient, hfInformerFactory)
 	vmsetProto.RegisterVMSetSvcServer(gs, ds)
 
 	var wg sync.WaitGroup
@@ -42,6 +52,8 @@ func main() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
 	}()
+
+	hfInformerFactory.Start(stopCh)
 
 	wg.Wait()
 }

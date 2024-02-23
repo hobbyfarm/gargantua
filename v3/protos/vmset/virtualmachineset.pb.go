@@ -688,8 +688,8 @@ var file_vmset_virtualmachineset_proto_rawDesc = []byte{
 	0x74, 0x65, 0x56, 0x4d, 0x53, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16,
 	0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66,
 	0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x12, 0x2d, 0x0a, 0x08, 0x47, 0x65, 0x74, 0x56, 0x4d, 0x53,
-	0x65, 0x74, 0x12, 0x13, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x6c, 0x2e, 0x52, 0x65, 0x73,
-	0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x64, 0x1a, 0x0c, 0x2e, 0x76, 0x6d, 0x73, 0x65, 0x74, 0x2e,
+	0x65, 0x74, 0x12, 0x13, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x6c, 0x2e, 0x47, 0x65, 0x74,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x0c, 0x2e, 0x76, 0x6d, 0x73, 0x65, 0x74, 0x2e,
 	0x56, 0x4d, 0x53, 0x65, 0x74, 0x12, 0x40, 0x0a, 0x0b, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x56,
 	0x4d, 0x53, 0x65, 0x74, 0x12, 0x19, 0x2e, 0x76, 0x6d, 0x73, 0x65, 0x74, 0x2e, 0x55, 0x70, 0x64,
 	0x61, 0x74, 0x65, 0x56, 0x4d, 0x53, 0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
@@ -742,9 +742,10 @@ var file_vmset_virtualmachineset_proto_goTypes = []interface{}{
 	nil,                              // 8: vmset.CreateVMSetRequest.LabelsEntry
 	(*wrapperspb.UInt32Value)(nil),   // 9: google.protobuf.UInt32Value
 	(*wrapperspb.BoolValue)(nil),     // 10: google.protobuf.BoolValue
-	(*general.ResourceId)(nil),       // 11: general.ResourceId
-	(*general.ListOptions)(nil),      // 12: general.ListOptions
-	(*emptypb.Empty)(nil),            // 13: google.protobuf.Empty
+	(*general.GetRequest)(nil),       // 11: general.GetRequest
+	(*general.ResourceId)(nil),       // 12: general.ResourceId
+	(*general.ListOptions)(nil),      // 13: general.ListOptions
+	(*emptypb.Empty)(nil),            // 14: google.protobuf.Empty
 }
 var file_vmset_virtualmachineset_proto_depIdxs = []int32{
 	2,  // 0: vmset.VMSet.status:type_name -> vmset.VMSetStatus
@@ -758,18 +759,18 @@ var file_vmset_virtualmachineset_proto_depIdxs = []int32{
 	9,  // 8: vmset.UpdateVMSetStatusRequest.provisioned:type_name -> google.protobuf.UInt32Value
 	0,  // 9: vmset.ListVMSetsResponse.vmsets:type_name -> vmset.VMSet
 	1,  // 10: vmset.VMSetSvc.CreateVMSet:input_type -> vmset.CreateVMSetRequest
-	11, // 11: vmset.VMSetSvc.GetVMSet:input_type -> general.ResourceId
+	11, // 11: vmset.VMSetSvc.GetVMSet:input_type -> general.GetRequest
 	3,  // 12: vmset.VMSetSvc.UpdateVMSet:input_type -> vmset.UpdateVMSetRequest
 	5,  // 13: vmset.VMSetSvc.UpdateVMSetStatus:input_type -> vmset.UpdateVMSetStatusRequest
-	11, // 14: vmset.VMSetSvc.DeleteVMSet:input_type -> general.ResourceId
-	12, // 15: vmset.VMSetSvc.DeleteCollectionVMSet:input_type -> general.ListOptions
-	12, // 16: vmset.VMSetSvc.ListVMSet:input_type -> general.ListOptions
-	13, // 17: vmset.VMSetSvc.CreateVMSet:output_type -> google.protobuf.Empty
+	12, // 14: vmset.VMSetSvc.DeleteVMSet:input_type -> general.ResourceId
+	13, // 15: vmset.VMSetSvc.DeleteCollectionVMSet:input_type -> general.ListOptions
+	13, // 16: vmset.VMSetSvc.ListVMSet:input_type -> general.ListOptions
+	14, // 17: vmset.VMSetSvc.CreateVMSet:output_type -> google.protobuf.Empty
 	0,  // 18: vmset.VMSetSvc.GetVMSet:output_type -> vmset.VMSet
-	13, // 19: vmset.VMSetSvc.UpdateVMSet:output_type -> google.protobuf.Empty
-	13, // 20: vmset.VMSetSvc.UpdateVMSetStatus:output_type -> google.protobuf.Empty
-	13, // 21: vmset.VMSetSvc.DeleteVMSet:output_type -> google.protobuf.Empty
-	13, // 22: vmset.VMSetSvc.DeleteCollectionVMSet:output_type -> google.protobuf.Empty
+	14, // 19: vmset.VMSetSvc.UpdateVMSet:output_type -> google.protobuf.Empty
+	14, // 20: vmset.VMSetSvc.UpdateVMSetStatus:output_type -> google.protobuf.Empty
+	14, // 21: vmset.VMSetSvc.DeleteVMSet:output_type -> google.protobuf.Empty
+	14, // 22: vmset.VMSetSvc.DeleteCollectionVMSet:output_type -> google.protobuf.Empty
 	6,  // 23: vmset.VMSetSvc.ListVMSet:output_type -> vmset.ListVMSetsResponse
 	17, // [17:24] is the sub-list for method output_type
 	10, // [10:17] is the sub-list for method input_type

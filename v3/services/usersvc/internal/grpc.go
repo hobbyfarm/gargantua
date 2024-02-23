@@ -12,6 +12,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfv2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfClientsetv2 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v2"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	listerv2 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v2"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
@@ -24,7 +25,6 @@ import (
 	empty "google.golang.org/protobuf/types/known/emptypb"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
@@ -35,13 +35,13 @@ const (
 
 type GrpcUserServer struct {
 	userProto.UnimplementedUserSvcServer
-	hfClientSet hfClientset.Interface
+	userClient  hfClientsetv2.UserInterface
 	userIndexer cache.Indexer
 	userLister  listerv2.UserLister
-	ctx         context.Context
+	userSynced  cache.InformerSynced
 }
 
-func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*GrpcUserServer, error) {
+func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*GrpcUserServer, error) {
 	inf := hfInformerFactory.Hobbyfarm().V2().Users().Informer()
 	indexers := map[string]cache.IndexFunc{emailIndex: emailIndexer}
 	err := inf.AddIndexers(indexers)
@@ -50,10 +50,10 @@ func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfIn
 		return nil, err
 	}
 	return &GrpcUserServer{
-		hfClientSet: hfClientSet,
+		userClient:  hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()),
 		userIndexer: inf.GetIndexer(),
 		userLister:  hfInformerFactory.Hobbyfarm().V2().Users().Lister(),
-		ctx:         ctx,
+		userSynced:  inf.HasSynced,
 	}, nil
 }
 
@@ -65,7 +65,7 @@ func emailIndexer(obj interface{}) ([]string, error) {
 	return []string{user.Spec.Email}, nil
 }
 
-func (u *GrpcUserServer) CreateUser(c context.Context, cur *userProto.CreateUserRequest) (*general.ResourceId, error) {
+func (u *GrpcUserServer) CreateUser(ctx context.Context, cur *userProto.CreateUserRequest) (*general.ResourceId, error) {
 	if len(cur.GetEmail()) == 0 || len(cur.GetPassword()) == 0 {
 		return &general.ResourceId{}, hferrors.GrpcError(
 			codes.InvalidArgument,
@@ -113,7 +113,7 @@ func (u *GrpcUserServer) CreateUser(c context.Context, cur *userProto.CreateUser
 	newUser.Spec.Password = string(passwordHash)
 	newUser.Spec.LastLoginTimestamp = time.Now().Format(time.UnixDate)
 
-	_, err = u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Create(u.ctx, &newUser, metav1.CreateOptions{})
+	_, err = u.userClient.Create(ctx, &newUser, metav1.CreateOptions{})
 
 	if err != nil {
 		return &general.ResourceId{}, hferrors.GrpcError(
@@ -126,62 +126,59 @@ func (u *GrpcUserServer) CreateUser(c context.Context, cur *userProto.CreateUser
 	return &general.ResourceId{Id: id}, nil
 }
 
-func (u *GrpcUserServer) GetUserById(ctx context.Context, gur *general.ResourceId) (*userProto.User, error) {
-	id := gur.GetId()
+func (u *GrpcUserServer) GetUserById(ctx context.Context, req *general.GetRequest) (*userProto.User, error) {
+	id := req.GetId()
+	doLoadFromCache := req.GetLoadFromCache()
 	if len(id) == 0 {
-		return &userProto.User{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no id passed in",
-			gur,
-		)
+		return &userProto.User{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
-	obj, err := u.userLister.Users(util.GetReleaseNamespace()).Get(id)
+	var user *hfv2.User
+	var err error
+	if !doLoadFromCache {
+		user, err = u.userClient.Get(ctx, id, metav1.GetOptions{})
+	} else if u.userSynced() {
+		user, err = u.userLister.Users(util.GetReleaseNamespace()).Get(id)
+	} else {
+		glog.V(2).Info("error while retrieving user by id: cache is not properly synced yet")
+		// our cache is not properly initialized yet ... returning status unavailable
+		return &userProto.User{}, hferrors.GrpcCacheError(req, "user")
+	}
 	if errors.IsNotFound(err) {
-		return &userProto.User{}, hferrors.GrpcNotFoundError(gur, "user")
+		return &userProto.User{}, hferrors.GrpcNotFoundError(req, "user")
 	} else if err != nil {
 		glog.V(2).Infof("error while retrieving user: %v", err)
-		return &userProto.User{}, hferrors.GrpcError(
-			codes.Internal,
-			"error while retrieving user by id: %s with error: %v",
-			gur,
-			id,
-			err,
-		)
+		return &userProto.User{}, hferrors.GrpcGetError(req, "user", err)
 	}
 
 	glog.V(2).Infof("retrieved user %s", id)
 
 	return &userProto.User{
-		Id:                  obj.Name,
-		Email:               obj.Spec.Email,
-		Password:            obj.Spec.Password,
-		AccessCodes:         obj.Spec.AccessCodes,
-		Settings:            obj.Spec.Settings,
-		LastLoginTimestamp:  obj.Spec.LastLoginTimestamp,
-		RegisteredTimestamp: obj.GetCreationTimestamp().Time.Format(time.UnixDate),
+		Id:                  user.Name,
+		Email:               user.Spec.Email,
+		Password:            user.Spec.Password,
+		AccessCodes:         user.Spec.AccessCodes,
+		Settings:            user.Spec.Settings,
+		LastLoginTimestamp:  user.Spec.LastLoginTimestamp,
+		RegisteredTimestamp: user.GetCreationTimestamp().Time.Format(time.UnixDate),
 	}, nil
 }
 
 func (u *GrpcUserServer) ListUser(ctx context.Context, listOptions *general.ListOptions) (*userProto.ListUsersResponse, error) {
-	//users, err := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).List(u.ctx, metav1.ListOptions{})
-	selector, err := labels.Parse(listOptions.GetLabelSelector())
-	if err != nil {
-		glog.Errorf("error parsing label selector %v", err)
-		return &userProto.ListUsersResponse{}, hferrors.GrpcError(
-			codes.Internal,
-			"error parsing label selector",
-			listOptions,
-		)
+	doLoadFromCache := listOptions.GetLoadFromCache()
+	var users []hfv2.User
+	var err error
+	if !doLoadFromCache {
+		var userList *hfv2.UserList
+		userList, err = util.ListByHfClient(ctx, listOptions, u.userClient, "users")
+		if err == nil {
+			users = userList.Items
+		}
+	} else {
+		users, err = util.ListByCache(listOptions, u.userLister, "users", u.userSynced())
 	}
-	users, err := u.userLister.Users(util.GetReleaseNamespace()).List(selector)
-
 	if err != nil {
-		glog.Errorf("error while retrieving users %v", err)
-		return &userProto.ListUsersResponse{}, hferrors.GrpcError(
-			codes.Internal,
-			"no users found",
-			listOptions,
-		)
+		glog.Error(err)
+		return &userProto.ListUsersResponse{}, err
 	}
 
 	preparedUsers := []*userProto.User{} // must be declared this way so as to JSON marshal into [] instead of null
@@ -243,7 +240,7 @@ func (u *GrpcUserServer) UpdateUser(ctx context.Context, userRequest *userProto.
 			user.Spec.Settings = userRequest.GetSettings()
 		}
 
-		_, updateErr := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Update(u.ctx, user, metav1.UpdateOptions{})
+		_, updateErr := u.userClient.Update(ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -286,7 +283,7 @@ func (u *GrpcUserServer) UpdateAccessCodes(ctx context.Context, updateAccessCode
 			user.Spec.AccessCodes = make([]string, 0)
 		}
 
-		_, updateErr := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Update(u.ctx, user, metav1.UpdateOptions{})
+		_, updateErr := u.userClient.Update(ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -305,15 +302,7 @@ func (u *GrpcUserServer) SetLastLoginTimestamp(ctx context.Context, userId *gene
 	id := userId.GetId()
 
 	if len(id) == 0 {
-		newErr := status.Newf(
-			codes.InvalidArgument,
-			"no id passed in",
-		)
-		newErr, wde := newErr.WithDetails(userId)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
+		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(userId)
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -334,7 +323,7 @@ func (u *GrpcUserServer) SetLastLoginTimestamp(ctx context.Context, userId *gene
 
 		user.Spec.LastLoginTimestamp = time.Now().Format(time.UnixDate)
 
-		_, updateErr := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Update(u.ctx, user, metav1.UpdateOptions{})
+		_, updateErr := u.userClient.Update(ctx, user, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -353,7 +342,7 @@ func (u *GrpcUserServer) SetLastLoginTimestamp(ctx context.Context, userId *gene
 	return &empty.Empty{}, nil
 }
 
-func (u *GrpcUserServer) GetUserByEmail(c context.Context, gur *userProto.GetUserByEmailRequest) (*userProto.User, error) {
+func (u *GrpcUserServer) GetUserByEmail(ctx context.Context, gur *userProto.GetUserByEmailRequest) (*userProto.User, error) {
 	if len(gur.GetEmail()) == 0 {
 		return &userProto.User{}, hferrors.GrpcError(
 			codes.InvalidArgument,
@@ -402,15 +391,11 @@ func (u *GrpcUserServer) GetUserByEmail(c context.Context, gur *userProto.GetUse
 	}, nil
 }
 
-func (u *GrpcUserServer) DeleteUser(c context.Context, userId *general.ResourceId) (*empty.Empty, error) {
+func (u *GrpcUserServer) DeleteUser(ctx context.Context, userId *general.ResourceId) (*empty.Empty, error) {
 	id := userId.GetId()
 
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no id passed in",
-			userId,
-		)
+		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(userId)
 	}
 
 	user, err := u.userLister.Users(util.GetReleaseNamespace()).Get(id)
@@ -425,7 +410,8 @@ func (u *GrpcUserServer) DeleteUser(c context.Context, userId *general.ResourceI
 	}
 
 	// get a list of sessions for the user
-	sessionList, err := u.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(u.ctx, metav1.ListOptions{
+	// @TODO: Use gRPC SessionClient here!
+	sessionList, err := u.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", util.UserLabel, id),
 	})
 
@@ -453,7 +439,7 @@ func (u *GrpcUserServer) DeleteUser(c context.Context, userId *general.ResourceI
 
 		// getting here means there are sessions present but they are not active
 		// let's delete them for cleanliness' sake
-		if ok, err := u.deleteSessions(sessionList.Items); !ok {
+		if ok, err := u.deleteSessions(ctx, sessionList.Items); !ok {
 			glog.Errorf("error deleting old sessions for user %s: %s", id, err)
 			return &empty.Empty{}, hferrors.GrpcError(
 				codes.Internal,
@@ -466,7 +452,7 @@ func (u *GrpcUserServer) DeleteUser(c context.Context, userId *general.ResourceI
 	// at this point we have either delete all old sessions, or there were no sessions  to begin with
 	// so we should be safe to delete the user
 
-	deleteErr := u.hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()).Delete(u.ctx, user.Name, metav1.DeleteOptions{})
+	deleteErr := u.userClient.Delete(ctx, user.Name, metav1.DeleteOptions{})
 	if deleteErr != nil {
 		glog.Errorf("error deleting user %s: %s", id, deleteErr)
 		return &empty.Empty{}, hferrors.GrpcError(
@@ -479,10 +465,11 @@ func (u *GrpcUserServer) DeleteUser(c context.Context, userId *general.ResourceI
 	return &empty.Empty{}, nil
 }
 
-func (u *GrpcUserServer) deleteSessions(sessions []hfv1.Session) (bool, error) {
+func (u *GrpcUserServer) deleteSessions(ctx context.Context, sessions []hfv1.Session) (bool, error) {
 	for _, v := range sessions {
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			err := u.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Delete(u.ctx, v.Name, metav1.DeleteOptions{})
+			// @TODO: Use gRPC SessionClient here!
+			err := u.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Delete(ctx, v.Name, metav1.DeleteOptions{})
 			return err
 		})
 

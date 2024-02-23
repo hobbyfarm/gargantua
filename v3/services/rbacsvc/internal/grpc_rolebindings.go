@@ -29,7 +29,7 @@ func (rs *GrpcRbacServer) CreateRolebinding(c context.Context, cr *rbacProto.Rol
 		)
 	}
 
-	_, err = rs.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).Create(c, rolebinding, metav1.CreateOptions{})
+	_, err = rs.roleBindingClient.Create(c, rolebinding, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating rolebinding in kubernetes: %v", err)
 		return &empty.Empty{}, hferrors.GrpcError(
@@ -42,7 +42,7 @@ func (rs *GrpcRbacServer) CreateRolebinding(c context.Context, cr *rbacProto.Rol
 	return &empty.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) GetRolebinding(c context.Context, gr *general.ResourceId) (*rbacProto.RoleBinding, error) {
+func (rs *GrpcRbacServer) GetRolebinding(c context.Context, gr *general.GetRequest) (*rbacProto.RoleBinding, error) {
 	rolebinding, err := rs.getRolebinding(c, gr)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (rs *GrpcRbacServer) UpdateRolebinding(c context.Context, ur *rbacProto.Rol
 		)
 	}
 
-	k8sRolebinding, err := rs.getRolebinding(c, &general.ResourceId{Id: ur.GetName()})
+	k8sRolebinding, err := rs.getRolebinding(c, &general.GetRequest{Id: ur.GetName()})
 	if err != nil {
 		return &empty.Empty{}, err
 	}
@@ -70,7 +70,7 @@ func (rs *GrpcRbacServer) UpdateRolebinding(c context.Context, ur *rbacProto.Rol
 	k8sRolebinding.Subjects = inputRolebinding.Subjects
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		_, err := rs.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).Update(c, k8sRolebinding, metav1.UpdateOptions{})
+		_, err := rs.roleBindingClient.Update(c, k8sRolebinding, metav1.UpdateOptions{})
 		if err != nil {
 			glog.Errorf("error while updating rolebinding in kubernetes: %v", err)
 			return hferrors.GrpcError(
@@ -93,12 +93,12 @@ func (rs *GrpcRbacServer) DeleteRolebinding(c context.Context, dr *general.Resou
 	// we want to get the rolebinding first as this allows us to run it through the various checks before we attempt deletion
 	// most important of which is checking that we have labeled it correctly
 	// but it doesn't hurt to check if it exists before
-	rolebinding, err := rs.getRolebinding(c, dr)
+	rolebinding, err := rs.getRolebinding(c, &general.GetRequest{Id: dr.GetId()})
 	if err != nil {
 		return &empty.Empty{}, err
 	}
 
-	err = rs.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).Delete(c, rolebinding.Name, metav1.DeleteOptions{})
+	err = rs.roleBindingClient.Delete(c, rolebinding.Name, metav1.DeleteOptions{})
 	if err != nil {
 		glog.Errorf("error deleting rolebinding in kubernetes: %v", err)
 		return &empty.Empty{}, hferrors.GrpcError(
@@ -110,31 +110,26 @@ func (rs *GrpcRbacServer) DeleteRolebinding(c context.Context, dr *general.Resou
 	return &empty.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) ListRolebinding(c context.Context, lr *general.ListOptions) (*rbacProto.RoleBindings, error) {
-	listOptions := metav1.ListOptions{
-		LabelSelector: lr.GetLabelSelector(),
-	}
-
-	rolebindings, err := rs.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).List(c, listOptions)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			glog.Errorf("error: rolebindings not found")
-			return &rbacProto.RoleBindings{}, hferrors.GrpcError(
-				codes.NotFound,
-				"rolebindings not found",
-				lr,
-			)
+func (rs *GrpcRbacServer) ListRolebinding(ctx context.Context, listOptions *general.ListOptions) (*rbacProto.RoleBindings, error) {
+	doLoadFromCache := listOptions.GetLoadFromCache()
+	var rolebindings []rbacv1.RoleBinding
+	var err error
+	if !doLoadFromCache {
+		var rolebindingList *rbacv1.RoleBindingList
+		rolebindingList, err = util.ListByHfClient(ctx, listOptions, rs.roleBindingClient, "rolebindings")
+		if err == nil {
+			rolebindings = rolebindingList.Items
 		}
-		glog.Errorf("error in kubernetes while listing rolebindings %v", err)
-		return &rbacProto.RoleBindings{}, hferrors.GrpcError(
-			codes.Internal,
-			"error listing rolebindings",
-			lr,
-		)
+	} else {
+		rolebindings, err = util.ListByCache(listOptions, rs.roleBindingLister, "rolebindings", rs.roleBindingSynced())
+	}
+	if err != nil {
+		glog.Error(err)
+		return &rbacProto.RoleBindings{}, err
 	}
 
 	var preparedRolebindings = make([]*rbacProto.RoleBinding, 0)
-	for _, r := range rolebindings.Items {
+	for _, r := range rolebindings {
 		pr := unmarshalRolebinding(&r)
 		preparedRolebindings = append(preparedRolebindings, pr)
 	}
@@ -144,7 +139,7 @@ func (rs *GrpcRbacServer) ListRolebinding(c context.Context, lr *general.ListOpt
 
 func (rs *GrpcRbacServer) marshalRolebinding(ctx context.Context, preparedRoleBinding *rbacProto.RoleBinding) (*rbacv1.RoleBinding, error) {
 	// first validation, the role it is referencing has to exist
-	role, err := rs.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Get(ctx, preparedRoleBinding.GetRole(), metav1.GetOptions{})
+	role, err := rs.roleClient.Get(ctx, preparedRoleBinding.GetRole(), metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("invalid role ref")
 	}
@@ -205,27 +200,30 @@ func unmarshalRolebinding(roleBinding *rbacv1.RoleBinding) *rbacProto.RoleBindin
 	return prb
 }
 
-func (rs *GrpcRbacServer) getRolebinding(c context.Context, gr *general.ResourceId) (*rbacv1.RoleBinding, error) {
-	if gr.GetId() == "" {
+func (rs *GrpcRbacServer) getRolebinding(ctx context.Context, req *general.GetRequest) (*rbacv1.RoleBinding, error) {
+	id := req.GetId()
+	doLoadFromCache := req.GetLoadFromCache()
+	if len(id) == 0 {
 		glog.Errorf("invalid rolebinding id")
-		return &rbacv1.RoleBinding{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"invalid rolebinding id",
-			gr,
-		)
+		return &rbacv1.RoleBinding{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
-
-	rolebinding, err := rs.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).Get(c, gr.GetId(), metav1.GetOptions{})
+	var rolebinding *rbacv1.RoleBinding
+	var err error
+	if !doLoadFromCache {
+		rolebinding, err = rs.roleBindingClient.Get(ctx, id, metav1.GetOptions{})
+	} else if rs.roleSynced() {
+		rolebinding, err = rs.roleBindingLister.RoleBindings(util.GetReleaseNamespace()).Get(id)
+	} else {
+		glog.V(2).Info("error while retrieving rolebinding by id: cache is not properly synced yet")
+		// our cache is not properly initialized yet ... returning status unavailable
+		return &rbacv1.RoleBinding{}, hferrors.GrpcCacheError(req, "rolebinding")
+	}
 	if errors.IsNotFound(err) {
-		glog.Errorf("rolebinding %s not found", gr.GetId())
-		return &rbacv1.RoleBinding{}, hferrors.GrpcNotFoundError(gr, "rolebinding")
+		glog.Errorf("rolebinding %s not found", req.GetId())
+		return &rbacv1.RoleBinding{}, hferrors.GrpcNotFoundError(req, "rolebinding")
 	} else if err != nil {
 		glog.Errorf("kubernetes error while retrieving rolebinding: %v", err)
-		return &rbacv1.RoleBinding{}, hferrors.GrpcError(
-			codes.Internal,
-			"error while retrieving rolebinding",
-			gr,
-		)
+		return &rbacv1.RoleBinding{}, hferrors.GrpcGetError(req, "rolebinding", err)
 	}
 
 	if _, ok := rolebinding.Labels[util.RBACManagedLabel]; !ok {
@@ -234,7 +232,7 @@ func (rs *GrpcRbacServer) getRolebinding(c context.Context, gr *general.Resource
 		return &rbacv1.RoleBinding{}, hferrors.GrpcError(
 			codes.PermissionDenied,
 			"rolebinding not managed by hobbyfarm",
-			gr,
+			req,
 		)
 	}
 

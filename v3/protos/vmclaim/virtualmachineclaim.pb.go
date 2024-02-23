@@ -692,8 +692,8 @@ var file_vmclaim_virtualmachineclaim_proto_rawDesc = []byte{
 	0x69, 0x6d, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67,
 	0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74,
 	0x79, 0x12, 0x33, 0x0a, 0x0a, 0x47, 0x65, 0x74, 0x56, 0x4d, 0x43, 0x6c, 0x61, 0x69, 0x6d, 0x12,
-	0x13, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x6c, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75, 0x72,
-	0x63, 0x65, 0x49, 0x64, 0x1a, 0x10, 0x2e, 0x76, 0x6d, 0x63, 0x6c, 0x61, 0x69, 0x6d, 0x2e, 0x56,
+	0x13, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x6c, 0x2e, 0x47, 0x65, 0x74, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x10, 0x2e, 0x76, 0x6d, 0x63, 0x6c, 0x61, 0x69, 0x6d, 0x2e, 0x56,
 	0x4d, 0x43, 0x6c, 0x61, 0x69, 0x6d, 0x12, 0x46, 0x0a, 0x0d, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65,
 	0x56, 0x4d, 0x43, 0x6c, 0x61, 0x69, 0x6d, 0x12, 0x1d, 0x2e, 0x76, 0x6d, 0x63, 0x6c, 0x61, 0x69,
 	0x6d, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x56, 0x4d, 0x43, 0x6c, 0x61, 0x69, 0x6d, 0x52,
@@ -751,9 +751,10 @@ var file_vmclaim_virtualmachineclaim_proto_goTypes = []interface{}{
 	nil,                                // 11: vmclaim.UpdateVMClaimRequest.VmsetEntry
 	(*wrapperspb.BoolValue)(nil),       // 12: google.protobuf.BoolValue
 	(*wrapperspb.UInt32Value)(nil),     // 13: google.protobuf.UInt32Value
-	(*general.ResourceId)(nil),         // 14: general.ResourceId
-	(*general.ListOptions)(nil),        // 15: general.ListOptions
-	(*emptypb.Empty)(nil),              // 16: google.protobuf.Empty
+	(*general.GetRequest)(nil),         // 14: general.GetRequest
+	(*general.ResourceId)(nil),         // 15: general.ResourceId
+	(*general.ListOptions)(nil),        // 16: general.ListOptions
+	(*emptypb.Empty)(nil),              // 17: google.protobuf.Empty
 }
 var file_vmclaim_virtualmachineclaim_proto_depIdxs = []int32{
 	7,  // 0: vmclaim.VMClaim.vms:type_name -> vmclaim.VMClaim.VmsEntry
@@ -771,18 +772,18 @@ var file_vmclaim_virtualmachineclaim_proto_depIdxs = []int32{
 	5,  // 12: vmclaim.VMClaim.VmsEntry.value:type_name -> vmclaim.VMClaimVM
 	5,  // 13: vmclaim.UpdateVMClaimRequest.VmsetEntry.value:type_name -> vmclaim.VMClaimVM
 	1,  // 14: vmclaim.VMClaimSvc.CreateVMClaim:input_type -> vmclaim.CreateVMClaimRequest
-	14, // 15: vmclaim.VMClaimSvc.GetVMClaim:input_type -> general.ResourceId
+	14, // 15: vmclaim.VMClaimSvc.GetVMClaim:input_type -> general.GetRequest
 	2,  // 16: vmclaim.VMClaimSvc.UpdateVMClaim:input_type -> vmclaim.UpdateVMClaimRequest
 	3,  // 17: vmclaim.VMClaimSvc.UpdateVMClaimStatus:input_type -> vmclaim.UpdateVMClaimStatusRequest
-	14, // 18: vmclaim.VMClaimSvc.DeleteVMClaim:input_type -> general.ResourceId
-	15, // 19: vmclaim.VMClaimSvc.DeleteCollectionVMClaim:input_type -> general.ListOptions
-	15, // 20: vmclaim.VMClaimSvc.ListVMClaim:input_type -> general.ListOptions
-	16, // 21: vmclaim.VMClaimSvc.CreateVMClaim:output_type -> google.protobuf.Empty
+	15, // 18: vmclaim.VMClaimSvc.DeleteVMClaim:input_type -> general.ResourceId
+	16, // 19: vmclaim.VMClaimSvc.DeleteCollectionVMClaim:input_type -> general.ListOptions
+	16, // 20: vmclaim.VMClaimSvc.ListVMClaim:input_type -> general.ListOptions
+	17, // 21: vmclaim.VMClaimSvc.CreateVMClaim:output_type -> google.protobuf.Empty
 	0,  // 22: vmclaim.VMClaimSvc.GetVMClaim:output_type -> vmclaim.VMClaim
-	16, // 23: vmclaim.VMClaimSvc.UpdateVMClaim:output_type -> google.protobuf.Empty
-	16, // 24: vmclaim.VMClaimSvc.UpdateVMClaimStatus:output_type -> google.protobuf.Empty
-	16, // 25: vmclaim.VMClaimSvc.DeleteVMClaim:output_type -> google.protobuf.Empty
-	16, // 26: vmclaim.VMClaimSvc.DeleteCollectionVMClaim:output_type -> google.protobuf.Empty
+	17, // 23: vmclaim.VMClaimSvc.UpdateVMClaim:output_type -> google.protobuf.Empty
+	17, // 24: vmclaim.VMClaimSvc.UpdateVMClaimStatus:output_type -> google.protobuf.Empty
+	17, // 25: vmclaim.VMClaimSvc.DeleteVMClaim:output_type -> google.protobuf.Empty
+	17, // 26: vmclaim.VMClaimSvc.DeleteCollectionVMClaim:output_type -> google.protobuf.Empty
 	6,  // 27: vmclaim.VMClaimSvc.ListVMClaim:output_type -> vmclaim.ListVMClaimsResponse
 	21, // [21:28] is the sub-list for method output_type
 	14, // [14:21] is the sub-list for method input_type

@@ -15,13 +15,13 @@ service RbacSvc {
     rpc GetHobbyfarmRoleBindings (general.ResourceId) returns (RoleBindings);
     // Resource oriented RPCs for roles:
     rpc CreateRole (Role) returns (google.protobuf.Empty);
-    rpc GetRole (general.ResourceId) returns (Role);
+    rpc GetRole (general.GetRequest) returns (Role);
     rpc UpdateRole (Role) returns (google.protobuf.Empty);
     rpc DeleteRole (general.ResourceId) returns (google.protobuf.Empty);
     rpc ListRole (general.ListOptions) returns (Roles);
     // Resource oriented RPCs for rolebindings:
     rpc CreateRolebinding (RoleBinding) returns (google.protobuf.Empty);
-    rpc GetRolebinding (general.ResourceId) returns (RoleBinding);
+    rpc GetRolebinding (general.GetRequest) returns (RoleBinding);
     rpc UpdateRolebinding (RoleBinding) returns (google.protobuf.Empty);
     rpc DeleteRolebinding (general.ResourceId) returns (google.protobuf.Empty);
     rpc ListRolebinding (general.ListOptions) returns (RoleBindings);

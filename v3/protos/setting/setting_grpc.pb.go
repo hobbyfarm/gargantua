@@ -36,13 +36,13 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SettingSvcClient interface {
 	CreateSetting(ctx context.Context, in *CreateSettingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetSetting(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*Setting, error)
+	GetSetting(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Setting, error)
 	GetSettingValue(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*SettingValue, error)
 	UpdateSetting(ctx context.Context, in *Setting, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// rpc DeleteSetting (general.ResourceId) returns (google.protobuf.Empty); TODO
 	ListSettings(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*ListSettingsResponse, error)
 	CreateScope(ctx context.Context, in *CreateScopeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetScope(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*Scope, error)
+	GetScope(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Scope, error)
 	ListScopes(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*Scopes, error)
 }
 
@@ -63,7 +63,7 @@ func (c *settingSvcClient) CreateSetting(ctx context.Context, in *CreateSettingR
 	return out, nil
 }
 
-func (c *settingSvcClient) GetSetting(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*Setting, error) {
+func (c *settingSvcClient) GetSetting(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Setting, error) {
 	out := new(Setting)
 	err := c.cc.Invoke(ctx, SettingSvc_GetSetting_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -108,7 +108,7 @@ func (c *settingSvcClient) CreateScope(ctx context.Context, in *CreateScopeReque
 	return out, nil
 }
 
-func (c *settingSvcClient) GetScope(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*Scope, error) {
+func (c *settingSvcClient) GetScope(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Scope, error) {
 	out := new(Scope)
 	err := c.cc.Invoke(ctx, SettingSvc_GetScope_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -131,13 +131,13 @@ func (c *settingSvcClient) ListScopes(ctx context.Context, in *general.ListOptio
 // for forward compatibility
 type SettingSvcServer interface {
 	CreateSetting(context.Context, *CreateSettingRequest) (*emptypb.Empty, error)
-	GetSetting(context.Context, *general.ResourceId) (*Setting, error)
+	GetSetting(context.Context, *general.GetRequest) (*Setting, error)
 	GetSettingValue(context.Context, *general.ResourceId) (*SettingValue, error)
 	UpdateSetting(context.Context, *Setting) (*emptypb.Empty, error)
 	// rpc DeleteSetting (general.ResourceId) returns (google.protobuf.Empty); TODO
 	ListSettings(context.Context, *general.ListOptions) (*ListSettingsResponse, error)
 	CreateScope(context.Context, *CreateScopeRequest) (*emptypb.Empty, error)
-	GetScope(context.Context, *general.ResourceId) (*Scope, error)
+	GetScope(context.Context, *general.GetRequest) (*Scope, error)
 	ListScopes(context.Context, *general.ListOptions) (*Scopes, error)
 	mustEmbedUnimplementedSettingSvcServer()
 }
@@ -149,7 +149,7 @@ type UnimplementedSettingSvcServer struct {
 func (UnimplementedSettingSvcServer) CreateSetting(context.Context, *CreateSettingRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateSetting not implemented")
 }
-func (UnimplementedSettingSvcServer) GetSetting(context.Context, *general.ResourceId) (*Setting, error) {
+func (UnimplementedSettingSvcServer) GetSetting(context.Context, *general.GetRequest) (*Setting, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSetting not implemented")
 }
 func (UnimplementedSettingSvcServer) GetSettingValue(context.Context, *general.ResourceId) (*SettingValue, error) {
@@ -164,7 +164,7 @@ func (UnimplementedSettingSvcServer) ListSettings(context.Context, *general.List
 func (UnimplementedSettingSvcServer) CreateScope(context.Context, *CreateScopeRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateScope not implemented")
 }
-func (UnimplementedSettingSvcServer) GetScope(context.Context, *general.ResourceId) (*Scope, error) {
+func (UnimplementedSettingSvcServer) GetScope(context.Context, *general.GetRequest) (*Scope, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetScope not implemented")
 }
 func (UnimplementedSettingSvcServer) ListScopes(context.Context, *general.ListOptions) (*Scopes, error) {
@@ -202,7 +202,7 @@ func _SettingSvc_CreateSetting_Handler(srv interface{}, ctx context.Context, dec
 }
 
 func _SettingSvc_GetSetting_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(general.ResourceId)
+	in := new(general.GetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func _SettingSvc_GetSetting_Handler(srv interface{}, ctx context.Context, dec fu
 		FullMethod: SettingSvc_GetSetting_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SettingSvcServer).GetSetting(ctx, req.(*general.ResourceId))
+		return srv.(SettingSvcServer).GetSetting(ctx, req.(*general.GetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -292,7 +292,7 @@ func _SettingSvc_CreateScope_Handler(srv interface{}, ctx context.Context, dec f
 }
 
 func _SettingSvc_GetScope_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(general.ResourceId)
+	in := new(general.GetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -304,7 +304,7 @@ func _SettingSvc_GetScope_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: SettingSvc_GetScope_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SettingSvcServer).GetScope(ctx, req.(*general.ResourceId))
+		return srv.(SettingSvcServer).GetScope(ctx, req.(*general.GetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

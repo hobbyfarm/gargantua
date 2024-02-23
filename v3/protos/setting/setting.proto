@@ -10,13 +10,13 @@ import "google/protobuf/empty.proto";
 
 service SettingSvc {
     rpc CreateSetting(CreateSettingRequest) returns (google.protobuf.Empty);
-    rpc GetSetting (general.ResourceId) returns (Setting);
+    rpc GetSetting (general.GetRequest) returns (Setting);
     rpc GetSettingValue(general.ResourceId) returns (SettingValue);
     rpc UpdateSetting (Setting) returns (google.protobuf.Empty);
     // rpc DeleteSetting (general.ResourceId) returns (google.protobuf.Empty); TODO
     rpc ListSettings(general.ListOptions) returns (ListSettingsResponse);
     rpc CreateScope (CreateScopeRequest) returns (google.protobuf.Empty);
-    rpc GetScope (general.ResourceId) returns (Scope);
+    rpc GetScope (general.GetRequest) returns (Scope);
     rpc ListScopes (general.ListOptions) returns (Scopes);
 }
 

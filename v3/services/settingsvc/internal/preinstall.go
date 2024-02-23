@@ -33,7 +33,7 @@ func installResources(ctx context.Context, internalSettingServer *GrpcSettingSer
 	defer wg.Done()
 
 	for _, scope := range scopes() {
-		_, err := internalSettingServer.GetScope(ctx, &general.ResourceId{Id: scope.GetName()})
+		_, err := internalSettingServer.GetScope(ctx, &general.GetRequest{Id: scope.GetName()})
 		if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
 			if _, err := internalSettingServer.CreateScope(ctx, scope); err != nil {
 				return err
@@ -46,7 +46,7 @@ func installResources(ctx context.Context, internalSettingServer *GrpcSettingSer
 	}
 
 	for _, setting := range predefinedSettings() {
-		_, err := internalSettingServer.GetSetting(ctx, &general.ResourceId{Id: setting.GetName()})
+		_, err := internalSettingServer.GetSetting(ctx, &general.GetRequest{Id: setting.GetName()})
 		if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
 			if _, err := internalSettingServer.CreateSetting(ctx, setting); err != nil {
 				return err

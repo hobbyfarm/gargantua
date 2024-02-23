@@ -35,7 +35,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type VMSetSvcClient interface {
 	CreateVMSet(ctx context.Context, in *CreateVMSetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetVMSet(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*VMSet, error)
+	GetVMSet(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*VMSet, error)
 	UpdateVMSet(ctx context.Context, in *UpdateVMSetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	UpdateVMSetStatus(ctx context.Context, in *UpdateVMSetStatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteVMSet(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -60,7 +60,7 @@ func (c *vMSetSvcClient) CreateVMSet(ctx context.Context, in *CreateVMSetRequest
 	return out, nil
 }
 
-func (c *vMSetSvcClient) GetVMSet(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*VMSet, error) {
+func (c *vMSetSvcClient) GetVMSet(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*VMSet, error) {
 	out := new(VMSet)
 	err := c.cc.Invoke(ctx, VMSetSvc_GetVMSet_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -119,7 +119,7 @@ func (c *vMSetSvcClient) ListVMSet(ctx context.Context, in *general.ListOptions,
 // for forward compatibility
 type VMSetSvcServer interface {
 	CreateVMSet(context.Context, *CreateVMSetRequest) (*emptypb.Empty, error)
-	GetVMSet(context.Context, *general.ResourceId) (*VMSet, error)
+	GetVMSet(context.Context, *general.GetRequest) (*VMSet, error)
 	UpdateVMSet(context.Context, *UpdateVMSetRequest) (*emptypb.Empty, error)
 	UpdateVMSetStatus(context.Context, *UpdateVMSetStatusRequest) (*emptypb.Empty, error)
 	DeleteVMSet(context.Context, *general.ResourceId) (*emptypb.Empty, error)
@@ -135,7 +135,7 @@ type UnimplementedVMSetSvcServer struct {
 func (UnimplementedVMSetSvcServer) CreateVMSet(context.Context, *CreateVMSetRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateVMSet not implemented")
 }
-func (UnimplementedVMSetSvcServer) GetVMSet(context.Context, *general.ResourceId) (*VMSet, error) {
+func (UnimplementedVMSetSvcServer) GetVMSet(context.Context, *general.GetRequest) (*VMSet, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVMSet not implemented")
 }
 func (UnimplementedVMSetSvcServer) UpdateVMSet(context.Context, *UpdateVMSetRequest) (*emptypb.Empty, error) {
@@ -185,7 +185,7 @@ func _VMSetSvc_CreateVMSet_Handler(srv interface{}, ctx context.Context, dec fun
 }
 
 func _VMSetSvc_GetVMSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(general.ResourceId)
+	in := new(general.GetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func _VMSetSvc_GetVMSet_Handler(srv interface{}, ctx context.Context, dec func(i
 		FullMethod: VMSetSvc_GetVMSet_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VMSetSvcServer).GetVMSet(ctx, req.(*general.ResourceId))
+		return srv.(VMSetSvcServer).GetVMSet(ctx, req.(*general.GetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

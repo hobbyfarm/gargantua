@@ -36,7 +36,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserSvcClient interface {
 	CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*general.ResourceId, error)
-	GetUserById(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*User, error)
+	GetUserById(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*User, error)
 	GetUserByEmail(ctx context.Context, in *GetUserByEmailRequest, opts ...grpc.CallOption) (*User, error)
 	UpdateUser(ctx context.Context, in *User, opts ...grpc.CallOption) (*User, error)
 	SetLastLoginTimestamp(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -62,7 +62,7 @@ func (c *userSvcClient) CreateUser(ctx context.Context, in *CreateUserRequest, o
 	return out, nil
 }
 
-func (c *userSvcClient) GetUserById(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*User, error) {
+func (c *userSvcClient) GetUserById(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*User, error) {
 	out := new(User)
 	err := c.cc.Invoke(ctx, UserSvc_GetUserById_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -130,7 +130,7 @@ func (c *userSvcClient) ListUser(ctx context.Context, in *general.ListOptions, o
 // for forward compatibility
 type UserSvcServer interface {
 	CreateUser(context.Context, *CreateUserRequest) (*general.ResourceId, error)
-	GetUserById(context.Context, *general.ResourceId) (*User, error)
+	GetUserById(context.Context, *general.GetRequest) (*User, error)
 	GetUserByEmail(context.Context, *GetUserByEmailRequest) (*User, error)
 	UpdateUser(context.Context, *User) (*User, error)
 	SetLastLoginTimestamp(context.Context, *general.ResourceId) (*emptypb.Empty, error)
@@ -147,7 +147,7 @@ type UnimplementedUserSvcServer struct {
 func (UnimplementedUserSvcServer) CreateUser(context.Context, *CreateUserRequest) (*general.ResourceId, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateUser not implemented")
 }
-func (UnimplementedUserSvcServer) GetUserById(context.Context, *general.ResourceId) (*User, error) {
+func (UnimplementedUserSvcServer) GetUserById(context.Context, *general.GetRequest) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUserById not implemented")
 }
 func (UnimplementedUserSvcServer) GetUserByEmail(context.Context, *GetUserByEmailRequest) (*User, error) {
@@ -200,7 +200,7 @@ func _UserSvc_CreateUser_Handler(srv interface{}, ctx context.Context, dec func(
 }
 
 func _UserSvc_GetUserById_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(general.ResourceId)
+	in := new(general.GetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -212,7 +212,7 @@ func _UserSvc_GetUserById_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: UserSvc_GetUserById_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserSvcServer).GetUserById(ctx, req.(*general.ResourceId))
+		return srv.(UserSvcServer).GetUserById(ctx, req.(*general.GetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

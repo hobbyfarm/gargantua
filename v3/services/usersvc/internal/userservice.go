@@ -55,7 +55,7 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	user, err := u.internalUserServer.GetUserById(r.Context(), &general.ResourceId{Id: id})
+	user, err := u.internalUserServer.GetUserById(r.Context(), &general.GetRequest{Id: id})
 
 	if err != nil {
 		if s, ok := status.FromError(err); ok {

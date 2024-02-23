@@ -10,6 +10,12 @@ message ResourceId {
     string id = 1;
 }
 
+message GetRequest {
+    string id = 1;
+    bool load_from_cache = 2;
+}
+
 message ListOptions {
     string label_selector = 1;
+    bool load_from_cache = 2;
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"os"
 	"sync"
 	"time"
@@ -68,8 +67,7 @@ func main() {
 	authrClient := authr.NewAuthRClient(connections[microservices.AuthR])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert)
-	ctx := context.Background()
-	us, err := userservice.NewGrpcUserServer(hfClient, hfInformerFactory, ctx)
+	us, err := userservice.NewGrpcUserServer(hfClient, hfInformerFactory)
 
 	if err != nil {
 		glog.Fatalf("starting grpc user server failed: %v", err)

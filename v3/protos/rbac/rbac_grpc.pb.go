@@ -46,13 +46,13 @@ type RbacSvcClient interface {
 	GetHobbyfarmRoleBindings(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*RoleBindings, error)
 	// Resource oriented RPCs for roles:
 	CreateRole(ctx context.Context, in *Role, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetRole(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*Role, error)
+	GetRole(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Role, error)
 	UpdateRole(ctx context.Context, in *Role, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteRole(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListRole(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*Roles, error)
 	// Resource oriented RPCs for rolebindings:
 	CreateRolebinding(ctx context.Context, in *RoleBinding, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetRolebinding(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*RoleBinding, error)
+	GetRolebinding(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*RoleBinding, error)
 	UpdateRolebinding(ctx context.Context, in *RoleBinding, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteRolebinding(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListRolebinding(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*RoleBindings, error)
@@ -102,7 +102,7 @@ func (c *rbacSvcClient) CreateRole(ctx context.Context, in *Role, opts ...grpc.C
 	return out, nil
 }
 
-func (c *rbacSvcClient) GetRole(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*Role, error) {
+func (c *rbacSvcClient) GetRole(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Role, error) {
 	out := new(Role)
 	err := c.cc.Invoke(ctx, RbacSvc_GetRole_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -147,7 +147,7 @@ func (c *rbacSvcClient) CreateRolebinding(ctx context.Context, in *RoleBinding, 
 	return out, nil
 }
 
-func (c *rbacSvcClient) GetRolebinding(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*RoleBinding, error) {
+func (c *rbacSvcClient) GetRolebinding(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*RoleBinding, error) {
 	out := new(RoleBinding)
 	err := c.cc.Invoke(ctx, RbacSvc_GetRolebinding_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -192,13 +192,13 @@ type RbacSvcServer interface {
 	GetHobbyfarmRoleBindings(context.Context, *general.ResourceId) (*RoleBindings, error)
 	// Resource oriented RPCs for roles:
 	CreateRole(context.Context, *Role) (*emptypb.Empty, error)
-	GetRole(context.Context, *general.ResourceId) (*Role, error)
+	GetRole(context.Context, *general.GetRequest) (*Role, error)
 	UpdateRole(context.Context, *Role) (*emptypb.Empty, error)
 	DeleteRole(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	ListRole(context.Context, *general.ListOptions) (*Roles, error)
 	// Resource oriented RPCs for rolebindings:
 	CreateRolebinding(context.Context, *RoleBinding) (*emptypb.Empty, error)
-	GetRolebinding(context.Context, *general.ResourceId) (*RoleBinding, error)
+	GetRolebinding(context.Context, *general.GetRequest) (*RoleBinding, error)
 	UpdateRolebinding(context.Context, *RoleBinding) (*emptypb.Empty, error)
 	DeleteRolebinding(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	ListRolebinding(context.Context, *general.ListOptions) (*RoleBindings, error)
@@ -221,7 +221,7 @@ func (UnimplementedRbacSvcServer) GetHobbyfarmRoleBindings(context.Context, *gen
 func (UnimplementedRbacSvcServer) CreateRole(context.Context, *Role) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateRole not implemented")
 }
-func (UnimplementedRbacSvcServer) GetRole(context.Context, *general.ResourceId) (*Role, error) {
+func (UnimplementedRbacSvcServer) GetRole(context.Context, *general.GetRequest) (*Role, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRole not implemented")
 }
 func (UnimplementedRbacSvcServer) UpdateRole(context.Context, *Role) (*emptypb.Empty, error) {
@@ -236,7 +236,7 @@ func (UnimplementedRbacSvcServer) ListRole(context.Context, *general.ListOptions
 func (UnimplementedRbacSvcServer) CreateRolebinding(context.Context, *RoleBinding) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateRolebinding not implemented")
 }
-func (UnimplementedRbacSvcServer) GetRolebinding(context.Context, *general.ResourceId) (*RoleBinding, error) {
+func (UnimplementedRbacSvcServer) GetRolebinding(context.Context, *general.GetRequest) (*RoleBinding, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRolebinding not implemented")
 }
 func (UnimplementedRbacSvcServer) UpdateRolebinding(context.Context, *RoleBinding) (*emptypb.Empty, error) {
@@ -334,7 +334,7 @@ func _RbacSvc_CreateRole_Handler(srv interface{}, ctx context.Context, dec func(
 }
 
 func _RbacSvc_GetRole_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(general.ResourceId)
+	in := new(general.GetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -346,7 +346,7 @@ func _RbacSvc_GetRole_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: RbacSvc_GetRole_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RbacSvcServer).GetRole(ctx, req.(*general.ResourceId))
+		return srv.(RbacSvcServer).GetRole(ctx, req.(*general.GetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -424,7 +424,7 @@ func _RbacSvc_CreateRolebinding_Handler(srv interface{}, ctx context.Context, de
 }
 
 func _RbacSvc_GetRolebinding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(general.ResourceId)
+	in := new(general.GetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -436,7 +436,7 @@ func _RbacSvc_GetRolebinding_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: RbacSvc_GetRolebinding_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RbacSvcServer).GetRolebinding(ctx, req.(*general.ResourceId))
+		return srv.(RbacSvcServer).GetRolebinding(ctx, req.(*general.GetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

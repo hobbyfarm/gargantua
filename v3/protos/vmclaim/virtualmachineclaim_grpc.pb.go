@@ -35,7 +35,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type VMClaimSvcClient interface {
 	CreateVMClaim(ctx context.Context, in *CreateVMClaimRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetVMClaim(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*VMClaim, error)
+	GetVMClaim(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*VMClaim, error)
 	UpdateVMClaim(ctx context.Context, in *UpdateVMClaimRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	UpdateVMClaimStatus(ctx context.Context, in *UpdateVMClaimStatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteVMClaim(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -60,7 +60,7 @@ func (c *vMClaimSvcClient) CreateVMClaim(ctx context.Context, in *CreateVMClaimR
 	return out, nil
 }
 
-func (c *vMClaimSvcClient) GetVMClaim(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*VMClaim, error) {
+func (c *vMClaimSvcClient) GetVMClaim(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*VMClaim, error) {
 	out := new(VMClaim)
 	err := c.cc.Invoke(ctx, VMClaimSvc_GetVMClaim_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -119,7 +119,7 @@ func (c *vMClaimSvcClient) ListVMClaim(ctx context.Context, in *general.ListOpti
 // for forward compatibility
 type VMClaimSvcServer interface {
 	CreateVMClaim(context.Context, *CreateVMClaimRequest) (*emptypb.Empty, error)
-	GetVMClaim(context.Context, *general.ResourceId) (*VMClaim, error)
+	GetVMClaim(context.Context, *general.GetRequest) (*VMClaim, error)
 	UpdateVMClaim(context.Context, *UpdateVMClaimRequest) (*emptypb.Empty, error)
 	UpdateVMClaimStatus(context.Context, *UpdateVMClaimStatusRequest) (*emptypb.Empty, error)
 	DeleteVMClaim(context.Context, *general.ResourceId) (*emptypb.Empty, error)
@@ -135,7 +135,7 @@ type UnimplementedVMClaimSvcServer struct {
 func (UnimplementedVMClaimSvcServer) CreateVMClaim(context.Context, *CreateVMClaimRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateVMClaim not implemented")
 }
-func (UnimplementedVMClaimSvcServer) GetVMClaim(context.Context, *general.ResourceId) (*VMClaim, error) {
+func (UnimplementedVMClaimSvcServer) GetVMClaim(context.Context, *general.GetRequest) (*VMClaim, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVMClaim not implemented")
 }
 func (UnimplementedVMClaimSvcServer) UpdateVMClaim(context.Context, *UpdateVMClaimRequest) (*emptypb.Empty, error) {
@@ -185,7 +185,7 @@ func _VMClaimSvc_CreateVMClaim_Handler(srv interface{}, ctx context.Context, dec
 }
 
 func _VMClaimSvc_GetVMClaim_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(general.ResourceId)
+	in := new(general.GetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func _VMClaimSvc_GetVMClaim_Handler(srv interface{}, ctx context.Context, dec fu
 		FullMethod: VMClaimSvc_GetVMClaim_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VMClaimSvcServer).GetVMClaim(ctx, req.(*general.ResourceId))
+		return srv.(VMClaimSvcServer).GetVMClaim(ctx, req.(*general.GetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

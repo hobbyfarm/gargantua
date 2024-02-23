@@ -7,6 +7,9 @@ import (
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	listersv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	labels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/property"
@@ -19,18 +22,28 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/cache"
 )
 
 type GrpcSettingServer struct {
 	settingProto.UnimplementedSettingSvcServer
-	hfClientSet hfClientset.Interface
-	ctx         context.Context
+	settingClient hfClientsetv1.SettingInterface
+	settingLister listersv1.SettingLister
+	settingSynced cache.InformerSynced
+	scopeClient   hfClientsetv1.ScopeInterface
+	scopeLister   listersv1.ScopeLister
+	scopeSynced   cache.InformerSynced
 }
 
-func NewGrpcSettingServer(hfClientSet hfClientset.Interface, ctx context.Context) *GrpcSettingServer {
+func NewGrpcSettingServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) *GrpcSettingServer {
+	ns := util.GetReleaseNamespace()
 	return &GrpcSettingServer{
-		hfClientSet: hfClientSet,
-		ctx:         ctx,
+		settingClient: hfClientSet.HobbyfarmV1().Settings(ns),
+		settingLister: hfInformerFactory.Hobbyfarm().V1().Settings().Lister(),
+		settingSynced: hfInformerFactory.Hobbyfarm().V1().Settings().Informer().HasSynced,
+		scopeClient:   hfClientSet.HobbyfarmV1().Scopes(ns),
+		scopeLister:   hfInformerFactory.Hobbyfarm().V1().Scopes().Lister(),
+		scopeSynced:   hfInformerFactory.Hobbyfarm().V1().Scopes().Informer().HasSynced,
 	}
 }
 
@@ -42,7 +55,7 @@ func (s *GrpcSettingServer) CreateScope(ctx context.Context, creq *settingProto.
 		},
 		DisplayName: creq.GetDisplayName(),
 	}
-	_, err := s.hfClientSet.HobbyfarmV1().Scopes(util.GetReleaseNamespace()).Create(ctx, hfScope, metav1.CreateOptions{})
+	_, err := s.scopeClient.Create(ctx, hfScope, metav1.CreateOptions{})
 	if err != nil {
 		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
@@ -53,40 +66,55 @@ func (s *GrpcSettingServer) CreateScope(ctx context.Context, creq *settingProto.
 	return &empty.Empty{}, nil
 }
 
-func (s *GrpcSettingServer) GetScope(ctx context.Context, id *general.ResourceId) (*settingProto.Scope, error) {
-	scope, err := s.hfClientSet.HobbyfarmV1().Scopes(util.GetReleaseNamespace()).Get(s.ctx, id.GetId(), metav1.GetOptions{})
+func (s *GrpcSettingServer) GetScope(ctx context.Context, req *general.GetRequest) (*settingProto.Scope, error) {
+	id := req.GetId()
+	doLoadFromCache := req.GetLoadFromCache()
+	if len(id) == 0 {
+		return &settingProto.Scope{}, hferrors.GrpcIdNotSpecifiedError(req)
+	}
+
+	var scope *hfv1.Scope
+	var err error
+	if !doLoadFromCache {
+		scope, err = s.scopeClient.Get(ctx, id, metav1.GetOptions{})
+	} else if s.scopeSynced() {
+		scope, err = s.scopeLister.Scopes(util.GetReleaseNamespace()).Get(id)
+	} else {
+		glog.V(2).Info("error while retrieving scope by id: cache is not properly synced yet")
+		// our cache is not properly initialized yet ... returning status unavailable
+		return &settingProto.Scope{}, hferrors.GrpcCacheError(req, "scope")
+	}
 	if errors.IsNotFound(err) {
-		glog.Errorf("scope %s not found", id.GetId())
-		return &settingProto.Scope{}, hferrors.GrpcNotFoundError(id, "scope")
+		glog.Errorf("scope %s not found", req.GetId())
+		return &settingProto.Scope{}, hferrors.GrpcNotFoundError(req, "scope")
 	} else if err != nil {
 		glog.V(2).Infof("error while retrieving scope: %v", err)
-		return &settingProto.Scope{}, hferrors.GrpcError(
-			codes.Internal,
-			"error while retrieving scope by id: %s with error: %v",
-			id,
-			id.GetId(),
-			err,
-		)
+		return &settingProto.Scope{}, hferrors.GrpcGetError(req, "scope", err)
 	}
 	return &settingProto.Scope{Name: scope.Name, DisplayName: scope.DisplayName}, nil
 }
 
 func (s *GrpcSettingServer) ListScopes(ctx context.Context, listOptions *general.ListOptions) (*settingProto.Scopes, error) {
-	scopes, err := s.hfClientSet.HobbyfarmV1().Scopes(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: listOptions.GetLabelSelector(),
-	})
+	doLoadFromCache := listOptions.GetLoadFromCache()
+	var scopes []hfv1.Scope
+	var err error
+	if !doLoadFromCache {
+		var scopeList *hfv1.ScopeList
+		scopeList, err = util.ListByHfClient(ctx, listOptions, s.scopeClient, "scopes")
+		if err == nil {
+			scopes = scopeList.Items
+		}
+	} else {
+		scopes, err = util.ListByCache(listOptions, s.scopeLister, "scopes", s.scopeSynced())
+	}
 	if err != nil {
-		glog.Errorf("error while listing scopes: %s", err.Error())
-		return &settingProto.Scopes{}, hferrors.GrpcError(
-			codes.Internal,
-			"error listing scopes",
-			listOptions,
-		)
+		glog.Error(err)
+		return &settingProto.Scopes{}, err
 	}
 
-	var preparedScopes = make([]*settingProto.Scope, len(scopes.Items))
+	var preparedScopes = make([]*settingProto.Scope, len(scopes))
 
-	for i, s := range scopes.Items {
+	for i, s := range scopes {
 		preparedScopes[i] = &settingProto.Scope{
 			Name:        s.Name,
 			DisplayName: s.DisplayName,
@@ -109,7 +137,7 @@ func (s *GrpcSettingServer) CreateSetting(ctx context.Context, creq *settingProt
 			DisplayName: creq.GetProperty().GetDisplayName(),
 		},
 	}
-	_, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Create(ctx, hfSetting, metav1.CreateOptions{})
+	_, err := s.settingClient.Create(ctx, hfSetting, metav1.CreateOptions{})
 	if err != nil {
 		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
@@ -164,21 +192,26 @@ func (s *GrpcSettingServer) GetSettingValue(ctx context.Context, sreq *general.R
 	return resp, nil
 }
 
-func (s *GrpcSettingServer) ListSettings(ctx context.Context, lreq *general.ListOptions) (*settingProto.ListSettingsResponse, error) {
-	kSettings, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: lreq.GetLabelSelector(),
-	})
+func (s *GrpcSettingServer) ListSettings(ctx context.Context, listOptions *general.ListOptions) (*settingProto.ListSettingsResponse, error) {
+	doLoadFromCache := listOptions.GetLoadFromCache()
+	var settings []hfv1.Setting
+	var err error
+	if !doLoadFromCache {
+		var settingList *hfv1.SettingList
+		settingList, err = util.ListByHfClient(ctx, listOptions, s.settingClient, "settings")
+		if err == nil {
+			settings = settingList.Items
+		}
+	} else {
+		settings, err = util.ListByCache(listOptions, s.settingLister, "settings", s.settingSynced())
+	}
 	if err != nil {
-		glog.Errorf("error listing settings: %s", err.Error())
-		return &settingProto.ListSettingsResponse{}, hferrors.GrpcError(
-			codes.Internal,
-			"error listing settings",
-			lreq,
-		)
+		glog.Error(err)
+		return &settingProto.ListSettingsResponse{}, err
 	}
 
-	var settings []*settingProto.PreparedListSetting
-	for _, ks := range kSettings.Items {
+	var preparedSettings []*settingProto.PreparedListSetting
+	for _, ks := range settings {
 		scope := ks.Labels[labels.SettingScope]
 		weight := ks.Labels[labels.SettingWeight]
 		group := ks.Labels[labels.SettingGroup]
@@ -212,73 +245,83 @@ func (s *GrpcSettingServer) ListSettings(ctx context.Context, lreq *general.List
 		if ks.Default != nil {
 			prepListSetting.Property.Default = wrapperspb.String(*ks.Property.Default)
 		}
-		settings = append(settings, prepListSetting)
+		preparedSettings = append(preparedSettings, prepListSetting)
 	}
-	return &settingProto.ListSettingsResponse{Settings: settings}, nil
-
+	return &settingProto.ListSettingsResponse{Settings: preparedSettings}, nil
 }
 
-func (s *GrpcSettingServer) GetSetting(ctx context.Context, id *general.ResourceId) (*settingProto.Setting, error) {
-	kSetting, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Get(s.ctx, id.GetId(), metav1.GetOptions{})
+func (s *GrpcSettingServer) GetSetting(ctx context.Context, req *general.GetRequest) (*settingProto.Setting, error) {
+	id := req.GetId()
+	doLoadFromCache := req.GetLoadFromCache()
+	if len(id) == 0 {
+		return &settingProto.Setting{}, hferrors.GrpcIdNotSpecifiedError(req)
+	}
+	var setting *hfv1.Setting
+	var err error
+	if !doLoadFromCache {
+		setting, err = s.settingClient.Get(ctx, id, metav1.GetOptions{})
+	} else if s.settingSynced() {
+		setting, err = s.settingLister.Settings(util.GetReleaseNamespace()).Get(id)
+	} else {
+		glog.V(2).Info("error while retrieving setting by id: cache is not properly synced yet")
+		// our cache is not properly initialized yet ... returning status unavailable
+		return &settingProto.Setting{}, hferrors.GrpcCacheError(req, "setting")
+	}
 	if errors.IsNotFound(err) {
-		glog.Errorf("setting %s not found", id.GetId())
-		return &settingProto.Setting{}, hferrors.GrpcNotFoundError(id, "setting")
+		glog.Errorf("setting %s not found", req.GetId())
+		return &settingProto.Setting{}, hferrors.GrpcNotFoundError(req, "setting")
 	} else if err != nil {
 		glog.Errorf("error retrieving setting from database: %s", err.Error())
-		return &settingProto.Setting{}, hferrors.GrpcError(
-			codes.Internal,
-			"error retrieving setting",
-			id,
-		)
+		return &settingProto.Setting{}, hferrors.GrpcGetError(req, "setting", err)
 	}
 
 	// check if the user has permissions to do this action
-	scope, ok := kSetting.Labels[labels.SettingScope]
+	scope, ok := setting.Labels[labels.SettingScope]
 	if !ok {
-		glog.Errorf("setting %s does not have scope label", kSetting.Name)
+		glog.Errorf("setting %s does not have scope label", setting.Name)
 		return &settingProto.Setting{}, hferrors.GrpcError(
 			codes.Internal,
 			"error retrieving scope label",
-			id,
+			req,
 		)
 	}
 
-	prepSetting := &settingProto.Setting{Name: kSetting.Name, Property: &settingProto.Property{
-		DataType:    settingUtil.DataTypeMappingToProto[kSetting.Property.DataType],
-		ValueType:   settingUtil.ValueTypeMappingToProto[kSetting.Property.ValueType],
-		DisplayName: kSetting.DisplayName,
-		Required:    kSetting.Required,
-		Enum:        kSetting.Enum,
-		UniqueItems: kSetting.UniqueItems,
-	}, Value: kSetting.Value, Scope: scope}
+	prepSetting := &settingProto.Setting{Name: setting.Name, Property: &settingProto.Property{
+		DataType:    settingUtil.DataTypeMappingToProto[setting.Property.DataType],
+		ValueType:   settingUtil.ValueTypeMappingToProto[setting.Property.ValueType],
+		DisplayName: setting.DisplayName,
+		Required:    setting.Required,
+		Enum:        setting.Enum,
+		UniqueItems: setting.UniqueItems,
+	}, Value: setting.Value, Scope: scope}
 
-	if kSetting.Maximum != nil {
-		prepSetting.Property.Maximum = wrapperspb.Double(*kSetting.Property.Maximum)
+	if setting.Maximum != nil {
+		prepSetting.Property.Maximum = wrapperspb.Double(*setting.Property.Maximum)
 	}
-	if kSetting.Minimum != nil {
-		prepSetting.Property.Minimum = wrapperspb.Double(*kSetting.Property.Minimum)
+	if setting.Minimum != nil {
+		prepSetting.Property.Minimum = wrapperspb.Double(*setting.Property.Minimum)
 	}
-	if kSetting.MaxLength != nil {
-		prepSetting.Property.MaxLength = wrapperspb.Int64(*kSetting.Property.MaxLength)
+	if setting.MaxLength != nil {
+		prepSetting.Property.MaxLength = wrapperspb.Int64(*setting.Property.MaxLength)
 	}
-	if kSetting.MinLength != nil {
-		prepSetting.Property.MinLength = wrapperspb.Int64(*kSetting.Property.MinLength)
+	if setting.MinLength != nil {
+		prepSetting.Property.MinLength = wrapperspb.Int64(*setting.Property.MinLength)
 	}
-	if kSetting.Format != nil {
-		prepSetting.Property.Format = wrapperspb.String(*kSetting.Property.Format)
+	if setting.Format != nil {
+		prepSetting.Property.Format = wrapperspb.String(*setting.Property.Format)
 	}
-	if kSetting.Pattern != nil {
-		prepSetting.Property.Pattern = wrapperspb.String(*kSetting.Property.Pattern)
+	if setting.Pattern != nil {
+		prepSetting.Property.Pattern = wrapperspb.String(*setting.Property.Pattern)
 	}
-	if kSetting.Default != nil {
-		prepSetting.Property.Default = wrapperspb.String(*kSetting.Property.Default)
+	if setting.Default != nil {
+		prepSetting.Property.Default = wrapperspb.String(*setting.Property.Default)
 	}
 
 	return prepSetting, nil
 }
 
 func (s *GrpcSettingServer) UpdateSetting(ctx context.Context, setting *settingProto.Setting) (*empty.Empty, error) {
-	kSetting, err := s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Get(s.ctx, setting.GetName(), metav1.GetOptions{})
+	kSetting, err := s.settingClient.Get(ctx, setting.GetName(), metav1.GetOptions{})
 	if err != nil {
 		return &empty.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
@@ -301,7 +344,7 @@ func (s *GrpcSettingServer) UpdateSetting(ctx context.Context, setting *settingP
 
 	kSetting.Value = setting.GetValue()
 
-	_, err = s.hfClientSet.HobbyfarmV1().Settings(util.GetReleaseNamespace()).Update(s.ctx, kSetting, metav1.UpdateOptions{})
+	_, err = s.settingClient.Update(ctx, kSetting, metav1.UpdateOptions{})
 	if err != nil {
 		glog.Errorf("error updating setting: %s", err.Error())
 		return &empty.Empty{}, hferrors.GrpcError(

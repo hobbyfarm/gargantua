@@ -10,7 +10,7 @@ import "google/protobuf/wrappers.proto";
 
 service VMClaimSvc {
     rpc CreateVMClaim (CreateVMClaimRequest) returns (google.protobuf.Empty);
-    rpc GetVMClaim (general.ResourceId) returns (VMClaim);
+    rpc GetVMClaim (general.GetRequest) returns (VMClaim);
     rpc UpdateVMClaim (UpdateVMClaimRequest) returns (google.protobuf.Empty);
     rpc UpdateVMClaimStatus (UpdateVMClaimStatusRequest) returns (google.protobuf.Empty);
     rpc DeleteVMClaim (general.ResourceId) returns (google.protobuf.Empty);
@@ -38,10 +38,6 @@ message CreateVMClaimRequest {
     string restricted_bind_value = 5;
     bool dynamic_capable = 6;
     map<string, string> labels = 7;
-    // string user_name = 2;
-    // string session_name = 3;
-    // string ac_name = 4;
-    // string se_name = 5;
 }
 
 message UpdateVMClaimRequest {

@@ -150,7 +150,7 @@ func (s SettingServer) UpdateCollection(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s SettingServer) update(w http.ResponseWriter, r *http.Request, updatedSetting PreparedSetting) bool {
-	setting, err := s.internalSettingServer.GetSetting(r.Context(), &general.ResourceId{Id: updatedSetting.Name})
+	setting, err := s.internalSettingServer.GetSetting(r.Context(), &general.GetRequest{Id: updatedSetting.Name})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			if s.Code() == codes.NotFound {

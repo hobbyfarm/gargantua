@@ -28,7 +28,7 @@ func (rs *GrpcRbacServer) CreateRole(c context.Context, cr *rbacProto.Role) (*em
 		)
 	}
 
-	_, err = rs.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Create(c, role, metav1.CreateOptions{})
+	_, err = rs.roleClient.Create(c, role, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating role in kubernetes: %v", err)
 		return &empty.Empty{}, hferrors.GrpcError(
@@ -41,7 +41,7 @@ func (rs *GrpcRbacServer) CreateRole(c context.Context, cr *rbacProto.Role) (*em
 	return &empty.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) GetRole(c context.Context, gr *general.ResourceId) (*rbacProto.Role, error) {
+func (rs *GrpcRbacServer) GetRole(c context.Context, gr *general.GetRequest) (*rbacProto.Role, error) {
 	role, err := rs.getRole(c, gr)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (rs *GrpcRbacServer) UpdateRole(c context.Context, ur *rbacProto.Role) (*em
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		_, err := rs.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Update(c, role, metav1.UpdateOptions{})
+		_, err := rs.roleClient.Update(c, role, metav1.UpdateOptions{})
 		if err != nil {
 			glog.Errorf("error while updating role in kubernetes: %v", err)
 			return hferrors.GrpcError(
@@ -80,52 +80,47 @@ func (rs *GrpcRbacServer) UpdateRole(c context.Context, ur *rbacProto.Role) (*em
 	return &empty.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) DeleteRole(c context.Context, dr *general.ResourceId) (*empty.Empty, error) {
+func (rs *GrpcRbacServer) DeleteRole(c context.Context, req *general.ResourceId) (*empty.Empty, error) {
 	// we want to get the role first as this allows us to run it through the various checks before we attempt deletion
 	// most important of which is checking that we have labeled it correctly
 	// but it doesn't hurt to check if it exists before
-	role, err := rs.getRole(c, dr)
+	role, err := rs.getRole(c, &general.GetRequest{Id: req.GetId()})
 	if err != nil {
 		return &empty.Empty{}, err
 	}
 
-	err = rs.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Delete(c, role.Name, metav1.DeleteOptions{})
+	err = rs.roleClient.Delete(c, role.Name, metav1.DeleteOptions{})
 	if err != nil {
 		glog.Errorf("error deleting role in kubernetes: %v", err)
 		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error deleting role",
-			dr,
+			req,
 		)
 	}
 	return &empty.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) ListRole(c context.Context, lr *general.ListOptions) (*rbacProto.Roles, error) {
-	listOptions := metav1.ListOptions{
-		LabelSelector: lr.GetLabelSelector(),
-	}
-
-	roles, err := rs.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).List(c, listOptions)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			glog.Errorf("error: roles not found")
-			return &rbacProto.Roles{}, hferrors.GrpcError(
-				codes.NotFound,
-				"roles not found",
-				lr,
-			)
+func (rs *GrpcRbacServer) ListRole(ctx context.Context, listOptions *general.ListOptions) (*rbacProto.Roles, error) {
+	doLoadFromCache := listOptions.GetLoadFromCache()
+	var roles []rbacv1.Role
+	var err error
+	if !doLoadFromCache {
+		var roleList *rbacv1.RoleList
+		roleList, err = util.ListByHfClient(ctx, listOptions, rs.roleClient, "roles")
+		if err == nil {
+			roles = roleList.Items
 		}
-		glog.Errorf("error in kubernetes while listing roles %v", err)
-		return &rbacProto.Roles{}, hferrors.GrpcError(
-			codes.Internal,
-			"error listing roles",
-			lr,
-		)
+	} else {
+		roles, err = util.ListByCache(listOptions, rs.roleLister, "roles", rs.roleSynced())
+	}
+	if err != nil {
+		glog.Error(err)
+		return &rbacProto.Roles{}, err
 	}
 
 	var preparedRoles = make([]*rbacProto.Role, 0)
-	for _, r := range roles.Items {
+	for _, r := range roles {
 		pr := unmarshalRole(&r)
 		preparedRoles = append(preparedRoles, pr)
 	}
@@ -177,27 +172,30 @@ func unmarshalRole(role *rbacv1.Role) (preparedRole *rbacProto.Role) {
 	return preparedRole
 }
 
-func (rs *GrpcRbacServer) getRole(c context.Context, gr *general.ResourceId) (*rbacv1.Role, error) {
-	if gr.GetId() == "" {
+func (rs *GrpcRbacServer) getRole(ctx context.Context, req *general.GetRequest) (*rbacv1.Role, error) {
+	id := req.GetId()
+	doLoadFromCache := req.GetLoadFromCache()
+	if len(id) == 0 {
 		glog.Errorf("invalid role id")
-		return &rbacv1.Role{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"invalid role id",
-			gr,
-		)
+		return &rbacv1.Role{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
-
-	role, err := rs.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Get(c, gr.GetId(), metav1.GetOptions{})
+	var role *rbacv1.Role
+	var err error
+	if !doLoadFromCache {
+		role, err = rs.roleClient.Get(ctx, id, metav1.GetOptions{})
+	} else if rs.roleSynced() {
+		role, err = rs.roleLister.Roles(util.GetReleaseNamespace()).Get(id)
+	} else {
+		glog.V(2).Info("error while retrieving role by id: cache is not properly synced yet")
+		// our cache is not properly initialized yet ... returning status unavailable
+		return &rbacv1.Role{}, hferrors.GrpcCacheError(req, "role")
+	}
 	if errors.IsNotFound(err) {
-		glog.Errorf("role %s not found", gr.GetId())
-		return &rbacv1.Role{}, hferrors.GrpcNotFoundError(gr, "role")
+		glog.Errorf("role %s not found", req.GetId())
+		return &rbacv1.Role{}, hferrors.GrpcNotFoundError(req, "role")
 	} else if err != nil {
 		glog.Errorf("kubernetes error while retrieving role: %v", err)
-		return &rbacv1.Role{}, hferrors.GrpcError(
-			codes.Internal,
-			"error retrieving role",
-			gr,
-		)
+		return &rbacv1.Role{}, hferrors.GrpcGetError(req, "role", err)
 	}
 
 	if _, ok := role.Labels[util.RBACManagedLabel]; !ok {
@@ -206,7 +204,7 @@ func (rs *GrpcRbacServer) getRole(c context.Context, gr *general.ResourceId) (*r
 		return &rbacv1.Role{}, hferrors.GrpcError(
 			codes.PermissionDenied,
 			"role not managed by hobbyfarm",
-			gr,
+			req,
 		)
 	}
 

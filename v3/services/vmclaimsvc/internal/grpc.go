@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	vmClaimProto "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
 
@@ -11,23 +12,30 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	listersv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 type GrpcVMClaimServer struct {
 	vmClaimProto.UnimplementedVMClaimSvcServer
-	hfClientSet hfClientset.Interface
+	vmClaimClient hfClientsetv1.VirtualMachineClaimInterface
+	vmClaimLister listersv1.VirtualMachineClaimLister
+	vmClaimSynced cache.InformerSynced
 }
 
-func NewGrpcVMClaimServer(hfClientSet hfClientset.Interface) *GrpcVMClaimServer {
+func NewGrpcVMClaimServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) *GrpcVMClaimServer {
 	return &GrpcVMClaimServer{
-		hfClientSet: hfClientSet,
+		vmClaimClient: hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()),
+		vmClaimLister: hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Lister(),
+		vmClaimSynced: hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced,
 	}
 }
 
@@ -63,7 +71,7 @@ func (s *GrpcVMClaimServer) CreateVMClaim(ctx context.Context, req *vmClaimProto
 		vmClaim.ObjectMeta.Labels[fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", vmTemplateName)] = "true"
 	}
 
-	_, err := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Create(ctx, vmClaim, v1.CreateOptions{})
+	_, err := s.vmClaimClient.Create(ctx, vmClaim, v1.CreateOptions{})
 	if err != nil {
 		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
@@ -74,26 +82,28 @@ func (s *GrpcVMClaimServer) CreateVMClaim(ctx context.Context, req *vmClaimProto
 	return &empty.Empty{}, nil
 }
 
-func (s *GrpcVMClaimServer) GetVMClaim(ctx context.Context, id *general.ResourceId) (*vmClaimProto.VMClaim, error) {
-	if len(id.GetId()) == 0 {
-		return &vmClaimProto.VMClaim{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no id passed in",
-			id,
-		)
+func (s *GrpcVMClaimServer) GetVMClaim(ctx context.Context, req *general.GetRequest) (*vmClaimProto.VMClaim, error) {
+	id := req.GetId()
+	doLoadFromCache := req.GetLoadFromCache()
+	if len(id) == 0 {
+		return &vmClaimProto.VMClaim{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
-	vmc, err := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Get(ctx, id.GetId(), v1.GetOptions{})
+	var vmc *hfv1.VirtualMachineClaim
+	var err error
+	if !doLoadFromCache {
+		vmc, err = s.vmClaimClient.Get(ctx, id, v1.GetOptions{})
+	} else if s.vmClaimSynced() {
+		vmc, err = s.vmClaimLister.VirtualMachineClaims(util.GetReleaseNamespace()).Get(id)
+	} else {
+		glog.V(2).Info("error while retrieving virtual machine claim by id: cache is not properly synced yet")
+		// our cache is not properly initialized yet ... returning status unavailable
+		return &vmClaimProto.VMClaim{}, hferrors.GrpcCacheError(req, "virtual machine claim")
+	}
 	if errors.IsNotFound(err) {
-		return &vmClaimProto.VMClaim{}, hferrors.GrpcNotFoundError(id, "virtual machine claim")
+		return &vmClaimProto.VMClaim{}, hferrors.GrpcNotFoundError(req, "virtual machine claim")
 	} else if err != nil {
 		glog.V(2).Infof("error while retrieving virtual machine claim: %v", err)
-		return &vmClaimProto.VMClaim{}, hferrors.GrpcError(
-			codes.Internal,
-			"error while retrieving virtual machine claim by id: %s with error: %v",
-			id,
-			id.GetId(),
-			err,
-		)
+		return &vmClaimProto.VMClaim{}, hferrors.GrpcGetError(req, "virtual machine claim", err)
 	}
 
 	vmClaimVMs := make(map[string]*vmClaimProto.VMClaimVM)
@@ -130,18 +140,14 @@ func (s *GrpcVMClaimServer) GetVMClaim(ctx context.Context, id *general.Resource
 func (s *GrpcVMClaimServer) UpdateVMClaim(ctx context.Context, req *vmClaimProto.UpdateVMClaimRequest) (*empty.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no id passed in",
-			req,
-		)
+		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 
 	vmset := req.GetVmset()
 	restrictedBind := req.GetRestrictedBind()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		vmc, err := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Get(ctx, id, v1.GetOptions{})
+		vmc, err := s.vmClaimClient.Get(ctx, id, v1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			return hferrors.GrpcError(
@@ -173,7 +179,7 @@ func (s *GrpcVMClaimServer) UpdateVMClaim(ctx context.Context, req *vmClaimProto
 			vmc.Spec.VirtualMachines = vmClaimVMs
 		}
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Update(ctx, vmc, v1.UpdateOptions{})
+		_, updateErr := s.vmClaimClient.Update(ctx, vmc, v1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -191,11 +197,7 @@ func (s *GrpcVMClaimServer) UpdateVMClaim(ctx context.Context, req *vmClaimProto
 func (s *GrpcVMClaimServer) UpdateVMClaimStatus(ctx context.Context, req *vmClaimProto.UpdateVMClaimStatusRequest) (*empty.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no id passed in",
-			req,
-		)
+		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 	bindMode := req.GetBindmode()
 	staticBindAttempts := req.GetStaticBindAttempts()
@@ -204,7 +206,7 @@ func (s *GrpcVMClaimServer) UpdateVMClaimStatus(ctx context.Context, req *vmClai
 	tainted := req.GetTainted()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		vmc, err := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Get(ctx, id, metav1.GetOptions{})
+		vmc, err := s.vmClaimClient.Get(ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			return hferrors.GrpcError(
@@ -235,7 +237,7 @@ func (s *GrpcVMClaimServer) UpdateVMClaimStatus(ctx context.Context, req *vmClai
 			vmc.Status.Tainted = tainted.Value
 		}
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).UpdateStatus(ctx, vmc, metav1.UpdateOptions{})
+		_, updateErr := s.vmClaimClient.UpdateStatus(ctx, vmc, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
@@ -264,7 +266,7 @@ func (s *GrpcVMClaimServer) DeleteVMClaim(ctx context.Context, req *general.Reso
 		)
 	}
 
-	err := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).Delete(ctx, id, v1.DeleteOptions{})
+	err := s.vmClaimClient.Delete(ctx, id, v1.DeleteOptions{})
 
 	if err != nil {
 		glog.Errorf("error deleting virtual machine claim %s: %v", id, err)
@@ -280,7 +282,7 @@ func (s *GrpcVMClaimServer) DeleteVMClaim(ctx context.Context, req *general.Reso
 }
 
 func (s *GrpcVMClaimServer) DeleteCollectionVMClaim(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
-	err := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{
+	err := s.vmClaimClient.DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{
 		LabelSelector: listOptions.GetLabelSelector(),
 	})
 	if err != nil {
@@ -294,21 +296,26 @@ func (s *GrpcVMClaimServer) DeleteCollectionVMClaim(ctx context.Context, listOpt
 }
 
 func (s *GrpcVMClaimServer) ListVMClaim(ctx context.Context, listOptions *general.ListOptions) (*vmClaimProto.ListVMClaimsResponse, error) {
-	vmcList, err := s.hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()).List(ctx, v1.ListOptions{
-		LabelSelector: listOptions.GetLabelSelector(),
-	})
+	doLoadFromCache := listOptions.GetLoadFromCache()
+	var vmClaims []hfv1.VirtualMachineClaim
+	var err error
+	if !doLoadFromCache {
+		var vmClaimList *hfv1.VirtualMachineClaimList
+		vmClaimList, err = util.ListByHfClient(ctx, listOptions, s.vmClaimClient, "virtual machine claims")
+		if err == nil {
+			vmClaims = vmClaimList.Items
+		}
+	} else {
+		vmClaims, err = util.ListByCache(listOptions, s.vmClaimLister, "virtual machine claims", s.vmClaimSynced())
+	}
 	if err != nil {
 		glog.Error(err)
-		return &vmClaimProto.ListVMClaimsResponse{}, hferrors.GrpcError(
-			codes.Internal,
-			"error retreiving virtual machine claims",
-			listOptions,
-		)
+		return &vmClaimProto.ListVMClaimsResponse{}, err
 	}
 
 	preparedVmcs := []*vmClaimProto.VMClaim{}
 
-	for _, vmc := range vmcList.Items {
+	for _, vmc := range vmClaims {
 		vmClaimVMs := make(map[string]*vmClaimProto.VMClaimVM)
 		for key, vm := range vmc.Spec.VirtualMachines {
 			vmClaimVM := &vmClaimProto.VMClaimVM{

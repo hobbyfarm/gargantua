@@ -10,7 +10,7 @@ import "google/protobuf/wrappers.proto";
 
 service VMSetSvc {
     rpc CreateVMSet (CreateVMSetRequest) returns (google.protobuf.Empty);
-    rpc GetVMSet (general.ResourceId) returns (VMSet);
+    rpc GetVMSet (general.GetRequest) returns (VMSet);
     rpc UpdateVMSet (UpdateVMSetRequest) returns (google.protobuf.Empty);
     rpc UpdateVMSetStatus (UpdateVMSetStatusRequest) returns (google.protobuf.Empty);
     rpc DeleteVMSet (general.ResourceId) returns (google.protobuf.Empty);

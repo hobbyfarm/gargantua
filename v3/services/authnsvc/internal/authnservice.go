@@ -446,7 +446,7 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	// from this point, the user is created
 	// we are now trying to add the access code he provided
 
-	user, err := a.userClient.GetUserById(r.Context(), &general.ResourceId{
+	user, err := a.userClient.GetUserById(r.Context(), &general.GetRequest{
 		Id: userId.GetId(),
 	})
 

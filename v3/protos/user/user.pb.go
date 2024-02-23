@@ -370,8 +370,8 @@ var file_user_user_proto_rawDesc = []byte{
 	0x72, 0x65, 0x61, 0x74, 0x65, 0x55, 0x73, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x1a, 0x13, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x6c, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75,
 	0x72, 0x63, 0x65, 0x49, 0x64, 0x12, 0x2e, 0x0a, 0x0b, 0x47, 0x65, 0x74, 0x55, 0x73, 0x65, 0x72,
-	0x42, 0x79, 0x49, 0x64, 0x12, 0x13, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x6c, 0x2e, 0x52,
-	0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x64, 0x1a, 0x0a, 0x2e, 0x75, 0x73, 0x65, 0x72,
+	0x42, 0x79, 0x49, 0x64, 0x12, 0x13, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x6c, 0x2e, 0x47,
+	0x65, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x0a, 0x2e, 0x75, 0x73, 0x65, 0x72,
 	0x2e, 0x55, 0x73, 0x65, 0x72, 0x12, 0x39, 0x0a, 0x0e, 0x47, 0x65, 0x74, 0x55, 0x73, 0x65, 0x72,
 	0x42, 0x79, 0x45, 0x6d, 0x61, 0x69, 0x6c, 0x12, 0x1b, 0x2e, 0x75, 0x73, 0x65, 0x72, 0x2e, 0x47,
 	0x65, 0x74, 0x55, 0x73, 0x65, 0x72, 0x42, 0x79, 0x45, 0x6d, 0x61, 0x69, 0x6c, 0x52, 0x65, 0x71,
@@ -420,28 +420,29 @@ var file_user_user_proto_goTypes = []interface{}{
 	(*User)(nil),                     // 3: user.User
 	(*ListUsersResponse)(nil),        // 4: user.ListUsersResponse
 	nil,                              // 5: user.User.SettingsEntry
-	(*general.ResourceId)(nil),       // 6: general.ResourceId
-	(*general.ListOptions)(nil),      // 7: general.ListOptions
-	(*emptypb.Empty)(nil),            // 8: google.protobuf.Empty
+	(*general.GetRequest)(nil),       // 6: general.GetRequest
+	(*general.ResourceId)(nil),       // 7: general.ResourceId
+	(*general.ListOptions)(nil),      // 8: general.ListOptions
+	(*emptypb.Empty)(nil),            // 9: google.protobuf.Empty
 }
 var file_user_user_proto_depIdxs = []int32{
 	5,  // 0: user.User.settings:type_name -> user.User.SettingsEntry
 	3,  // 1: user.ListUsersResponse.users:type_name -> user.User
 	0,  // 2: user.UserSvc.CreateUser:input_type -> user.CreateUserRequest
-	6,  // 3: user.UserSvc.GetUserById:input_type -> general.ResourceId
+	6,  // 3: user.UserSvc.GetUserById:input_type -> general.GetRequest
 	2,  // 4: user.UserSvc.GetUserByEmail:input_type -> user.GetUserByEmailRequest
 	3,  // 5: user.UserSvc.UpdateUser:input_type -> user.User
-	6,  // 6: user.UserSvc.SetLastLoginTimestamp:input_type -> general.ResourceId
+	7,  // 6: user.UserSvc.SetLastLoginTimestamp:input_type -> general.ResourceId
 	1,  // 7: user.UserSvc.UpdateAccessCodes:input_type -> user.UpdateAccessCodesRequest
-	6,  // 8: user.UserSvc.DeleteUser:input_type -> general.ResourceId
-	7,  // 9: user.UserSvc.ListUser:input_type -> general.ListOptions
-	6,  // 10: user.UserSvc.CreateUser:output_type -> general.ResourceId
+	7,  // 8: user.UserSvc.DeleteUser:input_type -> general.ResourceId
+	8,  // 9: user.UserSvc.ListUser:input_type -> general.ListOptions
+	7,  // 10: user.UserSvc.CreateUser:output_type -> general.ResourceId
 	3,  // 11: user.UserSvc.GetUserById:output_type -> user.User
 	3,  // 12: user.UserSvc.GetUserByEmail:output_type -> user.User
 	3,  // 13: user.UserSvc.UpdateUser:output_type -> user.User
-	8,  // 14: user.UserSvc.SetLastLoginTimestamp:output_type -> google.protobuf.Empty
+	9,  // 14: user.UserSvc.SetLastLoginTimestamp:output_type -> google.protobuf.Empty
 	3,  // 15: user.UserSvc.UpdateAccessCodes:output_type -> user.User
-	8,  // 16: user.UserSvc.DeleteUser:output_type -> google.protobuf.Empty
+	9,  // 16: user.UserSvc.DeleteUser:output_type -> google.protobuf.Empty
 	4,  // 17: user.UserSvc.ListUser:output_type -> user.ListUsersResponse
 	10, // [10:18] is the sub-list for method output_type
 	2,  // [2:10] is the sub-list for method input_type

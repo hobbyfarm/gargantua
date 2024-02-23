@@ -72,7 +72,7 @@ func main() {
 		glog.Info("watching settings failed: ", err)
 	}
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
-	ss := settingservice.NewGrpcSettingServer(hfClient, ctx)
+	ss := settingservice.NewGrpcSettingServer(hfClient, hfInformerFactory)
 	settingProto.RegisterSettingSvcServer(gs, ss)
 	settingservice.Preinstall(ctx, ss)
 

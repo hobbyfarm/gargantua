@@ -86,7 +86,7 @@ func (s Server) GetRole(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	roleId := vars["id"]
 
-	preparedRole, err := s.internalRbacServer.GetRole(r.Context(), &general.ResourceId{Id: roleId})
+	preparedRole, err := s.internalRbacServer.GetRole(r.Context(), &general.GetRequest{Id: roleId})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			switch s.Code() {

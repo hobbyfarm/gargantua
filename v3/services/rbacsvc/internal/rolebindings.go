@@ -86,7 +86,7 @@ func (s Server) GetRoleBinding(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	rolebindingId := vars["id"]
 
-	preparedRoleBinding, err := s.internalRbacServer.GetRolebinding(r.Context(), &general.ResourceId{Id: rolebindingId})
+	preparedRoleBinding, err := s.internalRbacServer.GetRolebinding(r.Context(), &general.GetRequest{Id: rolebindingId})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			switch s.Code() {

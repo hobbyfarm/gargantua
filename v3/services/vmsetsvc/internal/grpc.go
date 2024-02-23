@@ -10,6 +10,9 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	listersv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
@@ -17,17 +20,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 type GrpcVMSetServer struct {
 	vmSetProto.UnimplementedVMSetSvcServer
-	hfClientSet hfClientset.Interface
+	vmSetClient hfClientsetv1.VirtualMachineSetInterface
+	vmSetLister listersv1.VirtualMachineSetLister
+	vmSetSynced cache.InformerSynced
 }
 
-func NewGrpcVMSetServer(hfClientSet hfClientset.Interface) *GrpcVMSetServer {
+func NewGrpcVMSetServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) *GrpcVMSetServer {
 	return &GrpcVMSetServer{
-		hfClientSet: hfClientSet,
+		vmSetClient: hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()),
+		vmSetLister: hfInformerFactory.Hobbyfarm().V1().VirtualMachineSets().Lister(),
+		vmSetSynced: hfInformerFactory.Hobbyfarm().V1().VirtualMachineSets().Informer().HasSynced,
 	}
 }
 
@@ -69,7 +77,7 @@ func (s *GrpcVMSetServer) CreateVMSet(ctx context.Context, req *vmSetProto.Creat
 		vms.Spec.RestrictedBindValue = restrictedBindValue
 	}
 
-	_, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Create(ctx, vms, v1.CreateOptions{})
+	_, err := s.vmSetClient.Create(ctx, vms, v1.CreateOptions{})
 	if err != nil {
 		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
@@ -80,26 +88,28 @@ func (s *GrpcVMSetServer) CreateVMSet(ctx context.Context, req *vmSetProto.Creat
 	return &empty.Empty{}, nil
 }
 
-func (s *GrpcVMSetServer) GetVMSet(ctx context.Context, id *general.ResourceId) (*vmSetProto.VMSet, error) {
-	if len(id.GetId()) == 0 {
-		return &vmSetProto.VMSet{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no id passed in",
-			id,
-		)
+func (s *GrpcVMSetServer) GetVMSet(ctx context.Context, req *general.GetRequest) (*vmSetProto.VMSet, error) {
+	id := req.GetId()
+	doLoadFromCache := req.GetLoadFromCache()
+	if len(id) == 0 {
+		return &vmSetProto.VMSet{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
-	vms, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Get(ctx, id.GetId(), v1.GetOptions{})
+	var vms *hfv1.VirtualMachineSet
+	var err error
+	if !doLoadFromCache {
+		vms, err = s.vmSetClient.Get(ctx, id, v1.GetOptions{})
+	} else if s.vmSetSynced() {
+		vms, err = s.vmSetLister.VirtualMachineSets(util.GetReleaseNamespace()).Get(id)
+	} else {
+		glog.V(2).Info("error while retrieving virtual machine set by id: cache is not properly synced yet")
+		// our cache is not properly initialized yet ... returning status unavailable
+		return &vmSetProto.VMSet{}, hferrors.GrpcCacheError(req, "virtual machine claim")
+	}
 	if errors.IsNotFound(err) {
-		return &vmSetProto.VMSet{}, hferrors.GrpcNotFoundError(id, "virtual machine set")
+		return &vmSetProto.VMSet{}, hferrors.GrpcNotFoundError(req, "virtual machine set")
 	} else if err != nil {
 		glog.V(2).Infof("error while retrieving virtual machine set: %v", err)
-		return &vmSetProto.VMSet{}, hferrors.GrpcError(
-			codes.Internal,
-			"error while retrieving virtual machine set by id: %s with error: %v",
-			id,
-			id.GetId(),
-			err,
-		)
+		return &vmSetProto.VMSet{}, hferrors.GrpcGetError(req, "virtual machine set", err)
 	}
 
 	vmSetVMs := []*vmSetProto.VMProvision{}
@@ -135,11 +145,7 @@ func (s *GrpcVMSetServer) GetVMSet(ctx context.Context, id *general.ResourceId) 
 func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.UpdateVMSetRequest) (*empty.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no id passed in",
-			req,
-		)
+		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 
 	count := req.GetCount()
@@ -148,7 +154,7 @@ func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.Updat
 	restrictedBind := req.GetRestrictedBind()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		vms, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Get(ctx, id, v1.GetOptions{})
+		vms, err := s.vmSetClient.Get(ctx, id, v1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			return hferrors.GrpcError(
@@ -180,7 +186,7 @@ func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.Updat
 			vms.Spec.RestrictedBindValue = ""
 		}
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Update(ctx, vms, v1.UpdateOptions{})
+		_, updateErr := s.vmSetClient.Update(ctx, vms, v1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -198,18 +204,14 @@ func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.Updat
 func (s *GrpcVMSetServer) UpdateVMSetStatus(ctx context.Context, req *vmSetProto.UpdateVMSetStatusRequest) (*empty.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no id passed in",
-			req,
-		)
+		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 	machines := req.GetMachines()
 	available := req.GetAvailable()
 	provisioned := req.GetProvisioned()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		vms, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Get(ctx, id, metav1.GetOptions{})
+		vms, err := s.vmSetClient.Get(ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			return hferrors.GrpcError(
@@ -242,7 +244,7 @@ func (s *GrpcVMSetServer) UpdateVMSetStatus(ctx context.Context, req *vmSetProto
 			vms.Status.Machines = vmSetVMs
 		}
 
-		_, updateErr := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).UpdateStatus(ctx, vms, metav1.UpdateOptions{})
+		_, updateErr := s.vmSetClient.UpdateStatus(ctx, vms, metav1.UpdateOptions{})
 		if updateErr != nil {
 			return updateErr
 		}
@@ -271,7 +273,7 @@ func (s *GrpcVMSetServer) DeleteVMSet(ctx context.Context, req *general.Resource
 		)
 	}
 
-	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).Delete(ctx, id, v1.DeleteOptions{})
+	err := s.vmSetClient.Delete(ctx, id, v1.DeleteOptions{})
 
 	if err != nil {
 		glog.Errorf("error deleting virtual machine set %s: %v", id, err)
@@ -287,7 +289,7 @@ func (s *GrpcVMSetServer) DeleteVMSet(ctx context.Context, req *general.Resource
 }
 
 func (s *GrpcVMSetServer) DeleteCollectionVMSet(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
-	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{
+	err := s.vmSetClient.DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{
 		LabelSelector: listOptions.GetLabelSelector(),
 	})
 	if err != nil {
@@ -301,21 +303,26 @@ func (s *GrpcVMSetServer) DeleteCollectionVMSet(ctx context.Context, listOptions
 }
 
 func (s *GrpcVMSetServer) ListVMSet(ctx context.Context, listOptions *general.ListOptions) (*vmSetProto.ListVMSetsResponse, error) {
-	vmsList, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()).List(ctx, v1.ListOptions{
-		LabelSelector: listOptions.GetLabelSelector(),
-	})
+	doLoadFromCache := listOptions.GetLoadFromCache()
+	var vmSets []hfv1.VirtualMachineSet
+	var err error
+	if !doLoadFromCache {
+		var vmSetList *hfv1.VirtualMachineSetList
+		vmSetList, err = util.ListByHfClient(ctx, listOptions, s.vmSetClient, "virtual machine sets")
+		if err == nil {
+			vmSets = vmSetList.Items
+		}
+	} else {
+		vmSets, err = util.ListByCache(listOptions, s.vmSetLister, "virtual machine sets", s.vmSetSynced())
+	}
 	if err != nil {
 		glog.Error(err)
-		return &vmSetProto.ListVMSetsResponse{}, hferrors.GrpcError(
-			codes.Internal,
-			"error retreiving virtual machine sets",
-			listOptions,
-		)
+		return &vmSetProto.ListVMSetsResponse{}, err
 	}
 
 	preparedVmSets := []*vmSetProto.VMSet{}
 
-	for _, vms := range vmsList.Items {
+	for _, vms := range vmSets {
 		vmSetVMs := []*vmSetProto.VMProvision{}
 		for key, vm := range vms.Status.Machines {
 			vmSetVM := &vmSetProto.VMProvision{

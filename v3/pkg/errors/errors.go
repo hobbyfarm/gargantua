@@ -52,11 +52,34 @@ func GrpcError[T proto.Message](c codes.Code, format string, details T, a ...any
 	return err.Err()
 }
 
-func GrpcNotFoundError(resourceId *general.ResourceId, resourceName string) error {
+func GrpcIdNotSpecifiedError[T proto.Message](protoMessage T) error {
+	return GrpcError[proto.Message](codes.InvalidArgument, "no id specified", protoMessage)
+}
+
+func GrpcNotFoundError(resourceId *general.GetRequest, resourceName string) error {
 	id := resourceId.GetId()
-	return GrpcError[*general.ResourceId](codes.NotFound, "could not find %s for id %s", resourceId, resourceName, id)
+	return GrpcError[*general.GetRequest](codes.NotFound, "could not find %s for id %s", resourceId, resourceName, id)
 }
 
 func IsGrpcNotFound(err error) bool {
 	return status.Code(err) == codes.NotFound
+}
+
+func GrpcGetError(req *general.GetRequest, resourceName string, err error) error {
+	return GrpcError[*general.GetRequest](
+		codes.Internal,
+		"error while retreiving %s by id %s with error: %v",
+		req,
+		resourceName,
+		req.GetId(),
+		err,
+	)
+}
+
+func GrpcListError(listOptions *general.ListOptions, resourceName string) error {
+	return GrpcError[*general.ListOptions](codes.Internal, "error retreiving %s", listOptions, resourceName)
+}
+
+func GrpcCacheError[T proto.Message](protoMessage T, resourceName string) error {
+	return GrpcError[proto.Message](codes.Unavailable, "error while retreiving %s: cache is not properly synced yet", protoMessage, resourceName)
 }
