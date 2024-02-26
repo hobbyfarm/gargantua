@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch: {}
+
+concurrency:
+  group: "ci"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    # the system must match the one in .github/workflows/Dockerfile-ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.19'
+          check-latest: false
+          cache: true
+      - name: Build Go code
+        env:
+          GOOS: linux
+          CGO_ENABLED: 0
+        run: go build -v -o gargantua
+      - name: Lint Go code
+        uses: golangci/golangci-lint-action@v3
+        # TODO 2023-01-05: fix lint issues in a specific PR and delete this line
+        continue-on-error: true
+        with:
+          version: v1.50
+      # TODO 2023-01-05: sonar, tests
+      - name: Build container image
+        if: |
+          github.event_name == 'push' && (
+            startsWith(github.event.ref, 'refs/tags/')
+            || endsWith(github.event.ref, '/master')
+          )
+        run: docker build -t hobbyfarm/gargantua:${GIT_COMMIT_SHORT_HASH:-dev} -f .github/workflows/Dockerfile-ci .

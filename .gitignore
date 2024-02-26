@@ -1,22 +1,27 @@
-# Binaries for programs and plugins
+# program and plugin binaries
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
 
-# Test binary, build with `go test -c`
+# test binary (built with `go test -c`)
 *.test
 
-# Output of the go coverage tool, specifically when used with LiteIDE
+# build output
 *.out
-gargantua
+/gargantua*
+
+# JetBrains local files
 .idea
+
+# testing artifacts
 artifacts/testing
 /bin
 
-# docker-compose enviornment variables
+# local run files
 /.env
+/.ssl
 
 kubeconfig
 ko
