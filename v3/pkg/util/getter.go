@@ -31,6 +31,7 @@ func GenericHfGetter[T metav1.Object, G HfClientGet[T], C GenericCacheRetriever[
 	id := req.GetId()
 	doLoadFromCache := req.GetLoadFromCache()
 	if len(id) == 0 {
+		glog.V(2).Infof("error no id provided for %s", resourceName)
 		return result, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 	var obj T
