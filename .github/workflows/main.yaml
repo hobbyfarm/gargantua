@@ -1,0 +1,51 @@
+name: Main
+on: [push, pull_request]
+jobs:
+  build-gargantua:
+    uses: ./.github/workflows/build.yaml
+    with:
+      path: ./
+      image: gargantua
+    secrets: inherit
+  build-accesscode-service:
+    uses: ./.github/workflows/build.yaml
+    with:
+      path: ./v3/services/accesscodesvc
+      image: accesscode-service
+    secrets: inherit
+  build-authn-service:
+    uses: ./.github/workflows/build.yaml
+    with:
+      path: ./v3/services/authnsvc
+      image: authn-service
+    secrets: inherit
+  build-authr-service:
+    uses: ./.github/workflows/build.yaml
+    with:
+      path: ./v3/services/authrsvc
+      image: authr-service
+    secrets: inherit
+  build-conversion-service:
+    uses: ./.github/workflows/build.yaml
+    with:
+      path: ./v3/services/conversionsvc
+      image: conversion-service
+    secrets: inherit
+  build-rbac-service:
+    uses: ./.github/workflows/build.yaml
+    with:
+      path: ./v3/services/rbacsvc
+      image: rbac-service
+    secrets: inherit
+  build-setting-service:
+    uses: ./.github/workflows/build.yaml
+    with:
+      path: ./v3/services/settingsvc
+      image: setting-service
+    secrets: inherit
+  build-user-service:
+    uses: ./.github/workflows/build.yaml
+    with:
+      path: ./v3/services/usersvc
+      image: user-service
+    secrets: inherit

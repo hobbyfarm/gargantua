@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package access_code;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/accesscode";
+
+import "google/protobuf/empty.proto";
+
+// Service definition
+service AccessCodeSvc {
+    // TODO: Implementation for AccessCodes
+
+    // rpc CreateAc (CreateAcRequest) returns (AccessCodeId);
+    // rpc GetAc (AccessCodeId) returns (AccessCode);
+    // rpc UpdateAc (AccessCode) returns (google.protobuf.Empty);
+    // rpc DeleteAc (AccessCodeId) returns (google.protobuf.Empty);
+    // rpc DeleteCollectionAc (ListOptions) returns (google.protobuf.Empty);
+    // rpc ListAc (ListOptions) returns (AccessCodes);
+
+    // TODO: Implement missing OTAC RPCs
+
+    // rpc CreateOtac (CreateOtacRequest) returns (OneTimeAccessCodeId);
+    rpc GetOtac (ResourceId) returns (OneTimeAccessCode);
+    rpc UpdateOtac (OneTimeAccessCode) returns (google.protobuf.Empty);
+    // rpc DeleteOtac (OneTimeAccessCodeId) returns (google.protobuf.Empty);
+    // rpc DeleteCollectionOtac (ListOptions) returns (google.protobuf.Empty);
+    // rpc ListOtac (ListOptions) returns (OneTimeAccessCodes);
+
+    rpc ValidateExistence (ResourceId) returns (ResourceValidation);
+}
+
+message ResourceId {
+    string id = 1;
+}
+
+message ResourceValidation {
+    bool valid = 1;
+}
+
+message OneTimeAccessCode {
+    string id = 1;
+    string user = 2;
+    string redeemed_timestamp = 3;
+    string max_duration = 4;
+}

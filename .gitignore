@@ -17,7 +17,11 @@
 
 # testing artifacts
 artifacts/testing
+/bin
 
 # local run files
 /.env
 /.ssl
+
+kubeconfig
+ko

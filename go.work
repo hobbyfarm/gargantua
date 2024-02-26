@@ -1,0 +1,13 @@
+go 1.21.1
+
+use (
+	.
+	./v3
+	./v3/services/accesscodesvc
+	./v3/services/authnsvc
+	./v3/services/authrsvc
+	./v3/services/conversionsvc
+	./v3/services/rbacsvc
+	./v3/services/settingsvc
+	./v3/services/usersvc
+)
