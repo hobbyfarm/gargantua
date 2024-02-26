@@ -17,7 +17,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/protos/user"
 	"google.golang.org/grpc/codes"
 	empty "google.golang.org/protobuf/types/known/emptypb"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -373,30 +372,12 @@ func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accessCodePro
 }
 
 func (a *GrpcAccessCodeServer) GetOtac(ctx context.Context, req *general.GetRequest) (*accessCodeProto.OneTimeAccessCode, error) {
-	id := req.GetId()
-	doLoadFromCache := req.GetLoadFromCache()
-	if len(id) == 0 {
-		return &accessCodeProto.OneTimeAccessCode{}, hferrors.GrpcIdNotSpecifiedError(req)
-	}
-	var otac *hfv1.OneTimeAccessCode
-	var err error
-	if !doLoadFromCache {
-		otac, err = a.otacClient.Get(ctx, id, metav1.GetOptions{})
-	} else if a.otacSynced() {
-		otac, err = a.otacLister.OneTimeAccessCodes(util.GetReleaseNamespace()).Get(id)
-	} else {
-		glog.V(2).Info("error while retrieving OTAC by id: cache is not properly synced yet")
-		// our cache is not properly initialized yet ... returning status unavailable
-		return &accessCodeProto.OneTimeAccessCode{}, hferrors.GrpcCacheError(req, "OTAC")
-	}
-	if errors.IsNotFound(err) {
-		return &accessCodeProto.OneTimeAccessCode{}, hferrors.GrpcNotFoundError(req, "OTAC")
-	} else if err != nil {
-		glog.V(2).Infof("error while retrieving OTAC: %v", err)
-		return &accessCodeProto.OneTimeAccessCode{}, hferrors.GrpcGetError(req, "OTAC", err)
+	otac, err := util.GenericHfGetter(ctx, req, a.otacClient, a.otacLister.OneTimeAccessCodes(util.GetReleaseNamespace()), "OTAC", a.otacSynced())
+	if err != nil {
+		return &accessCodeProto.OneTimeAccessCode{}, err
 	}
 
-	glog.V(2).Infof("retrieved OTAC %s", id)
+	glog.V(2).Infof("retrieved OTAC %s", otac.Name)
 
 	return &accessCodeProto.OneTimeAccessCode{
 		Id:                otac.Name,

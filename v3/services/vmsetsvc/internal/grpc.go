@@ -16,7 +16,6 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -89,27 +88,9 @@ func (s *GrpcVMSetServer) CreateVMSet(ctx context.Context, req *vmSetProto.Creat
 }
 
 func (s *GrpcVMSetServer) GetVMSet(ctx context.Context, req *general.GetRequest) (*vmSetProto.VMSet, error) {
-	id := req.GetId()
-	doLoadFromCache := req.GetLoadFromCache()
-	if len(id) == 0 {
-		return &vmSetProto.VMSet{}, hferrors.GrpcIdNotSpecifiedError(req)
-	}
-	var vms *hfv1.VirtualMachineSet
-	var err error
-	if !doLoadFromCache {
-		vms, err = s.vmSetClient.Get(ctx, id, v1.GetOptions{})
-	} else if s.vmSetSynced() {
-		vms, err = s.vmSetLister.VirtualMachineSets(util.GetReleaseNamespace()).Get(id)
-	} else {
-		glog.V(2).Info("error while retrieving virtual machine set by id: cache is not properly synced yet")
-		// our cache is not properly initialized yet ... returning status unavailable
-		return &vmSetProto.VMSet{}, hferrors.GrpcCacheError(req, "virtual machine claim")
-	}
-	if errors.IsNotFound(err) {
-		return &vmSetProto.VMSet{}, hferrors.GrpcNotFoundError(req, "virtual machine set")
-	} else if err != nil {
-		glog.V(2).Infof("error while retrieving virtual machine set: %v", err)
-		return &vmSetProto.VMSet{}, hferrors.GrpcGetError(req, "virtual machine set", err)
+	vms, err := util.GenericHfGetter(ctx, req, s.vmSetClient, s.vmSetLister.VirtualMachineSets(util.GetReleaseNamespace()), "virtual machine set", s.vmSetSynced())
+	if err != nil {
+		return &vmSetProto.VMSet{}, err
 	}
 
 	vmSetVMs := []*vmSetProto.VMProvision{}

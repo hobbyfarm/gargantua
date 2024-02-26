@@ -20,7 +20,6 @@ import (
 	"google.golang.org/grpc/codes"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -67,30 +66,11 @@ func (s *GrpcSettingServer) CreateScope(ctx context.Context, creq *settingProto.
 }
 
 func (s *GrpcSettingServer) GetScope(ctx context.Context, req *general.GetRequest) (*settingProto.Scope, error) {
-	id := req.GetId()
-	doLoadFromCache := req.GetLoadFromCache()
-	if len(id) == 0 {
-		return &settingProto.Scope{}, hferrors.GrpcIdNotSpecifiedError(req)
+	scope, err := util.GenericHfGetter(ctx, req, s.scopeClient, s.scopeLister.Scopes(util.GetReleaseNamespace()), "scope", s.scopeSynced())
+	if err != nil {
+		return &settingProto.Scope{}, err
 	}
 
-	var scope *hfv1.Scope
-	var err error
-	if !doLoadFromCache {
-		scope, err = s.scopeClient.Get(ctx, id, metav1.GetOptions{})
-	} else if s.scopeSynced() {
-		scope, err = s.scopeLister.Scopes(util.GetReleaseNamespace()).Get(id)
-	} else {
-		glog.V(2).Info("error while retrieving scope by id: cache is not properly synced yet")
-		// our cache is not properly initialized yet ... returning status unavailable
-		return &settingProto.Scope{}, hferrors.GrpcCacheError(req, "scope")
-	}
-	if errors.IsNotFound(err) {
-		glog.Errorf("scope %s not found", req.GetId())
-		return &settingProto.Scope{}, hferrors.GrpcNotFoundError(req, "scope")
-	} else if err != nil {
-		glog.V(2).Infof("error while retrieving scope: %v", err)
-		return &settingProto.Scope{}, hferrors.GrpcGetError(req, "scope", err)
-	}
 	return &settingProto.Scope{Name: scope.Name, DisplayName: scope.DisplayName}, nil
 }
 
@@ -251,28 +231,9 @@ func (s *GrpcSettingServer) ListSettings(ctx context.Context, listOptions *gener
 }
 
 func (s *GrpcSettingServer) GetSetting(ctx context.Context, req *general.GetRequest) (*settingProto.Setting, error) {
-	id := req.GetId()
-	doLoadFromCache := req.GetLoadFromCache()
-	if len(id) == 0 {
-		return &settingProto.Setting{}, hferrors.GrpcIdNotSpecifiedError(req)
-	}
-	var setting *hfv1.Setting
-	var err error
-	if !doLoadFromCache {
-		setting, err = s.settingClient.Get(ctx, id, metav1.GetOptions{})
-	} else if s.settingSynced() {
-		setting, err = s.settingLister.Settings(util.GetReleaseNamespace()).Get(id)
-	} else {
-		glog.V(2).Info("error while retrieving setting by id: cache is not properly synced yet")
-		// our cache is not properly initialized yet ... returning status unavailable
-		return &settingProto.Setting{}, hferrors.GrpcCacheError(req, "setting")
-	}
-	if errors.IsNotFound(err) {
-		glog.Errorf("setting %s not found", req.GetId())
-		return &settingProto.Setting{}, hferrors.GrpcNotFoundError(req, "setting")
-	} else if err != nil {
-		glog.Errorf("error retrieving setting from database: %s", err.Error())
-		return &settingProto.Setting{}, hferrors.GrpcGetError(req, "setting", err)
+	setting, err := util.GenericHfGetter(ctx, req, s.settingClient, s.settingLister.Settings(util.GetReleaseNamespace()), "setting", s.settingSynced())
+	if err != nil {
+		return &settingProto.Setting{}, err
 	}
 
 	// check if the user has permissions to do this action

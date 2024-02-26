@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc/codes"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
@@ -201,29 +200,9 @@ func unmarshalRolebinding(roleBinding *rbacv1.RoleBinding) *rbacProto.RoleBindin
 }
 
 func (rs *GrpcRbacServer) getRolebinding(ctx context.Context, req *general.GetRequest) (*rbacv1.RoleBinding, error) {
-	id := req.GetId()
-	doLoadFromCache := req.GetLoadFromCache()
-	if len(id) == 0 {
-		glog.Errorf("invalid rolebinding id")
-		return &rbacv1.RoleBinding{}, hferrors.GrpcIdNotSpecifiedError(req)
-	}
-	var rolebinding *rbacv1.RoleBinding
-	var err error
-	if !doLoadFromCache {
-		rolebinding, err = rs.roleBindingClient.Get(ctx, id, metav1.GetOptions{})
-	} else if rs.roleSynced() {
-		rolebinding, err = rs.roleBindingLister.RoleBindings(util.GetReleaseNamespace()).Get(id)
-	} else {
-		glog.V(2).Info("error while retrieving rolebinding by id: cache is not properly synced yet")
-		// our cache is not properly initialized yet ... returning status unavailable
-		return &rbacv1.RoleBinding{}, hferrors.GrpcCacheError(req, "rolebinding")
-	}
-	if errors.IsNotFound(err) {
-		glog.Errorf("rolebinding %s not found", req.GetId())
-		return &rbacv1.RoleBinding{}, hferrors.GrpcNotFoundError(req, "rolebinding")
-	} else if err != nil {
-		glog.Errorf("kubernetes error while retrieving rolebinding: %v", err)
-		return &rbacv1.RoleBinding{}, hferrors.GrpcGetError(req, "rolebinding", err)
+	rolebinding, err := util.GenericHfGetter(ctx, req, rs.roleBindingClient, rs.roleBindingLister.RoleBindings(util.GetReleaseNamespace()), "rolebinding", rs.roleBindingSynced())
+	if err != nil {
+		return &rbacv1.RoleBinding{}, err
 	}
 
 	if _, ok := rolebinding.Labels[util.RBACManagedLabel]; !ok {

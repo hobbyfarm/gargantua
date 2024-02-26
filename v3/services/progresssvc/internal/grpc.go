@@ -17,7 +17,6 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -87,27 +86,9 @@ func (s *GrpcProgressServer) CreateProgress(ctx context.Context, req *progressPr
 }
 
 func (s *GrpcProgressServer) GetProgress(ctx context.Context, req *general.GetRequest) (*progressProto.Progress, error) {
-	id := req.GetId()
-	doLoadFromCache := req.GetLoadFromCache()
-	if len(id) == 0 {
-		return &progressProto.Progress{}, hferrors.GrpcIdNotSpecifiedError(req)
-	}
-	var progress *hfv1.Progress
-	var err error
-	if !doLoadFromCache {
-		progress, err = s.progressClient.Get(ctx, id, v1.GetOptions{})
-	} else if s.progressSynced() {
-		progress, err = s.progressLister.Progresses(util.GetReleaseNamespace()).Get(id)
-	} else {
-		glog.V(2).Info("error while retrieving progress by id: cache is not properly synced yet")
-		// our cache is not properly initialized yet ... returning status unavailable
-		return &progressProto.Progress{}, hferrors.GrpcCacheError(req, "progress")
-	}
-	if errors.IsNotFound(err) {
-		return &progressProto.Progress{}, hferrors.GrpcNotFoundError(req, "progress")
-	} else if err != nil {
-		glog.V(2).Infof("error while retrieving progress: %v", err)
-		return &progressProto.Progress{}, hferrors.GrpcGetError(req, "progress", err)
+	progress, err := util.GenericHfGetter(ctx, req, s.progressClient, s.progressLister.Progresses(util.GetReleaseNamespace()), "progress", s.progressSynced())
+	if err != nil {
+		return &progressProto.Progress{}, err
 	}
 
 	progressSteps := []*progressProto.ProgressStep{}

@@ -12,7 +12,6 @@ import (
 	"google.golang.org/grpc/codes"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
@@ -173,29 +172,9 @@ func unmarshalRole(role *rbacv1.Role) (preparedRole *rbacProto.Role) {
 }
 
 func (rs *GrpcRbacServer) getRole(ctx context.Context, req *general.GetRequest) (*rbacv1.Role, error) {
-	id := req.GetId()
-	doLoadFromCache := req.GetLoadFromCache()
-	if len(id) == 0 {
-		glog.Errorf("invalid role id")
-		return &rbacv1.Role{}, hferrors.GrpcIdNotSpecifiedError(req)
-	}
-	var role *rbacv1.Role
-	var err error
-	if !doLoadFromCache {
-		role, err = rs.roleClient.Get(ctx, id, metav1.GetOptions{})
-	} else if rs.roleSynced() {
-		role, err = rs.roleLister.Roles(util.GetReleaseNamespace()).Get(id)
-	} else {
-		glog.V(2).Info("error while retrieving role by id: cache is not properly synced yet")
-		// our cache is not properly initialized yet ... returning status unavailable
-		return &rbacv1.Role{}, hferrors.GrpcCacheError(req, "role")
-	}
-	if errors.IsNotFound(err) {
-		glog.Errorf("role %s not found", req.GetId())
-		return &rbacv1.Role{}, hferrors.GrpcNotFoundError(req, "role")
-	} else if err != nil {
-		glog.Errorf("kubernetes error while retrieving role: %v", err)
-		return &rbacv1.Role{}, hferrors.GrpcGetError(req, "role", err)
+	role, err := util.GenericHfGetter(ctx, req, rs.roleClient, rs.roleLister.Roles(util.GetReleaseNamespace()), "role", rs.roleSynced())
+	if err != nil {
+		return &rbacv1.Role{}, err
 	}
 
 	if _, ok := role.Labels[util.RBACManagedLabel]; !ok {

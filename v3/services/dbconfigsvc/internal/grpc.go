@@ -20,7 +20,6 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -102,27 +101,9 @@ func (s *GrpcDynamicBindConfigurationServer) CreateDynamicBindConfig(ctx context
 }
 
 func (s *GrpcDynamicBindConfigurationServer) GetDynamicBindConfig(ctx context.Context, req *general.GetRequest) (*dbConfigProto.DynamicBindConfig, error) {
-	id := req.GetId()
-	doLoadFromCache := req.GetLoadFromCache()
-	if len(id) == 0 {
-		return &dbConfigProto.DynamicBindConfig{}, hferrors.GrpcIdNotSpecifiedError(req)
-	}
-	var dbc *hfv1.DynamicBindConfiguration
-	var err error
-	if !doLoadFromCache {
-		dbc, err = s.dbConfigClient.Get(ctx, id, v1.GetOptions{})
-	} else if s.dbConfigSynced() {
-		dbc, err = s.dbConfigLister.DynamicBindConfigurations(util.GetReleaseNamespace()).Get(id)
-	} else {
-		glog.V(2).Info("error while retrieving dynamic bind configuration by id: cache is not properly synced yet")
-		// our cache is not properly initialized yet ... returning status unavailable
-		return &dbConfigProto.DynamicBindConfig{}, hferrors.GrpcCacheError(req, "dynamic bind configuration")
-	}
-	if errors.IsNotFound(err) {
-		return &dbConfigProto.DynamicBindConfig{}, hferrors.GrpcNotFoundError(req, "dynamic bind configuation")
-	} else if err != nil {
-		glog.V(2).Infof("error while retrieving dynamic bind configuration: %v", err)
-		return &dbConfigProto.DynamicBindConfig{}, hferrors.GrpcGetError(req, "dynamic bind configuration", err)
+	dbc, err := util.GenericHfGetter(ctx, req, s.dbConfigClient, s.dbConfigLister.DynamicBindConfigurations(util.GetReleaseNamespace()), "dynamic bind configuation", s.dbConfigSynced())
+	if err != nil {
+		return &dbConfigProto.DynamicBindConfig{}, err
 	}
 
 	return &dbConfigProto.DynamicBindConfig{

@@ -17,7 +17,6 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -83,27 +82,9 @@ func (s *GrpcVMClaimServer) CreateVMClaim(ctx context.Context, req *vmClaimProto
 }
 
 func (s *GrpcVMClaimServer) GetVMClaim(ctx context.Context, req *general.GetRequest) (*vmClaimProto.VMClaim, error) {
-	id := req.GetId()
-	doLoadFromCache := req.GetLoadFromCache()
-	if len(id) == 0 {
-		return &vmClaimProto.VMClaim{}, hferrors.GrpcIdNotSpecifiedError(req)
-	}
-	var vmc *hfv1.VirtualMachineClaim
-	var err error
-	if !doLoadFromCache {
-		vmc, err = s.vmClaimClient.Get(ctx, id, v1.GetOptions{})
-	} else if s.vmClaimSynced() {
-		vmc, err = s.vmClaimLister.VirtualMachineClaims(util.GetReleaseNamespace()).Get(id)
-	} else {
-		glog.V(2).Info("error while retrieving virtual machine claim by id: cache is not properly synced yet")
-		// our cache is not properly initialized yet ... returning status unavailable
-		return &vmClaimProto.VMClaim{}, hferrors.GrpcCacheError(req, "virtual machine claim")
-	}
-	if errors.IsNotFound(err) {
-		return &vmClaimProto.VMClaim{}, hferrors.GrpcNotFoundError(req, "virtual machine claim")
-	} else if err != nil {
-		glog.V(2).Infof("error while retrieving virtual machine claim: %v", err)
-		return &vmClaimProto.VMClaim{}, hferrors.GrpcGetError(req, "virtual machine claim", err)
+	vmc, err := util.GenericHfGetter(ctx, req, s.vmClaimClient, s.vmClaimLister.VirtualMachineClaims(util.GetReleaseNamespace()), "virtual machine claim", s.vmClaimSynced())
+	if err != nil {
+		return &vmClaimProto.VMClaim{}, err
 	}
 
 	vmClaimVMs := make(map[string]*vmClaimProto.VMClaimVM)
