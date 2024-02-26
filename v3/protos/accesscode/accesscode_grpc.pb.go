@@ -36,6 +36,7 @@ const (
 	AccessCodeSvc_ValidateExistence_FullMethodName       = "/accesscode.AccessCodeSvc/ValidateExistence"
 	AccessCodeSvc_GetAccessCodesWithOTACs_FullMethodName = "/accesscode.AccessCodeSvc/GetAccessCodesWithOTACs"
 	AccessCodeSvc_GetAccessCodeWithOTACs_FullMethodName  = "/accesscode.AccessCodeSvc/GetAccessCodeWithOTACs"
+	AccessCodeSvc_GetAcOwnerReferences_FullMethodName    = "/accesscode.AccessCodeSvc/GetAcOwnerReferences"
 )
 
 // AccessCodeSvcClient is the client API for AccessCodeSvc service.
@@ -60,6 +61,7 @@ type AccessCodeSvcClient interface {
 	ValidateExistence(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*ResourceValidation, error)
 	GetAccessCodesWithOTACs(ctx context.Context, in *ResourceIds, opts ...grpc.CallOption) (*ListAcsResponse, error)
 	GetAccessCodeWithOTACs(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*AccessCode, error)
+	GetAcOwnerReferences(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*general.OwnerReferences, error)
 }
 
 type accessCodeSvcClient struct {
@@ -205,6 +207,15 @@ func (c *accessCodeSvcClient) GetAccessCodeWithOTACs(ctx context.Context, in *ge
 	return out, nil
 }
 
+func (c *accessCodeSvcClient) GetAcOwnerReferences(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*general.OwnerReferences, error) {
+	out := new(general.OwnerReferences)
+	err := c.cc.Invoke(ctx, AccessCodeSvc_GetAcOwnerReferences_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AccessCodeSvcServer is the server API for AccessCodeSvc service.
 // All implementations must embed UnimplementedAccessCodeSvcServer
 // for forward compatibility
@@ -227,6 +238,7 @@ type AccessCodeSvcServer interface {
 	ValidateExistence(context.Context, *general.ResourceId) (*ResourceValidation, error)
 	GetAccessCodesWithOTACs(context.Context, *ResourceIds) (*ListAcsResponse, error)
 	GetAccessCodeWithOTACs(context.Context, *general.ResourceId) (*AccessCode, error)
+	GetAcOwnerReferences(context.Context, *general.ResourceId) (*general.OwnerReferences, error)
 	mustEmbedUnimplementedAccessCodeSvcServer()
 }
 
@@ -278,6 +290,9 @@ func (UnimplementedAccessCodeSvcServer) GetAccessCodesWithOTACs(context.Context,
 }
 func (UnimplementedAccessCodeSvcServer) GetAccessCodeWithOTACs(context.Context, *general.ResourceId) (*AccessCode, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAccessCodeWithOTACs not implemented")
+}
+func (UnimplementedAccessCodeSvcServer) GetAcOwnerReferences(context.Context, *general.ResourceId) (*general.OwnerReferences, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAcOwnerReferences not implemented")
 }
 func (UnimplementedAccessCodeSvcServer) mustEmbedUnimplementedAccessCodeSvcServer() {}
 
@@ -562,6 +577,24 @@ func _AccessCodeSvc_GetAccessCodeWithOTACs_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccessCodeSvc_GetAcOwnerReferences_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(general.ResourceId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccessCodeSvcServer).GetAcOwnerReferences(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccessCodeSvc_GetAcOwnerReferences_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccessCodeSvcServer).GetAcOwnerReferences(ctx, req.(*general.ResourceId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AccessCodeSvc_ServiceDesc is the grpc.ServiceDesc for AccessCodeSvc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -628,6 +661,10 @@ var AccessCodeSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAccessCodeWithOTACs",
 			Handler:    _AccessCodeSvc_GetAccessCodeWithOTACs_Handler,
+		},
+		{
+			MethodName: "GetAcOwnerReferences",
+			Handler:    _AccessCodeSvc_GetAcOwnerReferences_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -111,27 +111,9 @@ func (a *GrpcAccessCodeServer) CreateAc(ctx context.Context, cr *accessCodeProto
 }
 
 func (a *GrpcAccessCodeServer) GetAc(ctx context.Context, req *general.GetRequest) (*accessCodeProto.AccessCode, error) {
-	id := req.GetId()
-	doLoadFromCache := req.GetLoadFromCache()
-	if len(id) == 0 {
-		return &accessCodeProto.AccessCode{}, hferrors.GrpcIdNotSpecifiedError(req)
-	}
-	var ac *hfv1.AccessCode
-	var err error
-	if !doLoadFromCache {
-		ac, err = a.acClient.Get(ctx, id, metav1.GetOptions{})
-	} else if a.acSynced() {
-		ac, err = a.acLister.AccessCodes(util.GetReleaseNamespace()).Get(id)
-	} else {
-		glog.V(2).Info("error while retrieving access code by id: cache is not properly synced yet")
-		// our cache is not properly initialized yet ... returning status unavailable
-		return &accessCodeProto.AccessCode{}, hferrors.GrpcCacheError(req, "access code")
-	}
-	if errors.IsNotFound(err) {
-		return &accessCodeProto.AccessCode{}, hferrors.GrpcNotFoundError(req, "access code")
-	} else if err != nil {
-		glog.V(2).Infof("error while retrieving access code: %v", err)
-		return &accessCodeProto.AccessCode{}, hferrors.GrpcGetError(req, "access code", err)
+	ac, err := util.GenericHfGetter(ctx, req, a.acClient, a.acLister.AccessCodes(util.GetReleaseNamespace()), "access code", a.acSynced())
+	if err != nil {
+		return &accessCodeProto.AccessCode{}, err
 	}
 
 	return &accessCodeProto.AccessCode{
@@ -648,6 +630,10 @@ func (a *GrpcAccessCodeServer) GetAccessCodeWithOTACs(ctx context.Context, codeI
 	}
 
 	return accessCodes[0], nil
+}
+
+func (a *GrpcAccessCodeServer) GetAcOwnerReferences(ctx context.Context, req *general.GetRequest) (*general.OwnerReferences, error) {
+	return util.GetOwnerReferences(ctx, req, a.acClient, a.acLister.AccessCodes(util.GetReleaseNamespace()), "access code", a.acSynced())
 }
 
 /**************************************************************************************************************

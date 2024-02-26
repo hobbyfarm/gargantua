@@ -4,6 +4,8 @@ package general;
 
 option go_package = "github.com/hobbyfarm/gargantua/v3/protos/general";
 
+import "google/protobuf/wrappers.proto";
+
 // messages which are used across multiple services should be defined here
 
 message ResourceId {
@@ -18,4 +20,17 @@ message GetRequest {
 message ListOptions {
     string label_selector = 1;
     bool load_from_cache = 2;
+}
+
+message OwnerReference {
+    string api_version = 1;
+    string kind = 2;
+    string name = 3;
+    string uid = 4;
+    google.protobuf.BoolValue controller = 5;
+    google.protobuf.BoolValue block_owner_deletion = 6;
+}
+
+message OwnerReferences {
+    repeated OwnerReference owner_references = 1;
 }
