@@ -23,7 +23,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	empty "google.golang.org/protobuf/types/known/emptypb"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
@@ -127,30 +126,12 @@ func (u *GrpcUserServer) CreateUser(ctx context.Context, cur *userProto.CreateUs
 }
 
 func (u *GrpcUserServer) GetUserById(ctx context.Context, req *general.GetRequest) (*userProto.User, error) {
-	id := req.GetId()
-	doLoadFromCache := req.GetLoadFromCache()
-	if len(id) == 0 {
-		return &userProto.User{}, hferrors.GrpcIdNotSpecifiedError(req)
-	}
-	var user *hfv2.User
-	var err error
-	if !doLoadFromCache {
-		user, err = u.userClient.Get(ctx, id, metav1.GetOptions{})
-	} else if u.userSynced() {
-		user, err = u.userLister.Users(util.GetReleaseNamespace()).Get(id)
-	} else {
-		glog.V(2).Info("error while retrieving user by id: cache is not properly synced yet")
-		// our cache is not properly initialized yet ... returning status unavailable
-		return &userProto.User{}, hferrors.GrpcCacheError(req, "user")
-	}
-	if errors.IsNotFound(err) {
-		return &userProto.User{}, hferrors.GrpcNotFoundError(req, "user")
-	} else if err != nil {
-		glog.V(2).Infof("error while retrieving user: %v", err)
-		return &userProto.User{}, hferrors.GrpcGetError(req, "user", err)
+	user, err := util.GenericHfGetter(ctx, req, u.userClient, u.userLister.Users(util.GetReleaseNamespace()), "user", u.userSynced())
+	if err != nil {
+		return &userProto.User{}, err
 	}
 
-	glog.V(2).Infof("retrieved user %s", id)
+	glog.V(2).Infof("retrieved user %s", user.Name)
 
 	return &userProto.User{
 		Id:                  user.Name,
@@ -393,20 +374,15 @@ func (u *GrpcUserServer) GetUserByEmail(ctx context.Context, gur *userProto.GetU
 
 func (u *GrpcUserServer) DeleteUser(ctx context.Context, userId *general.ResourceId) (*empty.Empty, error) {
 	id := userId.GetId()
-
-	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(userId)
-	}
-
-	user, err := u.userLister.Users(util.GetReleaseNamespace()).Get(id)
+	user, err := util.GenericHfGetter(
+		ctx, &general.GetRequest{Id: id},
+		u.userClient,
+		u.userLister.Users(util.GetReleaseNamespace()),
+		"user",
+		u.userSynced(),
+	)
 	if err != nil {
-		glog.Errorf("error fetching user %s from server during delete request: %s", id, err)
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error fetching user %s from server",
-			userId,
-			userId.GetId(),
-		)
+		return &empty.Empty{}, err
 	}
 
 	// get a list of sessions for the user

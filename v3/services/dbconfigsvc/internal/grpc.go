@@ -176,42 +176,11 @@ func (s *GrpcDynamicBindConfigurationServer) UpdateDynamicBindConfig(ctx context
 }
 
 func (s *GrpcDynamicBindConfigurationServer) DeleteDynamicBindConfig(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
-	id := req.GetId()
-	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no ID passed in",
-			req,
-		)
-	}
-
-	err := s.dbConfigClient.Delete(ctx, id, v1.DeleteOptions{})
-
-	if err != nil {
-		glog.Errorf("error deleting dynamic bind configuration %s: %v", id, err)
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error deleting dynamic bind configuration %s",
-			req,
-			id,
-		)
-	}
-
-	return &empty.Empty{}, nil
+	return util.DeleteHfResource(ctx, req, s.dbConfigClient, "dynamic bind configuration")
 }
 
 func (s *GrpcDynamicBindConfigurationServer) DeleteCollectionDynamicBindConfig(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
-	err := s.dbConfigClient.DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{
-		LabelSelector: listOptions.GetLabelSelector(),
-	})
-	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error deleting dynamic bind configurations",
-			listOptions,
-		)
-	}
-	return &empty.Empty{}, nil
+	return util.DeleteHfCollection(ctx, listOptions, s.dbConfigClient, "dynamic bind configurations")
 }
 
 func (s *GrpcDynamicBindConfigurationServer) ListDynamicBindConfig(ctx context.Context, listOptions *general.ListOptions) (*dbConfigProto.ListDynamicBindConfigsResponse, error) {

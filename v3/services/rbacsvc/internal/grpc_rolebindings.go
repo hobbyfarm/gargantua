@@ -88,25 +88,16 @@ func (rs *GrpcRbacServer) UpdateRolebinding(c context.Context, ur *rbacProto.Rol
 	return &empty.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) DeleteRolebinding(c context.Context, dr *general.ResourceId) (*empty.Empty, error) {
+func (rs *GrpcRbacServer) DeleteRolebinding(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
 	// we want to get the rolebinding first as this allows us to run it through the various checks before we attempt deletion
 	// most important of which is checking that we have labeled it correctly
 	// but it doesn't hurt to check if it exists before
-	rolebinding, err := rs.getRolebinding(c, &general.GetRequest{Id: dr.GetId()})
+	_, err := rs.getRolebinding(ctx, &general.GetRequest{Id: req.GetId()})
 	if err != nil {
 		return &empty.Empty{}, err
 	}
 
-	err = rs.roleBindingClient.Delete(c, rolebinding.Name, metav1.DeleteOptions{})
-	if err != nil {
-		glog.Errorf("error deleting rolebinding in kubernetes: %v", err)
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error deleting rolebinding",
-			dr,
-		)
-	}
-	return &empty.Empty{}, nil
+	return util.DeleteHfResource(ctx, req, rs.roleBindingClient, "rolebinding")
 }
 
 func (rs *GrpcRbacServer) ListRolebinding(ctx context.Context, listOptions *general.ListOptions) (*rbacProto.RoleBindings, error) {

@@ -204,44 +204,12 @@ func (a *GrpcAccessCodeServer) UpdateAc(ctx context.Context, acRequest *accessCo
 	return &empty.Empty{}, nil
 }
 
-func (a *GrpcAccessCodeServer) DeleteAc(ctx context.Context, dr *general.ResourceId) (*empty.Empty, error) {
-	acId := dr.GetId()
-	if acId == "" {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no ID passed in",
-			dr,
-		)
-	}
-
-	err := a.acClient.Delete(ctx, acId, metav1.DeleteOptions{})
-	if err != nil {
-		glog.Errorf("error deleting access code %s: %s", acId, err)
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error deleting access code %s",
-			dr,
-			acId,
-		)
-	}
-	return &empty.Empty{}, nil
+func (a *GrpcAccessCodeServer) DeleteAc(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+	return util.DeleteHfResource(ctx, req, a.acClient, "access code")
 }
 
 func (a *GrpcAccessCodeServer) DeleteCollectionAc(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
-
-	// delete the access code for the corresponding ScheduledEvent
-	err := a.acClient.DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: listOptions.GetLabelSelector(),
-	})
-	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error deleting access codes",
-			listOptions,
-		)
-	}
-
-	return &empty.Empty{}, nil
+	return util.DeleteHfCollection(ctx, listOptions, a.acClient, "access codes")
 }
 
 func (a *GrpcAccessCodeServer) ListAc(ctx context.Context, listOptions *general.ListOptions) (*accessCodeProto.ListAcsResponse, error) {
@@ -430,44 +398,12 @@ func (a *GrpcAccessCodeServer) UpdateOtac(ctx context.Context, otacRequest *acce
 	return &empty.Empty{}, nil
 }
 
-func (a *GrpcAccessCodeServer) DeleteOtac(ctx context.Context, dr *general.ResourceId) (*empty.Empty, error) {
-	otacId := dr.GetId()
-	if otacId == "" {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no ID passed in",
-			dr,
-		)
-	}
-
-	err := a.otacClient.Delete(ctx, otacId, metav1.DeleteOptions{})
-	if err != nil {
-		glog.Errorf("error deleting otac %s: %s", otacId, err)
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error deleting otac %s",
-			dr,
-			otacId,
-		)
-	}
-	return &empty.Empty{}, nil
+func (a *GrpcAccessCodeServer) DeleteOtac(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+	return util.DeleteHfResource(ctx, req, a.otacClient, "OTAC")
 }
 
 func (a *GrpcAccessCodeServer) DeleteCollectionOtac(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
-
-	// delete the access code for the corresponding ScheduledEvent
-	err := a.otacClient.DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: listOptions.GetLabelSelector(),
-	})
-	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error deleting otacs",
-			listOptions,
-		)
-	}
-
-	return &empty.Empty{}, nil
+	return util.DeleteHfCollection(ctx, listOptions, a.otacClient, "OTACs")
 }
 
 func (a *GrpcAccessCodeServer) ListOtac(ctx context.Context, listOptions *general.ListOptions) (*accessCodeProto.ListOtacsResponse, error) {

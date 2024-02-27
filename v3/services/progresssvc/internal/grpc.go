@@ -190,42 +190,11 @@ func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progressPr
 }
 
 func (s *GrpcProgressServer) DeleteProgress(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
-	id := req.GetId()
-	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no ID passed in",
-			req,
-		)
-	}
-
-	err := s.progressClient.Delete(ctx, id, v1.DeleteOptions{})
-
-	if err != nil {
-		glog.Errorf("error deleting progress %s: %v", id, err)
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error deleting progress %s",
-			req,
-			id,
-		)
-	}
-
-	return &empty.Empty{}, nil
+	return util.DeleteHfResource(ctx, req, s.progressClient, "progress")
 }
 
 func (s *GrpcProgressServer) DeleteCollectionProgress(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
-	err := s.progressClient.DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{
-		LabelSelector: listOptions.GetLabelSelector(),
-	})
-	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error deleting progresses",
-			listOptions,
-		)
-	}
-	return &empty.Empty{}, nil
+	return util.DeleteHfCollection(ctx, listOptions, s.progressClient, "progresses")
 }
 
 func (s *GrpcProgressServer) ListProgress(ctx context.Context, listOptions *general.ListOptions) (*progressProto.ListProgressesResponse, error) {

@@ -238,42 +238,11 @@ func (s *GrpcVMClaimServer) UpdateVMClaimStatus(ctx context.Context, req *vmClai
 }
 
 func (s *GrpcVMClaimServer) DeleteVMClaim(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
-	id := req.GetId()
-	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no ID passed in",
-			req,
-		)
-	}
-
-	err := s.vmClaimClient.Delete(ctx, id, v1.DeleteOptions{})
-
-	if err != nil {
-		glog.Errorf("error deleting virtual machine claim %s: %v", id, err)
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error deleting virtual machine claim %s",
-			req,
-			id,
-		)
-	}
-
-	return &empty.Empty{}, nil
+	return util.DeleteHfResource(ctx, req, s.vmClaimClient, "virtual machine claim")
 }
 
 func (s *GrpcVMClaimServer) DeleteCollectionVMClaim(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
-	err := s.vmClaimClient.DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{
-		LabelSelector: listOptions.GetLabelSelector(),
-	})
-	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error deleting virtual machine claims",
-			listOptions,
-		)
-	}
-	return &empty.Empty{}, nil
+	return util.DeleteHfCollection(ctx, listOptions, s.vmClaimClient, "virtual machine claims")
 }
 
 func (s *GrpcVMClaimServer) ListVMClaim(ctx context.Context, listOptions *general.ListOptions) (*vmClaimProto.ListVMClaimsResponse, error) {

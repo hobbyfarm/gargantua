@@ -79,25 +79,16 @@ func (rs *GrpcRbacServer) UpdateRole(c context.Context, ur *rbacProto.Role) (*em
 	return &empty.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) DeleteRole(c context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (rs *GrpcRbacServer) DeleteRole(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
 	// we want to get the role first as this allows us to run it through the various checks before we attempt deletion
 	// most important of which is checking that we have labeled it correctly
 	// but it doesn't hurt to check if it exists before
-	role, err := rs.getRole(c, &general.GetRequest{Id: req.GetId()})
+	_, err := rs.getRole(ctx, &general.GetRequest{Id: req.GetId()})
 	if err != nil {
 		return &empty.Empty{}, err
 	}
 
-	err = rs.roleClient.Delete(c, role.Name, metav1.DeleteOptions{})
-	if err != nil {
-		glog.Errorf("error deleting role in kubernetes: %v", err)
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error deleting role",
-			req,
-		)
-	}
-	return &empty.Empty{}, nil
+	return util.DeleteHfResource(ctx, req, rs.roleClient, "role")
 }
 
 func (rs *GrpcRbacServer) ListRole(ctx context.Context, listOptions *general.ListOptions) (*rbacProto.Roles, error) {

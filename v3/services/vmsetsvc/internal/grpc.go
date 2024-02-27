@@ -245,42 +245,11 @@ func (s *GrpcVMSetServer) UpdateVMSetStatus(ctx context.Context, req *vmSetProto
 }
 
 func (s *GrpcVMSetServer) DeleteVMSet(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
-	id := req.GetId()
-	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.InvalidArgument,
-			"no ID passed in",
-			req,
-		)
-	}
-
-	err := s.vmSetClient.Delete(ctx, id, v1.DeleteOptions{})
-
-	if err != nil {
-		glog.Errorf("error deleting virtual machine set %s: %v", id, err)
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error deleting virtual machine set %s",
-			req,
-			id,
-		)
-	}
-
-	return &empty.Empty{}, nil
+	return util.DeleteHfResource(ctx, req, s.vmSetClient, "virtual machine set")
 }
 
 func (s *GrpcVMSetServer) DeleteCollectionVMSet(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
-	err := s.vmSetClient.DeleteCollection(ctx, v1.DeleteOptions{}, v1.ListOptions{
-		LabelSelector: listOptions.GetLabelSelector(),
-	})
-	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error deleting virtual machine sets",
-			listOptions,
-		)
-	}
-	return &empty.Empty{}, nil
+	return util.DeleteHfCollection(ctx, listOptions, s.vmSetClient, "virtual machine sets")
 }
 
 func (s *GrpcVMSetServer) ListVMSet(ctx context.Context, listOptions *general.ListOptions) (*vmSetProto.ListVMSetsResponse, error) {
