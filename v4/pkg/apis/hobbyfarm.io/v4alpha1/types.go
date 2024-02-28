@@ -239,24 +239,9 @@ type AvailabilityConfiguration struct {
 	Value string `json:"value,omitempty"`
 }
 
-type ReclaimPolicy string
-
-const (
-	ReclaimPolicyDelete ReclaimPolicy = "Delete"
-	ReclaimPolicyReuse  ReclaimPolicy = "Reuse"
-)
-
 type MachineSetSpec struct {
 	// AvailabilityConfiguration defines the configuration for end-user availability of the machines in this pool
 	AvailabilityConfiguration AvailabilityConfiguration `json:"availabilityConfiguration"`
-
-	// ReclaimPolicy defines the behavior of the Provider when a Machine from this MachineSet has been used
-	// and freed by a user. To trigger this behavior, a Machine must have been provisioned, claimed via a MachineClaim,
-	// and then freed by termination of that MachineClaim. Depending on the ReclaimPolicy set here, HF will take different
-	// actions. For example, if the ReclaimPolicy is set to "Delete", HF will delete the Machine object after
-	// its claim is freed. If the ReclaimPolicy is set to "Reuse", HF will clear any claim indicators or other
-	// taint markers thus making the Machine immediately available for claim by another user.
-	ReclaimPolicy ReclaimPolicy `json:"reclaimPolicy"`
 
 	// ProvisioningStrategy defines what strategy should be used when provisioning these machines.
 	// This will inform HobbyFarm on how to create machine resources so that providers can provision them.
@@ -354,9 +339,6 @@ type MachineSpec struct {
 	// Endpoints present in this map are a combination of protocols supported by the MachineTemplate
 	// and Endpoints listed in the Environment.
 	ConnectEndpoints map[ConnectProtocol]string `json:"connectEndpoints"`
-
-	// ReclaimPolicy defines what shall happen to this Machine after a claim upon it is terminated.
-	ReclaimPolicy ReclaimPolicy `json:"reclaimPolicy"`
 }
 
 type MachineStatus struct {
@@ -429,7 +411,7 @@ type MachineClaimSpec struct {
 type MachineClaimPhase string
 
 const (
-	MachineClaimPhaseAvailable   MachineClaimPhase = "Available"
+	MachineClaimPhaseRequested   MachineClaimPhase = "Requested"
 	MachineClaimPhaseBound       MachineClaimPhase = "Bound"
 	MachineClaimPhaseFailed      MachineClaimPhase = "Failed"
 	MachineClaimPhaseTerminating MachineClaimPhase = "Terminated"
