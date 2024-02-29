@@ -21,7 +21,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
@@ -93,7 +92,7 @@ func (s *GrpcDynamicBindConfigurationServer) CreateDynamicBindConfig(ctx context
 		dbc.ObjectMeta.Labels["restrictedbindvalue"] = restrictedBindValue
 	}
 
-	_, err := s.dbConfigClient.Create(ctx, dbc, v1.CreateOptions{})
+	_, err := s.dbConfigClient.Create(ctx, dbc, metav1.CreateOptions{})
 	if err != nil {
 		return &empty.Empty{}, err
 	}
@@ -127,7 +126,7 @@ func (s *GrpcDynamicBindConfigurationServer) UpdateDynamicBindConfig(ctx context
 	burstCountCapacity := req.GetBurstCountCapacity()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		dbc, err := s.dbConfigClient.Get(ctx, id, v1.GetOptions{})
+		dbc, err := s.dbConfigClient.Get(ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			return hferrors.GrpcError(
@@ -160,7 +159,7 @@ func (s *GrpcDynamicBindConfigurationServer) UpdateDynamicBindConfig(ctx context
 			dbc.Spec.BurstCountCapacity = util.ConvertMap[uint32, int](burstCountCapacity)
 		}
 
-		_, updateErr := s.dbConfigClient.Update(ctx, dbc, v1.UpdateOptions{})
+		_, updateErr := s.dbConfigClient.Update(ctx, dbc, metav1.UpdateOptions{})
 		return updateErr
 	})
 

@@ -17,7 +17,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
@@ -76,7 +75,7 @@ func (s *GrpcVMSetServer) CreateVMSet(ctx context.Context, req *vmSetProto.Creat
 		vms.Spec.RestrictedBindValue = restrictedBindValue
 	}
 
-	_, err := s.vmSetClient.Create(ctx, vms, v1.CreateOptions{})
+	_, err := s.vmSetClient.Create(ctx, vms, metav1.CreateOptions{})
 	if err != nil {
 		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
@@ -135,7 +134,7 @@ func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.Updat
 	restrictedBind := req.GetRestrictedBind()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		vms, err := s.vmSetClient.Get(ctx, id, v1.GetOptions{})
+		vms, err := s.vmSetClient.Get(ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			return hferrors.GrpcError(
@@ -167,7 +166,7 @@ func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.Updat
 			vms.Spec.RestrictedBindValue = ""
 		}
 
-		_, updateErr := s.vmSetClient.Update(ctx, vms, v1.UpdateOptions{})
+		_, updateErr := s.vmSetClient.Update(ctx, vms, metav1.UpdateOptions{})
 		return updateErr
 	})
 

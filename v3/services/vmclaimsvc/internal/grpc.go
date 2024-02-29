@@ -18,7 +18,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
@@ -70,7 +69,7 @@ func (s *GrpcVMClaimServer) CreateVMClaim(ctx context.Context, req *vmClaimProto
 		vmClaim.ObjectMeta.Labels[fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", vmTemplateName)] = "true"
 	}
 
-	_, err := s.vmClaimClient.Create(ctx, vmClaim, v1.CreateOptions{})
+	_, err := s.vmClaimClient.Create(ctx, vmClaim, metav1.CreateOptions{})
 	if err != nil {
 		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
@@ -128,7 +127,7 @@ func (s *GrpcVMClaimServer) UpdateVMClaim(ctx context.Context, req *vmClaimProto
 	restrictedBind := req.GetRestrictedBind()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		vmc, err := s.vmClaimClient.Get(ctx, id, v1.GetOptions{})
+		vmc, err := s.vmClaimClient.Get(ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			return hferrors.GrpcError(
@@ -160,7 +159,7 @@ func (s *GrpcVMClaimServer) UpdateVMClaim(ctx context.Context, req *vmClaimProto
 			vmc.Spec.VirtualMachines = vmClaimVMs
 		}
 
-		_, updateErr := s.vmClaimClient.Update(ctx, vmc, v1.UpdateOptions{})
+		_, updateErr := s.vmClaimClient.Update(ctx, vmc, metav1.UpdateOptions{})
 		return updateErr
 	})
 

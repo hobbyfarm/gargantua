@@ -18,7 +18,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
@@ -74,7 +73,7 @@ func (s *GrpcProgressServer) CreateProgress(ctx context.Context, req *progressPr
 	steps = append(steps, step)
 	progress.Spec.Steps = steps
 
-	_, err := s.progressClient.Create(ctx, progress, v1.CreateOptions{})
+	_, err := s.progressClient.Create(ctx, progress, metav1.CreateOptions{})
 	if err != nil {
 		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
@@ -131,7 +130,7 @@ func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progressPr
 	steps := req.GetSteps()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		progress, err := s.progressClient.Get(ctx, id, v1.GetOptions{})
+		progress, err := s.progressClient.Get(ctx, id, metav1.GetOptions{})
 		if err != nil {
 			glog.Error(err)
 			return hferrors.GrpcError(
@@ -174,7 +173,7 @@ func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progressPr
 			progress.Spec.Steps = progressSteps
 		}
 
-		_, updateErr := s.progressClient.Update(ctx, progress, v1.UpdateOptions{})
+		_, updateErr := s.progressClient.Update(ctx, progress, metav1.UpdateOptions{})
 		return updateErr
 	})
 
