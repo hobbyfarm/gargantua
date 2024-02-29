@@ -83,7 +83,7 @@ func (s *GrpcDynamicBindConfigurationServer) CreateDynamicBindConfig(ctx context
 		Spec: hfv1.DynamicBindConfigurationSpec{
 			Environment:        envName,
 			BaseName:           dbcRand,
-			BurstCountCapacity: burstCapacity,
+			BurstCountCapacity: util.ConvertMap[uint32, int](burstCapacity),
 		},
 	}
 
@@ -111,7 +111,7 @@ func (s *GrpcDynamicBindConfigurationServer) GetDynamicBindConfig(ctx context.Co
 		Environment:         dbc.Spec.Environment,
 		RestrictedBind:      dbc.Spec.RestrictedBind,
 		RestrictedBindValue: dbc.Spec.RestrictedBindValue,
-		BurstCountCapacity:  dbc.Spec.BurstCountCapacity,
+		BurstCountCapacity:  util.ConvertMap[int, uint32](dbc.Spec.BurstCountCapacity),
 		Labels:              dbc.Labels,
 	}, nil
 }
@@ -157,7 +157,7 @@ func (s *GrpcDynamicBindConfigurationServer) UpdateDynamicBindConfig(ctx context
 		}
 
 		if len(burstCountCapacity) > 0 {
-			dbc.Spec.BurstCountCapacity = burstCountCapacity
+			dbc.Spec.BurstCountCapacity = util.ConvertMap[uint32, int](burstCountCapacity)
 		}
 
 		_, updateErr := s.dbConfigClient.Update(ctx, dbc, v1.UpdateOptions{})
@@ -207,7 +207,7 @@ func (s *GrpcDynamicBindConfigurationServer) ListDynamicBindConfig(ctx context.C
 		preparedDbcs = append(preparedDbcs, &dbConfigProto.DynamicBindConfig{
 			Id:                  dbc.Name,
 			Environment:         dbc.Spec.Environment,
-			BurstCountCapacity:  dbc.Spec.BurstCountCapacity,
+			BurstCountCapacity:  util.ConvertMap[int, uint32](dbc.Spec.BurstCountCapacity),
 			RestrictedBind:      dbc.Spec.RestrictedBind,
 			RestrictedBindValue: dbc.Spec.RestrictedBindValue,
 			Labels:              dbc.Labels,
