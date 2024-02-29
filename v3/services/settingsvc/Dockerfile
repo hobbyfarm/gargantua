@@ -1,14 +1,16 @@
 ##### sdk image #####
 FROM golang:1.21.1 AS sdk
 
-WORKDIR /app
-
-# Copy everything, respecting .dockerignore.
-COPY . .
-
 # Change to the directory of the service.
 WORKDIR /app/v3/services/settingsvc
+
+COPY /v3/services/settingsvc/go.mod .
+COPY /v3/go.mod /app/v3
+
 RUN go mod download
+
+# Copy everything, respecting .dockerignore.
+COPY . /app
 
 # Build the service. The output binary is named "app".
 RUN CGO_ENABLED=0 GOOS=linux go build -o /tmp/app
