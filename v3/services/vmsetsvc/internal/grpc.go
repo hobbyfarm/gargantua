@@ -64,7 +64,7 @@ func (s *GrpcVMSetServer) CreateVMSet(ctx context.Context, req *vmSetProto.Creat
 			Labels: labels,
 		},
 		Spec: hfv1.VirtualMachineSetSpec{
-			Count:          count,
+			Count:          int(count),
 			Environment:    environment,
 			RestrictedBind: restrictedBind,
 			VMTemplate:     vmTemplate,
@@ -107,12 +107,12 @@ func (s *GrpcVMSetServer) GetVMSet(ctx context.Context, req *general.GetRequest)
 	status := &vmSetProto.VMSetStatus{
 		Machines:    vmSetVMs,
 		Available:   uint32(vms.Status.AvailableCount),
-		Provisioned: vms.Status.ProvisionedCount,
+		Provisioned: uint32(vms.Status.ProvisionedCount),
 	}
 
 	return &vmSetProto.VMSet{
 		Id:                  vms.Name,
-		Count:               vms.Spec.Count,
+		Count:               uint32(vms.Spec.Count),
 		Environment:         vms.Spec.Environment,
 		VmTemplate:          vms.Spec.VMTemplate,
 		BaseName:            vms.Spec.BaseName,
@@ -147,7 +147,7 @@ func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.Updat
 		}
 
 		if count != nil {
-			vms.Spec.Count = count.Value
+			vms.Spec.Count = int(count.Value)
 		}
 
 		if environment != "" {
@@ -208,7 +208,7 @@ func (s *GrpcVMSetServer) UpdateVMSetStatus(ctx context.Context, req *vmSetProto
 		}
 
 		if provisioned != nil {
-			vms.Status.ProvisionedCount = provisioned.Value
+			vms.Status.ProvisionedCount = int(provisioned.Value)
 		}
 
 		if len(machines) > 0 {
@@ -287,12 +287,12 @@ func (s *GrpcVMSetServer) ListVMSet(ctx context.Context, listOptions *general.Li
 		status := &vmSetProto.VMSetStatus{
 			Machines:    vmSetVMs,
 			Available:   uint32(vms.Status.AvailableCount),
-			Provisioned: vms.Status.ProvisionedCount,
+			Provisioned: uint32(vms.Status.ProvisionedCount),
 		}
 
 		preparedVmSets = append(preparedVmSets, &vmSetProto.VMSet{
 			Id:                  vms.Name,
-			Count:               vms.Spec.Count,
+			Count:               uint32(vms.Spec.Count),
 			Environment:         vms.Spec.Environment,
 			VmTemplate:          vms.Spec.VMTemplate,
 			BaseName:            vms.Spec.BaseName,
