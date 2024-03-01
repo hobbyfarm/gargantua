@@ -52,6 +52,10 @@ func GrpcError[T proto.Message](c codes.Code, format string, details T, a ...any
 	return err.Err()
 }
 
+func GrpcNotSpecifiedError[T proto.Message](protoMessage T, propName string) error {
+	return GrpcError[proto.Message](codes.InvalidArgument, "missing %s", protoMessage, propName)
+}
+
 func GrpcIdNotSpecifiedError[T proto.Message](protoMessage T) error {
 	return GrpcError[proto.Message](codes.InvalidArgument, "no id specified", protoMessage)
 }
@@ -82,4 +86,20 @@ func GrpcListError(listOptions *general.ListOptions, resourceName string) error 
 
 func GrpcCacheError[T proto.Message](protoMessage T, resourceName string) error {
 	return GrpcError[proto.Message](codes.Unavailable, "error while retreiving %s: cache is not properly synced yet", protoMessage, resourceName)
+}
+
+func GrpcParsingError[T proto.Message](protoMessage T, propName string) error {
+	return GrpcError[proto.Message](codes.Internal, "error parsing %s", protoMessage, propName)
+}
+
+func GetErrorMessage(err error) string {
+	if err == nil {
+		return ""
+	}
+	st, ok := status.FromError(err)
+	if !ok {
+		// not a gRPC error
+		return err.Error()
+	}
+	return st.Message()
 }

@@ -20,11 +20,6 @@ func GenerateCRDs() []crder.CRD {
 						WithStatus()
 				})
 		}),
-		HobbyfarmCRD(&v1.VirtualMachineTemplate{}, func(c *crder.CRD) {
-			c.
-				IsNamespaced(true).
-				AddVersion("v1", &v1.VirtualMachineTemplate{}, nil)
-		}),
 		HobbyfarmCRD(&v1.Environment{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).

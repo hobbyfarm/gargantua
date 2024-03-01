@@ -14,4 +14,5 @@ use (
 	./v3/services/vmclaimsvc
 	./v3/services/vmsetsvc
 	./v3/services/progresssvc
+	./v3/services/vmtemplatesvc
 )
