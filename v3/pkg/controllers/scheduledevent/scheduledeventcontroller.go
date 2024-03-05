@@ -280,6 +280,100 @@ func (s ScheduledEventController) finishSessionsFromScheduledEvent(se *hfv1.Sche
 	return nil
 }
 
+func (s ScheduledEventController) CreateSharedVM(se *hfv1.ScheduledEvent) error {
+	for i := 0; i < len(se.Spec.SharedVirtualMachines); i++ {
+		sharedVM := &se.Spec.SharedVirtualMachines[i]
+		// if sharedVM are provision (have VMId) continue, if new(empty VMId) create VM
+		if sharedVM.VMId != "" {
+			continue
+		}
+		genName := fmt.Sprintf("shared-%s-%08x", se.Name, rand.Uint32())
+		sharedVM.VMId = genName
+		vm := &hfv1.VirtualMachine{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: genName,
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "hobbyfarm.io/v1",
+						Kind:       "ScheduledEvent",
+						Name:       se.Name,
+						UID:        se.UID,
+					},
+				},
+				Labels: map[string]string{
+					"dynamic":                    "false",
+					"shared":                     "true",
+					util2.EnvironmentLabel:       sharedVM.Environment,
+					"bound":                      "true",
+					"ready":                      "false",
+					util2.VirtualMachineTemplate: sharedVM.VMTemplate,
+					util2.ScheduledEventLabel:    se.Name,
+				},
+			},
+			Spec: hfv1.VirtualMachineSpec{
+				VirtualMachineTemplateId: sharedVM.VMTemplate,
+				SecretName:               "",
+				Protocol:                 "ssh", //default protocol is ssh
+				VirtualMachineClaimId:    "",
+				UserId:                   "",
+				Provision:                true,
+				VirtualMachineSetId:      "",
+			},
+		}
+
+		environment, err := s.hfClientSet.HobbyfarmV1().Environments(util2.GetReleaseNamespace()).Get(s.ctx, sharedVM.Environment, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		vmt, err := s.hfClientSet.HobbyfarmV1().VirtualMachineTemplates(util2.GetReleaseNamespace()).Get(s.ctx, sharedVM.VMTemplate, metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("error getting vmt %v", err)
+			return err
+		}
+
+		config := util2.GetVMConfig(environment, vmt)
+
+		protocol, exists := config["protocol"]
+		if exists {
+			vm.Spec.Protocol = protocol
+		}
+
+		sshUser, exists := config["ssh_username"]
+		if exists {
+			vm.Spec.SshUsername = sshUser
+		}
+
+		// extra label to indicate external provisioning so tfpcontroller ignores this request //
+		if provisionMethod, ok := environment.Annotations["hobbyfarm.io/provisioner"]; ok {
+			vm.Labels["hobbyfarm.io/provisioner"] = provisionMethod
+			vm.Spec.Provision = false
+		}
+
+		createdVM, err := s.hfClientSet.HobbyfarmV1().VirtualMachines(util2.GetReleaseNamespace()).Create(s.ctx, vm, metav1.CreateOptions{})
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("create sharedVM %s ", createdVM.Name)
+
+		createdVM.Status = hfv1.VirtualMachineStatus{
+			Status:        hfv1.VmStatusRFP,
+			Allocated:     true,
+			Tainted:       false,
+			WsEndpoint:    environment.Spec.WsEndpoint,
+			EnvironmentId: environment.Name,
+			PublicIP:      "",
+			PrivateIP:     "",
+		}
+
+		_, err = s.hfClientSet.HobbyfarmV1().VirtualMachines(util2.GetReleaseNamespace()).UpdateStatus(s.ctx, createdVM, metav1.UpdateOptions{})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.VirtualMachineTemplateList, se *hfv1.ScheduledEvent) error {
 	glog.V(6).Infof("ScheduledEvent %s is ready to be provisioned", se.Name)
 	// start creating resources related to this
@@ -291,6 +385,13 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 	provision (for some reason), but at least we'll tell the user about it
 		e.g. --> glog.Errorf("we are overprovisioning this environment %s by CPU...
 	*/
+
+	
+	//create shared VM for ScheduledEvent
+	err_vm := s.CreateSharedVM(se)
+	if err_vm != nil {
+		return err_vm
+	}
 
 	// begin by calculating what is currently being used in the environment
 	for envName, vmtMap := range se.Spec.RequiredVirtualMachines {
@@ -439,8 +540,8 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 
-		seToUpdate, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util2.GetReleaseNamespace()).Get(s.ctx, se.Name, metav1.GetOptions{})
-
+		//seToUpdate, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util2.GetReleaseNamespace()).Get(s.ctx, se.Name, metav1.GetOptions{})
+		seToUpdate, err := s.hfClientSet.HobbyfarmV1().ScheduledEvents(util2.GetReleaseNamespace()).Update(s.ctx, se, metav1.UpdateOptions{})
 		if err != nil {
 			return err
 		}

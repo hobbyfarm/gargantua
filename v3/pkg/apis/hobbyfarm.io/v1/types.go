@@ -474,6 +474,14 @@ type ScheduledEventSpec struct {
 	Printable               bool                      `json:"printable"`
 	Scenarios               []string                  `json:"scenarios"`
 	Courses                 []string                  `json:"courses"`
+	SharedVirtualMachines   []SharedVirtualMachine    `json:"shared_vms"`
+}
+
+type SharedVirtualMachine struct {
+	VMId        string `json:"vmId"`
+	Name        string `json:"name"`	
+	Environment string `json:"environment"`
+	VMTemplate  string `json:"vmTemplate"`
 }
 
 type ScheduledEventStatus struct {
