@@ -280,7 +280,16 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-
+	shared_vmsRaw := r.PostFormValue("shared_vms")
+	shared_vms := []hfv1.SharedVirtualMachine{} // must be declared this way so as to JSON marshal into [] instead of null
+	if shared_vmsRaw != "" {
+		err = json.Unmarshal([]byte(shared_vmsRaw), &shared_vms)
+		if err != nil {
+			glog.Errorf("error while unmarshalling shared_vms %v", err)
+			util2.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
 	scheduledEvent := &hfv1.ScheduledEvent{}
 	random := util2.RandStringRunes(16)
 	scheduledEvent.Name = "se-" + util2.GenerateResourceName("se", random, 10)
@@ -301,6 +310,10 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 
 	if coursesRaw != "" {
 		scheduledEvent.Spec.Courses = courses
+	}
+
+	if shared_vmsRaw != "" {
+		scheduledEvent.Spec.SharedVirtualMachines = shared_vms
 	}
 
 	if restrictionDisabled {
@@ -376,6 +389,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 		onDemandRaw := r.PostFormValue("on_demand")
 		restrictionDisabledRaw := r.PostFormValue("disable_restriction")
 		printableRaw := r.PostFormValue("printable")
+		shared_vmsRaw := r.PostFormValue("shared_vms")
 
 		if name != "" {
 			scheduledEvent.Spec.Name = name
@@ -413,6 +427,56 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 				return fmt.Errorf("bad")
 			}
 			scheduledEvent.Spec.Courses = courses
+		}
+
+		if shared_vmsRaw != "" {
+			upd_shared_vms := []hfv1.SharedVirtualMachine{} // must be declared this way so as to JSON marshal into [] instead of null
+
+			err = json.Unmarshal([]byte(shared_vmsRaw), &upd_shared_vms)
+			if err != nil {
+				glog.Errorf("error while unmarshalling shared_vms %v", err)
+				//	util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+				return fmt.Errorf("bad")
+			}
+
+			//del from provisionedVM that in upd_sharedVM not present and add new from sharedVM
+			provisioned_shared_vms := scheduledEvent.Spec.SharedVirtualMachines
+			actual_shared_vms := []hfv1.SharedVirtualMachine{}
+			if len(provisioned_shared_vms) > 0 {
+				for _, provisioned_shared_vm := range provisioned_shared_vms {
+					isDelVM := true
+					for _, upd_shared_vm := range upd_shared_vms {
+						if provisioned_shared_vm.Name == upd_shared_vm.Name {
+							isDelVM = false
+							break
+						}
+					}
+						if isDelVM {
+							glog.Infof("del shared_vms %v", provisioned_shared_vm.Name)
+							s.hfClientSet.HobbyfarmV1().VirtualMachines(util2.GetReleaseNamespace()).Delete(s.ctx, provisioned_shared_vm.VMId, metav1.DeleteOptions{})
+						} else {
+							actual_shared_vms = append(actual_shared_vms, provisioned_shared_vm)
+							glog.Infof("add provisioned shared_vms %v", provisioned_shared_vm.Name)
+						}
+
+				}
+				for _, upd_shared_vm := range upd_shared_vms {
+					isAddVM := true
+					for _, actual_shared_vm := range actual_shared_vms {
+						if actual_shared_vm.Name == upd_shared_vm.Name {
+							isAddVM = false
+							break
+						}
+					}
+					if isAddVM {
+						actual_shared_vms = append(actual_shared_vms, upd_shared_vm)
+						glog.Infof("add upd shared_vms %v", upd_shared_vm.Name)
+					}
+				}
+				scheduledEvent.Spec.SharedVirtualMachines = actual_shared_vms
+			} else {
+				scheduledEvent.Spec.SharedVirtualMachines = upd_shared_vms
+			}			
 		}
 
 		if scenariosRaw != "" {

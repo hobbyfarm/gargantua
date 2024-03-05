@@ -177,7 +177,7 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	vmServer, err := vmserver.NewVMServer(authnClient, authrClient, hfClient, hfInformerFactory, ctx)
+	vmServer, err := vmserver.NewVMServer(authnClient, authrClient, acClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
 	}
