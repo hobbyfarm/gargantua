@@ -495,7 +495,7 @@ func (a AuthServer) LoginFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := GenerateJWT(user)
+	token, err := a.GenerateJWT(user)
 
 	if err != nil {
 		glog.Error(err)
@@ -506,12 +506,24 @@ func (a AuthServer) LoginFunc(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPMessage(w, r, 200, "authorized", token)
 }
 
-func GenerateJWT(user *userProto.User) (string, error) {
+func (a AuthServer) GenerateJWT(user *userProto.User) (string, error) {
+	// Get Expiration Date Setting
+	setting, err := a.settingClient.GetSettingValue(context.Background(), &settingProto.Id{Name: string(settingUtil.UserTokenExpiration)})
+	if err != nil {
+		return "", err
+	}
+
+	tokenExpiration := time.Duration(24)
+	if s, ok := setting.GetValue().(*settingProto.SettingValue_Int64Value); err != nil || !ok || setting == nil {
+		return "", fmt.Errorf("error retreiving retention Time setting")
+	} else {
+		tokenExpiration = time.Duration(s.Int64Value)
+	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"email": user.GetEmail(),
-		"nbf":   time.Now().Unix(),                     // not valid before now
-		"exp":   time.Now().Add(time.Hour * 24).Unix(), // expire in 24 hours
+		"nbf":   time.Now().Unix(),                                  // not valid before now
+		"exp":   time.Now().Add(time.Hour * tokenExpiration).Unix(), // expire after [tokenExpiration] hours
 	})
 
 	// Sign and get the complete encoded token as a string using the secret
