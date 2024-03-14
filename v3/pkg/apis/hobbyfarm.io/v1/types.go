@@ -278,11 +278,25 @@ type ScenarioSpec struct {
 	KeepAliveDuration string              `json:"keepalive_duration"`
 	PauseDuration     string              `json:"pause_duration"`
 	Pauseable         bool                `json:"pauseable"`
+	Tasks             []VirtualMachineTasks `json:"vm_tasks"`
 }
 
 type ScenarioStep struct {
 	Title   string `json:"title"`
 	Content string `json:"content"`
+}
+
+type VirtualMachineTasks struct {
+	VMName string `json:"vm_name"`
+	Tasks  []Task `json:"tasks"`
+}
+type Task struct {
+	Name                string `json:"name"`
+	Description         string `json:"description"`
+	Command             string `json:"command"`
+	ExpectedOutputValue string `json:"expected_output_value"`
+	ExpectedReturnCode  int    `json:"expected_return_code"`
+	ReturnType 			string `json:"return_type"`
 }
 
 // +genclient
