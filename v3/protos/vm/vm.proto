@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package vm;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/vm";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+service VMSvc {
+    rpc CreateVM (CreateVMRequest) returns (google.protobuf.Empty);
+    rpc GetVM (general.GetRequest) returns (VM);
+    rpc UpdateVM (UpdateVMRequest) returns (google.protobuf.Empty);
+    rpc UpdateVMStatus (UpdateVMStatusRequest) returns (google.protobuf.Empty);
+    rpc DeleteVM (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionVM (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListVM (general.ListOptions) returns (ListVMsResponse);
+}
+
+message VM {
+    string id = 1;
+    string vm_template_id = 2;
+    string ssh_username = 3;
+    string protocol = 4;
+    string secret_name = 5;
+    string vm_claim_id = 6;
+    string user = 7;
+    bool provision = 8;
+    string vm_set_id = 9;
+    map<string, string> labels = 10;
+    repeated string finalizers = 11;
+    VMStatus status = 12;
+}
+
+message CreateVMRequest {
+    string id = 1;
+    string vm_template_id = 2;
+    string ssh_username = 3;
+    string protocol = 4;
+    string secret_name = 5;
+    string vm_claim_id = 6;
+    string vm_claim_uid = 7;
+    string user = 8;
+    bool provision = 9;
+    string vm_set_id = 10;
+    string vm_set_uid = 11;
+    map<string, string> labels = 12;
+    repeated string finalizers = 13;
+}
+
+message UpdateVMRequest {
+    string id = 1;
+    string bound = 2;
+    google.protobuf.StringValue vm_claim_id = 3;
+    google.protobuf.StringValue user = 4;
+}
+
+message UpdateVMStatusRequest {
+    string id = 1;
+    string status = 2;
+    google.protobuf.BoolValue allocated = 3;
+    google.protobuf.BoolValue tainted = 4;
+    google.protobuf.StringValue public_ip = 5;
+    google.protobuf.StringValue private_ip = 6;
+    google.protobuf.StringValue hostname = 7;
+    string environment_id = 8;
+    string tfstate = 9;
+    string ws_endpoint = 10;
+}
+
+message VMStatus {
+    string status = 1;
+    bool allocated = 2;
+    bool tainted = 3;
+    string public_ip = 4;
+    string private_ip = 5;
+    string hostname = 6;
+    string environment_id = 7;
+    string tfstate = 8;
+    string ws_endpoint = 9;
+}
+
+message ListVMsResponse {
+    repeated VM vms = 1;
+}
