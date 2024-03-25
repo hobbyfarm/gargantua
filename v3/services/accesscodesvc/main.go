@@ -4,16 +4,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ebauman/crder"
+	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 
-	"github.com/golang/glog"
 	accesscodeservice "github.com/hobbyfarm/gargantua/services/accesscodesvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	accessCodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
-	"github.com/hobbyfarm/gargantua/v3/protos/user"
+	eventProto "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 )
 
 var (
@@ -31,26 +30,20 @@ func main() {
 	namespace := util.GetReleaseNamespace()
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 
-	crds := accesscodeservice.GenerateAccessCodeCRD()
-	glog.Info("installing/updating access code CRDs")
-	err := crder.InstallUpdateCRDs(cfg, crds...)
-	if err != nil {
-		glog.Fatalf("failed installing/updating access code CRDs: %s", err.Error())
-	}
-	glog.Info("finished installing/updating access code CRDs")
+	crd.InstallCrds(accesscodeservice.AccessCodeCRDInstaller{}, cfg, "access code")
 
 	services := []microservices.MicroService{
-		microservices.User,
+		microservices.ScheduledEvent,
 	}
 	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
 	for _, conn := range connections {
 		defer conn.Close()
 	}
 
-	userClient := user.NewUserSvcClient(connections[microservices.User])
+	eventClient := eventProto.NewScheduledEventSvcClient(connections[microservices.ScheduledEvent])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
-	as := accesscodeservice.NewGrpcAccessCodeServer(hfClient, hfInformerFactory, userClient)
+	as := accesscodeservice.NewGrpcAccessCodeServer(hfClient, hfInformerFactory, eventClient)
 	accessCodeProto.RegisterAccessCodeSvcServer(gs, as)
 
 	var wg sync.WaitGroup

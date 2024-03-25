@@ -6,7 +6,11 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 )
 
-func GenerateAccessCodeCRD() []crder.CRD {
+// AccessCodeCRDInstaller is a struct that can generate CRDs for access codes.
+// It implements the CrdInstaller interface defined in "github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+type AccessCodeCRDInstaller struct{}
+
+func (aci AccessCodeCRDInstaller) GenerateCRDs() []crder.CRD {
 	return []crder.CRD{
 		crd.HobbyfarmCRD(&v1.AccessCode{}, func(c *crder.CRD) {
 			c.

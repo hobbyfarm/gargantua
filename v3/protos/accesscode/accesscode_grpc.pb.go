@@ -61,7 +61,7 @@ type AccessCodeSvcClient interface {
 	ValidateExistence(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*ResourceValidation, error)
 	GetAccessCodesWithOTACs(ctx context.Context, in *ResourceIds, opts ...grpc.CallOption) (*ListAcsResponse, error)
 	GetAccessCodeWithOTACs(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*AccessCode, error)
-	GetAcOwnerReferences(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*general.OwnerReferences, error)
+	GetAcOwnerReferences(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*general.OwnerReferences, error)
 }
 
 type accessCodeSvcClient struct {
@@ -207,7 +207,7 @@ func (c *accessCodeSvcClient) GetAccessCodeWithOTACs(ctx context.Context, in *ge
 	return out, nil
 }
 
-func (c *accessCodeSvcClient) GetAcOwnerReferences(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*general.OwnerReferences, error) {
+func (c *accessCodeSvcClient) GetAcOwnerReferences(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*general.OwnerReferences, error) {
 	out := new(general.OwnerReferences)
 	err := c.cc.Invoke(ctx, AccessCodeSvc_GetAcOwnerReferences_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -238,7 +238,7 @@ type AccessCodeSvcServer interface {
 	ValidateExistence(context.Context, *general.ResourceId) (*ResourceValidation, error)
 	GetAccessCodesWithOTACs(context.Context, *ResourceIds) (*ListAcsResponse, error)
 	GetAccessCodeWithOTACs(context.Context, *general.ResourceId) (*AccessCode, error)
-	GetAcOwnerReferences(context.Context, *general.ResourceId) (*general.OwnerReferences, error)
+	GetAcOwnerReferences(context.Context, *general.GetRequest) (*general.OwnerReferences, error)
 	mustEmbedUnimplementedAccessCodeSvcServer()
 }
 
@@ -291,7 +291,7 @@ func (UnimplementedAccessCodeSvcServer) GetAccessCodesWithOTACs(context.Context,
 func (UnimplementedAccessCodeSvcServer) GetAccessCodeWithOTACs(context.Context, *general.ResourceId) (*AccessCode, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAccessCodeWithOTACs not implemented")
 }
-func (UnimplementedAccessCodeSvcServer) GetAcOwnerReferences(context.Context, *general.ResourceId) (*general.OwnerReferences, error) {
+func (UnimplementedAccessCodeSvcServer) GetAcOwnerReferences(context.Context, *general.GetRequest) (*general.OwnerReferences, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAcOwnerReferences not implemented")
 }
 func (UnimplementedAccessCodeSvcServer) mustEmbedUnimplementedAccessCodeSvcServer() {}
@@ -578,7 +578,7 @@ func _AccessCodeSvc_GetAccessCodeWithOTACs_Handler(srv interface{}, ctx context.
 }
 
 func _AccessCodeSvc_GetAcOwnerReferences_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(general.ResourceId)
+	in := new(general.GetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -590,7 +590,7 @@ func _AccessCodeSvc_GetAcOwnerReferences_Handler(srv interface{}, ctx context.Co
 		FullMethod: AccessCodeSvc_GetAcOwnerReferences_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccessCodeSvcServer).GetAcOwnerReferences(ctx, req.(*general.ResourceId))
+		return srv.(AccessCodeSvcServer).GetAcOwnerReferences(ctx, req.(*general.GetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

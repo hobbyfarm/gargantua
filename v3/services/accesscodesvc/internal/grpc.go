@@ -11,10 +11,11 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	listersv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	accessCodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
 	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	"github.com/hobbyfarm/gargantua/v3/protos/user"
+	eventProto "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 	"google.golang.org/grpc/codes"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,24 +28,24 @@ import (
 
 type GrpcAccessCodeServer struct {
 	accessCodeProto.UnimplementedAccessCodeSvcServer
-	acClient   hfClientsetv1.AccessCodeInterface
-	acLister   listersv1.AccessCodeLister
-	acSynced   cache.InformerSynced
-	otacClient hfClientsetv1.OneTimeAccessCodeInterface
-	otacLister listersv1.OneTimeAccessCodeLister
-	otacSynced cache.InformerSynced
-	userClient user.UserSvcClient
+	acClient    hfClientsetv1.AccessCodeInterface
+	acLister    listersv1.AccessCodeLister
+	acSynced    cache.InformerSynced
+	otacClient  hfClientsetv1.OneTimeAccessCodeInterface
+	otacLister  listersv1.OneTimeAccessCodeLister
+	otacSynced  cache.InformerSynced
+	eventClient eventProto.ScheduledEventSvcClient
 }
 
-func NewGrpcAccessCodeServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, userClient user.UserSvcClient) *GrpcAccessCodeServer {
+func NewGrpcAccessCodeServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, eventClient eventProto.ScheduledEventSvcClient) *GrpcAccessCodeServer {
 	return &GrpcAccessCodeServer{
-		acClient:   hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()),
-		acLister:   hfInformerFactory.Hobbyfarm().V1().AccessCodes().Lister(),
-		acSynced:   hfInformerFactory.Hobbyfarm().V1().AccessCodes().Informer().HasSynced,
-		otacClient: hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()),
-		otacLister: hfInformerFactory.Hobbyfarm().V1().OneTimeAccessCodes().Lister(),
-		otacSynced: hfInformerFactory.Hobbyfarm().V1().OneTimeAccessCodes().Informer().HasSynced,
-		userClient: userClient,
+		acClient:    hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()),
+		acLister:    hfInformerFactory.Hobbyfarm().V1().AccessCodes().Lister(),
+		acSynced:    hfInformerFactory.Hobbyfarm().V1().AccessCodes().Informer().HasSynced,
+		otacClient:  hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()),
+		otacLister:  hfInformerFactory.Hobbyfarm().V1().OneTimeAccessCodes().Lister(),
+		otacSynced:  hfInformerFactory.Hobbyfarm().V1().OneTimeAccessCodes().Informer().HasSynced,
+		eventClient: eventClient,
 	}
 }
 
@@ -82,8 +83,8 @@ func (a *GrpcAccessCodeServer) CreateAc(ctx context.Context, cr *accessCodeProto
 				},
 			},
 			Labels: map[string]string{
-				util.ScheduledEventLabel: seName,
-				util.AccessCodeLabel:     acName,
+				hflabels.ScheduledEventLabel: seName,
+				hflabels.AccessCodeLabel:     acName,
 			},
 		},
 		Spec: hfv1.AccessCodeSpec{
@@ -183,7 +184,7 @@ func (a *GrpcAccessCodeServer) UpdateAc(ctx context.Context, acRequest *accessCo
 		if !ac.Spec.RestrictedBind {
 			ac.Spec.RestrictedBindValue = ""
 		} else if ac.Spec.RestrictedBindValue == "" {
-			ac.Spec.RestrictedBindValue = ac.ObjectMeta.Labels[util.ScheduledEventLabel]
+			ac.Spec.RestrictedBindValue = ac.ObjectMeta.Labels[hflabels.ScheduledEventLabel]
 		}
 		if printable != nil {
 			ac.Spec.Printable = printable.Value
@@ -315,9 +316,9 @@ func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accessCodePro
 				},
 			},
 			Labels: map[string]string{
-				util.UserLabel:              "",
-				util.ScheduledEventLabel:    scheduledEventName,
-				util.OneTimeAccessCodeLabel: genName,
+				hflabels.UserLabel:              "",
+				hflabels.ScheduledEventLabel:    scheduledEventName,
+				hflabels.OneTimeAccessCodeLabel: genName,
 			},
 		},
 		Spec: hfv1.OneTimeAccessCodeSpec{
@@ -381,7 +382,7 @@ func (a *GrpcAccessCodeServer) UpdateOtac(ctx context.Context, otacRequest *acce
 		otac.Spec.User = otacRequest.GetUser()
 		otac.Spec.RedeemedTimestamp = otacRequest.GetRedeemedTimestamp()
 		otac.Spec.MaxDuration = otacRequest.GetMaxDuration()
-		otac.Labels[util.UserLabel] = otacRequest.GetUser()
+		otac.Labels[hflabels.UserLabel] = otacRequest.GetUser()
 
 		_, updateErr := a.otacClient.Update(ctx, otac, metav1.UpdateOptions{})
 		return updateErr
@@ -466,7 +467,7 @@ func (a *GrpcAccessCodeServer) ValidateExistence(ctx context.Context, gor *gener
 
 func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, codeIds *accessCodeProto.ResourceIds) (*accessCodeProto.ListAcsResponse, error) {
 	ids := codeIds.GetIds()
-	otacReq, err := labels.NewRequirement(util.OneTimeAccessCodeLabel, selection.In, ids)
+	otacReq, err := labels.NewRequirement(hflabels.OneTimeAccessCodeLabel, selection.In, ids)
 	if err != nil {
 		return &accessCodeProto.ListAcsResponse{}, hferrors.GrpcError(
 			codes.Internal,
@@ -488,7 +489,7 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 	//Append the value of onetime access codes to the list
 	for _, otac := range otacList.Otacs {
 		// @TODO: Query internal ScheduledEvent Service here!
-		se, err := a.hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()).Get(ctx, otac.Labels[util.ScheduledEventLabel], metav1.GetOptions{})
+		se, err := a.eventClient.GetScheduledEvent(ctx, &general.GetRequest{Id: otac.Labels[hflabels.ScheduledEventLabel]})
 		if err != nil {
 			glog.Error(err)
 			return &accessCodeProto.ListAcsResponse{}, hferrors.GrpcError(
@@ -498,11 +499,11 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 				err,
 			)
 		}
-		ids = append(ids, se.Spec.AccessCode)
+		ids = append(ids, se.AccessCode)
 	}
 
 	// Update the label selector
-	otacReq, err = labels.NewRequirement(util.OneTimeAccessCodeLabel, selection.In, ids)
+	otacReq, err = labels.NewRequirement(hflabels.OneTimeAccessCodeLabel, selection.In, ids)
 	if err != nil {
 		return &accessCodeProto.ListAcsResponse{}, hferrors.GrpcError(
 			codes.Internal,
