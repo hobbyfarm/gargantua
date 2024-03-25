@@ -6,7 +6,11 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 )
 
-func GenerateVMClaimCRD() []crder.CRD {
+// VMClaimCRDInstaller is a struct that can generate CRDs for virtual machine claims.
+// It implements the CrdInstaller interface defined in "github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+type VMClaimCRDInstaller struct{}
+
+func (vmci VMClaimCRDInstaller) GenerateCRDs() []crder.CRD {
 	return []crder.CRD{
 		crd.HobbyfarmCRD(&v1.VirtualMachineClaim{}, func(c *crder.CRD) {
 			c.

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ebauman/crder"
+	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
@@ -34,13 +34,7 @@ func main() {
 	namespace := util.GetReleaseNamespace()
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 
-	crds := vmclaimservice.GenerateVMClaimCRD()
-	glog.Info("installing/updating vm claim CRDs")
-	err := crder.InstallUpdateCRDs(cfg, crds...)
-	if err != nil {
-		glog.Fatalf("failed installing/updating vm claim CRDs: %s", err.Error())
-	}
-	glog.Info("finished installing/updating vm claim CRDs")
+	crd.InstallCrds(vmclaimservice.VMClaimCRDInstaller{}, cfg, "virtual machine claim")
 
 	services := []microservices.MicroService{
 		microservices.AccessCode,
