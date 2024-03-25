@@ -18,6 +18,7 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	listersv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -74,9 +75,9 @@ func (s *GrpcDynamicBindConfigurationServer) CreateDynamicBindConfig(ctx context
 				},
 			},
 			Labels: map[string]string{
-				util.EnvironmentLabel:    envName,
-				util.ScheduledEventLabel: seName,
-				"restrictedbind":         fmt.Sprintf("%t", restrictedBind),
+				hflabels.EnvironmentLabel:    envName,
+				hflabels.ScheduledEventLabel: seName,
+				"restrictedbind":             fmt.Sprintf("%t", restrictedBind),
 			},
 		},
 		Spec: hfv1.DynamicBindConfigurationSpec{
@@ -139,11 +140,11 @@ func (s *GrpcDynamicBindConfigurationServer) UpdateDynamicBindConfig(ctx context
 
 		if environment != "" {
 			dbc.Spec.Environment = environment
-			dbc.ObjectMeta.Labels[util.EnvironmentLabel] = environment
+			dbc.ObjectMeta.Labels[hflabels.EnvironmentLabel] = environment
 		}
 		if restrictedBind != nil {
 			dbc.Spec.RestrictedBind = restrictedBind.Value
-			dbc.ObjectMeta.Labels["restrictedbind"] = fmt.Sprintf("%t", restrictedBind)
+			dbc.ObjectMeta.Labels["restrictedbind"] = fmt.Sprintf("%t", restrictedBind.Value)
 		}
 		// if restricted bind is disabled, make sure that restricted bind value is also empty...
 		// else update restricted bind value to the id of scheduled event (if it is not already set)
@@ -151,8 +152,8 @@ func (s *GrpcDynamicBindConfigurationServer) UpdateDynamicBindConfig(ctx context
 			dbc.Spec.RestrictedBindValue = ""
 			dbc.ObjectMeta.Labels["restrictedbindvalue"] = ""
 		} else if dbc.Spec.RestrictedBindValue == "" {
-			dbc.Spec.RestrictedBindValue = dbc.ObjectMeta.Labels[util.ScheduledEventLabel]
-			dbc.ObjectMeta.Labels["restrictedbindvalue"] = dbc.ObjectMeta.Labels[util.ScheduledEventLabel]
+			dbc.Spec.RestrictedBindValue = dbc.ObjectMeta.Labels[hflabels.ScheduledEventLabel]
+			dbc.ObjectMeta.Labels["restrictedbindvalue"] = dbc.ObjectMeta.Labels[hflabels.ScheduledEventLabel]
 		}
 
 		if len(burstCountCapacity) > 0 {
