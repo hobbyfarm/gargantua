@@ -16,6 +16,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 
 	"github.com/golang/glog"
 	"golang.org/x/crypto/ssh"
@@ -432,8 +433,8 @@ func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environm
 
 func CountMachinesPerTemplateAndEnvironment(vmLister v1.VirtualMachineLister, template string, enviroment string) (int, error) {
 	vmLabels := labels.Set{
-		EnvironmentLabel:       enviroment,
-		VirtualMachineTemplate: template,
+		hflabels.EnvironmentLabel:       enviroment,
+		hflabels.VirtualMachineTemplate: template,
 	}
 
 	vms, err := vmLister.List(vmLabels.AsSelector())
@@ -442,9 +443,9 @@ func CountMachinesPerTemplateAndEnvironment(vmLister v1.VirtualMachineLister, te
 
 func CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(vmLister v1.VirtualMachineLister, template string, enviroment string, se string) (int, error) {
 	vmLabels := labels.Set{
-		EnvironmentLabel:       enviroment,
-		VirtualMachineTemplate: template,
-		ScheduledEventLabel:    se,
+		hflabels.EnvironmentLabel:       enviroment,
+		hflabels.VirtualMachineTemplate: template,
+		hflabels.ScheduledEventLabel:    se,
 	}
 
 	vms, err := vmLister.List(vmLabels.AsSelector())

@@ -7,6 +7,7 @@ import (
 
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 
 	"github.com/golang/glog"
@@ -28,7 +29,7 @@ func NewAccessCodeClient(hfClientset hfClientset.Interface, ctx context.Context)
 }
 
 func (acc AccessCodeClient) GetAccessCodesWithOTACs(codes []string) ([]hfv1.AccessCode, error) {
-	otacReq, err := labels.NewRequirement(util2.OneTimeAccessCodeLabel, selection.In, codes)
+	otacReq, err := labels.NewRequirement(hflabels.OneTimeAccessCodeLabel, selection.In, codes)
 
 	selector := labels.NewSelector()
 	selector = selector.Add(*otacReq)
@@ -44,7 +45,7 @@ func (acc AccessCodeClient) GetAccessCodesWithOTACs(codes []string) ([]hfv1.Acce
 
 	//Append the value of onetime access codes to the list
 	for _, otac := range otacList.Items {
-		se, err := acc.hfClientSet.HobbyfarmV1().ScheduledEvents(util2.GetReleaseNamespace()).Get(acc.ctx, otac.Labels[util2.ScheduledEventLabel], metav1.GetOptions{})
+		se, err := acc.hfClientSet.HobbyfarmV1().ScheduledEvents(util2.GetReleaseNamespace()).Get(acc.ctx, otac.Labels[hflabels.ScheduledEventLabel], metav1.GetOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("error while retrieving one time access codes %v", err)
 		}
@@ -79,7 +80,7 @@ func (acc AccessCodeClient) GetAccessCodes(codes []string) ([]hfv1.AccessCode, e
 		return nil, fmt.Errorf("code list passed in was less than 0")
 	}
 
-	acReq, err := labels.NewRequirement(util2.AccessCodeLabel, selection.In, codes)
+	acReq, err := labels.NewRequirement(hflabels.AccessCodeLabel, selection.In, codes)
 
 	selector := labels.NewSelector()
 	selector = selector.Add(*acReq)

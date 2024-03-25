@@ -11,6 +11,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 
@@ -217,7 +218,7 @@ func (s ScheduledEventController) deleteScheduledEvent(se *hfv1.ScheduledEvent) 
 func (s ScheduledEventController) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
 	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util2.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util2.ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
@@ -229,7 +230,7 @@ func (s ScheduledEventController) deleteVMSetsFromScheduledEvent(se *hfv1.Schedu
 func (s ScheduledEventController) deleteProgressFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
 	err := s.hfClientSet.HobbyfarmV1().Progresses(util2.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util2.ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
@@ -241,7 +242,7 @@ func (s ScheduledEventController) deleteProgressFromScheduledEvent(se *hfv1.Sche
 func (s ScheduledEventController) deleteAccessCode(se *hfv1.ScheduledEvent) error {
 	// delete the access code for the corresponding ScheduledEvent
 	err := s.hfClientSet.HobbyfarmV1().AccessCodes(util2.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util2.ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
@@ -253,7 +254,7 @@ func (s ScheduledEventController) deleteAccessCode(se *hfv1.ScheduledEvent) erro
 func (s ScheduledEventController) finishSessionsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// get a list of sessions for the user
 	sessionList, err := s.hfClientSet.HobbyfarmV1().Sessions(util2.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util2.AccessCodeLabel, se.Spec.AccessCode),
+		LabelSelector: fmt.Sprintf("%s=%s", hflabels.AccessCodeLabel, se.Spec.AccessCode),
 	})
 
 	now := time.Now().Format(time.UnixDate)
@@ -311,7 +312,7 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 				if count > 0 { // only setup vmsets if >0 VMs are requested, and they aren't ondemand
 					//1. Find existing VMset that match this SE and the current environment
 					existingVMSets, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util2.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-						LabelSelector: fmt.Sprintf("%s=%s,%s=%s,virtualmachinetemplate.hobbyfarm.io/%s=true", util2.ScheduledEventLabel, se.Name, util2.EnvironmentLabel, envName, templateName),
+						LabelSelector: fmt.Sprintf("%s=%s,%s=%s,virtualmachinetemplate.hobbyfarm.io/%s=true", hflabels.ScheduledEventLabel, se.Name, hflabels.EnvironmentLabel, envName, templateName),
 					})
 
 					if err != nil || len(existingVMSets.Items) == 0 { // create new vmset if no existing one was found
@@ -330,8 +331,8 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 									},
 								},
 								Labels: map[string]string{
-									util2.EnvironmentLabel:    env.Name,
-									util2.ScheduledEventLabel: se.Name,
+									hflabels.EnvironmentLabel:    env.Name,
+									hflabels.ScheduledEventLabel: se.Name,
 									fmt.Sprintf("virtualmachinetemplate.hobbyfarm.io/%s", templateName): "true",
 								},
 							},
@@ -358,7 +359,7 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 						existingVMSet := existingVMSets.Items[0]
 						vmSets = append(vmSets, existingVMSet.Name)
 
-						existingVMSet.Labels[util2.EnvironmentLabel] = env.Name
+						existingVMSet.Labels[hflabels.EnvironmentLabel] = env.Name
 						existingVMSet.Spec.Count = count
 						if se.Spec.RestrictedBind {
 							existingVMSet.Spec.RestrictedBind = true
@@ -377,7 +378,7 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 
 		// Delete existing DynamicBindConfigurations
 		err = s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util2.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s,environment=%s", util2.ScheduledEventLabel, se.Name, env.Name),
+			LabelSelector: fmt.Sprintf("%s=%s,environment=%s", hflabels.ScheduledEventLabel, se.Name, env.Name),
 		})
 		if err != nil {
 			return err
@@ -399,8 +400,8 @@ func (s ScheduledEventController) provisionScheduledEvent(templates *hfv1.Virtua
 					},
 				},
 				Labels: map[string]string{
-					util2.EnvironmentLabel:    env.Name,
-					util2.ScheduledEventLabel: se.Name,
+					hflabels.EnvironmentLabel:    env.Name,
+					hflabels.ScheduledEventLabel: se.Name,
 				},
 			},
 			Spec: hfv1.DynamicBindConfigurationSpec{
@@ -477,8 +478,8 @@ func (s ScheduledEventController) createAccessCode(se *hfv1.ScheduledEvent) erro
 				},
 			},
 			Labels: map[string]string{
-				util2.ScheduledEventLabel: se.Name,
-				util2.AccessCodeLabel:     se.Spec.AccessCode,
+				hflabels.ScheduledEventLabel: se.Name,
+				hflabels.AccessCodeLabel:     se.Spec.AccessCode,
 			},
 		},
 		Spec: hfv1.AccessCodeSpec{
@@ -515,7 +516,7 @@ func (s ScheduledEventController) verifyScheduledEvent(se *hfv1.ScheduledEvent) 
 	// check the state of the vmset and mark the sevent as ready if everything is OK
 	glog.V(6).Infof("ScheduledEvent %s is in provisioned status, checking status of VMSet Provisioning", se.Name)
 	vmsList, err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util2.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util2.ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
@@ -536,7 +537,7 @@ func (s ScheduledEventController) verifyScheduledEvent(se *hfv1.ScheduledEvent) 
 			return err
 		}
 
-	} else if ac.Labels[util2.AccessCodeLabel] != ac.Spec.Code {
+	} else if ac.Labels[hflabels.AccessCodeLabel] != ac.Spec.Code {
 		err = s.deleteAccessCode(se)
 		if err != nil {
 			return err

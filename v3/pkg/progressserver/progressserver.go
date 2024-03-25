@@ -4,13 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
-	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"net/http"
 	"strconv"
 	"time"
+
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
+	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -104,7 +106,7 @@ func (s ProgressServer) ListByScheduledEventFunc(w http.ResponseWriter, r *http.
 		includeFinished = true
 	}
 
-	s.ListByLabel(w, r, util2.ScheduledEventLabel, id, includeFinished)
+	s.ListByLabel(w, r, hflabels.ScheduledEventLabel, id, includeFinished)
 
 	glog.V(2).Infof("listed progress for scheduledevent %s", id)
 }
@@ -164,7 +166,7 @@ func (s ProgressServer) ListForUserFunc(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	s.ListByLabel(w, r, util2.UserLabel, user.GetId(), true)
+	s.ListByLabel(w, r, hflabels.UserLabel, user.GetId(), true)
 }
 
 /*
@@ -196,7 +198,7 @@ func (s ProgressServer) ListByUserFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.ListByLabel(w, r, util2.UserLabel, id, true)
+	s.ListByLabel(w, r, hflabels.UserLabel, id, true)
 
 	glog.V(2).Infof("listed progress for user %s", id)
 }
@@ -225,7 +227,7 @@ func (s ProgressServer) CountByScheduledEvent(w http.ResponseWriter, r *http.Req
 	}
 	countMap := map[string]int{}
 	for _, p := range progress.Items {
-		se := p.Labels[util2.ScheduledEventLabel]
+		se := p.Labels[hflabels.ScheduledEventLabel]
 		if _, ok := countMap[se]; ok {
 			countMap[se] = countMap[se] + 1
 		} else {
@@ -263,7 +265,7 @@ func (s ProgressServer) ListByRange(w http.ResponseWriter, r *http.Request, star
 		if p.CreationTimestamp.Before(&v1TimeStart) || v1TimeEnd.Before(&p.CreationTimestamp) {
 			continue
 		}
-		pProgressWithScenarioName := AdminPreparedProgressWithScheduledEvent{p.Name, p.Labels[util2.SessionLabel], p.Spec, p.Labels[util2.ScheduledEventLabel]}
+		pProgressWithScenarioName := AdminPreparedProgressWithScheduledEvent{p.Name, p.Labels[hflabels.SessionLabel], p.Spec, p.Labels[hflabels.ScheduledEventLabel]}
 		preparedProgress = append(preparedProgress, pProgressWithScenarioName)
 	}
 
@@ -290,7 +292,7 @@ func (s ProgressServer) ListByLabel(w http.ResponseWriter, r *http.Request, labe
 
 	preparedProgress := []AdminPreparedProgress{}
 	for _, p := range progress.Items {
-		pProgress := AdminPreparedProgress{p.Name, p.Labels[util2.SessionLabel], p.Spec}
+		pProgress := AdminPreparedProgress{p.Name, p.Labels[hflabels.SessionLabel], p.Spec}
 		preparedProgress = append(preparedProgress, pProgress)
 	}
 
@@ -339,7 +341,7 @@ func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util2.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", util2.SessionLabel, id, util2.UserLabel, user.GetId())})
+		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", hflabels.SessionLabel, id, hflabels.UserLabel, user.GetId())})
 
 	if err != nil {
 		glog.Errorf("error while retrieving progress %v", err)

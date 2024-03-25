@@ -6,19 +6,21 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"net/http"
-	"strings"
-	"time"
 
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
@@ -327,7 +329,7 @@ func (v VirtualMachineTemplateServer) DeleteFunc(w http.ResponseWriter, r *http.
 
 	// vmt exists, now we need to check all other objects for references
 	// start with virtualmachines
-	virtualmachines, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util2.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", util2.VirtualMachineTemplate, vmt.Name)})
+	virtualmachines, err := v.hfClientSet.HobbyfarmV1().VirtualMachines(util2.GetReleaseNamespace()).List(v.ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", hflabels.VirtualMachineTemplate, vmt.Name)})
 	if err != nil {
 		util2.ReturnHTTPMessage(w, r, 500, "internalerror",
 			"error listing virtual machines while attempting vmt deletion")

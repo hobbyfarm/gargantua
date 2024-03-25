@@ -11,6 +11,7 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 
 	"github.com/golang/glog"
@@ -286,13 +287,13 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 						},
 					},
 					Labels: map[string]string{
-						"dynamic":                    "false",
-						"vmset":                      vmset.Name,
-						util2.VirtualMachineTemplate: vmt.Name,
-						util2.EnvironmentLabel:       env.Name,
-						"bound":                      "false",
-						"ready":                      "false",
-						util2.ScheduledEventLabel:    vmset.ObjectMeta.Labels[util2.ScheduledEventLabel],
+						"dynamic":                       "false",
+						"vmset":                         vmset.Name,
+						hflabels.VirtualMachineTemplate: vmt.Name,
+						hflabels.EnvironmentLabel:       env.Name,
+						"bound":                         "false",
+						"ready":                         "false",
+						hflabels.ScheduledEventLabel:    vmset.ObjectMeta.Labels[hflabels.ScheduledEventLabel],
 					},
 				},
 				Spec: hfv1.VirtualMachineSpec{

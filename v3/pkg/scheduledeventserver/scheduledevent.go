@@ -11,6 +11,7 @@ import (
 
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 
@@ -240,6 +241,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// restrictedBind := strings.ToLower(restrictionDisabledRaw) == "false" || restrictionDisabled == ""
 	restrictionDisabled := false
 	restrictionDisabledRaw := r.PostFormValue("disable_restriction")
 	if restrictionDisabledRaw == "" {
@@ -609,7 +611,7 @@ func (s ScheduledEventServer) GetOTACsFunc(w http.ResponseWriter, r *http.Reques
 	}
 
 	otacList, err := s.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util2.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util2.ScheduledEventLabel, id),
+		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, id),
 	})
 
 	if err != nil {
@@ -731,9 +733,9 @@ func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.R
 					},
 				},
 				Labels: map[string]string{
-					util2.UserLabel:              "",
-					util2.ScheduledEventLabel:    scheduledEvent.Name,
-					util2.OneTimeAccessCodeLabel: genName,
+					hflabels.UserLabel:              "",
+					hflabels.ScheduledEventLabel:    scheduledEvent.Name,
+					hflabels.OneTimeAccessCodeLabel: genName,
 				},
 			},
 			Spec: hfv1.OneTimeAccessCodeSpec{
@@ -767,7 +769,7 @@ func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent
 
 	// delete all DBCs corresponding to this scheduled event
 	err := s.hfClientSet.HobbyfarmV1().DynamicBindConfigurations(util2.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util2.ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
@@ -775,7 +777,7 @@ func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent
 
 	// for each access code that belongs to this edited/deleted scheduled event, delete that access code
 	err = s.hfClientSet.HobbyfarmV1().AccessCodes(util2.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util2.ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
@@ -787,7 +789,7 @@ func (s ScheduledEventServer) deleteScheduledEventConfig(se *hfv1.ScheduledEvent
 func (s ScheduledEventServer) deleteProgressFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
 	err := s.hfClientSet.HobbyfarmV1().Progresses(util2.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util2.ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
@@ -799,7 +801,7 @@ func (s ScheduledEventServer) deleteProgressFromScheduledEvent(se *hfv1.Schedule
 func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// delete all vmsets corresponding to this scheduled event
 	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util2.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util2.ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
 		return err
@@ -811,7 +813,7 @@ func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledE
 func (s ScheduledEventServer) finishSessions(se *hfv1.ScheduledEvent) error {
 	// get a list of sessions for the user
 	sessionList, err := s.hfClientSet.HobbyfarmV1().Sessions(util2.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util2.AccessCodeLabel, se.Spec.AccessCode),
+		LabelSelector: fmt.Sprintf("%s=%s", hflabels.AccessCodeLabel, se.Spec.AccessCode),
 	})
 
 	now := time.Now().Format(time.UnixDate)

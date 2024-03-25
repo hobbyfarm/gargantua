@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"net/http"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -70,7 +72,7 @@ func (vms VMSetServer) GetVMSetListByScheduledEventFunc(w http.ResponseWriter, r
 		return
 	}
 
-	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", util2.ScheduledEventLabel, id)}
+	lo := metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, id)}
 
 	vms.GetVMSetListFunc(w, r, lo)
 }

@@ -3,11 +3,13 @@ package session
 import (
 	"context"
 	"fmt"
+	"time"
+
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"time"
 
 	"github.com/golang/glog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -306,7 +308,7 @@ func (s *SessionController) FinishProgress(sessionId string, userId string) {
 	now := time.Now()
 
 	progress, err := s.hfClientSet.HobbyfarmV1().Progresses(util2.GetReleaseNamespace()).List(s.ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", util2.SessionLabel, sessionId, util2.UserLabel, userId)})
+		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", hflabels.SessionLabel, sessionId, hflabels.UserLabel, userId)})
 
 	if err != nil {
 		glog.Errorf("error while retrieving progress %v", err)
