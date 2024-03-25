@@ -9,15 +9,16 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfv2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfClientsetv2 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v2"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	listerv2 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v2"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"github.com/hobbyfarm/gargantua/v3/protos/general"
+	sessionProto "github.com/hobbyfarm/gargantua/v3/protos/session"
 	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
@@ -34,13 +35,14 @@ const (
 
 type GrpcUserServer struct {
 	userProto.UnimplementedUserSvcServer
-	userClient  hfClientsetv2.UserInterface
-	userIndexer cache.Indexer
-	userLister  listerv2.UserLister
-	userSynced  cache.InformerSynced
+	userClient    hfClientsetv2.UserInterface
+	userIndexer   cache.Indexer
+	userLister    listerv2.UserLister
+	userSynced    cache.InformerSynced
+	sessionClient sessionProto.SessionSvcClient
 }
 
-func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*GrpcUserServer, error) {
+func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, sessionClient sessionProto.SessionSvcClient) (*GrpcUserServer, error) {
 	inf := hfInformerFactory.Hobbyfarm().V2().Users().Informer()
 	indexers := map[string]cache.IndexFunc{emailIndex: emailIndexer}
 	err := inf.AddIndexers(indexers)
@@ -49,10 +51,11 @@ func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfIn
 		return nil, err
 	}
 	return &GrpcUserServer{
-		userClient:  hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()),
-		userIndexer: inf.GetIndexer(),
-		userLister:  hfInformerFactory.Hobbyfarm().V2().Users().Lister(),
-		userSynced:  inf.HasSynced,
+		userClient:    hfClientSet.HobbyfarmV2().Users(util.GetReleaseNamespace()),
+		userIndexer:   inf.GetIndexer(),
+		userLister:    hfInformerFactory.Hobbyfarm().V2().Users().Lister(),
+		userSynced:    inf.HasSynced,
+		sessionClient: sessionClient,
 	}, nil
 }
 
@@ -385,10 +388,8 @@ func (u *GrpcUserServer) DeleteUser(ctx context.Context, userId *general.Resourc
 		return &empty.Empty{}, err
 	}
 
-	// get a list of sessions for the user
-	// @TODO: Use gRPC SessionClient here!
-	sessionList, err := u.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util.UserLabel, id),
+	sessionList, err := u.sessionClient.ListSession(ctx, &general.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", hflabels.UserLabel, id),
 	})
 
 	if err != nil {
@@ -401,10 +402,10 @@ func (u *GrpcUserServer) DeleteUser(ctx context.Context, userId *general.Resourc
 		)
 	}
 
-	if len(sessionList.Items) > 0 {
+	if len(sessionList.Sessions) > 0 {
 		// there are sessions present but they may be expired. let's check
-		for _, v := range sessionList.Items {
-			if !v.Status.Finished {
+		for _, s := range sessionList.Sessions {
+			if !s.Status.Finished {
 				return &empty.Empty{}, hferrors.GrpcError(
 					codes.Internal,
 					"cannot delete user, existing sessions found",
@@ -415,7 +416,7 @@ func (u *GrpcUserServer) DeleteUser(ctx context.Context, userId *general.Resourc
 
 		// getting here means there are sessions present but they are not active
 		// let's delete them for cleanliness' sake
-		if ok, err := u.deleteSessions(ctx, sessionList.Items); !ok {
+		if ok, err := u.deleteSessions(ctx, sessionList.Sessions); !ok {
 			glog.Errorf("error deleting old sessions for user %s: %s", id, err)
 			return &empty.Empty{}, hferrors.GrpcError(
 				codes.Internal,
@@ -441,11 +442,11 @@ func (u *GrpcUserServer) DeleteUser(ctx context.Context, userId *general.Resourc
 	return &empty.Empty{}, nil
 }
 
-func (u *GrpcUserServer) deleteSessions(ctx context.Context, sessions []hfv1.Session) (bool, error) {
-	for _, v := range sessions {
+func (u *GrpcUserServer) deleteSessions(ctx context.Context, sessions []*sessionProto.Session) (bool, error) {
+	for _, s := range sessions {
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			// @TODO: Use gRPC SessionClient here!
-			err := u.hfClientSet.HobbyfarmV1().Sessions(util.GetReleaseNamespace()).Delete(ctx, v.Name, metav1.DeleteOptions{})
+			_, err := u.sessionClient.DeleteSession(ctx, &general.ResourceId{Id: s.Id})
 			return err
 		})
 

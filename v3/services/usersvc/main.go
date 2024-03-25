@@ -1,11 +1,9 @@
 package main
 
 import (
-	"os"
 	"sync"
 	"time"
 
-	"github.com/ebauman/crder"
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
@@ -18,6 +16,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"
 	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	"github.com/hobbyfarm/gargantua/v3/protos/session"
 	"github.com/hobbyfarm/gargantua/v3/protos/user"
 )
 
@@ -35,27 +34,13 @@ func main() {
 	namespace := util.GetReleaseNamespace()
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 
-	ca, err := os.ReadFile(serviceConfig.WebhookTLSCA)
-	if err != nil {
-		glog.Fatalf("error reading ca certificate: %s", err.Error())
-	}
-
-	crds := userservice.GenerateUserCRD(string(ca), crd.ServiceReference{
-		Namespace: util.GetReleaseNamespace(),
-		Name:      "hobbyfarm-webhook",
-	})
-
-	glog.Info("installing/updating user CRD")
-	err = crder.InstallUpdateCRDs(cfg, crds...)
-	if err != nil {
-		glog.Fatalf("failed installing/updating user crd: %s", err.Error())
-	}
-	glog.Info("finished installing/updating user CRD")
+	crd.InstallCrdsWithServiceReference(userservice.UserCRDInstaller{}, cfg, "user", serviceConfig.WebhookTLSCA)
 
 	services := []microservices.MicroService{
 		microservices.Rbac,
 		microservices.AuthN,
 		microservices.AuthR,
+		microservices.Session,
 	}
 	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
 	for _, conn := range connections {
@@ -65,9 +50,10 @@ func main() {
 	rbacClient := rbac.NewRbacSvcClient(connections[microservices.Rbac])
 	authnClient := authn.NewAuthNClient(connections[microservices.AuthN])
 	authrClient := authr.NewAuthRClient(connections[microservices.AuthR])
+	sessionClient := session.NewSessionSvcClient(connections[microservices.Session])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert)
-	us, err := userservice.NewGrpcUserServer(hfClient, hfInformerFactory)
+	us, err := userservice.NewGrpcUserServer(hfClient, hfInformerFactory, sessionClient)
 
 	if err != nil {
 		glog.Fatalf("starting grpc user server failed: %v", err)

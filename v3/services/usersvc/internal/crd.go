@@ -7,7 +7,11 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 )
 
-func GenerateUserCRD(caBundle string, reference crd.ServiceReference) []crder.CRD {
+// UserCRDInstaller is a struct that can generate CRDs for users.
+// It implements the CrdInstallerWithServiceReference interface defined in "github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+type UserCRDInstaller struct{}
+
+func (ui UserCRDInstaller) GenerateCRDs(caBundle string, reference crd.ServiceReference) []crder.CRD {
 	return []crder.CRD{
 		crd.HobbyfarmCRD(&v1.User{}, func(c *crder.CRD) {
 			c.
