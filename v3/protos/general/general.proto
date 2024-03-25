@@ -34,3 +34,9 @@ message OwnerReference {
 message OwnerReferences {
     repeated OwnerReference owner_references = 1;
 }
+
+// Since it is not possible to define an array of maps or a map of maps in protobuf,
+// let's define a wrapper proto message type for string maps
+message StringMap {
+    map<string, string> value = 1;
+}
