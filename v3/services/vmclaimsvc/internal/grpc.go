@@ -15,6 +15,7 @@ import (
 	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
 	listersv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -140,7 +141,7 @@ func (s *GrpcVMClaimServer) UpdateVMClaim(ctx context.Context, req *vmClaimProto
 
 		if restrictedBind != nil {
 			vmc.Spec.RestrictedBind = restrictedBind.Value
-			vmc.Spec.RestrictedBindValue = vmc.Labels[util.ScheduledEventLabel]
+			vmc.Spec.RestrictedBindValue = vmc.Labels[hflabels.ScheduledEventLabel]
 		}
 		// if restricted bind is disabled, make sure that restricted bind value is also empty
 		if !vmc.Spec.RestrictedBind {
