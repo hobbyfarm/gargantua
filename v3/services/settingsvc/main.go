@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"os"
 	"sync"
 	"time"
 
-	"github.com/ebauman/crder"
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
@@ -36,22 +34,7 @@ func main() {
 
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 
-	ca, err := os.ReadFile(serviceConfig.WebhookTLSCA)
-	if err != nil {
-		glog.Fatalf("error reading ca certificate: %s", err.Error())
-	}
-
-	crds := settingservice.GenerateSettingCRD(string(ca), crd.ServiceReference{
-		Namespace: util.GetReleaseNamespace(),
-		Name:      "hobbyfarm-webhook",
-	})
-
-	glog.Info("installing/updating setting CRD")
-	err = crder.InstallUpdateCRDs(cfg, crds...)
-	if err != nil {
-		glog.Fatalf("failed installing/updating setting crd: %s", err.Error())
-	}
-	glog.Info("finished installing/updating setting CRD")
+	crd.InstallCrdsWithServiceReference(settingservice.SettingCRDInstaller{}, cfg, "setting", serviceConfig.WebhookTLSCA)
 
 	services := []microservices.MicroService{
 		microservices.AuthN,
@@ -67,7 +50,7 @@ func main() {
 
 	ctx := context.Background()
 
-	err = settingservice.WatchSettings(ctx, hfClient, hfInformerFactory)
+	err := settingservice.WatchSettings(ctx, hfClient, hfInformerFactory)
 	if err != nil {
 		glog.Info("watching settings failed: ", err)
 	}
