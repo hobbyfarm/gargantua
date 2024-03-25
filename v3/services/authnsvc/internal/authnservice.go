@@ -508,7 +508,7 @@ func (a AuthServer) LoginFunc(w http.ResponseWriter, r *http.Request) {
 
 func (a AuthServer) GenerateJWT(user *userProto.User) (string, error) {
 	// Get Expiration Date Setting
-	setting, err := a.settingClient.GetSettingValue(context.Background(), &settingProto.Id{Name: string(settingUtil.UserTokenExpiration)})
+	setting, err := a.settingClient.GetSettingValue(context.Background(), &general.ResourceId{Id: string(settingUtil.UserTokenExpiration)})
 	if err != nil {
 		return "", err
 	}
