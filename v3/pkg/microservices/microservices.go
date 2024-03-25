@@ -52,12 +52,23 @@ type ServiceConfig struct {
 }
 
 const (
-	AuthN      MicroService = "authn-service"
-	AuthR      MicroService = "authr-service"
-	User       MicroService = "user-service"
-	Rbac       MicroService = "rbac-service"
-	AccessCode MicroService = "accesscode-service"
-	Setting    MicroService = "setting-service"
+	AccessCode     MicroService = "accesscode-service"
+	AuthN          MicroService = "authn-service"
+	AuthR          MicroService = "authr-service"
+	Course         MicroService = "course-service"
+	DBConfig       MicroService = "dbconfig-service"
+	Environment    MicroService = "environment-service"
+	Progress       MicroService = "progress-service"
+	Rbac           MicroService = "rbac-service"
+	Scenario       MicroService = "scenario-service"
+	ScheduledEvent MicroService = "scheduledevent-service"
+	Session        MicroService = "session-service"
+	Setting        MicroService = "setting-service"
+	User           MicroService = "user-service"
+	VMClaim        MicroService = "vmclaim-service"
+	VMSet          MicroService = "vmset-service"
+	VM             MicroService = "vm-service"
+	VMTemplate     MicroService = "vmtemplate-service"
 )
 
 const (
@@ -361,8 +372,6 @@ func GetWorkerThreadCount() int {
 		i, err := strconv.Atoi(workerThreadCountString)
 		if err != nil {
 			glog.Infof("Error parsing env var CONTROLLER_THREAD_COUNT, using default thread count %d", workerThreads)
-		} else {
-
 		}
 		workerThreads = i
 	}
