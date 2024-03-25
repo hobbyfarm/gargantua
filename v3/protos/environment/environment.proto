@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package environment;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/environment";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+service EnvironmentSvc {
+    rpc CreateEnvironment (CreateEnvironmentRequest) returns (google.protobuf.Empty);
+    rpc GetEnvironment (general.GetRequest) returns (Environment);
+    rpc UpdateEnvironment (UpdateEnvironmentRequest) returns (google.protobuf.Empty);
+    rpc DeleteEnvironment (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionEnvironment (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListEnvironment (general.ListOptions) returns (ListEnvironmentsResponse);
+}
+
+message Environment {
+    string id = 1;
+    string display_name = 2;
+    string dnssuffix = 3;
+    string provider = 4;
+    map<string, general.StringMap> template_mapping = 5;
+    map<string, string> environment_specifics = 6;
+    map<string, string> ip_translation_map = 7;
+    string ws_endpoint = 8;
+    map<string, uint32> count_capacity = 9;
+}
+
+message CreateEnvironmentRequest {
+    string display_name = 1;
+    string dnssuffix = 2;
+    string provider = 3;
+    string template_mapping = 4;
+    string environment_specifics = 5;
+    string ip_translation_map = 6;
+    string ws_endpoint = 7;
+    string count_capacity = 8;
+}
+
+message UpdateEnvironmentRequest {
+    string id = 1;
+    string display_name = 2;
+    google.protobuf.StringValue dnssuffix = 3; // optional
+    string provider = 4;
+    string template_mapping = 5;
+    string environment_specifics = 6;
+    string ip_translation_map = 7;
+    string ws_endpoint = 8;
+    string count_capacity = 9;
+}
+
+message ListEnvironmentsResponse {
+    repeated Environment environments = 1;
+}
