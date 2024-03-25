@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang/glog"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
@@ -124,7 +125,7 @@ func marshalRole(preparedRole *rbacProto.Role) (*rbacv1.Role, error) {
 			Name:      preparedRole.GetName(),
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
-				util.RBACManagedLabel: "true",
+				hflabels.RBACManagedLabel: "true",
 			},
 		},
 		Rules: []rbacv1.PolicyRule{},
@@ -168,7 +169,7 @@ func (rs *GrpcRbacServer) getRole(ctx context.Context, req *general.GetRequest) 
 		return &rbacv1.Role{}, err
 	}
 
-	if _, ok := role.Labels[util.RBACManagedLabel]; !ok {
+	if _, ok := role.Labels[hflabels.RBACManagedLabel]; !ok {
 		// this isn't a hobbyfarm role. we don't serve your kind here
 		glog.Error("permission denied: role not managed by hobbyfarm")
 		return &rbacv1.Role{}, hferrors.GrpcError(

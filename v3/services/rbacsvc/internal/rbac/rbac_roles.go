@@ -3,6 +3,7 @@ package rbacinstaller
 import (
 	"context"
 
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	wranglerRbac "github.com/rancher/wrangler/pkg/generated/controllers/rbac"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -98,7 +99,7 @@ func newRole(name string, customize func(Role) Role) Role {
 			Name:      name,
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
-				util.RBACManagedLabel: "true",
+				hflabels.RBACManagedLabel: "true",
 			},
 		},
 		Rules: []rbacv1.PolicyRule{},

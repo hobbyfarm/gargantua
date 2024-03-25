@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang/glog"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"github.com/hobbyfarm/gargantua/v3/protos/general"
@@ -139,7 +140,7 @@ func (rs *GrpcRbacServer) marshalRolebinding(ctx context.Context, preparedRoleBi
 			Name:      preparedRoleBinding.GetName(),
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
-				util.RBACManagedLabel: "true",
+				hflabels.RBACManagedLabel: "true",
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -196,7 +197,7 @@ func (rs *GrpcRbacServer) getRolebinding(ctx context.Context, req *general.GetRe
 		return &rbacv1.RoleBinding{}, err
 	}
 
-	if _, ok := rolebinding.Labels[util.RBACManagedLabel]; !ok {
+	if _, ok := rolebinding.Labels[hflabels.RBACManagedLabel]; !ok {
 		// this isn't a hobbyfarm rolebinding. we don't serve your kind here
 		glog.Error("permission denied: rolebinding not managed by hobbyfarm")
 		return &rbacv1.RoleBinding{}, hferrors.GrpcError(

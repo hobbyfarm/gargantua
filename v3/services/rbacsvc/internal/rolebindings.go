@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"github.com/hobbyfarm/gargantua/v3/protos/general"
@@ -40,7 +41,7 @@ func (s Server) ListRoleBindings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	labelSelector := fmt.Sprintf("%s=%t", util.RBACManagedLabel, true)
+	labelSelector := fmt.Sprintf("%s=%t", hflabels.RBACManagedLabel, true)
 	bindings, err := s.internalRbacServer.ListRolebinding(r.Context(), &general.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {

@@ -3,7 +3,7 @@ package rbac
 import (
 	"fmt"
 
-	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	authrProto "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -165,7 +165,7 @@ func (i *Index) getPreparedRoleBindings(subj string) (*rbacProto.RoleBindings, e
 			continue // rb is not of type *rbacv1.RoleBinding, don't return it
 		}
 
-		if _, ok := rb.Labels[util.RBACManagedLabel]; !ok {
+		if _, ok := rb.Labels[hflabels.RBACManagedLabel]; !ok {
 			continue // we aren't managing this role, don't return it
 		}
 		tmpRoleBinding := &rbacProto.RoleBinding{
