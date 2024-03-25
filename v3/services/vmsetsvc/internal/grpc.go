@@ -14,6 +14,7 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	listersv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -159,7 +160,7 @@ func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.Updat
 
 		if restrictedBind != nil {
 			vms.Spec.RestrictedBind = restrictedBind.Value
-			vms.Spec.RestrictedBindValue = vms.Labels[util.ScheduledEventLabel]
+			vms.Spec.RestrictedBindValue = vms.Labels[hflabels.ScheduledEventLabel]
 		}
 		// if restricted bind is disabled, make sure that restricted bind value is also empty
 		if !vms.Spec.RestrictedBind {

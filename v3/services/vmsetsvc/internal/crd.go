@@ -6,7 +6,11 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 )
 
-func GenerateVMSetCRD() []crder.CRD {
+// VMSetCRDInstaller is a struct that can generate CRDs for virtual machine sets.
+// It implements the CrdInstaller interface defined in "github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+type VMSetCRDInstaller struct{}
+
+func (vmsi VMSetCRDInstaller) GenerateCRDs() []crder.CRD {
 	return []crder.CRD{
 		crd.HobbyfarmCRD(&v1.VirtualMachineSet{}, func(c *crder.CRD) {
 			c.

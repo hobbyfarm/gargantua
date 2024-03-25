@@ -4,12 +4,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ebauman/crder"
+	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 
-	"github.com/golang/glog"
 	vmsetservice "github.com/hobbyfarm/gargantua/services/vmsetsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	vmsetProto "github.com/hobbyfarm/gargantua/v3/protos/vmset"
@@ -31,13 +30,7 @@ func main() {
 	namespace := util.GetReleaseNamespace()
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 
-	crds := vmsetservice.GenerateVMSetCRD()
-	glog.Info("installing/updating vm set CRDs")
-	err := crder.InstallUpdateCRDs(cfg, crds...)
-	if err != nil {
-		glog.Fatalf("failed installing/updating vm set CRDs: %s", err.Error())
-	}
-	glog.Info("finished installing/updating vm set CRDs")
+	crd.InstallCrds(vmsetservice.VMSetCRDInstaller{}, cfg, "virtual machine set")
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
