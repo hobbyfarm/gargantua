@@ -6,7 +6,11 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 )
 
-func GenerateProgressCRD() []crder.CRD {
+// ProgressCRDInstaller is a struct that can generate CRDs for progresses.
+// It implements the CrdInstaller interface defined in "github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+type ProgressCRDInstaller struct{}
+
+func (pi ProgressCRDInstaller) GenerateCRDs() []crder.CRD {
 	return []crder.CRD{
 		crd.HobbyfarmCRD(&v1.Progress{}, func(c *crder.CRD) {
 			c.

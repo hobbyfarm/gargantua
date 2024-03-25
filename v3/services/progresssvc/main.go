@@ -4,12 +4,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ebauman/crder"
+	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 
-	"github.com/golang/glog"
 	progressService "github.com/hobbyfarm/gargantua/services/progresssvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	progressProto "github.com/hobbyfarm/gargantua/v3/protos/progress"
@@ -30,13 +29,7 @@ func main() {
 	namespace := util.GetReleaseNamespace()
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 
-	crds := progressService.GenerateProgressCRD()
-	glog.Info("installing/updating progress CRDs")
-	err := crder.InstallUpdateCRDs(cfg, crds...)
-	if err != nil {
-		glog.Fatalf("failed installing/updating progress CRDs: %s", err.Error())
-	}
-	glog.Info("finished installing/updating progress CRDs")
+	crd.InstallCrds(progressService.ProgressCRDInstaller{}, cfg, "progress")
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
