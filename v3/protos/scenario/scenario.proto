@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package scenario;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/scenario";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+service ScenarioSvc {
+    rpc CreateScenario (CreateScenarioRequest) returns (google.protobuf.Empty);
+    rpc GetScenario (general.GetRequest) returns (Scenario);
+    rpc UpdateScenario (UpdateScenarioRequest) returns (google.protobuf.Empty);
+    rpc DeleteScenario (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionScenario (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListScenario (general.ListOptions) returns (ListScenariosResponse);
+}
+
+message Scenario {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    repeated ScenarioStep steps = 4;
+    repeated string categories = 5;
+    repeated string tags = 6;
+    repeated general.StringMap vms = 7;
+    string keepalive_duration = 8;
+    string pause_duration = 9;
+    bool pausable = 10;
+    map<string, string> labels = 11;
+}
+
+message CreateScenarioRequest {
+    string name = 1;
+    string description = 2;
+    string raw_steps = 3;
+    string raw_categories = 4;
+    string raw_tags = 5;
+    string raw_vms = 6;
+    string keepalive_duration = 7;
+    string pause_duration = 8;
+    bool pausable = 9;
+}
+
+message ScenarioStep {
+    string title = 1;
+    string content = 2;
+}
+
+message UpdateScenarioRequest {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    string raw_steps = 4;
+    string raw_categories = 5;
+    string raw_tags = 6;
+    string raw_vms = 7;
+    google.protobuf.StringValue keepalive_duration = 8;
+    google.protobuf.StringValue pause_duration = 9;
+    google.protobuf.BoolValue pausable = 10;
+}
+
+message ListScenariosResponse {
+    repeated Scenario scenarios = 1;
+}

@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package course;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/course";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+service CourseSvc {
+    rpc CreateCourse (CreateCourseRequest) returns (google.protobuf.Empty);
+    rpc GetCourse (general.GetRequest) returns (Course);
+    rpc UpdateCourse (UpdateCourseRequest) returns (google.protobuf.Empty);
+    rpc DeleteCourse (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionCourse (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListCourse (general.ListOptions) returns (ListCoursesResponse);
+}
+
+message Course {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    repeated string scenarios = 4;
+    repeated string categories = 5;
+    repeated general.StringMap vms = 6;
+    string keepalive_duration = 7;
+    string pause_duration = 8;
+    bool pausable = 9;
+    bool keep_vm = 10;
+}
+
+message CreateCourseRequest {
+    string name = 1;
+    string description = 2;
+    string raw_scenarios = 3;
+    string raw_categories = 4;
+    string raw_vms = 5;
+    string keepalive_duration = 6;
+    string pause_duration = 7;
+    bool pausable = 8;
+    bool keep_vm = 9;
+}
+
+message UpdateCourseRequest {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    string raw_scenarios = 4;
+    string raw_categories = 5;
+    string raw_vms = 6;
+    google.protobuf.StringValue keepalive_duration = 7;
+    google.protobuf.StringValue pause_duration = 8;
+    google.protobuf.BoolValue pausable = 9;
+    google.protobuf.BoolValue keep_vm = 10;
+}
+
+message ListCoursesResponse {
+    repeated Course courses = 1;
+}
