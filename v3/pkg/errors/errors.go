@@ -52,6 +52,10 @@ func GrpcError[T proto.Message](c codes.Code, format string, details T, a ...any
 	return err.Err()
 }
 
+func GrpcBadRequestError[T proto.Message](protoMessage T, propName string, propValue string) error {
+	return GrpcError[proto.Message](codes.InvalidArgument, "invalid value \"%s\" for property %s", protoMessage, propValue, propName)
+}
+
 func GrpcNotSpecifiedError[T proto.Message](protoMessage T, propName string) error {
 	return GrpcError[proto.Message](codes.InvalidArgument, "missing %s", protoMessage, propName)
 }
