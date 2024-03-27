@@ -78,13 +78,14 @@ func main() {
 	user.RegisterUserSvcServer(gs, us)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
 	}()
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
