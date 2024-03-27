@@ -46,13 +46,14 @@ func main() {
 	authn.RegisterAuthNServer(gs, as)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
 	}()
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		authServer, err := authnservice.NewAuthServer(accesscodeClient, userClient, settingClient, rbacClient, as)
