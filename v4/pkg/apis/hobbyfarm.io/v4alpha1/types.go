@@ -9,13 +9,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // Provider is an object that represents the capability to provision machines.
 // Providers are usually implemented as 3rd party operators that interact with HobbyFarm through
 // the boundaries of objects such as Machines, MachineSets, and Environments.
 type Provider struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec ProviderSpec `json:"spec"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type ProviderList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -25,20 +31,22 @@ type ProviderList struct {
 }
 
 type ProviderSpec struct {
-	// ConfigurationItems describes properties that an administrator can configure for the provider
+	// ProviderConfiguration describes properties that an administrator can configure for the provider
 	// For example, an AWS provider may have an item for "AMI", or perhaps "SecurityGroup".
 	// This array does not set these properties - it merely defines them for use in
 	// resources such as Environments, or MachineTemplates.
 	// The presence of a property.Property in this array MAY drive UI elements such as configuration menus.
-	ConfigurationItems []property.Property `json:"configurationItems,omitempty"`
+	ProviderConfiguration map[string]property.Property `json:"providerConfiguration,omitempty"`
 
 	// MachineInformation describes properties that the provider CAN return about a machine.
 	// For example, an AWS provider may have an item for "public ip", or perhaps "hostname".
 	// This array does not set these properties - it merely defines them for use in
 	// the MachineStatus struct. The presence of a property.Property in this array
 	// MAY drive UI elements such as variable introspection when writing Scenarios.
-	MachineInformation []property.Property `json:"machineInformation,omitempty"`
+	MachineInformation map[string]property.Property `json:"machineInformation,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // MachineTemplate is an object that represents a specific instance of machine that can be
 // provisioned into one or more Environments by one or more Providers. A MachineTemplate
@@ -57,6 +65,8 @@ type MachineTemplate struct {
 
 	Spec MachineTemplateSpec `json:"spec"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type MachineTemplateList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -113,6 +123,8 @@ type MachineTemplateSpec struct {
 	MachineNamePrefix string `json:"machineNamePrefix,omitempty"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // Environment is the representation of a specific instance of a provider.
 // Here, "specific instance" means an account or location or instance into which machines can be provisioned
 // by the defined Provider for this Environment. An example of an Environment for an AWS provider would be
@@ -130,6 +142,8 @@ type Environment struct {
 	Spec   EnvironmentSpec   `json:"spec"`
 	Status EnvironmentStatus `json:"status,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type EnvironmentList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -196,6 +210,8 @@ type EnvironmentStatus struct {
 	Conditions []genericcondition.GenericCondition
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // MachineSet defines a collection of machines that are scheduled together.
 // All machines in a MachineSet are of identical configuration, MachineTemplate, etc.
 // The settings on the MachineSetSpec struct define how a provider should provision these machines.
@@ -206,6 +222,8 @@ type MachineSet struct {
 	Spec   MachineSetSpec   `json:"spec"`
 	Status MachineSetStatus `json:"status,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type MachineSetList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -294,6 +312,8 @@ type MachineSetStatus struct {
 	Available int `json:"available"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // Machine is the record of an instance of a MachineTemplate as provisioned via a Provider into an Environment.
 // For example, a Machine should have a 1:1 correlation with e.g. an EC2 instance or a DigitalOcean droplet.
 // The Machine object carries the configuration from HF and the status from the Provider of the machine.
@@ -304,6 +324,8 @@ type Machine struct {
 	Spec   MachineSpec   `json:"spec"`
 	Status MachineStatus `json:"status,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type MachineList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -352,6 +374,8 @@ type MachineStatus struct {
 	MachineInformation map[string]string `json:"machineInformation"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // MachineClaim is an object representing a User's desire to claim a Machine for their exclusive use.
 // A MachineClaim does not necessarily represent the fulfillment of this desire. For example, a MachineClaim
 // is created any time a user wants to use a Machine. However, if no Machine is available that matches the
@@ -363,6 +387,8 @@ type MachineClaim struct {
 	Spec   MachineClaimSpec   `json:"spec"`
 	Status MachineClaimStatus `json:"status,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type MachineClaimList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -433,6 +459,8 @@ type MachineClaimStatus struct {
 	Conditions []genericcondition.GenericCondition
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // ScheduledEvent is the representation of a period of time during which content is available to users.
 // A ScheduledEvent not only defines what content is available but also how users shall have access to
 // Machine resources during that period of time.
@@ -443,6 +471,8 @@ type ScheduledEvent struct {
 	Spec   ScheduledEventSpec   `json:"spec"`
 	Status ScheduledEventStatus `json:"status,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type ScheduledEventList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -565,6 +595,8 @@ const (
 	AccessCodeActive   AccessCodeState = "Active"
 )
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // AccessCode stores a string which grants access to any number of Scenarios, Courses, ScheduledEvents, or MachineSets.
 // It can be considered a sort of password, a pre-shared key.
 type AccessCode struct {
@@ -574,6 +606,8 @@ type AccessCode struct {
 	Spec   AccessCodeSpec   `json:"spec,omitempty"`
 	Status AccessCodeStatus `json:"status,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type AccessCodeList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -629,6 +663,8 @@ const (
 	ConditionPaused   = condition.Cond("Paused")
 )
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 type Session struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -636,6 +672,8 @@ type Session struct {
 	Spec   SessionSpec   `json:"spec"`
 	Status SessionStatus `json:"status,omitempty"`
 }
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type SessionList struct {
 	metav1.TypeMeta `json:",inline"`

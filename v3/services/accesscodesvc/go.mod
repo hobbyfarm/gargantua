@@ -2,7 +2,7 @@ module github.com/hobbyfarm/gargantua/services/accesscodesvc/v3
 
 replace github.com/hobbyfarm/gargantua/v3 => ../../
 
-replace k8s.io/client-go => k8s.io/client-go v0.28.2
+replace k8s.io/client-go => k8s.io/client-go v0.29.1
 
 go 1.21.1
 
@@ -12,7 +12,7 @@ require (
 	github.com/hobbyfarm/gargantua/v3 v3.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.58.3
 	google.golang.org/protobuf v1.31.0
-	k8s.io/apimachinery v0.28.2
+	k8s.io/apimachinery v0.29.1
 	k8s.io/client-go v12.0.0+incompatible
 )
 

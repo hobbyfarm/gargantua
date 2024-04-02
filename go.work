@@ -1,4 +1,4 @@
-go 1.21.1
+go 1.21.7
 
 use (
 	.
@@ -24,3 +24,5 @@ use (
 	./v3/services/coursesvc
 	./v3/services/terraformsvc
 )
+
+replace k8s.io/client-go => k8s.io/client-go v0.29.1
