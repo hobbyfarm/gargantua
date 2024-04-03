@@ -118,6 +118,7 @@ func (a *GrpcAccessCodeServer) GetAc(ctx context.Context, req *general.GetReques
 
 	return &accessCodeProto.AccessCode{
 		Id:                  ac.Name,
+		Uid:                 string(ac.UID),
 		Description:         ac.Spec.Description,
 		Scenarios:           ac.Spec.Scenarios,
 		Courses:             ac.Spec.Courses,
@@ -256,6 +257,7 @@ func (a *GrpcAccessCodeServer) ListAc(ctx context.Context, listOptions *general.
 
 		preparedAcs = append(preparedAcs, &accessCodeProto.AccessCode{
 			Id:                  accessCode.Name,
+			Uid:                 string(accessCode.UID),
 			Description:         accessCode.Spec.Description,
 			Scenarios:           accessCode.Spec.Scenarios,
 			Courses:             accessCode.Spec.Courses,
@@ -350,6 +352,7 @@ func (a *GrpcAccessCodeServer) GetOtac(ctx context.Context, req *general.GetRequ
 
 	return &accessCodeProto.OneTimeAccessCode{
 		Id:                otac.Name,
+		Uid:               string(otac.UID),
 		User:              otac.Spec.User,
 		RedeemedTimestamp: otac.Spec.RedeemedTimestamp,
 		MaxDuration:       otac.Spec.MaxDuration,
@@ -429,6 +432,7 @@ func (a *GrpcAccessCodeServer) ListOtac(ctx context.Context, listOptions *genera
 	for _, otac := range otacs {
 		preparedOtacs = append(preparedOtacs, &accessCodeProto.OneTimeAccessCode{
 			Id:                otac.Name,
+			Uid:               string(otac.UID),
 			User:              otac.Spec.User,
 			RedeemedTimestamp: otac.Spec.RedeemedTimestamp,
 			MaxDuration:       otac.Spec.MaxDuration,

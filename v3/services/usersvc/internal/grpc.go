@@ -138,6 +138,7 @@ func (u *GrpcUserServer) GetUserById(ctx context.Context, req *general.GetReques
 
 	return &userProto.User{
 		Id:                  user.Name,
+		Uid:                 string(user.UID),
 		Email:               user.Spec.Email,
 		Password:            user.Spec.Password,
 		AccessCodes:         user.Spec.AccessCodes,
@@ -166,15 +167,16 @@ func (u *GrpcUserServer) ListUser(ctx context.Context, listOptions *general.List
 	}
 
 	preparedUsers := []*userProto.User{} // must be declared this way so as to JSON marshal into [] instead of null
-	for _, s := range users {
+	for _, user := range users {
 		preparedUsers = append(preparedUsers, &userProto.User{
-			Id:                  s.Name,
-			Email:               s.Spec.Email,
-			Password:            s.Spec.Password,
-			AccessCodes:         s.Spec.AccessCodes,
-			Settings:            s.Spec.Settings,
-			LastLoginTimestamp:  s.Spec.LastLoginTimestamp,
-			RegisteredTimestamp: s.GetCreationTimestamp().Time.Format(time.UnixDate),
+			Id:                  user.Name,
+			Uid:                 string(user.UID),
+			Email:               user.Spec.Email,
+			Password:            user.Spec.Password,
+			AccessCodes:         user.Spec.AccessCodes,
+			Settings:            user.Spec.Settings,
+			LastLoginTimestamp:  user.Spec.LastLoginTimestamp,
+			RegisteredTimestamp: user.GetCreationTimestamp().Time.Format(time.UnixDate),
 		})
 	}
 

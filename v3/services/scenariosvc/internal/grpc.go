@@ -134,6 +134,7 @@ func (s *GrpcScenarioServer) GetScenario(ctx context.Context, req *general.GetRe
 
 	return &scenarioProto.Scenario{
 		Id:                scenario.Name,
+		Uid:               string(scenario.UID),
 		Name:              scenario.Spec.Name,
 		Description:       scenario.Spec.Description,
 		Steps:             scenarioSteps,
@@ -277,6 +278,7 @@ func (s *GrpcScenarioServer) ListScenario(ctx context.Context, listOptions *gene
 
 		preparedScenarios = append(preparedScenarios, &scenarioProto.Scenario{
 			Id:                scenario.Name,
+			Uid:               string(scenario.UID),
 			Name:              scenario.Spec.Name,
 			Description:       scenario.Spec.Description,
 			Steps:             scenarioSteps,

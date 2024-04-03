@@ -95,6 +95,7 @@ func (s *GrpcVMTemplateServer) GetVMTemplate(ctx context.Context, req *general.G
 
 	return &vmTemplateProto.VMTemplate{
 		Id:        vmTemplate.Name,
+		Uid:       string(vmTemplate.UID),
 		Name:      vmTemplate.Spec.Name,
 		Image:     vmTemplate.Spec.Image,
 		ConfigMap: vmTemplate.Spec.ConfigMap,
@@ -185,6 +186,7 @@ func (s *GrpcVMTemplateServer) ListVMTemplate(ctx context.Context, listOptions *
 	for _, vmTemplate := range vmTemplates {
 		preparedVmTemplates = append(preparedVmTemplates, &vmTemplateProto.VMTemplate{
 			Id:        vmTemplate.Name,
+			Uid:       string(vmTemplate.UID),
 			Name:      vmTemplate.Spec.Name,
 			Image:     vmTemplate.Spec.Image,
 			ConfigMap: vmTemplate.Spec.ConfigMap,

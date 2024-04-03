@@ -148,6 +148,7 @@ func (s *GrpcVMServer) GetVM(ctx context.Context, req *general.GetRequest) (*vmP
 
 	return &vmProto.VM{
 		Id:           vm.Name,
+		Uid:          string(vm.UID),
 		VmTemplateId: vm.Spec.VirtualMachineTemplateId,
 		SshUsername:  vm.Spec.SshUsername,
 		Protocol:     vm.Spec.Protocol,
@@ -337,6 +338,7 @@ func (s *GrpcVMServer) ListVM(ctx context.Context, listOptions *general.ListOpti
 
 		preparedVms = append(preparedVms, &vmProto.VM{
 			Id:           vm.Name,
+			Uid:          string(vm.UID),
 			VmTemplateId: vm.Spec.VirtualMachineTemplateId,
 			SshUsername:  vm.Spec.SshUsername,
 			Protocol:     vm.Spec.Protocol,

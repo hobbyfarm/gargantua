@@ -160,6 +160,7 @@ func (s *GrpcScheduledEventServer) GetScheduledEvent(ctx context.Context, req *g
 
 	return &eventProto.ScheduledEvent{
 		Id:                  event.Name,
+		Uid:                 string(event.UID),
 		Name:                event.Spec.Name,
 		Description:         event.Spec.Description,
 		Creator:             event.Spec.Creator,
@@ -384,6 +385,7 @@ func (s *GrpcScheduledEventServer) ListScheduledEvent(ctx context.Context, listO
 
 		preparedEvents = append(preparedEvents, &eventProto.ScheduledEvent{
 			Id:                  event.Name,
+			Uid:                 string(event.UID),
 			Name:                event.Spec.Name,
 			Description:         event.Spec.Description,
 			Creator:             event.Spec.Creator,

@@ -105,6 +105,7 @@ func (s *GrpcSessionServer) GetSession(ctx context.Context, req *general.GetRequ
 
 	return &sessionProto.Session{
 		Id:           session.Name,
+		Uid:          string(session.UID),
 		Scenario:     session.Spec.ScenarioId,
 		Course:       session.Spec.CourseId,
 		KeepCourseVm: session.Spec.KeepCourseVM,
@@ -263,6 +264,7 @@ func (s *GrpcSessionServer) ListSession(ctx context.Context, listOptions *genera
 
 		preparedSessions = append(preparedSessions, &sessionProto.Session{
 			Id:           session.Name,
+			Uid:          string(session.UID),
 			Scenario:     session.Spec.ScenarioId,
 			Course:       session.Spec.CourseId,
 			KeepCourseVm: session.Spec.KeepCourseVM,

@@ -119,6 +119,7 @@ func (c *GrpcCourseServer) GetCourse(ctx context.Context, req *general.GetReques
 
 	return &courseProto.Course{
 		Id:                course.Name,
+		Uid:               string(course.UID),
 		Name:              course.Spec.Name,
 		Description:       course.Spec.Description,
 		Scenarios:         course.Spec.Scenarios,
@@ -249,6 +250,7 @@ func (s *GrpcCourseServer) ListCourse(ctx context.Context, listOptions *general.
 
 		preparedCourses = append(preparedCourses, &courseProto.Course{
 			Id:                course.Name,
+			Uid:               string(course.UID),
 			Name:              course.Spec.Name,
 			Description:       course.Spec.Description,
 			Scenarios:         course.Spec.Scenarios,

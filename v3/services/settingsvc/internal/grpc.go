@@ -71,7 +71,7 @@ func (s *GrpcSettingServer) GetScope(ctx context.Context, req *general.GetReques
 		return &settingProto.Scope{}, err
 	}
 
-	return &settingProto.Scope{Name: scope.Name, DisplayName: scope.DisplayName}, nil
+	return &settingProto.Scope{Name: scope.Name, Uid: string(scope.UID), DisplayName: scope.DisplayName}, nil
 }
 
 func (s *GrpcSettingServer) ListScopes(ctx context.Context, listOptions *general.ListOptions) (*settingProto.Scopes, error) {
@@ -97,6 +97,7 @@ func (s *GrpcSettingServer) ListScopes(ctx context.Context, listOptions *general
 	for i, s := range scopes {
 		preparedScopes[i] = &settingProto.Scope{
 			Name:        s.Name,
+			Uid:         string(s.UID),
 			DisplayName: s.DisplayName,
 		}
 	}
@@ -196,7 +197,7 @@ func (s *GrpcSettingServer) ListSettings(ctx context.Context, listOptions *gener
 		weight := ks.Labels[labels.SettingWeight]
 		group := ks.Labels[labels.SettingGroup]
 		iweight, _ := strconv.Atoi(weight)
-		prepListSetting := &settingProto.PreparedListSetting{Name: ks.Name, Property: &settingProto.Property{
+		prepListSetting := &settingProto.PreparedListSetting{Name: ks.Name, Uid: string(ks.UID), Property: &settingProto.Property{
 			DataType:    settingUtil.DataTypeMappingToProto[ks.Property.DataType],
 			ValueType:   settingUtil.ValueTypeMappingToProto[ks.Property.ValueType],
 			DisplayName: ks.DisplayName,
@@ -247,7 +248,7 @@ func (s *GrpcSettingServer) GetSetting(ctx context.Context, req *general.GetRequ
 		)
 	}
 
-	prepSetting := &settingProto.Setting{Name: setting.Name, Property: &settingProto.Property{
+	prepSetting := &settingProto.Setting{Name: setting.Name, Uid: string(setting.UID), Property: &settingProto.Property{
 		DataType:    settingUtil.DataTypeMappingToProto[setting.Property.DataType],
 		ValueType:   settingUtil.ValueTypeMappingToProto[setting.Property.ValueType],
 		DisplayName: setting.DisplayName,

@@ -113,6 +113,7 @@ func (s *GrpcVMClaimServer) GetVMClaim(ctx context.Context, req *general.GetRequ
 
 	return &vmClaimProto.VMClaim{
 		Id:                  vmc.Name,
+		Uid:                 string(vmc.UID),
 		UserId:              vmc.Spec.UserId,
 		RestrictedBind:      vmc.Spec.RestrictedBind,
 		RestrictedBindValue: vmc.Spec.RestrictedBindValue,
@@ -297,6 +298,7 @@ func (s *GrpcVMClaimServer) ListVMClaim(ctx context.Context, listOptions *genera
 
 		preparedVmcs = append(preparedVmcs, &vmClaimProto.VMClaim{
 			Id:                  vmc.Name,
+			Uid:                 string(vmc.UID),
 			UserId:              vmc.Spec.UserId,
 			RestrictedBind:      vmc.Spec.RestrictedBind,
 			RestrictedBindValue: vmc.Spec.RestrictedBindValue,

@@ -112,6 +112,7 @@ func (s *GrpcVMSetServer) GetVMSet(ctx context.Context, req *general.GetRequest)
 
 	return &vmSetProto.VMSet{
 		Id:                  vms.Name,
+		Uid:                 string(vms.UID),
 		Count:               uint32(vms.Spec.Count),
 		Environment:         vms.Spec.Environment,
 		VmTemplate:          vms.Spec.VMTemplate,
@@ -292,6 +293,7 @@ func (s *GrpcVMSetServer) ListVMSet(ctx context.Context, listOptions *general.Li
 
 		preparedVmSets = append(preparedVmSets, &vmSetProto.VMSet{
 			Id:                  vms.Name,
+			Uid:                 string(vms.UID),
 			Count:               uint32(vms.Spec.Count),
 			Environment:         vms.Spec.Environment,
 			VmTemplate:          vms.Spec.VMTemplate,

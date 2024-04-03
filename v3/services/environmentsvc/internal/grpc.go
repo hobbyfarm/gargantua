@@ -127,6 +127,7 @@ func (s *GrpcEnvironmentServer) GetEnvironment(ctx context.Context, req *general
 
 	return &environmentProto.Environment{
 		Id:                   environment.Name,
+		Uid:                  string(environment.UID),
 		DisplayName:          environment.Spec.DisplayName,
 		Dnssuffix:            environment.Spec.DNSSuffix,
 		Provider:             environment.Spec.Provider,
@@ -256,6 +257,7 @@ func (s *GrpcEnvironmentServer) ListEnvironment(ctx context.Context, listOptions
 
 		preparedEnvironments = append(preparedEnvironments, &environmentProto.Environment{
 			Id:                   environment.Name,
+			Uid:                  string(environment.UID),
 			DisplayName:          environment.Spec.DisplayName,
 			Dnssuffix:            environment.Spec.DNSSuffix,
 			Provider:             environment.Spec.Provider,

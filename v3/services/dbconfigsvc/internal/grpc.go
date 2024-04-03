@@ -108,6 +108,7 @@ func (s *GrpcDynamicBindConfigurationServer) GetDynamicBindConfig(ctx context.Co
 
 	return &dbConfigProto.DynamicBindConfig{
 		Id:                  dbc.Name,
+		Uid:                 string(dbc.UID),
 		Environment:         dbc.Spec.Environment,
 		RestrictedBind:      dbc.Spec.RestrictedBind,
 		RestrictedBindValue: dbc.Spec.RestrictedBindValue,
@@ -206,6 +207,7 @@ func (s *GrpcDynamicBindConfigurationServer) ListDynamicBindConfig(ctx context.C
 	for _, dbc := range dbConfigs {
 		preparedDbcs = append(preparedDbcs, &dbConfigProto.DynamicBindConfig{
 			Id:                  dbc.Name,
+			Uid:                 string(dbc.UID),
 			Environment:         dbc.Spec.Environment,
 			BurstCountCapacity:  util.ConvertMap[int, uint32](dbc.Spec.BurstCountCapacity),
 			RestrictedBind:      dbc.Spec.RestrictedBind,

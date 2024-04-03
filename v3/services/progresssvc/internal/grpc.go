@@ -102,6 +102,7 @@ func (s *GrpcProgressServer) GetProgress(ctx context.Context, req *general.GetRe
 
 	return &progressProto.Progress{
 		Id:          progress.Name,
+		Uid:         string(progress.UID),
 		CurrentStep: uint32(progress.Spec.CurrentStep),
 		MaxStep:     uint32(progress.Spec.MaxStep),
 		TotalStep:   uint32(progress.Spec.TotalStep),
@@ -228,6 +229,7 @@ func (s *GrpcProgressServer) ListProgress(ctx context.Context, listOptions *gene
 
 		preparedProgress = append(preparedProgress, &progressProto.Progress{
 			Id:          progress.Name,
+			Uid:         string(progress.UID),
 			CurrentStep: uint32(progress.Spec.CurrentStep),
 			MaxStep:     uint32(progress.Spec.MaxStep),
 			TotalStep:   uint32(progress.Spec.TotalStep),
