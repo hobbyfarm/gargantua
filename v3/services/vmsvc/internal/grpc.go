@@ -2,6 +2,8 @@ package vmservice
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 
 	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	vmProto "github.com/hobbyfarm/gargantua/v3/protos/vm"
@@ -38,11 +40,12 @@ func NewGrpcVMServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInfo
 }
 
 func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmProto.CreateVMRequest) (*empty.Empty, error) {
+	var id string
 	var ownerReferenceId string
 	var ownerReferenceUid types.UID
 	var ownerReferenceKind string
 
-	id := req.GetId()
+	// id := req.GetId()
 	vmTemplateId := req.GetVmTemplateId()
 	sshUserName := req.GetSshUsername()
 	protocol := req.GetProtocol()
@@ -69,10 +72,12 @@ func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmProto.CreateVMReques
 		ownerReferenceId = vmSetId
 		ownerReferenceUid = types.UID(vmSetUid)
 		ownerReferenceKind = "VirtualMachineSet"
+		id = util.GetVMSetBaseName(ownerReferenceId)
 	} else {
 		ownerReferenceId = vmClaimId
 		ownerReferenceUid = types.UID(vmClaimUid)
 		ownerReferenceKind = "VirtualMachineClaim"
+		id = fmt.Sprintf("%s-%08x", ownerReferenceId, rand.Uint32())
 	}
 
 	requiredStringParams := map[string]string{
@@ -157,7 +162,7 @@ func (s *GrpcVMServer) GetVM(ctx context.Context, req *general.GetRequest) (*vmP
 	}, nil
 }
 
-func (s *GrpcVMServer) UpdateVMSet(ctx context.Context, req *vmProto.UpdateVMRequest) (*empty.Empty, error) {
+func (s *GrpcVMServer) UpdateVM(ctx context.Context, req *vmProto.UpdateVMRequest) (*empty.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
 		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
@@ -206,7 +211,7 @@ func (s *GrpcVMServer) UpdateVMSet(ctx context.Context, req *vmProto.UpdateVMReq
 	return &empty.Empty{}, nil
 }
 
-func (s *GrpcVMServer) UpdateVMSetStatus(ctx context.Context, req *vmProto.UpdateVMStatusRequest) (*empty.Empty, error) {
+func (s *GrpcVMServer) UpdateVMStatus(ctx context.Context, req *vmProto.UpdateVMStatusRequest) (*empty.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
 		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
@@ -289,15 +294,15 @@ func (s *GrpcVMServer) UpdateVMSetStatus(ctx context.Context, req *vmProto.Updat
 	return &empty.Empty{}, nil
 }
 
-func (s *GrpcVMServer) DeleteVMSet(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (s *GrpcVMServer) DeleteVM(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
 	return util.DeleteHfResource(ctx, req, s.vmClient, "virtual machine")
 }
 
-func (s *GrpcVMServer) DeleteCollectionVMSet(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
+func (s *GrpcVMServer) DeleteCollectionVM(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
 	return util.DeleteHfCollection(ctx, listOptions, s.vmClient, "virtual machines")
 }
 
-func (s *GrpcVMServer) ListVMSet(ctx context.Context, listOptions *general.ListOptions) (*vmProto.ListVMsResponse, error) {
+func (s *GrpcVMServer) ListVM(ctx context.Context, listOptions *general.ListOptions) (*vmProto.ListVMsResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var vms []hfv1.VirtualMachine
 	var err error
