@@ -7,7 +7,7 @@ package v4alpha1
 
 import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/property"
-	"github.com/rancher/wrangler/pkg/genericcondition"
+	"github.com/hobbyfarm/gargantua/v4/pkg/genericcondition"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 

@@ -33,7 +33,43 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"k8s.io/api/core/v1.AWSElasticBlockStoreVolumeSource":            schema_k8sio_api_core_v1_AWSElasticBlockStoreVolumeSource(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCode":                schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCode(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCodeList":            schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCodeList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCodeSpec":            schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCodeSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCodeStatus":          schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCodeStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AvailabilityConfiguration": schema_pkg_apis_hobbyfarmio_v4alpha1_AvailabilityConfiguration(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Environment":               schema_pkg_apis_hobbyfarmio_v4alpha1_Environment(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.EnvironmentList":           schema_pkg_apis_hobbyfarmio_v4alpha1_EnvironmentList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.EnvironmentSpec":           schema_pkg_apis_hobbyfarmio_v4alpha1_EnvironmentSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.EnvironmentStatus":         schema_pkg_apis_hobbyfarmio_v4alpha1_EnvironmentStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Machine":                   schema_pkg_apis_hobbyfarmio_v4alpha1_Machine(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaim":              schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaim(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaimList":          schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaimList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaimSpec":          schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaimSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaimStatus":        schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaimStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineList":               schema_pkg_apis_hobbyfarmio_v4alpha1_MachineList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineRequirement":        schema_pkg_apis_hobbyfarmio_v4alpha1_MachineRequirement(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSet":                schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSet(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetList":            schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSetList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetSpec":            schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSetSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetStatus":          schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSetStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSpec":               schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineStatus":             schema_pkg_apis_hobbyfarmio_v4alpha1_MachineStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineTemplate":           schema_pkg_apis_hobbyfarmio_v4alpha1_MachineTemplate(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineTemplateList":       schema_pkg_apis_hobbyfarmio_v4alpha1_MachineTemplateList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineTemplateSpec":       schema_pkg_apis_hobbyfarmio_v4alpha1_MachineTemplateSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Provider":                  schema_pkg_apis_hobbyfarmio_v4alpha1_Provider(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProviderList":              schema_pkg_apis_hobbyfarmio_v4alpha1_ProviderList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProviderSpec":              schema_pkg_apis_hobbyfarmio_v4alpha1_ProviderSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEvent":            schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEvent(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventList":        schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventSpec":        schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventStatus":      schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Session":                   schema_pkg_apis_hobbyfarmio_v4alpha1_Session(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionList":               schema_pkg_apis_hobbyfarmio_v4alpha1_SessionList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionSpec":               schema_pkg_apis_hobbyfarmio_v4alpha1_SessionSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionStatus":             schema_pkg_apis_hobbyfarmio_v4alpha1_SessionStatus(ref),
+		"k8s.io/api/core/v1.AWSElasticBlockStoreVolumeSource":                                        schema_k8sio_api_core_v1_AWSElasticBlockStoreVolumeSource(ref),
 		"k8s.io/api/core/v1.Affinity":                                    schema_k8sio_api_core_v1_Affinity(ref),
 		"k8s.io/api/core/v1.AttachedVolume":                              schema_k8sio_api_core_v1_AttachedVolume(ref),
 		"k8s.io/api/core/v1.AvoidPods":                                   schema_k8sio_api_core_v1_AvoidPods(ref),
@@ -321,6 +357,1927 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"k8s.io/apimachinery/pkg/runtime.Unknown":                        schema_k8sio_apimachinery_pkg_runtime_Unknown(ref),
 		"k8s.io/apimachinery/pkg/util/intstr.IntOrString":                schema_apimachinery_pkg_util_intstr_IntOrString(ref),
 		"k8s.io/apimachinery/pkg/version.Info":                           schema_k8sio_apimachinery_pkg_version_Info(ref),
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCode(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "AccessCode stores a string which grants access to any number of Scenarios, Courses, ScheduledEvents, or MachineSets. It can be considered a sort of password, a pre-shared key.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCodeSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCodeStatus"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCodeSpec", "github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCodeStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCodeList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCode"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"metadata", "items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCode", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCodeSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"code": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Code is the actual access code.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"scenarios": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Scenarios is a list of the names of scenarios to which this AccessCode shall grant access.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"courses": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Courses is a list of the names of Courses to which this AccessCode shall grant access.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"scheduledEvents": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScheduledEvents is a list of the names of ScheduledEvents to which this AccessCode shall grant access.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"machineSets": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineSets is a list of the names of MachineSets to which this AccessCode shall grant access.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"notBefore": {
+						SchemaProps: spec.SchemaProps{
+							Description: "NotBefore is a timestamp that defines the point in time after which an AccessCode may be used. If defined, the AccessCode may not be used before this timestamp. If nil, an AccessCode is considered valid immediately after creation - provided NotAfter has not passed if set.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"notAfter": {
+						SchemaProps: spec.SchemaProps{
+							Description: "NotAfter is a timestamp that defines the point in time after which an AccessCode may NOT be used. If defined, the AccessCode may not be used after this timestamp. If nil, an AccessCode is considered valid forever - provided NotBefore has passed if set.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+				},
+				Required: []string{"code"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCodeStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Status is the state of the access code. AccessCodes can be AccessCodeActive or AccessCodeInactive, depending on the values of NotBefore & NotAfter, as well as the current time.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"status"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_AvailabilityConfiguration(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"availability": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Availability defines what strategy will be used for making machines available to users.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Value defines a string identifier related to the Availability. For example, in the case of ScheduledEvent availability, this value may be the name of the associated ScheduledEvent.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"availability"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_Environment(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Environment is the representation of a specific instance of a provider. Here, \"specific instance\" means an account or location or instance into which machines can be provisioned by the defined Provider for this Environment. An example of an Environment for an AWS provider would be a particular AWS account, or particular region within an AWS account. Environments encapsulate not only the configuration of the provider but also how users should connect to their machines. It is not a requirement that separate Environments have separate endpoints for connection, or that they use separate cloud provider credentials. Instead, Environments should be used anywhere that top-level configuration items for machine provisioning may change. Or, separate Environments can be used to provide lower-level or more restricted capacity to public or untrusted users.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.EnvironmentSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.EnvironmentStatus"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.EnvironmentSpec", "github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.EnvironmentStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_EnvironmentList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Environment"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"metadata", "items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Environment", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_EnvironmentSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"capacity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Capacity is a numeric count of the capacity in the environment for a particular MachineTemplate. The key is the string ID (not display name) of the MachineTemplate. The int value is the number of concurrently-running machines supported by this environment. This value MUST be user-defined. Users must take into account their capacity in the environment as well as the size of the machine being provisioned. For example, an AWS account may support more t3.large instances than it supports t3.xxlarge. Because of the wide variety of environments and provider implementations it is not feasible for HobbyFarm to calculate sane values for this field.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: 0,
+										Type:    []string{"integer"},
+										Format:  "int32",
+									},
+								},
+							},
+						},
+					},
+					"endpoints": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Endpoints defines a map of endpoints keyed by ConnectProtocol. The value of the k/v pair shall be a network endpoint that a client may call to obtain a connection to a machine in this environment. An example may be a key of \"ssh\" and a value of \"wss://my-host\" which corresponds to a secure websocket endpoint to obtain an SSH connection. Previous versions of HobbyFarm called this field \"WsEndpoint\", and only supported SSH.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"provider": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Provider is the string name (object name, not display name) of the provider in use for this environment.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"providerConfiguration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ProviderConfiguration defines k/v configuration for the provider in use for this environment. Keys in this map shall correspond to property names defined in the ProviderSpec of the Provider identified in this struct. Values shall be string representations of the data/value types for that property.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"templateSpecific": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TemplateConfiguration defines k/v configuration for the provider in use for this environment AND for a particular MachineTemplate. The top-level key in this map shall be the name (object name, not display) of a MachineTemplate. The `map[string]string` value shall be k/v configuration for the provider. Keys in that map shall correspond to property names defined in the ProviderSpec of the Provider identified in the parent EnvironmentSpec struct. Values shall be string representations of the data/value types for that property. You may be asking yourself - why does this exist when ProviderConfiguration is also a field? MachineTemplate also defines configuration, so why here too? This is a flexibility thing. Users may wish to define top-level configuration items at the MachineTemplate level. Items such as AMIs that could be valid for all AWS environments. But what if ONE specific environment needs a different AMI for ONE specific template? This field handles that case. There is a hierarchy to configuration items. In increasing order of precedence, it goes: MachineTemplate, Environment(ProviderConfiguration), Environment(TemplateConfiguration). Thus, any configuration item defined in this field shall preempt the same configuration item defined in any other field of related nature on Environment or MachineTemplate objects.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type: []string{"object"},
+										AdditionalProperties: &spec.SchemaOrBool{
+											Allows: true,
+											Schema: &spec.Schema{
+												SchemaProps: spec.SchemaProps{
+													Default: "",
+													Type:    []string{"string"},
+													Format:  "",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayName is the display, or pretty, name of the Environment.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"machineNamePrefix": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineNamePrefix is the prefix given to all Machine objects created using this Environment. *Caution*: This will override any template-specific MachineNamePrefix field that has been set. Use with caution.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"provider", "displayName"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_EnvironmentStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"Conditions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Conditions is an array of generic conditions that may crop up on this Environment. There are NO guarantees made about the conditions that exist in this slice.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"Conditions"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_Machine(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Machine is the record of an instance of a MachineTemplate as provisioned via a Provider into an Environment. For example, a Machine should have a 1:1 correlation with e.g. an EC2 instance or a DigitalOcean droplet. The Machine object carries the configuration from HF and the status from the Provider of the machine.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineStatus"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSpec", "github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaim(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "MachineClaim is an object representing a User's desire to claim a Machine for their exclusive use. A MachineClaim does not necessarily represent the fulfillment of this desire. For example, a MachineClaim is created any time a user wants to use a Machine. However, if no Machine is available that matches the claim criteria, then the claim may fail.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaimSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaimStatus"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaimSpec", "github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaimStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaimList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaim"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"metadata", "items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaim", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaimSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"machineTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineTemplate is the identifier of the template for which we need a Machine.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"user": {
+						SchemaProps: spec.SchemaProps{
+							Description: "User is the identifier of the User requesting the Machine.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"accessCode": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AccessCode is an optional access code that can be used to provide access to a MachineSet. For example, if a user has an AccessCode that provides them direct access to a Scenario, there may also be a corresponding MachineSet for that AccessCode that shall grant a user a Machine.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"scheduledEvent": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScheduledEvent is an optional identifier of a ScheduledEvent that can be used to provide access to a MachineSet. For example, if a user is taking part in a ScheduledEvent, this field may be filled with the name of that SE. HobbyFarm will then grant them access to MachineSets that are created to support that ScheduledEvent.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"bindStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BindStrategy determines how the user wants HobbyFarm to fulfill their request for a machine. For example, if the BindStrategy is set to BindStrategyAnyAvailable, then HobbyFarm will attempt to claim any matching Machine (based on the criteria herein) for the user. If the BindStrategy is set to BindStrategyRequireMachineSet, then only machines from the specified MachineSets will be attempted to claim.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"bindStrategyMachineSets": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BindStrategyMachineSets is a list of the names of MachineSet objects we either want to prefer or require our binding to come from.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"machineTemplate", "user", "bindStrategy", "bindStrategyMachineSets"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaimStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"phase": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Phase represents the phase of the MachineClaim. MachineClaims can go through four stages, Available, Bound, Failed, and Terminated. Every MachineClaim starts as Available. This is the period where HobbyFarm is attempting to match a MachineClaim to a Machine. If it is able to do so, then the MachineClaimPhase changes to Bound. If it is unable to do so after a period of time, then the MachineClaimPhase changes to Failed. When a user is done with a Machine, they indicate to HobbyFarm by changing the MachineClaimPhase to Terminated. The MachineClaimPhase can also change to Terminated via other mechanisms such as the user's time expiring or the Machine becoming unavailable.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"Conditions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Conditions is an array of generic conditions that may crop up on this MachineSet. There are NO guarantees made about the conditions that exist in this slice.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"phase", "Conditions"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Machine"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"metadata", "items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Machine", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineRequirement(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "MachineRequirement defines for a given MachineType and MachineTemplate, how many of that kind of machine are required. For MachineTypeShared, this is a per- ScheduledEvent requirement. For MachineTypeUser this is a per-User requirement.\n\nProvisioning scenarios:\n 1. Use any existing pools, do not provision machinesets\n    BindStrategy = Any, CreateMachineSets = nil, PreferRequireMachineSets = nil\n 2. Prefer certain existing pools, do not provision machinesets\n    BindStrategy = PreferMachineSet, CreateMachineSets = nil, PreferRequireMachineSets = []string{preferredSets...}\n 3. Require certain existing pools, do not provision machinesets\n    BindStrategy = RequireMachineSet, CreateMachineSets = nil, PreferRequireMachineSets = []string{requiredSets...}\n 4. Use any existing pools, provision machinesets\n    BindStrategy = Any, CreateMachineSets = []MachineSetSpec{newSets...}, PreferRequireMachineSets = nil\n 5. Prefer certain existing pools, provision machinesets (auto-prefers provisioned machinesets)\n    BindStrategy = PreferMachineSets, CreateMachineSets = []MachineSetSpec{newSets...},\n    PreferRequireMachineSets = []string{preferredSets... + newSets...}\n    (preferredSets may be nil, newSets must not be)\n 6. Require certain existing pools, provision machinesets (auto-requires provisioned machinesets)\n    BindStrategy = RequireMachineSets, CreateMachineSets = []MachineSetSpec{newSets...},\n    PreferRequireMachineSets = []string{requiredSets... + newSets...}\n    (requiredSets may be nil, newSets must not be)",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"machineTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineTemplate is the name of the required MachineTemplate",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"count": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Count is the number of required Machines either per-User (when MachineType = MachineTypeUser) or per- ScheduledEvent (when MachineType = MachineTypeShared)",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"machineType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineType is the type of machine to require",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"bindStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "BindStrategy determines how this MachineRequirement shall be fulfilled. BindStrategyAny = Fill this requirement from any matching machine set BindStrategyPreferMachineSet = Fill this requirement first from a list of MachineSet, then from any matching machine set BindStrategyRequireMachineSet = Only fill this requirement from a list of MachineSet",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"createMachineSet": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CreateMachineSet defines the spec of a MachineSet to be created for this request.",
+							Ref:         ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetSpec"),
+						},
+					},
+					"preferRequireMachineSets": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PreferRequireMachineSets is a slice of names of MachineSet objects that are either preferred or required, depending on the value of BindStrategy.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"machineTemplate", "count", "machineType", "bindStrategy", "preferRequireMachineSets"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetSpec"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSet(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "MachineSet defines a collection of machines that are scheduled together. All machines in a MachineSet are of identical configuration, MachineTemplate, etc. The settings on the MachineSetSpec struct define how a provider should provision these machines.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetStatus"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetSpec", "github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSetList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSet"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"metadata", "items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSet", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSetSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"availabilityConfiguration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AvailabilityConfiguration defines the configuration for end-user availability of the machines in this pool",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AvailabilityConfiguration"),
+						},
+					},
+					"provisioningStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ProvisioningStrategy defines what strategy should be used when provisioning these machines. This will inform HobbyFarm on how to create machine resources so that providers can provision them. For example, if the ProvisioningStrategy is set to AutoScale, and MaxProvisioned is set to 20 with MinAvailable set to 10, then HF will begin by creating 10 Machine objects. As machines get claimed by users, HF will create additional Machine objects up to the MaxProvisioned value of 20. In another example, if the ProvisioningStrategy is set to OnDemand, then MinAvailable is ignored. MaxProvisioned is used as an upper bound for concurrently provisioned machines, and new machines are provisioned only when a matching MachineClaim is created.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"maxProvisioned": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MaxProvisioned is the maximum number of concurrently provisioned machines that can exist in this MachineSet.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"minAvailable": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MinAvailable is the minimum number of available machines provisioned in this MachineSet. This value is only considered when using ProvisioningStrategyAutoScale. It is the minimum number of concurrently _available_ (not just provisioned, but also unclaimed) machines for this set.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"provider": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Provider is the string name (not display) of the provider through which these machines shall be provisioned.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"providerConfiguration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ProviderConfiguration defines configuration options by provider. This shall define k/v pairs corresponding to the properties as defined on the ProviderSpec object.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"machineTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineTemplate is the identifier of the MachineTemplate that all machines in this set shall use.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"environment": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Environment is the identifier of the Environment into which all machines in this set shall be provisioned.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"machineNamePrefix": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineNamePrefix is the prefix given to the name of all Machine objects created using this MachineSet. *Caution*: Setting this value will override any other MachineNamePrefix field set in e.g. MachineTemplate or Environment.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"availabilityConfiguration", "provisioningStrategy", "maxProvisioned", "minAvailable", "provider", "providerConfiguration", "machineTemplate", "environment"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AvailabilityConfiguration"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSetStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"Conditions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Conditions is an array of generic conditions that may crop up on this MachineSet. There are NO guarantees made about the conditions that exist in this slice.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition"),
+									},
+								},
+							},
+						},
+					},
+					"provisioned": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Provisioned is the current number of machines that are provisioned in this MachineSet. This is a _total_ that includes both claimed and unclaimed machines.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"available": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Available is the current number of machines that are provisioned _and unclaimed_ in this MachineSet.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+				Required: []string{"Conditions", "provisioned", "available"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"machineType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineType defines the type of the machine, e.g. User or Shared.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"provider": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Provider defines the Provider through which this Machine shall be provisioned.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"configurationOptions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ProviderConfiguration defines configuration options by provider. This shall define k/v pairs corresponding to the properties as defined on the ProviderSpec object.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"machineSet": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineSet identified to which MachineSet this Machine belongs.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"machineTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineTemplate identifies of which MachineTemplate this Machine is an instance.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"environment": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Environment identifies into to which Environment this Machine shall be provisioned.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"connectEndpoints": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ConnectEndpoints is a map of all connection endpoints a user can take to access this machine. The keys in this map are protocols such as 'ssh' or 'rdp'. Values are endpoints that client may contact to establish connection. Any endpoint in this map MUST be available for a user to use. Endpoints present in this map are a combination of protocols supported by the MachineTemplate and Endpoints listed in the Environment.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"machineType", "provider", "configurationOptions", "machineSet", "machineTemplate", "environment", "connectEndpoints"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"Conditions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Conditions is an array of generic conditions that may crop up on this MachineSet. There are NO guarantees made about the conditions that exist in this slice.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition"),
+									},
+								},
+							},
+						},
+					},
+					"machineInformation": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineInformation is a map of information about this Machine as reported by the Provider. Keys in this map shall be those defined in the MachineInformation field on the Provider. Values shall be the string representations of those properties.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"Conditions", "machineInformation"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineTemplate(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "MachineTemplate is an object that represents a specific instance of machine that can be provisioned into one or more Environments by one or more Providers. A MachineTemplate is meant to bridge the gap between environments by providing a stable representation of a machine that environments can utilize. For example, a MachineTemplate may be created with the name \"ClusterNode-Ubuntu-2004\". It is then up to each Environment to define options necessary for that environment to allow the creation of a `ClusterNode-Ubuntu-2004` machine. A common use case here is to define in the MachineTemplate any configuration that can span providers or environments. Items such as cloud config or ssh username which are not specific to a provider implementation. Then, further configuration can be done on the Environment. Those further configurations could be items such as the machine image or AMI, or perhaps the security group, which are both examples of environment-specific options.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineTemplateSpec"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineTemplateSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineTemplateList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineTemplate"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"metadata", "items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineTemplate", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineTemplateSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"machineType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineType defines what type of machine is defined in this template. For example, a machine may be MachineTypeUser which is a machine that can be assigned to a user. A MachineTypeShared may be accessible by multiple users.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"providerConfiguration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ProviderConfiguration defines configuration options by provider. The top-level key is a string which SHOULD be the name of a Provider. The lower-level `map[string]string` shall define k/v pairs corresponding to the properties as defined on the ProviderSpec object.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type: []string{"object"},
+										AdditionalProperties: &spec.SchemaOrBool{
+											Allows: true,
+											Schema: &spec.Schema{
+												SchemaProps: spec.SchemaProps{
+													Default: "",
+													Type:    []string{"string"},
+													Format:  "",
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayName is the display, or pretty, name of the machine template.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"connectProtocol": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ConnectProtocols is an array of protocols that MAY be supported by the machine. The presence of a protocol in this list, plus an endpoint for that protocol defined in EnvironmentSpec will drive connection options for users.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"machineNamePrefix": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineNamePrefix is a prefix to apply to machines generated using this template. It can be overridden by MachineNamePrefix fields further down the \"stack\" (e.g. in an Environment)",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"machineType", "displayName", "connectProtocol"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_Provider(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Provider is an object that represents the capability to provision machines. Providers are usually implemented as 3rd party operators that interact with HobbyFarm through the boundaries of objects such as Machines, MachineSets, and Environments.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProviderSpec"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProviderSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ProviderList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Provider"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"metadata", "items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Provider", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ProviderSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"providerConfiguration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ProviderConfiguration describes properties that an administrator can configure for the provider For example, an AWS provider may have an item for \"AMI\", or perhaps \"SecurityGroup\". This array does not set these properties - it merely defines them for use in resources such as Environments, or MachineTemplates. The presence of a property.Property in this array MAY drive UI elements such as configuration menus.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v3/pkg/property.Property"),
+									},
+								},
+							},
+						},
+					},
+					"machineInformation": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineInformation describes properties that the provider CAN return about a machine. For example, an AWS provider may have an item for \"public ip\", or perhaps \"hostname\". This array does not set these properties - it merely defines them for use in the MachineStatus struct. The presence of a property.Property in this array MAY drive UI elements such as variable introspection when writing Scenarios.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v3/pkg/property.Property"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v3/pkg/property.Property"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEvent(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ScheduledEvent is the representation of a period of time during which content is available to users. A ScheduledEvent not only defines what content is available but also how users shall have access to Machine resources during that period of time.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventStatus"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventSpec", "github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEvent"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"metadata", "items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEvent", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayName is the display name of the ScheduledEvent",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"startTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StartTime is the time at which the ScheduledEvent will become active. Active here means that users will be able to begin accessing content and claiming machines.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"provisioningStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ProvisioningStartTime is the time at which HobbyFarm will begin to provision machines. By default this is set to 30 minutes prior to StartTime. It may be adjusted if a provider or environment needs more than 30 minutes notice to prepare the machines. Or, conversely, if no warm-up time is required.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"endTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EndTime is the time at which HobbyFarm will cut off access to the content and machines. After this time, users will no longer be able to claim machines or access scenarios/courses.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"expirationStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ExpirationStrategy defines the behavior that HobbyFarm will use when a ScheduledEvent passes its EndTime. For example, if ExpirationStrategy is set to \"CutOff\", access to machines will be immediately terminated. If ExpirationStrategy is set to \"Soft\", users will continue to have access while they are actively using machines, but cannot create new machines or access other content than what they are currently using.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"requiredMachines": {
+						SchemaProps: spec.SchemaProps{
+							Description: "RequiredMachines defines the number of machines of each MachineTemplate that are required for this ScheduledEvent.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineRequirement"),
+									},
+								},
+							},
+						},
+					},
+					"printingOption": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PrintingOption defines if users should be allowed to print out the content to which they have access.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"scenarios": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Scenarios is a list of Scenario names to which this ScheduledEvent shall grant access",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"courses": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Courses is a list of Course names to which this ScheduledEvent shall grant access",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"displayName", "startTime", "provisioningStartTime", "endTime", "expirationStrategy", "requiredMachines", "printingOption"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineRequirement", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"conditions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Conditions is an array of generic conditions that may crop up on this MachineSet. There are NO guarantees made about the conditions that exist in this slice.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition"),
+									},
+								},
+							},
+						},
+					},
+					"createdMachineSets": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CreatedMachineSets is a list of the names of MachineSet objects that have been created as a result of this ScheduledEvent. Presence in this list does not imply presence in PreferRequireMachineSets.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"conditions", "createdMachineSets"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_Session(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionStatus"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionSpec", "github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_SessionList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Session"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"metadata", "items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Session", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_SessionSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"scenario": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"course": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"persistenceStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+					"user": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+					"accessCode": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"scheduledEvent": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+				},
+				Required: []string{"persistenceStrategy", "user"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_SessionStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"conditions": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition"),
+									},
+								},
+							},
+						},
+					},
+					"machineClaim": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+				},
+				Required: []string{"conditions", "machineClaim"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition"},
 	}
 }
 

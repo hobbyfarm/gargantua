@@ -1,11 +1,9 @@
-// +k8s:deepcopy-gen=package
-
 package v4alpha1
 
 import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/property"
+	genericcondition2 "github.com/hobbyfarm/gargantua/v4/pkg/genericcondition"
 	"github.com/rancher/wrangler/pkg/condition"
-	"github.com/rancher/wrangler/pkg/genericcondition"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -207,7 +205,7 @@ type EnvironmentSpec struct {
 type EnvironmentStatus struct {
 	// Conditions is an array of generic conditions that may crop up on this Environment.
 	// There are NO guarantees made about the conditions that exist in this slice.
-	Conditions []genericcondition.GenericCondition
+	Conditions []genericcondition2.GenericCondition
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -302,7 +300,7 @@ type MachineSetSpec struct {
 type MachineSetStatus struct {
 	// Conditions is an array of generic conditions that may crop up on this MachineSet.
 	// There are NO guarantees made about the conditions that exist in this slice.
-	Conditions []genericcondition.GenericCondition
+	Conditions []genericcondition2.GenericCondition
 
 	// Provisioned is the current number of machines that are provisioned in this MachineSet.
 	// This is a _total_ that includes both claimed and unclaimed machines.
@@ -366,7 +364,7 @@ type MachineSpec struct {
 type MachineStatus struct {
 	// Conditions is an array of generic conditions that may crop up on this MachineSet.
 	// There are NO guarantees made about the conditions that exist in this slice.
-	Conditions []genericcondition.GenericCondition
+	Conditions []genericcondition2.GenericCondition
 
 	// MachineInformation is a map of information about this Machine as reported by the Provider.
 	// Keys in this map shall be those defined in the MachineInformation field on the Provider. Values
@@ -456,7 +454,7 @@ type MachineClaimStatus struct {
 
 	// Conditions is an array of generic conditions that may crop up on this MachineSet.
 	// There are NO guarantees made about the conditions that exist in this slice.
-	Conditions []genericcondition.GenericCondition
+	Conditions []genericcondition2.GenericCondition
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -581,7 +579,7 @@ type ScheduledEventSpec struct {
 type ScheduledEventStatus struct {
 	// Conditions is an array of generic conditions that may crop up on this MachineSet.
 	// There are NO guarantees made about the conditions that exist in this slice.
-	Conditions []genericcondition.GenericCondition `json:"conditions"`
+	Conditions []genericcondition2.GenericCondition `json:"conditions"`
 
 	// CreatedMachineSets is a list of the names of MachineSet objects that have been created as a result
 	// of this ScheduledEvent. Presence in this list does not imply presence in PreferRequireMachineSets.
@@ -692,6 +690,6 @@ type SessionSpec struct {
 }
 
 type SessionStatus struct {
-	Conditions   []genericcondition.GenericCondition `json:"conditions"`
-	MachineClaim string                              `json:"machineClaim"`
+	Conditions   []genericcondition2.GenericCondition `json:"conditions"`
+	MachineClaim string                               `json:"machineClaim"`
 }
