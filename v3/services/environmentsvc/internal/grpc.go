@@ -136,6 +136,7 @@ func (s *GrpcEnvironmentServer) GetEnvironment(ctx context.Context, req *general
 		IpTranslationMap:     environment.Spec.IPTranslationMap,
 		WsEndpoint:           environment.Spec.WsEndpoint,
 		CountCapacity:        util.ConvertMap[int, uint32](environment.Spec.CountCapacity),
+		Annotations:          environment.Annotations,
 	}, nil
 }
 
@@ -266,6 +267,7 @@ func (s *GrpcEnvironmentServer) ListEnvironment(ctx context.Context, listOptions
 			IpTranslationMap:     environment.Spec.IPTranslationMap,
 			WsEndpoint:           environment.Spec.WsEndpoint,
 			CountCapacity:        util.ConvertMap[int, uint32](environment.Spec.CountCapacity),
+			Annotations:          environment.Annotations,
 		})
 	}
 

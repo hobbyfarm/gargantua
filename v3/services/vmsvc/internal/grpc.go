@@ -160,6 +160,7 @@ func (s *GrpcVMServer) GetVM(ctx context.Context, req *general.GetRequest) (*vmP
 		Labels:       vm.Labels,
 		Finalizers:   vm.Finalizers,
 		Status:       status,
+		Annotations:  vm.Annotations,
 	}, nil
 }
 
@@ -350,6 +351,7 @@ func (s *GrpcVMServer) ListVM(ctx context.Context, listOptions *general.ListOpti
 			Labels:       vm.Labels,
 			Finalizers:   vm.Finalizers,
 			Status:       status,
+			Annotations:  vm.Annotations,
 		})
 	}
 

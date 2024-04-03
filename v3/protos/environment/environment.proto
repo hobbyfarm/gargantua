@@ -28,6 +28,7 @@ message Environment {
     map<string, string> ip_translation_map = 8;
     string ws_endpoint = 9;
     map<string, uint32> count_capacity = 10;
+    map<string, string> annotations = 11;
 }
 
 message CreateEnvironmentRequest {
