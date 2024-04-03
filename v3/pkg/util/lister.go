@@ -24,7 +24,7 @@ func ListByHfClient[T any, L HfClientList[T]](ctx context.Context, listOptions *
 		LabelSelector: labelSelectorString,
 	})
 	if err != nil {
-		err = hferrors.GrpcListError(listOptions, resourcename)
+		return objList, hferrors.GrpcListError(listOptions, resourcename)
 	}
 	return objList, nil
 }
