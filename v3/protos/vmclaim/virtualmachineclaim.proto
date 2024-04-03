@@ -7,6 +7,7 @@ option go_package = "github.com/hobbyfarm/gargantua/v3/protos/vmclaim";
 import "general/general.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/wrappers.proto";
+import "google/protobuf/timestamp.proto";
 
 service VMClaimSvc {
     rpc CreateVMClaim (CreateVMClaimRequest) returns (google.protobuf.Empty);
@@ -28,6 +29,7 @@ message VMClaim {
     string base_name = 7;
     map<string, string> labels = 8;
     VMClaimStatus status = 9;
+    google.protobuf.Timestamp deletion_timestamp = 10;
 }
 
 message CreateVMClaimRequest {
@@ -48,7 +50,7 @@ message UpdateVMClaimRequest {
 
 message UpdateVMClaimStatusRequest {
     string id = 1;
-    string bindmode = 2;
+    string bind_mode = 2;
     google.protobuf.UInt32Value static_bind_attempts = 3;
     google.protobuf.BoolValue bound = 4;
     google.protobuf.BoolValue ready = 5;
@@ -56,7 +58,7 @@ message UpdateVMClaimStatusRequest {
 }
 
 message VMClaimStatus {
-    string bindmode = 1;
+    string bind_mode = 1;
     uint32 static_bind_attempts = 2;
     bool bound = 3;
     bool ready = 4;
