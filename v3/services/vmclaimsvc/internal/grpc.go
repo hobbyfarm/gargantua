@@ -18,6 +18,7 @@ import (
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
@@ -98,11 +99,16 @@ func (s *GrpcVMClaimServer) GetVMClaim(ctx context.Context, req *general.GetRequ
 	}
 
 	status := &vmClaimProto.VMClaimStatus{
-		Bindmode:           vmc.Status.BindMode,
+		BindMode:           vmc.Status.BindMode,
 		StaticBindAttempts: uint32(vmc.Status.StaticBindAttempts),
 		Bound:              vmc.Status.Bound,
 		Ready:              vmc.Status.Ready,
 		Tainted:            vmc.Status.Ready,
+	}
+
+	var deletionTimeStamp *timestamppb.Timestamp
+	if !vmc.DeletionTimestamp.IsZero() {
+		deletionTimeStamp = timestamppb.New(vmc.DeletionTimestamp.Time)
 	}
 
 	return &vmClaimProto.VMClaim{
@@ -115,6 +121,7 @@ func (s *GrpcVMClaimServer) GetVMClaim(ctx context.Context, req *general.GetRequ
 		BaseName:            vmc.Spec.BaseName,
 		Labels:              vmc.Labels,
 		Status:              status,
+		DeletionTimestamp:   deletionTimeStamp,
 	}, nil
 }
 
@@ -180,7 +187,7 @@ func (s *GrpcVMClaimServer) UpdateVMClaimStatus(ctx context.Context, req *vmClai
 	if len(id) == 0 {
 		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
-	bindMode := req.GetBindmode()
+	bindMode := req.GetBindMode()
 	staticBindAttempts := req.GetStaticBindAttempts()
 	bound := req.GetBound()
 	ready := req.GetReady()
@@ -276,11 +283,16 @@ func (s *GrpcVMClaimServer) ListVMClaim(ctx context.Context, listOptions *genera
 		}
 
 		status := &vmClaimProto.VMClaimStatus{
-			Bindmode:           vmc.Status.BindMode,
+			BindMode:           vmc.Status.BindMode,
 			StaticBindAttempts: uint32(vmc.Status.StaticBindAttempts),
 			Bound:              vmc.Status.Bound,
 			Ready:              vmc.Status.Ready,
 			Tainted:            vmc.Status.Ready,
+		}
+
+		var deletionTimeStamp *timestamppb.Timestamp
+		if !vmc.DeletionTimestamp.IsZero() {
+			deletionTimeStamp = timestamppb.New(vmc.DeletionTimestamp.Time)
 		}
 
 		preparedVmcs = append(preparedVmcs, &vmClaimProto.VMClaim{
@@ -293,6 +305,7 @@ func (s *GrpcVMClaimServer) ListVMClaim(ctx context.Context, listOptions *genera
 			BaseName:            vmc.Spec.BaseName,
 			Labels:              vmc.Labels,
 			Status:              status,
+			DeletionTimestamp:   deletionTimeStamp,
 		})
 	}
 
