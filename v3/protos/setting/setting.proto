@@ -51,11 +51,12 @@ message ListSettingsResponse {
 
 message PreparedListSetting {
     string name = 1;
-    Property property = 2;
-    string value = 3;
-    string scope = 4;
-    string group = 5;
-    int64 weight = 6;
+    string uid = 2;
+    Property property = 3;
+    string value = 4;
+    string scope = 5;
+    string group = 6;
+    int64 weight = 7;
 }
 
 message Property {
