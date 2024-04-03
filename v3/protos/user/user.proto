@@ -35,12 +35,13 @@ message GetUserByEmailRequest {
 
 message User {
     string id = 1;
-    string email = 2;
-    string password = 3;
-    repeated string access_codes = 4;
-    map<string, string> settings = 5;
-    string last_login_timestamp = 6;
-    string registered_timestamp = 7;
+    string uid = 2;
+    string email = 3;
+    string password = 4;
+    repeated string access_codes = 5;
+    map<string, string> settings = 6;
+    string last_login_timestamp = 7;
+    string registered_timestamp = 8;
 }
 
 message ListUsersResponse {

@@ -18,9 +18,10 @@ service VMTemplateSvc {
 
 message VMTemplate {
     string id = 1;
-    string name = 2;
-    string image = 3;
-    map<string, string> config_map = 4;
+    string uid = 2;
+    string name = 3;
+    string image = 4;
+    map<string, string> config_map = 5;
 }
 
 message CreateVMTemplateRequest {

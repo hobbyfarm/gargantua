@@ -20,14 +20,15 @@ service SessionSvc {
 
 message Session {
     string id = 1;
-    string scenario = 2;
-    string course = 3;
-    bool keep_course_vm = 4;
-    string user = 5;
-    repeated string vm_claim = 6;
-    string access_code = 7;
-    map<string, string> labels = 8;
-    SessionStatus status = 9;
+    string uid = 2;
+    string scenario = 3;
+    string course = 4;
+    bool keep_course_vm = 5;
+    string user = 6;
+    repeated string vm_claim = 7;
+    string access_code = 8;
+    map<string, string> labels = 9;
+    SessionStatus status = 10;
 }
 
 message CreateSessionRequest {

@@ -19,16 +19,17 @@ service ScenarioSvc {
 
 message Scenario {
     string id = 1;
-    string name = 2;
-    string description = 3;
-    repeated ScenarioStep steps = 4;
-    repeated string categories = 5;
-    repeated string tags = 6;
-    repeated general.StringMap vms = 7;
-    string keepalive_duration = 8;
-    string pause_duration = 9;
-    bool pausable = 10;
-    map<string, string> labels = 11;
+    string uid = 2;
+    string name = 3;
+    string description = 4;
+    repeated ScenarioStep steps = 5;
+    repeated string categories = 6;
+    repeated string tags = 7;
+    repeated general.StringMap vms = 8;
+    string keepalive_duration = 9;
+    string pause_duration = 10;
+    bool pausable = 11;
+    map<string, string> labels = 12;
 }
 
 message CreateScenarioRequest {

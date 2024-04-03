@@ -20,21 +20,22 @@ service ScheduledEventSvc {
 
 message ScheduledEvent {
     string id = 1;
-    string name = 2;
-    string description = 3;
-    string creator = 4;
-    string start_time = 5;
-    string end_time = 6;
-    bool on_demand = 7;
-    bool printable = 8;
-    bool restricted_bind = 9;
-    string restricted_bind_value = 10;
-    map<string, VMTemplateCountMap> required_vms = 11;
-    string access_code = 12;
-    repeated string scenarios = 13;
-    repeated string courses = 14;
-    map<string, string> labels = 15;
-    ScheduledEventStatus status = 16;
+    string uid = 2;
+    string name = 3;
+    string description = 4;
+    string creator = 5;
+    string start_time = 6;
+    string end_time = 7;
+    bool on_demand = 8;
+    bool printable = 9;
+    bool restricted_bind = 10;
+    string restricted_bind_value = 11;
+    map<string, VMTemplateCountMap> required_vms = 12;
+    string access_code = 13;
+    repeated string scenarios = 14;
+    repeated string courses = 15;
+    map<string, string> labels = 16;
+    ScheduledEventStatus status = 17;
 }
 
 message CreateScheduledEventRequest {

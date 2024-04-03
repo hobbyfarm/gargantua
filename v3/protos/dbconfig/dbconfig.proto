@@ -19,11 +19,12 @@ service DynamicBindConfigSvc {
 
 message DynamicBindConfig {
     string id = 1;
-    string environment = 2;
-    bool restricted_bind = 3;
-    string restricted_bind_value = 4;
-    map<string, uint32> burst_count_capacity = 5;
-    map<string, string> labels = 6;
+    string uid = 2;
+    string environment = 3;
+    bool restricted_bind = 4;
+    string restricted_bind_value = 5;
+    map<string, uint32> burst_count_capacity = 6;
+    map<string, string> labels = 7;
 }
 
 message CreateDynamicBindConfigRequest {

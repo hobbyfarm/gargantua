@@ -19,14 +19,15 @@ service EnvironmentSvc {
 
 message Environment {
     string id = 1;
-    string display_name = 2;
-    string dnssuffix = 3;
-    string provider = 4;
-    map<string, general.StringMap> template_mapping = 5;
-    map<string, string> environment_specifics = 6;
-    map<string, string> ip_translation_map = 7;
-    string ws_endpoint = 8;
-    map<string, uint32> count_capacity = 9;
+    string uid = 2;
+    string display_name = 3;
+    string dnssuffix = 4;
+    string provider = 5;
+    map<string, general.StringMap> template_mapping = 6;
+    map<string, string> environment_specifics = 7;
+    map<string, string> ip_translation_map = 8;
+    string ws_endpoint = 9;
+    map<string, uint32> count_capacity = 10;
 }
 
 message CreateEnvironmentRequest {

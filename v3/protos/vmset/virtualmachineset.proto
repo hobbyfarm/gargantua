@@ -20,14 +20,15 @@ service VMSetSvc {
 
 message VMSet {
     string id = 1;
-    uint32 count = 2;
-    string environment = 3;
-    string vm_template = 4;
-    string base_name = 5;
-    bool restricted_bind = 6;
-    string restricted_bind_value = 7;
-    VMSetStatus status = 8;
-    map<string, string> labels = 9;
+    string uid = 2;
+    uint32 count = 3;
+    string environment = 4;
+    string vm_template = 5;
+    string base_name = 6;
+    bool restricted_bind = 7;
+    string restricted_bind_value = 8;
+    VMSetStatus status = 9;
+    map<string, string> labels = 10;
 }
 
 message CreateVMSetRequest {

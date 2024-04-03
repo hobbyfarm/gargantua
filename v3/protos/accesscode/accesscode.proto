@@ -43,10 +43,11 @@ message ResourceValidation {
 
 message OneTimeAccessCode {
     string id = 1;
-    string user = 2;
-    string redeemed_timestamp = 3;
-    string max_duration = 4;
-    map<string, string> labels = 5;
+    string uid = 2;
+    string user = 3;
+    string redeemed_timestamp = 4;
+    string max_duration = 5;
+    map<string, string> labels = 6;
 }
 
 message ListOtacsResponse {
@@ -73,14 +74,15 @@ message CreateAcRequest {
 
 message AccessCode {
     string id = 1;
-    string description = 2;
-    repeated string scenarios = 3;
-    repeated string courses = 4;
-    string expiration = 5;
-    bool restricted_bind = 6;
-    string restricted_bind_value = 7;
-    bool printable = 8;
-    map<string, string> labels = 9;
+    string uid = 2;
+    string description = 3;
+    repeated string scenarios = 4;
+    repeated string courses = 5;
+    string expiration = 6;
+    bool restricted_bind = 7;
+    string restricted_bind_value = 8;
+    bool printable = 9;
+    map<string, string> labels = 10;
 }
 
 // To determine if a boolean value was provided or not for the restricted_bind and printable field, we need to use a wrapper type.

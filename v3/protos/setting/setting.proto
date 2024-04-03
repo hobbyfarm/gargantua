@@ -30,9 +30,10 @@ message CreateSettingRequest {
 
 message Setting {
     string name = 1;
-    Property property = 2;
-    string value = 3;
-    string scope = 4;
+    string uid = 2;
+    Property property = 3;
+    string value = 4;
+    string scope = 5;
 }
 
 message SettingValue {
@@ -77,7 +78,8 @@ message Property {
 
 message Scope {
     string name = 1;
-    string displayName = 2;
+    string uid = 2;
+    string displayName = 3;
 }
 
 message Scopes {

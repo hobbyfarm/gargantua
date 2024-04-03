@@ -19,15 +19,16 @@ service CourseSvc {
 
 message Course {
     string id = 1;
-    string name = 2;
-    string description = 3;
-    repeated string scenarios = 4;
-    repeated string categories = 5;
-    repeated general.StringMap vms = 6;
-    string keepalive_duration = 7;
-    string pause_duration = 8;
-    bool pausable = 9;
-    bool keep_vm = 10;
+    string uid = 2;
+    string name = 3;
+    string description = 4;
+    repeated string scenarios = 5;
+    repeated string categories = 6;
+    repeated general.StringMap vms = 7;
+    string keepalive_duration = 8;
+    string pause_duration = 9;
+    bool pausable = 10;
+    bool keep_vm = 11;
 }
 
 message CreateCourseRequest {
