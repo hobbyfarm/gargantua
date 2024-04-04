@@ -3,14 +3,15 @@ package vmsetcontroller
 import (
 	"context"
 	"fmt"
-	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
-	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"math/rand"
 	"strings"
 	"time"
+
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -357,20 +358,35 @@ func (v *VirtualMachineSetController) reconcileVirtualMachineSet(vmset *hfv1.Vir
 			}
 		}
 	}
-	//-----------------------handle case of scaling down VMSets
+
+	// handle case of scaling down VMSets
 	if len(currentVMs) > vmset.Spec.Count {
-		needed_delete := len(currentVMs) - vmset.Spec.Count
-		for _, cur_vm := range currentVMs {
-			if !cur_vm.Status.Allocated {
-				v.hfClientSet.HobbyfarmV1().VirtualMachines(util2.GetReleaseNamespace()).Delete(v.ctx, cur_vm.Name, metav1.DeleteOptions{})
-				needed_delete--
-				if needed_delete == 0 {
-					break
-				}
+		// We first calculate how many VMs already have been deleted to avoid deleting more than we need
+		currentlyDeleting := 0
+		for _, x := range currentVMs {
+			if x.DeletionTimestamp != nil {
+				currentlyDeleting++
 			}
 		}
+
+		// We need to delete all over the spec.count minus the VMs that are already being deleted right now.
+		needed_delete := len(currentVMs) - vmset.Spec.Count - currentlyDeleting
+		glog.V(4).Infof("vmset %s needs to delete %d vm's and %d are already flagged as deleted", vmset.Name, needed_delete, currentlyDeleting)
+		for _, cur_vm := range currentVMs {
+			if needed_delete == 0 {
+				break
+			}
+
+			if !cur_vm.Status.Allocated && cur_vm.DeletionTimestamp == nil {
+				v.hfClientSet.HobbyfarmV1().VirtualMachines(util2.GetReleaseNamespace()).Delete(v.ctx, cur_vm.Name, metav1.DeleteOptions{})
+				needed_delete--
+			}
+		}
+		if needed_delete > 0 {
+			glog.V(4).Infof("vmset %d could not delete %d VMs due to some VMs being in use.", vmset.Name, needed_delete)
+		}
 	}
-	//-----------------------------------------------------
+
 	vms, err := v.vmLister.List(labels.Set{
 		"vmset": string(vmset.Name),
 	}.AsSelector())

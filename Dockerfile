@@ -2,10 +2,12 @@
 FROM golang:1.21.1 AS sdk
 
 WORKDIR /app
-COPY . .
+COPY go.mod .
 
 # Change to the directory of the service.
 RUN go mod download -x
+
+COPY . .
 
 # Build the service. The output binary is named "app".
 RUN CGO_ENABLED=0 GOOS=linux go build -v -o /tmp/app

@@ -3,11 +3,11 @@ package accesscode
 import (
 	"context"
 	"fmt"
+	"time"
+
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"sort"
-	"time"
 
 	"github.com/golang/glog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,6 +47,25 @@ func (acc AccessCodeClient) GetAccessCodesWithOTACs(codes []string) ([]hfv1.Acce
 		se, err := acc.hfClientSet.HobbyfarmV1().ScheduledEvents(util2.GetReleaseNamespace()).Get(acc.ctx, otac.Labels[util2.ScheduledEventLabel], metav1.GetOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("error while retrieving one time access codes %v", err)
+		}
+		if otac.Spec.MaxDuration != "" {
+			otac.Spec.MaxDuration, err = util2.GetDurationWithDays(otac.Spec.MaxDuration)
+
+			maxDuration, err := time.ParseDuration(otac.Spec.MaxDuration)
+			if err != nil {
+				glog.V(4).Infof("Error parsing OTAC %s MaxDuration '%s': %s", otac.Name, otac.Spec.MaxDuration, err)
+				continue
+			}
+			redeemedTimestamp, err := time.Parse(time.UnixDate, otac.Spec.RedeemedTimestamp)
+
+			if err != nil {
+				return nil, fmt.Errorf("error while parsing redeemedTimestamp time for OTAC %s: %v", otac.Name, err)
+			}
+
+			if time.Now().After(redeemedTimestamp.Add(maxDuration)) { // if the access code is expired don't return any scenarios
+				glog.V(4).Infof("OTAC %s reached MaxDuration of %s", otac.Name, otac.Spec.MaxDuration)
+				continue
+			}
 		}
 		codes = append(codes, se.Spec.AccessCode)
 	}
@@ -163,71 +182,4 @@ func (acc AccessCodeClient) GetCourseIds(code string) ([]string, error) {
 	}
 
 	return accessCode.Spec.Courses, nil
-}
-
-func (acc AccessCodeClient) GetClosestAccessCode(userID string, scenarioOrCourseId string) (string, error) {
-	// basically let's get all of the access codes, sort them by expiration, and start going down the list looking for access codes.
-
-	user, err := acc.hfClientSet.HobbyfarmV2().Users(util2.GetReleaseNamespace()).Get(acc.ctx, userID, metav1.GetOptions{}) // @TODO: FIX THIS TO NOT DIRECTLY CALL USER
-
-	if err != nil {
-		return "", fmt.Errorf("error retrieving user: %v", err)
-	}
-
-	rawAccessCodes, err := acc.GetAccessCodesWithOTACs(user.Spec.AccessCodes)
-
-	if err != nil {
-		return "", fmt.Errorf("access codes were not found %v", err)
-	}
-
-	var accessCodes []hfv1.AccessCode
-	for _, code := range rawAccessCodes {
-		for _, s := range code.Spec.Scenarios {
-			if s == scenarioOrCourseId {
-				accessCodes = append(accessCodes, code)
-				break
-			}
-		}
-
-		for _, c := range code.Spec.Courses {
-			if c == scenarioOrCourseId {
-				accessCodes = append(accessCodes, code)
-				break
-			}
-		}
-	}
-
-	if len(accessCodes) == 0 {
-		return "", fmt.Errorf("access codes were not found for user %s with scenario or course id %s", userID, scenarioOrCourseId)
-	}
-
-	sort.Slice(accessCodes, func(i, j int) bool {
-		if accessCodes[i].Spec.Expiration == "" || accessCodes[j].Spec.Expiration == "" {
-			if accessCodes[i].Spec.Expiration == "" {
-				return false
-			}
-			if accessCodes[j].Spec.Expiration == "" {
-				return true
-			}
-		}
-		iExp, err := time.Parse(time.UnixDate, accessCodes[i].Spec.Expiration)
-		if err != nil {
-			return false
-		}
-		jExp, err := time.Parse(time.UnixDate, accessCodes[j].Spec.Expiration)
-		if err != nil {
-			return true
-		}
-		return iExp.Before(jExp)
-	})
-
-	if glog.V(6) {
-		var accessCodesList []string
-		for _, ac := range accessCodes {
-			accessCodesList = append(accessCodesList, ac.Spec.Code)
-		}
-		glog.Infof("Access code list was %v", accessCodesList)
-	}
-
-	return accessCodes[0].Name, nil
 }

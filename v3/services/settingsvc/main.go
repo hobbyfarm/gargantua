@@ -30,7 +30,7 @@ func init() {
 }
 
 func main() {
-	cfg, hfClient := microservices.BuildClusterConfig(serviceConfig)
+	cfg, hfClient, _ := microservices.BuildClusterConfig(serviceConfig)
 
 	namespace := util.GetReleaseNamespace()
 
@@ -77,13 +77,14 @@ func main() {
 	settingservice.Preinstall(ctx, ss)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
 	}()
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		settingServer, err := settingservice.NewSettingServer(authnClient, authrClient, ss)

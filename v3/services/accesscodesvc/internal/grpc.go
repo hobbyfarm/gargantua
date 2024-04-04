@@ -41,6 +41,7 @@ func (a *GrpcAccessCodeServer) getOtac(id string) (*accessCodeProto.OneTimeAcces
 		Id:                obj.Name,
 		User:              obj.Spec.User,
 		RedeemedTimestamp: obj.Spec.RedeemedTimestamp,
+		MaxDuration:       obj.Spec.MaxDuration,
 	}, nil
 }
 
@@ -108,6 +109,7 @@ func (a *GrpcAccessCodeServer) UpdateOtac(ctx context.Context, otacRequest *acce
 
 		otac.Spec.User = otacRequest.GetUser()
 		otac.Spec.RedeemedTimestamp = otacRequest.GetRedeemedTimestamp()
+		otac.Spec.MaxDuration = otacRequest.GetMaxDuration()
 		otac.Labels[util.UserLabel] = otacRequest.GetUser()
 
 		_, updateErr := a.hfClientSet.HobbyfarmV1().OneTimeAccessCodes(util.GetReleaseNamespace()).Update(a.ctx, otac, metav1.UpdateOptions{})

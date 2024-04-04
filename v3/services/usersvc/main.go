@@ -31,7 +31,7 @@ func init() {
 }
 
 func main() {
-	cfg, hfClient := microservices.BuildClusterConfig(serviceConfig)
+	cfg, hfClient, _ := microservices.BuildClusterConfig(serviceConfig)
 
 	namespace := util.GetReleaseNamespace()
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
@@ -78,13 +78,14 @@ func main() {
 	user.RegisterUserSvcServer(gs, us)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
 	}()
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
@@ -95,7 +96,8 @@ func main() {
 		microservices.StartAPIServer(userServer)
 	}()
 
-	stopCh := signals.SetupSignalHandler()
-	hfInformerFactory.Start(stopCh)
+	stopInformerFactoryCh := signals.SetupSignalHandler()
+	hfInformerFactory.Start(stopInformerFactoryCh)
+
 	wg.Wait()
 }
