@@ -562,3 +562,23 @@ func (a *AuthServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
 
 	util.ReturnHTTPContent(w, r, http.StatusOK, "access_set", encodedAS)
 }
+
+func (a AuthServer) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("Authorization")
+	user, err := a.internalAuthnServer.AuthN(r.Context(), &authn.AuthNRequest{
+		Token: token,
+	})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, http.StatusUnauthorized, "unauthorized", "unauthorized")
+		return
+	}
+
+	// TODO when session service is implemented get active sessions for this user and delete them here
+	// TODO remove rolebindings that where attached to this user
+	
+	_, err = a.userClient.DeleteUser(r.Context(), &userProto.UserId{Id: user.GetId()})
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "error", "Error during account deletion")
+	}
+}
