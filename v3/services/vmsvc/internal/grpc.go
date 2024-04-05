@@ -2,8 +2,6 @@ package vmservice
 
 import (
 	"context"
-	"fmt"
-	"math/rand"
 
 	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	vmProto "github.com/hobbyfarm/gargantua/v3/protos/vm"
@@ -40,12 +38,11 @@ func NewGrpcVMServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInfo
 }
 
 func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmProto.CreateVMRequest) (*empty.Empty, error) {
-	var id string
 	var ownerReferenceId string
 	var ownerReferenceUid types.UID
 	var ownerReferenceKind string
 
-	// id := req.GetId()
+	id := req.GetId()
 	vmTemplateId := req.GetVmTemplateId()
 	sshUserName := req.GetSshUsername()
 	protocol := req.GetProtocol()
@@ -72,12 +69,10 @@ func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmProto.CreateVMReques
 		ownerReferenceId = vmSetId
 		ownerReferenceUid = types.UID(vmSetUid)
 		ownerReferenceKind = "VirtualMachineSet"
-		id = util.GetVMSetBaseName(ownerReferenceId)
 	} else {
 		ownerReferenceId = vmClaimId
 		ownerReferenceUid = types.UID(vmClaimUid)
 		ownerReferenceKind = "VirtualMachineClaim"
-		id = fmt.Sprintf("%s-%08x", ownerReferenceId, rand.Uint32())
 	}
 
 	requiredStringParams := map[string]string{
