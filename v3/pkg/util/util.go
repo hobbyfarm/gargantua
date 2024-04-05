@@ -17,6 +17,10 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
+	environmentProto "github.com/hobbyfarm/gargantua/v3/protos/environment"
+	"github.com/hobbyfarm/gargantua/v3/protos/general"
+	vmProto "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	vmtemplateProto "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 
 	"github.com/golang/glog"
 	"golang.org/x/crypto/ssh"
@@ -431,25 +435,25 @@ func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environm
 	return virtualMachineCount, maximumVirtualMachineCount, nil
 }
 
-func CountMachinesPerTemplateAndEnvironment(vmLister v1.VirtualMachineLister, template string, enviroment string) (int, error) {
+func CountMachinesPerTemplateAndEnvironment(ctx context.Context, vmClient vmProto.VMSvcClient, template string, enviroment string) (int, error) {
 	vmLabels := labels.Set{
 		hflabels.EnvironmentLabel:       enviroment,
 		hflabels.VirtualMachineTemplate: template,
 	}
 
-	vms, err := vmLister.List(vmLabels.AsSelector())
-	return len(vms), err
+	vmList, err := vmClient.ListVM(ctx, &general.ListOptions{LabelSelector: vmLabels.AsSelector().String(), LoadFromCache: true})
+	return len(vmList.GetVms()), err
 }
 
-func CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(vmLister v1.VirtualMachineLister, template string, enviroment string, se string) (int, error) {
+func CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(ctx context.Context, vmClient vmProto.VMSvcClient, template string, enviroment string, se string) (int, error) {
 	vmLabels := labels.Set{
 		hflabels.EnvironmentLabel:       enviroment,
 		hflabels.VirtualMachineTemplate: template,
 		hflabels.ScheduledEventLabel:    se,
 	}
 
-	vms, err := vmLister.List(vmLabels.AsSelector())
-	return len(vms), err
+	vmList, err := vmClient.ListVM(ctx, &general.ListOptions{LabelSelector: vmLabels.AsSelector().String(), LoadFromCache: true})
+	return len(vmList.GetVms()), err
 }
 
 func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context) (Maximus, error) {
@@ -489,15 +493,15 @@ func GetReleaseNamespace() string {
 	return provisionNS
 }
 
-func GetVMConfig(env *hfv1.Environment, vmt *hfv1.VirtualMachineTemplate) map[string]string {
-	envSpecificConfigFromEnv := env.Spec.EnvironmentSpecifics
-	envTemplateInfo, exists := env.Spec.TemplateMapping[vmt.Name]
+func GetVMConfig(env *environmentProto.Environment, vmt *vmtemplateProto.VMTemplate) map[string]string {
+	envSpecificConfigFromEnv := env.EnvironmentSpecifics
+	envTemplateInfo, exists := env.TemplateMapping[vmt.GetId()]
 
 	config := make(map[string]string)
-	config["image"] = vmt.Spec.Image
+	config["image"] = vmt.GetImage()
 
 	// First copy VMT Details (default)
-	for k, v := range vmt.Spec.ConfigMap {
+	for k, v := range vmt.GetConfigMap() {
 		config[k] = v
 	}
 
@@ -509,7 +513,7 @@ func GetVMConfig(env *hfv1.Environment, vmt *hfv1.VirtualMachineTemplate) map[st
 	//This environment has specifics for this vmt
 	if exists {
 		// Override with specific from VM on this environment
-		for k, v := range envTemplateInfo {
+		for k, v := range envTemplateInfo.GetValue() {
 			config[k] = v
 		}
 	}
