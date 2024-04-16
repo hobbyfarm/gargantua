@@ -1,4 +1,4 @@
-package scheduledevent
+package registry
 
 import (
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"

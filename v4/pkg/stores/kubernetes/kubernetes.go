@@ -6,8 +6,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v4/pkg/scheme"
 	"github.com/hobbyfarm/gargantua/v4/pkg/stores/registry"
 	"github.com/hobbyfarm/gargantua/v4/pkg/stores/registry/accesscode"
-	"github.com/hobbyfarm/gargantua/v4/pkg/stores/registry/environment"
-	"github.com/hobbyfarm/gargantua/v4/pkg/stores/registry/scheduledevent"
 	"github.com/hobbyfarm/mink/pkg/serializer"
 	remote "github.com/hobbyfarm/mink/pkg/strategy/remote"
 	"k8s.io/apiserver/pkg/registry/rest"
@@ -76,7 +74,7 @@ func V4Alpha1APIGroups(client client.WithWatch) (map[string]rest.Storage, error)
 		return nil, err
 	}
 
-	environmentStorage, err := environment.NewV4alpha1Storage(environmentRemote, providerRemote,
+	environmentStorage, err := registry.NewV4alpha1Storage(environmentRemote, providerRemote,
 		machineSetRemote, machineRemote, scheduledEventRemote)
 	if err != nil {
 		return nil, err
@@ -97,12 +95,12 @@ func V4Alpha1APIGroups(client client.WithWatch) (map[string]rest.Storage, error)
 		return nil, err
 	}
 
-	scheduledEventStorage, err := scheduledevent.NewV4alpha1Storage(scheduledEventRemote)
+	scheduledEventStorage, err := registry.NewV4alpha1Storage(scheduledEventRemote)
 	if err != nil {
 		return nil, err
 	}
 
-	accessCodeStorage, err := accesscode.Newv4alpha1Storage(accessCodeRemote)
+	accessCodeStorage, err := registry.Newv4alpha1Storage(accessCodeRemote)
 	if err != nil {
 		return nil, err
 	}

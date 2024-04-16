@@ -1,10 +1,9 @@
-package environment
+package registry
 
 import (
 	"context"
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
 	labels2 "github.com/hobbyfarm/gargantua/v4/pkg/labels"
-	"github.com/hobbyfarm/gargantua/v4/pkg/stores/registry"
 	"github.com/hobbyfarm/mink/pkg/stores"
 	"github.com/hobbyfarm/mink/pkg/strategy"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -50,17 +49,17 @@ func (ev *v4alpha1EnvironmentValidator) ValidateDelete(ctx context.Context, obj 
 		labels2.EnvironmentLabel: env.Name,
 	}
 
-	if err := registry.HandleConflictList(ctx, env.Namespace, ev.machineSetLister, environmentSelector, env.Name); err != nil {
+	if err := HandleConflictList(ctx, env.Namespace, ev.machineSetLister, environmentSelector, env.Name); err != nil {
 		return err
 	}
 
-	if err := registry.HandleConflictList(ctx, env.Namespace, ev.machineLister, environmentSelector, env.Name); err != nil {
+	if err := HandleConflictList(ctx, env.Namespace, ev.machineLister, environmentSelector, env.Name); err != nil {
 		return err
 	}
 
 	// TODO: Make sure that we add logic to the controllers to set the complete label to true
 	environmentSelector[labels2.ScheduledEventCompleteLabel] = "True"
-	if err := registry.HandleConflictList(ctx, env.Namespace, ev.scheduledEventLister, environmentSelector, env.Name); err != nil {
+	if err := HandleConflictList(ctx, env.Namespace, ev.scheduledEventLister, environmentSelector, env.Name); err != nil {
 		return err
 	}
 
@@ -85,7 +84,7 @@ func (ev *v4alpha1EnvironmentValidator) doBasicValidations(ctx context.Context, 
 	}
 
 	// validate configuration
-	if err := registry.ValidateProviderConfigurationMap(env.Spec.ProviderConfiguration, prov); err != nil {
+	if err := ValidateProviderConfigurationMap(env.Spec.ProviderConfiguration, prov); err != nil {
 		return err
 	}
 
@@ -94,7 +93,7 @@ func (ev *v4alpha1EnvironmentValidator) doBasicValidations(ctx context.Context, 
 	// template_name:
 	//   key: value
 	for _, v := range env.Spec.TemplateConfiguration {
-		if err := registry.ValidateProviderConfigurationMap(v, prov); err != nil {
+		if err := ValidateProviderConfigurationMap(v, prov); err != nil {
 			result = append(result, err...)
 		}
 	}

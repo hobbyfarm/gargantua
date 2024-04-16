@@ -1,4 +1,4 @@
-package accesscode
+package registry
 
 import (
 	"context"
