@@ -1,4 +1,4 @@
-package registry
+package accesscode
 
 import (
 	"context"
@@ -10,11 +10,11 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 )
 
-type accessCodeValidator struct {
+type v4alpha1Validator struct {
 }
 
-func NewAccessCodeStorage(accessCodeStrategy strategy.CompleteStrategy) (rest.Storage, error) {
-	acv := &accessCodeValidator{}
+func Newv4alpha1Storage(accessCodeStrategy strategy.CompleteStrategy) (rest.Storage, error) {
+	acv := &v4alpha1Validator{}
 
 	return stores.NewBuilder(accessCodeStrategy.Scheme(), &v4alpha1.AccessCode{}).
 		WithCompleteCRUD(accessCodeStrategy).
@@ -22,15 +22,15 @@ func NewAccessCodeStorage(accessCodeStrategy strategy.CompleteStrategy) (rest.St
 		WithValidateUpdate(acv).Build(), nil
 }
 
-func (acv *accessCodeValidator) Validate(ctx context.Context, obj runtime.Object) field.ErrorList {
+func (acv *v4alpha1Validator) Validate(ctx context.Context, obj runtime.Object) field.ErrorList {
 	return acv.basicValidation(ctx, obj)
 }
 
-func (acv *accessCodeValidator) ValidateUpdate(ctx context.Context, obj, old runtime.Object) field.ErrorList {
+func (acv *v4alpha1Validator) ValidateUpdate(ctx context.Context, obj, old runtime.Object) field.ErrorList {
 	return acv.basicValidation(ctx, obj)
 }
 
-func (acv *accessCodeValidator) basicValidation(ctx context.Context, obj runtime.Object) field.ErrorList {
+func (acv *v4alpha1Validator) basicValidation(ctx context.Context, obj runtime.Object) field.ErrorList {
 	accessCode := obj.(*v4alpha1.AccessCode)
 
 	if accessCode.Spec.Code == "" {

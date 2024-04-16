@@ -33,43 +33,76 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCode":                schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCode(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCodeList":            schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCodeList(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCodeSpec":            schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCodeSpec(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCodeStatus":          schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCodeStatus(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AvailabilityConfiguration": schema_pkg_apis_hobbyfarmio_v4alpha1_AvailabilityConfiguration(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Environment":               schema_pkg_apis_hobbyfarmio_v4alpha1_Environment(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.EnvironmentList":           schema_pkg_apis_hobbyfarmio_v4alpha1_EnvironmentList(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.EnvironmentSpec":           schema_pkg_apis_hobbyfarmio_v4alpha1_EnvironmentSpec(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.EnvironmentStatus":         schema_pkg_apis_hobbyfarmio_v4alpha1_EnvironmentStatus(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Machine":                   schema_pkg_apis_hobbyfarmio_v4alpha1_Machine(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaim":              schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaim(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaimList":          schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaimList(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaimSpec":          schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaimSpec(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaimStatus":        schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaimStatus(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineList":               schema_pkg_apis_hobbyfarmio_v4alpha1_MachineList(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineRequirement":        schema_pkg_apis_hobbyfarmio_v4alpha1_MachineRequirement(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSet":                schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSet(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetList":            schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSetList(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetSpec":            schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSetSpec(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetStatus":          schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSetStatus(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSpec":               schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSpec(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineStatus":             schema_pkg_apis_hobbyfarmio_v4alpha1_MachineStatus(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineTemplate":           schema_pkg_apis_hobbyfarmio_v4alpha1_MachineTemplate(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineTemplateList":       schema_pkg_apis_hobbyfarmio_v4alpha1_MachineTemplateList(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineTemplateSpec":       schema_pkg_apis_hobbyfarmio_v4alpha1_MachineTemplateSpec(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Provider":                  schema_pkg_apis_hobbyfarmio_v4alpha1_Provider(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProviderList":              schema_pkg_apis_hobbyfarmio_v4alpha1_ProviderList(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProviderSpec":              schema_pkg_apis_hobbyfarmio_v4alpha1_ProviderSpec(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEvent":            schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEvent(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventList":        schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventList(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventSpec":        schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventSpec(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventStatus":      schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventStatus(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Session":                   schema_pkg_apis_hobbyfarmio_v4alpha1_Session(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionList":               schema_pkg_apis_hobbyfarmio_v4alpha1_SessionList(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionSpec":               schema_pkg_apis_hobbyfarmio_v4alpha1_SessionSpec(ref),
-		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionStatus":             schema_pkg_apis_hobbyfarmio_v4alpha1_SessionStatus(ref),
-		"k8s.io/api/core/v1.AWSElasticBlockStoreVolumeSource":                                        schema_k8sio_api_core_v1_AWSElasticBlockStoreVolumeSource(ref),
+		"github.com/hobbyfarm/gargantua/v3/pkg/property.Property":                                         schema_gargantua_v3_pkg_property_Property(ref),
+		"github.com/hobbyfarm/gargantua/v3/pkg/property.SettingValidation":                                schema_gargantua_v3_pkg_property_SettingValidation(ref),
+		"github.com/hobbyfarm/gargantua/v3/pkg/property.TypeConversionError":                              schema_gargantua_v3_pkg_property_TypeConversionError(ref),
+		"github.com/hobbyfarm/gargantua/v3/pkg/property.ValidationError":                                  schema_gargantua_v3_pkg_property_ValidationError(ref),
+		"github.com/hobbyfarm/gargantua/v3/pkg/property.durationChecker":                                  schema_gargantua_v3_pkg_property_durationChecker(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCode":                     schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCode(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCodeList":                 schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCodeList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCodeSpec":                 schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCodeSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AccessCodeStatus":               schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCodeStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.AvailabilityConfiguration":      schema_pkg_apis_hobbyfarmio_v4alpha1_AvailabilityConfiguration(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Course":                         schema_pkg_apis_hobbyfarmio_v4alpha1_Course(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.CourseList":                     schema_pkg_apis_hobbyfarmio_v4alpha1_CourseList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.CourseSpec":                     schema_pkg_apis_hobbyfarmio_v4alpha1_CourseSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Environment":                    schema_pkg_apis_hobbyfarmio_v4alpha1_Environment(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.EnvironmentList":                schema_pkg_apis_hobbyfarmio_v4alpha1_EnvironmentList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.EnvironmentSpec":                schema_pkg_apis_hobbyfarmio_v4alpha1_EnvironmentSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.EnvironmentStatus":              schema_pkg_apis_hobbyfarmio_v4alpha1_EnvironmentStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Machine":                        schema_pkg_apis_hobbyfarmio_v4alpha1_Machine(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaim":                   schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaim(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaimList":               schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaimList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaimSpec":               schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaimSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineClaimStatus":             schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaimStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineList":                    schema_pkg_apis_hobbyfarmio_v4alpha1_MachineList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineProvisioningRequirement": schema_pkg_apis_hobbyfarmio_v4alpha1_MachineProvisioningRequirement(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineRequirement":             schema_pkg_apis_hobbyfarmio_v4alpha1_MachineRequirement(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSet":                     schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSet(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetList":                 schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSetList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetSpec":                 schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSetSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetStatus":               schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSetStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSpec":                    schema_pkg_apis_hobbyfarmio_v4alpha1_MachineSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineStatus":                  schema_pkg_apis_hobbyfarmio_v4alpha1_MachineStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineTemplate":                schema_pkg_apis_hobbyfarmio_v4alpha1_MachineTemplate(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineTemplateList":            schema_pkg_apis_hobbyfarmio_v4alpha1_MachineTemplateList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineTemplateSpec":            schema_pkg_apis_hobbyfarmio_v4alpha1_MachineTemplateSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCode":              schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCode(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeList":          schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSpec":          schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeStatus":        schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.PredefinedService":              schema_pkg_apis_hobbyfarmio_v4alpha1_PredefinedService(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.PredefinedServiceList":          schema_pkg_apis_hobbyfarmio_v4alpha1_PredefinedServiceList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.PredefinedServiceSpec":          schema_pkg_apis_hobbyfarmio_v4alpha1_PredefinedServiceSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Progress":                       schema_pkg_apis_hobbyfarmio_v4alpha1_Progress(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Provider":                       schema_pkg_apis_hobbyfarmio_v4alpha1_Provider(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProviderList":                   schema_pkg_apis_hobbyfarmio_v4alpha1_ProviderList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProviderSpec":                   schema_pkg_apis_hobbyfarmio_v4alpha1_ProviderSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Scenario":                       schema_pkg_apis_hobbyfarmio_v4alpha1_Scenario(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioList":                   schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioSpec":                   schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStep":                   schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioStep(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStepList":               schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioStepList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStepSpec":               schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioStepSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEvent":                 schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEvent(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventList":             schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventSpec":             schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventStatus":           schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Scope":                          schema_pkg_apis_hobbyfarmio_v4alpha1_Scope(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScopeList":                      schema_pkg_apis_hobbyfarmio_v4alpha1_ScopeList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Session":                        schema_pkg_apis_hobbyfarmio_v4alpha1_Session(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionList":                    schema_pkg_apis_hobbyfarmio_v4alpha1_SessionList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionSpec":                    schema_pkg_apis_hobbyfarmio_v4alpha1_SessionSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionStatus":                  schema_pkg_apis_hobbyfarmio_v4alpha1_SessionStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Setting":                        schema_pkg_apis_hobbyfarmio_v4alpha1_Setting(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SettingList":                    schema_pkg_apis_hobbyfarmio_v4alpha1_SettingList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.StepTime":                       schema_pkg_apis_hobbyfarmio_v4alpha1_StepTime(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.User":                           schema_pkg_apis_hobbyfarmio_v4alpha1_User(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.UserList":                       schema_pkg_apis_hobbyfarmio_v4alpha1_UserList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.UserSpec":                       schema_pkg_apis_hobbyfarmio_v4alpha1_UserSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.UserStatus":                     schema_pkg_apis_hobbyfarmio_v4alpha1_UserStatus(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition":                         schema_gargantua_v4_pkg_genericcondition_GenericCondition(ref),
+		"k8s.io/api/core/v1.AWSElasticBlockStoreVolumeSource":                                             schema_k8sio_api_core_v1_AWSElasticBlockStoreVolumeSource(ref),
 		"k8s.io/api/core/v1.Affinity":                                    schema_k8sio_api_core_v1_Affinity(ref),
 		"k8s.io/api/core/v1.AttachedVolume":                              schema_k8sio_api_core_v1_AttachedVolume(ref),
 		"k8s.io/api/core/v1.AvoidPods":                                   schema_k8sio_api_core_v1_AvoidPods(ref),
@@ -360,6 +393,178 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 	}
 }
 
+func schema_gargantua_v3_pkg_property_Property(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"dataType": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+					"valueType": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+					"SettingValidation": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v3/pkg/property.SettingValidation"),
+						},
+					},
+				},
+				Required: []string{"dataType", "valueType", "displayName", "SettingValidation"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v3/pkg/property.SettingValidation"},
+	}
+}
+
+func schema_gargantua_v3_pkg_property_SettingValidation(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"required": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"maximum": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"number"},
+							Format: "double",
+						},
+					},
+					"minimum": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"number"},
+							Format: "double",
+						},
+					},
+					"maxLength": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int64",
+						},
+					},
+					"minLength": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"integer"},
+							Format: "int64",
+						},
+					},
+					"format": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"pattern": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"enum": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"default": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"uniqueItems": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_gargantua_v3_pkg_property_TypeConversionError(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+				},
+				Required: []string{"message"},
+			},
+		},
+	}
+}
+
+func schema_gargantua_v3_pkg_property_ValidationError(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+				},
+				Required: []string{"message"},
+			},
+		},
+	}
+}
+
+func schema_gargantua_v3_pkg_property_durationChecker(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCode(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -461,14 +666,6 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCodeSpec(ref common.ReferenceCal
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
-					"code": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Code is the actual access code.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 					"scenarios": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Scenarios is a list of the names of scenarios to which this AccessCode shall grant access.",
@@ -542,7 +739,6 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_AccessCodeSpec(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"code"},
 			},
 		},
 		Dependencies: []string{
@@ -596,6 +792,217 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_AvailabilityConfiguration(ref common.R
 				Required: []string{"availability"},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_Course(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.CourseSpec"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.CourseSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_CourseList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Course"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Course", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_CourseSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayName is the display (pretty) name of the course.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"description": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Description is the string description of the course.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"scenarios": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Scenarios is a slice of object names for scenarios that are in this course.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"categories": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Categories is a slice of categories (strings) that this course fits into. Categories may be used to filter Course objects in interfaces.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"tags": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tags is a slice of strings that represent tags applied to this course. Tags may be used to filter Course objects in interfaces.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"machineRequirements": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineRequirements is a slice of MachineRequirement structs that define what machines are required for this Course.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineRequirement"),
+									},
+								},
+							},
+						},
+					},
+					"keepaliveDuration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "KeepaliveDuration is a string representing the period of time a user can go inactive before their machines will be reaped. It can be viewed as a countdown timer that resets each time the user interface submits a keepalive ping to the API. For example if this string is \"1h\", machines will be reaped one hour after the last keepalive ping is received. If a ping is received before the 1h elapses, the timer starts over with a fresh 1h period.\n\nThe format of this field is an integer followed by an 'h' or 'm' designation for hours or minutes, respectively. MUST be parseable by time.ParseDuration() Examples include \"15m\", \"5h\", \"48h\", or \"120m\"",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"pauseDuration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PauseDuration is a string representing the period of time a user can prevent the reaping of their machines without continuous keepalive pings. While a Course is paused, the keepalive \"timer\" (described on KeepaliveDuration) is paused and HobbyFarm will not reclaim the Machine. For example, if this string is \"1h\" and KeepaliveDuration is \"30m\", if a user pauses their Course and closes their laptop (thus preventing keepalive pings from the UI), the KeepaliveDuration timer will not start until one hour after the Course was paused. Even if 30 minutes elapses machines will not be reaped as the countdown for keepalive is paused for the duration of the pause. A user may un-pause at any time.\n\nThe format of this field is an integer followed by an 'h' or 'm' designation for hours or minutes, respectively. MUST be parseabl by time.ParseDuration() Examples include \"15m\", \"5h\", \"48h\", or \"120m\"",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"machinePersistenceStrategy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachinePersistenceStrategy determines what HobbyFarm should do with the Machine objects provisioned for this Course after a particular Scenario has been completed. When a user completes a Scenario that is *NOT* part of a Course, their Machine resources are reclaimed and recycled for the next user. However, Courses may have multiple Scenarios whose content (and thus, machines) flow together. By setting a persistence strategy of \"PersistThroughCourse\", machines will *NOT* be reclaimed after a Scenario is completed - they will live for the life of the Course. Conversely, if a persistence strategy is set to \"NewPerScenario\", old machines will be reclaimed (and new ones provisioned/claimed) for each scenario.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"pauseBehavior": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PauseBehavior describes what sort of behavior affecting pausing should be allowed for this Course. An example is \"CanPause\" which allowed users to pause their course. \"CannotPause\" does not.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"displayName", "description", "scenarios", "categories", "tags", "machineRequirements", "keepaliveDuration", "pauseDuration", "machinePersistenceStrategy", "pauseBehavior"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineRequirement"},
 	}
 }
 
@@ -1056,6 +1463,13 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineClaimStatus(ref common.Referenc
 							Format:      "",
 						},
 					},
+					"machine": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Machine is the object name of the Machine resource claimed by this MachineClaim. Field will be empty unless MachineClaimPhase is either Bound or Terminated.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"Conditions": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Conditions is an array of generic conditions that may crop up on this MachineSet. There are NO guarantees made about the conditions that exist in this slice.",
@@ -1127,11 +1541,11 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineList(ref common.ReferenceCallba
 	}
 }
 
-func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineRequirement(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineProvisioningRequirement(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "MachineRequirement defines for a given MachineType and MachineTemplate, how many of that kind of machine are required. For MachineTypeShared, this is a per- ScheduledEvent requirement. For MachineTypeUser this is a per-User requirement.\n\nProvisioning scenarios:\n 1. Use any existing pools, do not provision machinesets\n    BindStrategy = Any, CreateMachineSets = nil, PreferRequireMachineSets = nil\n 2. Prefer certain existing pools, do not provision machinesets\n    BindStrategy = PreferMachineSet, CreateMachineSets = nil, PreferRequireMachineSets = []string{preferredSets...}\n 3. Require certain existing pools, do not provision machinesets\n    BindStrategy = RequireMachineSet, CreateMachineSets = nil, PreferRequireMachineSets = []string{requiredSets...}\n 4. Use any existing pools, provision machinesets\n    BindStrategy = Any, CreateMachineSets = []MachineSetSpec{newSets...}, PreferRequireMachineSets = nil\n 5. Prefer certain existing pools, provision machinesets (auto-prefers provisioned machinesets)\n    BindStrategy = PreferMachineSets, CreateMachineSets = []MachineSetSpec{newSets...},\n    PreferRequireMachineSets = []string{preferredSets... + newSets...}\n    (preferredSets may be nil, newSets must not be)\n 6. Require certain existing pools, provision machinesets (auto-requires provisioned machinesets)\n    BindStrategy = RequireMachineSets, CreateMachineSets = []MachineSetSpec{newSets...},\n    PreferRequireMachineSets = []string{requiredSets... + newSets...}\n    (requiredSets may be nil, newSets must not be)",
+				Description: "MachineProvisioningRequirement defines for a given MachineType and MachineTemplate, how many of that kind of machine are required. For MachineTypeShared, this is a per- ScheduledEvent requirement. For MachineTypeUser this is a per-User requirement.\n\nProvisioning scenarios:\n 1. Use any existing pools, do not provision machinesets\n    BindStrategy = Any, CreateMachineSets = nil, PreferRequireMachineSets = nil\n 2. Prefer certain existing pools, do not provision machinesets\n    BindStrategy = PreferMachineSet, CreateMachineSets = nil, PreferRequireMachineSets = []string{preferredSets...}\n 3. Require certain existing pools, do not provision machinesets\n    BindStrategy = RequireMachineSet, CreateMachineSets = nil, PreferRequireMachineSets = []string{requiredSets...}\n 4. Use any existing pools, provision machinesets\n    BindStrategy = Any, CreateMachineSets = []MachineSetSpec{newSets...}, PreferRequireMachineSets = nil\n 5. Prefer certain existing pools, provision machinesets (auto-prefers provisioned machinesets)\n    BindStrategy = PreferMachineSets, CreateMachineSets = []MachineSetSpec{newSets...},\n    PreferRequireMachineSets = []string{preferredSets... + newSets...}\n    (preferredSets may be nil, newSets must not be)\n 6. Require certain existing pools, provision machinesets (auto-requires provisioned machinesets)\n    BindStrategy = RequireMachineSets, CreateMachineSets = []MachineSetSpec{newSets...},\n    PreferRequireMachineSets = []string{requiredSets... + newSets...}\n    (requiredSets may be nil, newSets must not be)",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"machineTemplate": {
@@ -1160,7 +1574,7 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineRequirement(ref common.Referenc
 					},
 					"bindStrategy": {
 						SchemaProps: spec.SchemaProps{
-							Description: "BindStrategy determines how this MachineRequirement shall be fulfilled. BindStrategyAny = Fill this requirement from any matching machine set BindStrategyPreferMachineSet = Fill this requirement first from a list of MachineSet, then from any matching machine set BindStrategyRequireMachineSet = Only fill this requirement from a list of MachineSet",
+							Description: "BindStrategy determines how this MachineProvisioningRequirement shall be fulfilled. BindStrategyAny = Fill this requirement from any matching machine set BindStrategyPreferMachineSet = Fill this requirement first from a list of MachineSet, then from any matching machine set BindStrategyRequireMachineSet = Only fill this requirement from a list of MachineSet",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
@@ -1193,6 +1607,44 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineRequirement(ref common.Referenc
 		},
 		Dependencies: []string{
 			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineSetSpec"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineRequirement(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "MachineRequirement defines for a given MachineType and MachineTemplate, how many are required. This struct is split out from MachineProvisioningRequirement because it is re-used in contexts that do not require provisioning strategies, such as Course and Scenario.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"machineTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineTemplate is the name of the required MachineTemplate",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"count": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Count is the number of required Machines either per-User (when MachineType = MachineTypeUser) or per- ScheduledEvent (when MachineType = MachineTypeShared)",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"machineType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineType is the type of machine to require",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"machineTemplate", "count", "machineType"},
+			},
+		},
 	}
 }
 
@@ -1718,10 +2170,444 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_MachineTemplateSpec(ref common.Referen
 							Format:      "",
 						},
 					},
+					"predefinedServices": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PredefinedServices lists the object names of all PredefinedService resources that this template SHOULD offer.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"extraConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ExtraConfig provides a place where future use cases can store configuration items. This can also be used for configuration of a nature that does not meet HobbyFarm uses but may have other requirements by users, providers, or machines.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"machineType", "displayName", "connectProtocol"},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCode(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "OneTimeAccessCode is the representation of a single-use access code",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeStatus"),
+						},
+					},
+				},
+				Required: []string{"spec", "status"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSpec", "github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCode"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCode", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"notBefore": {
+						SchemaProps: spec.SchemaProps{
+							Description: "NotBefore is the timestamp before which a OneTimeAccessCode is invalid.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"notAfter": {
+						SchemaProps: spec.SchemaProps{
+							Description: "NotAfter is the timestamp after which a OneTimeAccessCode is invalid.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"user": {
+						SchemaProps: spec.SchemaProps{
+							Description: "User is the object name of the user for whom the OneTimeAccessCode is intended.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"notBefore", "notAfter", "user"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"redeemed": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Redeemed is the timestamp marking when the OneTimeAccessCode was redeemed. nil if not redeemed.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_PredefinedService(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PredefinedService represents a service (as in application, or web service) that is hosted on a Machine. Predefined",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.PredefinedServiceSpec"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.PredefinedServiceSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_PredefinedServiceList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.PredefinedService"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.PredefinedService", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_PredefinedServiceSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayName is the display (pretty) name of the PredefinedService",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"port": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Port is the network port of the service",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"displayOptions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayOptions is a list of display (ui) options that this service requires.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"httpOptions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "HttpOptions is a list of http options that this service requires.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"path": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Path is the path on the VM that the service is accessible upon",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"cloudConfig": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CloudConfig contains the cloud-config data used to setup this service on the machine",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"displayName", "port", "displayOptions", "httpOptions", "path", "cloudConfig"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_Progress(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"currentStep": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CurrentStep is the 0-indexed step of the scenario that the user is currently on, or was on as of LastUpdate.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"maxStep": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MaxStep is the 0-indexed *furthest* step the user has gotten to. May not be the current step the user is on, if they have backtracked.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"scenario": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Scenario is the object name of the scenario to which this Progress relates.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"course": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Course is the object name of the course to which this Progress relates.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"totalStep": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TotalStep is the total number of steps in the Scenario. It is copied into this struct to make visualizations and reasoning about step progress easier.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"started": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Started is the timestamp when the user started the scenario.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"lasteUpdate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastUpdate is the timestamp when the user interface last updated this struct.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"finished": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Finished is the timestamp when the user finished the scenario.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"stepTimes": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StepTimes stores the timestamps when a user entered a particular step.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.StepTime"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"currentStep", "maxStep", "scenario", "course", "totalStep", "started", "lasteUpdate", "finished", "stepTimes"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.StepTime", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -1856,6 +2742,329 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_ProviderSpec(ref common.ReferenceCallb
 		},
 		Dependencies: []string{
 			"github.com/hobbyfarm/gargantua/v3/pkg/property.Property"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_Scenario(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Scenario represents a unit of learning on a particular topic represented by a series of steps that may include interactions with Machine(s). While defined on a separate resource, Steps are where the content of a Scenario lives. A Scenario also tracks requirements and configurations for Machines, allowed behavior of users, categorization/tagging metadata, and so on.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioSpec"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Scenario"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Scenario", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"string": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayName is the display (pretty) name of the Scenario",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"description": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Description is the description of the Scenario.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"categories": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Categories is a string slice listing the categories in which this Scenario exists.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"tags": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Tags is a string slice listing the tags that are applicable to this Scenario.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"steps": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Steps is a string slice of object names for Step resources. The order in which they appear in this slice is the order in which they are presented.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"machineRequirements": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineRequirements details the required machines for this Scenario. This includes both user machines and shared machines.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineRequirement"),
+									},
+								},
+							},
+						},
+					},
+					"keepaliveDuration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "KeepaliveDuration is a string representing the period of time a user can go inactive before their machines will be reaped. It can be viewed as a countdown timer that resets each time the user interface submits a keepalive ping to the API. For example if this string is \"1h\", machines will be reaped one hour after the last keepalive ping is received. If a ping is received before the 1h elapses, the timer starts over with a fresh 1h period.\n\nThe format of this field is an integer followed by an 'h' or 'm' designation for hours or minutes, respectively. MUST be parseable by time.ParseDuration() Examples include \"15m\", \"5h\", \"48h\", or \"120m\"",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"pauseDuration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PauseDuration is a string representing the period of time a user can prevent the reaping of their machines without continuous keepalive pings. While a Course is paused, the keepalive \"timer\" (described on KeepaliveDuration) is paused and HobbyFarm will not reclaim the Machine. For example, if this string is \"1h\" and KeepaliveDuration is \"30m\", if a user pauses their Course and closes their laptop (thus preventing keepalive pings from the UI), the KeepaliveDuration timer will not start until one hour after the Course was paused. Even if 30 minutes elapses machines will not be reaped as the countdown for keepalive is paused for the duration of the pause. A user may un-pause at any time.\n\nThe format of this field is an integer followed by an 'h' or 'm' designation for hours or minutes, respectively. MUST be parseabl by time.ParseDuration() Examples include \"15m\", \"5h\", \"48h\", or \"120m\"",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"pauseBehavior": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PauseBehavior describes what sort of behavior affecting pausing should be allowed for this Course. An example is \"CanPause\" which allowed users to pause their course. \"CannotPause\" does not.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"string", "description", "categories", "tags", "steps", "machineRequirements", "keepaliveDuration", "pauseDuration", "pauseBehavior"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineRequirement"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioStep(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ScenarioStep holds the content (and title) of a step in one or more scenarios.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStepSpec"),
+						},
+					},
+				},
+				Required: []string{"spec"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStepSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioStepList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStep"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStep", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioStepSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"title": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Title is the base64-encoded title of a Step.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"content": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Content is the base64-encoded content of a Step.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"title", "content"},
+			},
+		},
 	}
 }
 
@@ -2003,7 +3212,7 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventSpec(ref common.Referenc
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineRequirement"),
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineProvisioningRequirement"),
 									},
 								},
 							},
@@ -2052,7 +3261,7 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventSpec(ref common.Referenc
 			},
 		},
 		Dependencies: []string{
-			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineRequirement", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.MachineProvisioningRequirement", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -2100,11 +3309,104 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventStatus(ref common.Refere
 	}
 }
 
-func schema_pkg_apis_hobbyfarmio_v4alpha1_Session(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_hobbyfarmio_v4alpha1_Scope(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Scope is a construct that provides grouping of Setting resources and their visibility in various UIs.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayName is the pretty name of the Scope",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"displayName"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ScopeList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Scope"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Scope", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_Session(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Session holds the information used to track a user's engagement with HobbyFarm on a particular Scenario or Course. It contains information such as the step that the user is on, what machines are assigned to them, when they started, etc.",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"kind": {
 						SchemaProps: spec.SchemaProps{
@@ -2203,40 +3505,46 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_SessionSpec(ref common.ReferenceCallba
 				Properties: map[string]spec.Schema{
 					"scenario": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "Scenario is the object name of the scenario that this session is tracking.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"course": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "Course is the object name of the course that this session is tracking.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"persistenceStrategy": {
 						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
+							Description: "PersistenceStrategy defines what shall happen to the machines being used in this session after the scenario has ended.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"user": {
 						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
+							Description: "User is the object name of the user to whom this Session belongs.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"accessCode": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "AccessCode is the code (not obj name) used to get access to this scenario. May be empty if access code was not used.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"scheduledEvent": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "ScheduledEvent is the object name of the scheduled event from which this Session was started.",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
@@ -2254,7 +3562,8 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_SessionStatus(ref common.ReferenceCall
 				Properties: map[string]spec.Schema{
 					"conditions": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Conditions is a slice of conditions that may impact this session.",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -2267,17 +3576,411 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_SessionStatus(ref common.ReferenceCall
 					},
 					"machineClaim": {
 						SchemaProps: spec.SchemaProps{
+							Description: "MachineClaim is the object name of the MachineClaim generated from this session.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"progress": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Progress is a slice of Progress structs that detail, for a given scenario, what position the user is in.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Progress"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"conditions", "machineClaim", "progress"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Progress", "github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_Setting(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Setting is a configuration option for HobbyFarm. Along with the embedded Property struct is a Value, which is a string encoding of the value.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"dataType": {
+						SchemaProps: spec.SchemaProps{
 							Default: "",
 							Type:    []string{"string"},
 							Format:  "",
 						},
 					},
+					"valueType": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+					"SettingValidation": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v3/pkg/property.SettingValidation"),
+						},
+					},
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Value is the string encoded value of the setting",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
-				Required: []string{"conditions", "machineClaim"},
+				Required: []string{"dataType", "valueType", "displayName", "SettingValidation", "value"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/hobbyfarm/gargantua/v4/pkg/genericcondition.GenericCondition"},
+			"github.com/hobbyfarm/gargantua/v3/pkg/property.SettingValidation", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_SettingList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Setting"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Setting", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_StepTime(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"step": {
+						SchemaProps: spec.SchemaProps{
+							Default: 0,
+							Type:    []string{"integer"},
+							Format:  "int32",
+						},
+					},
+					"time": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+				},
+				Required: []string{"step", "time"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_User(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "User is any user (person, not machine) that interacts with HobbyFarm. Administrators and end-users alike both have User objects to represent them.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.UserSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.UserStatus"),
+						},
+					},
+				},
+				Required: []string{"spec", "status"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.UserSpec", "github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.UserStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_UserList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.User"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"metadata", "items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.User", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_UserSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"principals": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Principals holds a slice of all the identifiers for a user from various authentication sources. For example, a local auth value would be of the form local://[user obj name], e.g. local://u-uijkks349d Other auth sources will have their own forms. LDAP may have a form such as ldap://CN=john.doe,OU=Users,DC=example,DC=com or something else like that.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"accessCodes": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AccessCodes is a slice of all access codes that this user has entered. These values will be the codes themselves, *NOT* the AccessCode object names.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"settings": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Settings holds the settings that the user has configured. Things like terminal theme, dark mode, etc.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"principals", "accessCodes", "settings"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_UserStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"lastLoginTimestamp": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastLoginTimestamp is the timestamp of when the user last logged in.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+				},
+				Required: []string{"lastLoginTimestamp"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+	}
+}
+
+func schema_gargantua_v4_pkg_genericcondition_GenericCondition(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type of cluster condition.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Status of the condition, one of True, False, Unknown.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"lastUpdateTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The last time this condition was updated.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"lastTransitionTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Last time the condition transitioned from one status to another.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The reason for the condition's last transition.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"message": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Human-readable message indicating details about last transition",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"type", "status"},
+			},
+		},
 	}
 }
 

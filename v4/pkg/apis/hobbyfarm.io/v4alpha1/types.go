@@ -119,6 +119,15 @@ type MachineTemplateSpec struct {
 	// It can be overridden by MachineNamePrefix fields further down the "stack"
 	// (e.g. in an Environment)
 	MachineNamePrefix string `json:"machineNamePrefix,omitempty"`
+
+	// PredefinedServices lists the object names of all PredefinedService resources that this
+	// template SHOULD offer.
+	PredefinedServices []string `json:"predefinedServices,omitempty"`
+
+	// ExtraConfig provides a place where future use cases can store configuration items.
+	// This can also be used for configuration of a nature that does not meet HobbyFarm uses
+	// but may have other requirements by users, providers, or machines.
+	ExtraConfig map[string]string `json:"extraConfig,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -435,10 +444,10 @@ type MachineClaimSpec struct {
 type MachineClaimPhase string
 
 const (
-	MachineClaimPhaseRequested   MachineClaimPhase = "Requested"
-	MachineClaimPhaseBound       MachineClaimPhase = "Bound"
-	MachineClaimPhaseFailed      MachineClaimPhase = "Failed"
-	MachineClaimPhaseTerminating MachineClaimPhase = "Terminated"
+	MachineClaimPhaseRequested  MachineClaimPhase = "Requested"
+	MachineClaimPhaseBound      MachineClaimPhase = "Bound"
+	MachineClaimPhaseFailed     MachineClaimPhase = "Failed"
+	MachineClaimPhaseTerminated MachineClaimPhase = "Terminated"
 )
 
 type MachineClaimStatus struct {
@@ -451,6 +460,10 @@ type MachineClaimStatus struct {
 	// The MachineClaimPhase can also change to Terminated via other mechanisms such as the user's time expiring
 	// or the Machine becoming unavailable.
 	Phase MachineClaimPhase `json:"phase"`
+
+	// Machine is the object name of the Machine resource claimed by this MachineClaim.
+	// Field will be empty unless MachineClaimPhase is either Bound or Terminated.
+	Machine string `json:"machine,omitempty"`
 
 	// Conditions is an array of generic conditions that may crop up on this MachineSet.
 	// There are NO guarantees made about the conditions that exist in this slice.
@@ -493,7 +506,22 @@ const (
 	ExpirationStrategySoft   = "Soft"
 )
 
-// MachineRequirement defines for a given MachineType and MachineTemplate, how many of that kind of machine
+// MachineRequirement defines for a given MachineType and MachineTemplate, how many are required.
+// This struct is split out from MachineProvisioningRequirement because it is re-used
+// in contexts that do not require provisioning strategies, such as Course and Scenario.
+type MachineRequirement struct {
+	// MachineTemplate is the name of the required MachineTemplate
+	MachineTemplate string `json:"machineTemplate"`
+
+	// Count is the number of required Machines either per-User (when MachineType = MachineTypeUser)
+	// or per- ScheduledEvent (when MachineType = MachineTypeShared)
+	Count int `json:"count"`
+
+	// MachineType is the type of machine to require
+	MachineType MachineType `json:"machineType"`
+}
+
+// MachineProvisioningRequirement defines for a given MachineType and MachineTemplate, how many of that kind of machine
 // are required. For MachineTypeShared, this is a per- ScheduledEvent requirement. For MachineTypeUser this is a
 // per-User requirement.
 //
@@ -514,18 +542,10 @@ const (
 //     BindStrategy = RequireMachineSets, CreateMachineSets = []MachineSetSpec{newSets...},
 //     PreferRequireMachineSets = []string{requiredSets... + newSets...}
 //     (requiredSets may be nil, newSets must not be)
-type MachineRequirement struct {
-	// MachineTemplate is the name of the required MachineTemplate
-	MachineTemplate string `json:"machineTemplate"`
+type MachineProvisioningRequirement struct {
+	MachineRequirement `json:",inline"`
 
-	// Count is the number of required Machines either per-User (when MachineType = MachineTypeUser)
-	// or per- ScheduledEvent (when MachineType = MachineTypeShared)
-	Count int `json:"count"`
-
-	// MachineType is the type of machine to require
-	MachineType MachineType `json:"machineType"`
-
-	// BindStrategy determines how this MachineRequirement shall be fulfilled.
+	// BindStrategy determines how this MachineProvisioningRequirement shall be fulfilled.
 	// BindStrategyAny = Fill this requirement from any matching machine set
 	// BindStrategyPreferMachineSet = Fill this requirement first from a list of MachineSet, then from any matching machine set
 	// BindStrategyRequireMachineSet = Only fill this requirement from a list of MachineSet
@@ -564,7 +584,7 @@ type ScheduledEventSpec struct {
 
 	// RequiredMachines defines the number of machines of each MachineTemplate that are required for this
 	// ScheduledEvent.
-	RequiredMachines []MachineRequirement `json:"requiredMachines"`
+	RequiredMachines []MachineProvisioningRequirement `json:"requiredMachines"`
 
 	// PrintingOption defines if users should be allowed to print out the content to which they have access.
 	PrintingOption PrintingOption `json:"printingOption"` // PrintingEnabled, PrintingDisabled
@@ -615,9 +635,6 @@ type AccessCodeList struct {
 }
 
 type AccessCodeSpec struct {
-	// Code is the actual access code.
-	Code string `json:"code"`
-
 	// Scenarios is a list of the names of scenarios to which this AccessCode shall grant access.
 	Scenarios []string `json:"scenarios,omitempty"`
 
@@ -663,6 +680,9 @@ const (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Session holds the information used to track a user's engagement with HobbyFarm on a particular
+// Scenario or Course. It contains information such as the step that the user is on, what
+// machines are assigned to them, when they started, etc.
 type Session struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -681,15 +701,458 @@ type SessionList struct {
 }
 
 type SessionSpec struct {
-	Scenario            string                     `json:"scenario,omitempty"`
-	Course              string                     `json:"course,omitempty"`
+	// Scenario is the object name of the scenario that this session is tracking.
+	Scenario string `json:"scenario,omitempty"`
+
+	// Course is the object name of the course that this session is tracking.
+	Course string `json:"course,omitempty"`
+
+	// PersistenceStrategy defines what shall happen to the machines being used
+	// in this session after the scenario has ended.
 	PersistenceStrategy MachinePersistenceStrategy `json:"persistenceStrategy"`
-	User                string                     `json:"user"`
-	AccessCode          string                     `json:"accessCode,omitempty"`
-	ScheduledEvent      string                     `json:"scheduledEvent,omitempty"`
+
+	// User is the object name of the user to whom this Session belongs.
+	User string `json:"user"`
+
+	// AccessCode is the code (not obj name) used to get access to this scenario.
+	// May be empty if access code was not used.
+	AccessCode string `json:"accessCode,omitempty"`
+
+	// ScheduledEvent is the object name of the scheduled event from which
+	// this Session was started.
+	ScheduledEvent string `json:"scheduledEvent,omitempty"`
 }
 
 type SessionStatus struct {
-	Conditions   []genericcondition2.GenericCondition `json:"conditions"`
-	MachineClaim string                               `json:"machineClaim"`
+	// Conditions is a slice of conditions that may impact this session.
+	Conditions []genericcondition2.GenericCondition `json:"conditions"`
+
+	// MachineClaim is the object name of the MachineClaim generated from this
+	// session.
+	MachineClaim string `json:"machineClaim"`
+
+	// Progress is a slice of Progress structs that detail, for a given scenario, what
+	// position the user is in.
+	Progress []Progress `json:"progress"`
+}
+
+type Progress struct {
+	// CurrentStep is the 0-indexed step of the scenario that the user
+	// is currently on, or was on as of LastUpdate.
+	CurrentStep int `json:"currentStep"`
+
+	// MaxStep is the 0-indexed *furthest* step the user has gotten to.
+	// May not be the current step the user is on, if they have backtracked.
+	MaxStep int `json:"maxStep"`
+
+	// Scenario is the object name of the scenario to which this Progress
+	// relates.
+	Scenario string `json:"scenario"`
+
+	// Course is the object name of the course to which this Progress relates.
+	Course string `json:"course"`
+
+	// TotalStep is the total number of steps in the Scenario. It is copied into
+	// this struct to make visualizations and reasoning about step progress easier.
+	TotalStep int `json:"totalStep"`
+
+	// Started is the timestamp when the user started the scenario.
+	Started metav1.Time `json:"started"`
+
+	// LastUpdate is the timestamp when the user interface last updated this struct.
+	LastUpdate metav1.Time `json:"lasteUpdate"`
+
+	// Finished is the timestamp when the user finished the scenario.
+	Finished metav1.Time `json:"finished"`
+
+	// StepTimes stores the timestamps when a user entered a particular step.
+	StepTimes []StepTime `json:"stepTimes"`
+}
+
+type StepTime struct {
+	Step int         `json:"step"`
+	Time metav1.Time `json:"time"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// User is any user (person, not machine) that interacts with HobbyFarm.
+// Administrators and end-users alike both have User objects to represent them.
+type User struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   UserSpec   `json:"spec"`
+	Status UserStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type UserList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []User `json:"items"`
+}
+
+type UserSpec struct {
+	// Principals holds a slice of all the identifiers for a user from various
+	// authentication sources. For example, a local auth value would be of the form
+	// local://[user obj name], e.g. local://u-uijkks349d
+	// Other auth sources will have their own forms. LDAP may have a form such as
+	// ldap://CN=john.doe,OU=Users,DC=example,DC=com or something else like that.
+	Principals []string `json:"principals"`
+
+	// AccessCodes is a slice of all access codes that this user has entered. These
+	// values will be the codes themselves, *NOT* the AccessCode object names.
+	AccessCodes []string `json:"accessCodes"`
+
+	// Settings holds the settings that the user has configured. Things like terminal theme,
+	// dark mode, etc.
+	Settings map[string]string `json:"settings"`
+}
+
+type UserStatus struct {
+	// LastLoginTimestamp is the timestamp of when the user last logged in.
+	LastLoginTimestamp metav1.Time `json:"lastLoginTimestamp"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// PredefinedService represents a service (as in application, or web service) that is
+// hosted on a Machine. Predefined
+type PredefinedService struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec PredefinedServiceSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type PredefinedServiceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []PredefinedService `json:"items"`
+}
+
+type DisplayOption string
+
+const (
+	// HasTab determines if a service gets its own tab in the UI
+	HasTab DisplayOption = "HasTab"
+
+	// HasWebInterface determines if a service does or does not have a web interface
+	HasWebInterface DisplayOption = "HasWebInterface"
+)
+
+type HttpOption string
+
+const (
+	// NoRewriteRootPath disables path rewriting from /p/[vmid]/80/path to /path
+	NoRewriteRootPath HttpOption = "NoRewriteRootPath"
+
+	// RewriteHostHeader rewrites the host header to the proxy server host
+	RewriteHostHeader HttpOption = "RewriteHostHeader"
+
+	// RewriteOriginHeader rewrites the origin to localhost instead of the proxy host
+	RewriteOriginHeader HttpOption = "RewriteOriginHeader"
+
+	// DisallowIframe forces opening the service content in a new browser tab instead of iframe
+	DisallowIframe HttpOption = "DisallowIframe"
+)
+
+type PredefinedServiceSpec struct {
+	// DisplayName is the display (pretty) name of the PredefinedService
+	DisplayName string `json:"displayName"`
+
+	// Port is the network port of the service
+	Port int `json:"port"`
+
+	// DisplayOptions is a list of display (ui) options that this service requires.
+	DisplayOptions []DisplayOption `json:"displayOptions"`
+
+	// HttpOptions is a list of http options that this service requires.
+	HttpOptions []HttpOption `json:"httpOptions"`
+
+	// Path is the path on the VM that the service is accessible upon
+	Path string `json:"path"`
+
+	// CloudConfig contains the cloud-config data used to setup this service on the machine
+	CloudConfig string `json:"cloudConfig"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type Course struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec CourseSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type CourseList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []Course `json:"items"`
+}
+
+type PauseBehavior string
+
+const (
+	// CanPause means a user CAN pause their course/scenario
+	CanPause PauseBehavior = "CanPause"
+
+	// CannotPause means a user CANNOT pause their course/scenario
+	CannotPause PauseBehavior = "CannotPause"
+)
+
+type CourseSpec struct {
+	// DisplayName is the display (pretty) name of the course.
+	DisplayName string `json:"displayName"`
+
+	// Description is the string description of the course.
+	Description string `json:"description"`
+
+	// Scenarios is a slice of object names for scenarios that are in this course.
+	Scenarios []string `json:"scenarios"`
+
+	// Categories is a slice of categories (strings) that this course fits into.
+	// Categories may be used to filter Course objects in interfaces.
+	Categories []string `json:"categories"`
+
+	// Tags is a slice of strings that represent tags applied to this course.
+	// Tags may be used to filter Course objects in interfaces.
+	Tags []string `json:"tags"`
+
+	// MachineRequirements is a slice of MachineRequirement structs that define
+	// what machines are required for this Course.
+	MachineRequirements []MachineRequirement `json:"machineRequirements"`
+
+	// KeepaliveDuration is a string representing the period of time a user can go inactive
+	// before their machines will be reaped. It can be viewed as a countdown timer that
+	// resets each time the user interface submits a keepalive ping to the API.
+	// For example if this string is "1h", machines will be reaped one hour after the
+	// last keepalive ping is received. If a ping is received before the 1h elapses, the timer
+	// starts over with a fresh 1h period.
+	//
+	// The format of this field is an integer followed by an 'h' or 'm' designation for hours or
+	// minutes, respectively. MUST be parseable by time.ParseDuration()
+	// Examples include "15m", "5h", "48h", or "120m"
+	KeepaliveDuration string `json:"keepaliveDuration"`
+
+	// PauseDuration is a string representing the period of time a user can prevent the reaping of
+	// their machines without continuous keepalive pings. While a Course is paused, the keepalive "timer"
+	// (described on KeepaliveDuration) is paused and HobbyFarm will not reclaim the Machine.
+	// For example, if this string is "1h" and KeepaliveDuration is "30m", if a user pauses their
+	// Course and closes their laptop (thus preventing keepalive pings from the UI), the KeepaliveDuration
+	// timer will not start until one hour after the Course was paused. Even if 30 minutes elapses
+	// machines will not be reaped as the countdown for keepalive is paused for the duration of the pause.
+	// A user may un-pause at any time.
+	//
+	// The format of this field is an integer followed by an 'h' or 'm' designation for hours or minutes,
+	// respectively. MUST be parseabl by time.ParseDuration()
+	// Examples include "15m", "5h", "48h", or "120m"
+	PauseDuration string `json:"pauseDuration"`
+
+	// MachinePersistenceStrategy determines what HobbyFarm should do with the Machine objects provisioned
+	// for this Course after a particular Scenario has been completed.
+	// When a user completes a Scenario that is *NOT* part of a Course, their Machine resources are
+	// reclaimed and recycled for the next user. However, Courses may have multiple Scenarios whose content
+	// (and thus, machines) flow together. By setting a persistence strategy of "PersistThroughCourse", machines
+	// will *NOT* be reclaimed after a Scenario is completed - they will live for the life of the Course.
+	// Conversely, if a persistence strategy is set to "NewPerScenario", old machines will be reclaimed
+	// (and new ones provisioned/claimed) for each scenario.
+	MachinePersistenceStrategy MachinePersistenceStrategy `json:"machinePersistenceStrategy"`
+
+	// PauseBehavior describes what sort of behavior affecting pausing should be allowed for this Course.
+	// An example is "CanPause" which allowed users to pause their course. "CannotPause" does not.
+	PauseBehavior PauseBehavior `json:"pauseBehavior"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Scenario represents a unit of learning on a particular topic represented by a series of steps that
+// may include interactions with Machine(s). While defined on a separate resource, Steps are where the
+// content of a Scenario lives. A Scenario also tracks requirements and configurations for Machines,
+// allowed behavior of users, categorization/tagging metadata, and so on.
+type Scenario struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec ScenarioSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ScenarioList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []Scenario `json:"items"`
+}
+
+type ScenarioSpec struct {
+	// DisplayName is the display (pretty) name of the Scenario
+	DisplayName string `json:"string"`
+
+	// Description is the description of the Scenario.
+	Description string `json:"description"`
+
+	// Categories is a string slice listing the categories in which this Scenario exists.
+	Categories []string `json:"categories"`
+
+	// Tags is a string slice listing the tags that are applicable to this Scenario.
+	Tags []string `json:"tags"`
+
+	// Steps is a string slice of object names for Step resources.
+	// The order in which they appear in this slice is the order in which they
+	// are presented.
+	Steps []string `json:"steps"`
+
+	// MachineRequirements details the required machines for this Scenario. This includes both
+	// user machines and shared machines.
+	MachineRequirements []MachineRequirement `json:"machineRequirements"`
+
+	// KeepaliveDuration is a string representing the period of time a user can go inactive
+	// before their machines will be reaped. It can be viewed as a countdown timer that
+	// resets each time the user interface submits a keepalive ping to the API.
+	// For example if this string is "1h", machines will be reaped one hour after the
+	// last keepalive ping is received. If a ping is received before the 1h elapses, the timer
+	// starts over with a fresh 1h period.
+	//
+	// The format of this field is an integer followed by an 'h' or 'm' designation for hours or
+	// minutes, respectively. MUST be parseable by time.ParseDuration()
+	// Examples include "15m", "5h", "48h", or "120m"
+	KeepaliveDuration string `json:"keepaliveDuration"`
+
+	// PauseDuration is a string representing the period of time a user can prevent the reaping of
+	// their machines without continuous keepalive pings. While a Course is paused, the keepalive "timer"
+	// (described on KeepaliveDuration) is paused and HobbyFarm will not reclaim the Machine.
+	// For example, if this string is "1h" and KeepaliveDuration is "30m", if a user pauses their
+	// Course and closes their laptop (thus preventing keepalive pings from the UI), the KeepaliveDuration
+	// timer will not start until one hour after the Course was paused. Even if 30 minutes elapses
+	// machines will not be reaped as the countdown for keepalive is paused for the duration of the pause.
+	// A user may un-pause at any time.
+	//
+	// The format of this field is an integer followed by an 'h' or 'm' designation for hours or minutes,
+	// respectively. MUST be parseabl by time.ParseDuration()
+	// Examples include "15m", "5h", "48h", or "120m"
+	PauseDuration string `json:"pauseDuration"`
+
+	// PauseBehavior describes what sort of behavior affecting pausing should be allowed for this Course.
+	// An example is "CanPause" which allowed users to pause their course. "CannotPause" does not.
+	PauseBehavior PauseBehavior `json:"pauseBehavior"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ScenarioStep holds the content (and title) of a step in one or more scenarios.
+type ScenarioStep struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec ScenarioStepSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ScenarioStepList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []ScenarioStep `json:"items"`
+}
+
+type ScenarioStepSpec struct {
+	// Title is the base64-encoded title of a Step.
+	Title string `json:"title"`
+
+	// Content is the base64-encoded content of a Step.
+	Content string `json:"content"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// OneTimeAccessCode is the representation of a single-use access code
+type OneTimeAccessCode struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   OneTimeAccessCodeSpec   `json:"spec"`
+	Status OneTimeAccessCodeStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type OneTimeAccessCodeList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []OneTimeAccessCode `json:"items"`
+}
+
+type OneTimeAccessCodeSpec struct {
+	// NotBefore is the timestamp before which a OneTimeAccessCode is invalid.
+	NotBefore metav1.Time `json:"notBefore"`
+
+	// NotAfter is the timestamp after which a OneTimeAccessCode is invalid.
+	NotAfter metav1.Time `json:"notAfter"`
+
+	// User is the object name of the user for whom the OneTimeAccessCode is intended.
+	User string `json:"user"`
+}
+
+type OneTimeAccessCodeStatus struct {
+	// Redeemed is the timestamp marking when the OneTimeAccessCode was redeemed.
+	// nil if not redeemed.
+	Redeemed *metav1.Time `json:"redeemed,omitempty"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Setting is a configuration option for HobbyFarm. Along with the embedded Property struct
+// is a Value, which is a string encoding of the value.
+type Setting struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	property.Property `json:",inline"`
+
+	// Value is the string encoded value of the setting
+	Value string `json:"value"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type SettingList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []Setting `json:"items"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Scope is a construct that provides grouping of Setting resources and their visibility in various
+// UIs.
+type Scope struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// DisplayName is the pretty name of the Scope
+	DisplayName string `json:"displayName"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ScopeList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []Scope `json:"items"`
 }

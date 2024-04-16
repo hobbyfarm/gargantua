@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/ebauman/crder"
+	"github.com/hobbyfarm/gargantua/v4/pkg/crd"
 	"github.com/hobbyfarm/gargantua/v4/pkg/scheme"
 	server2 "github.com/hobbyfarm/gargantua/v4/pkg/server"
 	"github.com/spf13/cobra"
@@ -37,6 +39,11 @@ func app(cmd *cobra.Command, args []string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("could not build client: %v", err.Error())
+	}
+
+	crds := crd.GenerateCRDs()
+	if err := crder.InstallUpdateCRDs(cfg, crds...); err != nil {
+		return fmt.Errorf("error installing/updating crds: %v", err.Error())
 	}
 
 	server, err := server2.NewKubernetesServer(kClient)

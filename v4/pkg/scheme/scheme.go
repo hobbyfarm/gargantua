@@ -1,6 +1,8 @@
 package scheme
 
 import (
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfv2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +27,14 @@ func AddToScheme(scheme *runtime.Scheme) error {
 	}
 
 	if err := v1.AddToScheme(scheme); err != nil {
+		return err
+	}
+
+	if err := hfv1.AddToScheme(scheme); err != nil {
+		return err
+	}
+
+	if err := hfv2.AddToScheme(scheme); err != nil {
 		return err
 	}
 

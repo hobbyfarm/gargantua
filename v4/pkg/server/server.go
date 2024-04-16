@@ -14,7 +14,7 @@ func NewKubernetesServer(client client.WithWatch) (*server.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return server.New(&server.Config{
+	svr, err := server.New(&server.Config{
 		Name:                         "hobbyfarm-api",
 		Version:                      "v4alpha1",
 		HTTPListenPort:               8080,
@@ -39,4 +39,6 @@ func NewKubernetesServer(client client.WithWatch) (*server.Server, error) {
 		SupportAPIAggregation: false,
 		ReadinessCheckers:     nil,
 	})
+
+	svr.GenericAPIServer.Handler.NonGoRestfulMux.HandleFunc("/login")
 }

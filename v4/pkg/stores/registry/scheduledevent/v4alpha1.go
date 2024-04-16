@@ -1,4 +1,4 @@
-package registry
+package scheduledevent
 
 import (
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
@@ -7,7 +7,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 )
 
-func NewScheduledEventStorage(scheduledEventStrategy strategy.CompleteStrategy) (rest.Storage, error) {
+func NewV4alpha1Storage(scheduledEventStrategy strategy.CompleteStrategy) (rest.Storage, error) {
 	return stores.NewBuilder(scheduledEventStrategy.Scheme(), &v4alpha1.ScheduledEvent{}).
 		WithCompleteCRUD(scheduledEventStrategy).Build(), nil
 }
