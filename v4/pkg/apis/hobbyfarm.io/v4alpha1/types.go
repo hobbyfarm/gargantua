@@ -868,6 +868,15 @@ type ServiceAccount struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+type ServiceAccountList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []ServiceAccount `json:"items"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // PredefinedService represents a service (as in application, or web service) that is
 // hosted on a Machine. Predefined
 type PredefinedService struct {
