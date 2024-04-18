@@ -226,6 +226,11 @@ func GenerateCRDs() []crder.CRD {
 						IsServed(true).IsStored(true).WithStatus()
 				})
 		}),
+		hobbyfarmCRD(&v4alpha1.ServiceAccount{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v4alpha1", &v4alpha1.ServiceAccount{}, nil)
+		}),
 	}
 }
 
