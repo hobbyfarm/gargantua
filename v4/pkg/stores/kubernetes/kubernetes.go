@@ -92,6 +92,7 @@ func V4Alpha1APIGroups(client client.WithWatch) (map[string]rest.Storage, error)
 	scopeRemote := remote.NewRemote(&v4alpha1.Scope{}, client)
 	settingRemote := remote.NewRemote(&v4alpha1.Setting{}, client)
 	userRemote := remote.NewRemote(&v4alpha1.User{}, client)
+	serviceAccountRemote := remote.NewRemote(&v4alpha1.ServiceAccount{}, client)
 
 	providerStorage, err := registry.NewProviderStorage(providerRemote, machineSetRemote, machineRemote, environmentRemote)
 	if err != nil {
@@ -184,6 +185,11 @@ func V4Alpha1APIGroups(client client.WithWatch) (map[string]rest.Storage, error)
 		return nil, err
 	}
 
+	serviceAccountStorage, err := registry.NewServiceAccountStorage(serviceAccountRemote)
+	if err != nil {
+		return nil, err
+	}
+
 	stores := map[string]rest.Storage{
 		"providers":          providerStorage,
 		"machinetemplates":   machineTemplateStorage,
@@ -203,6 +209,7 @@ func V4Alpha1APIGroups(client client.WithWatch) (map[string]rest.Storage, error)
 		"scopes":             scopeStorage,
 		"settings":           settingStorage,
 		"users":              userStorage,
+		"serviceaccounts":    serviceAccountStorage,
 	}
 
 	return stores, nil

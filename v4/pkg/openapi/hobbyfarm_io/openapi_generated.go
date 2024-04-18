@@ -94,6 +94,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventStatus":           schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventStatus(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Scope":                          schema_pkg_apis_hobbyfarmio_v4alpha1_Scope(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScopeList":                      schema_pkg_apis_hobbyfarmio_v4alpha1_ScopeList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ServiceAccount":                 schema_pkg_apis_hobbyfarmio_v4alpha1_ServiceAccount(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Session":                        schema_pkg_apis_hobbyfarmio_v4alpha1_Session(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionList":                    schema_pkg_apis_hobbyfarmio_v4alpha1_SessionList(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.SessionSpec":                    schema_pkg_apis_hobbyfarmio_v4alpha1_SessionSpec(ref),
@@ -3553,6 +3554,57 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_ScopeList(ref common.ReferenceCallback
 		},
 		Dependencies: []string{
 			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Scope", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ServiceAccount(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ServiceAccount functions largely the same as a Kubernetes SA. It is an account that services can use to authenticate with HobbyFarm.\n\n\"Why not use k8s corev1 ServiceAccount?\" Because if k8s is used as a backing store for HobbyFarm, there is a collision with the HF api server instance of ServiceAccount and the backing store. The k8s cluster storing the data will start operating on that ServiceAccount by generating tokens (that wouldn't be valid for the HF apiserver, only for that k8s cluster), or giving it access to things in that k8s cluster.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"secrets": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Secrets is a list of secret object names that contain the tokens used to authenticate a ServiceAccount to the HobbyFarm apiserver.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"secrets"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
