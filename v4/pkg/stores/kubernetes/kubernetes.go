@@ -53,21 +53,21 @@ func NewKubernetesStorage(client client.WithWatch) ([]*server.APIGroupInfo, erro
 
 func CoreV1APIGroups(client client.WithWatch) (map[string]rest.Storage, error) {
 	secretRemote := remote.NewRemote(&v12.Secret{}, client)
-	serviceAccountRemote := remote.NewRemote(&v12.ServiceAccount{}, client)
+	configMapRemote := remote.NewRemote(&v12.ConfigMap{}, client)
+
+	configMapStorage, err := registry.NewConfigMapStorage(configMapRemote)
+	if err != nil {
+		return nil, err
+	}
 
 	secretStorage, err := registry.NewSecretStorage(secretRemote)
 	if err != nil {
 		return nil, err
 	}
 
-	saStorage, err := registry.NewServiceAccountStorage(serviceAccountRemote)
-	if err != nil {
-		return nil, err
-	}
-
 	stores := map[string]rest.Storage{
-		"secrets":         secretStorage,
-		"serviceaccounts": saStorage,
+		"secrets":    secretStorage,
+		"configmaps": configMapStorage,
 	}
 
 	return stores, nil
