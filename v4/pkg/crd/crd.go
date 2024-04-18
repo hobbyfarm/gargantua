@@ -2,7 +2,6 @@ package crd
 
 import (
 	"github.com/ebauman/crder"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
 )
 
@@ -29,9 +28,6 @@ func GenerateCRDs() []crder.CRD {
 		hobbyfarmCRD(&v4alpha1.Environment{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
-				AddVersion("v1", v1.Environment{}, func(cv *crder.Version) {
-					cv.IsServed(true).IsStored(false)
-				}).
 				AddVersion("v4alpha1", &v4alpha1.Environment{}, func(cv *crder.Version) {
 					cv.
 						WithColumn("Provider", ".spec.provider").
@@ -83,15 +79,6 @@ func GenerateCRDs() []crder.CRD {
 		hobbyfarmCRD(&v4alpha1.ScheduledEvent{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
-				AddVersion("v1", &v1.ScheduledEvent{}, func(cv *crder.Version) {
-					cv.
-						WithColumn("AccessCode", ".spec.access_code").
-						WithColumn("Active", ".status.active").
-						WithColumn("Finished", ".status.finished").
-						WithStatus().
-						IsServed(true).
-						IsStored(false)
-				}).
 				AddVersion("v4alpha1", v4alpha1.ScheduledEvent{}, func(cv *crder.Version) {
 					cv.
 						WithColumn("StartTime", ".spec.startTime").
@@ -107,13 +94,6 @@ func GenerateCRDs() []crder.CRD {
 		}),
 		hobbyfarmCRD(&v4alpha1.AccessCode{}, func(c *crder.CRD) {
 			c.
-				AddVersion("v1", &v1.AccessCode{}, func(cv *crder.Version) {
-					cv.
-						WithColumn("AccessCode", ".spec.code").
-						WithColumn("Expiration", ".spec.expiration").
-						IsStored(false).
-						IsServed(true)
-				}).
 				AddVersion("v4alpha1", v4alpha1.AccessCode{}, func(cv *crder.Version) {
 					cv.
 						WithColumn("Code", ".spec.code").
@@ -129,17 +109,6 @@ func GenerateCRDs() []crder.CRD {
 		hobbyfarmCRD(&v4alpha1.Session{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
-				AddVersion("v1", &v1.Session{}, func(cv *crder.Version) {
-					cv.
-						WithColumn("Paused", ".status.paused").
-						WithColumn("Active", ".status.active").
-						WithColumn("Finished", ".status.finished").
-						WithColumn("StartTime", ".status.start_time").
-						WithColumn("ExpirationTime", ".status.end_time").
-						WithStatus().
-						IsServed(true).
-						IsStored(false)
-				}).
 				AddVersion("v4alpha1", v4alpha1.Session{}, func(cv *crder.Version) {
 					cv.
 						WithColumn("User", ".spec.user").
@@ -152,6 +121,110 @@ func GenerateCRDs() []crder.CRD {
 						IsStored(true)
 				}).
 				WithShortNames("sesh", "sess")
+		}),
+		hobbyfarmCRD(&v4alpha1.Course{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v4alpha1", v4alpha1.Course{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("DisplayName", ".spec.displayName").
+						WithColumn("Categories", ".spec.categories").
+						WithColumn("Tags", ".spec.tags").
+						IsServed(true).
+						IsStored(true)
+				})
+		}),
+		hobbyfarmCRD(&v4alpha1.OneTimeAccessCode{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v4alpha1", &v4alpha1.OneTimeAccessCode{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("NotBefore", ".spec.notBefore").
+						WithColumn("NotAfter", ".spec.notAfter").
+						WithColumn("User", ".spec.user").
+						WithColumn("Redeemed", ".status.redeemed").
+						IsServed(true).IsStored(true).WithStatus()
+				}).WithShortNames("otac")
+		}),
+		hobbyfarmCRD(&v4alpha1.PredefinedService{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v4alpha1", &v4alpha1.PredefinedService{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("DisplayName", ".spec.displayName").
+						WithColumn("Port", ".spec.port").
+						WithColumn("Path", ".spec.path").
+						IsStored(true).
+						IsServed(true)
+				}).
+				WithShortNames("ps", "pds")
+		}),
+		hobbyfarmCRD(&v4alpha1.Progress{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v4alpha1", &v4alpha1.Progress{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("User", ".spec.user").
+						WithColumn("Scennario", ".spec.scenario").
+						WithColumn("CurrentStep", ".status.currentStep").
+						WithColumn("Started", ".status.started").
+						WithColumn("Finished", ".status.finished").
+						IsServed(true).IsStored(true)
+				}).
+				WithNames("progress", "progresses").
+				WithShortNames("prog")
+		}),
+		hobbyfarmCRD(&v4alpha1.Scenario{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v4alpha1", &v4alpha1.Scenario{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("DisplayName", ".spec.displayName").
+						WithColumn("Categories", ".spec.categories").
+						WithColumn("Tags", ".spec.tags").
+						IsServed(true).IsStored(true)
+				}).
+				WithShortNames("sc", "scen")
+		}),
+		hobbyfarmCRD(&v4alpha1.ScenarioStep{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v4alpha1", &v4alpha1.ScenarioStep{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("Name", ".metadata.name").
+						WithColumn("ReferringScenarios", ".status.referringScenarios").
+						IsServed(true).IsStored(true)
+				}).
+				WithShortNames("ss", "step")
+		}),
+		hobbyfarmCRD(&v4alpha1.Scope{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v4alpha1", &v4alpha1.Scope{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("DisplayName", ".spec.displayName").
+						IsServed(true).IsStored(true)
+				})
+		}),
+		hobbyfarmCRD(&v4alpha1.Setting{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v4alpha1", &v4alpha1.Setting{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("DisplayName", ".displayName").
+						WithColumn("Value", ".value").
+						IsStored(true).IsServed(true)
+				}).
+				WithShortNames("set")
+		}),
+		hobbyfarmCRD(&v4alpha1.User{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v4alpha1", &v4alpha1.User{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("LastLogin", ".status.lastLoginTimestamp").
+						IsServed(true).IsStored(true).WithStatus()
+				})
 		}),
 	}
 }

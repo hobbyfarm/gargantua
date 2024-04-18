@@ -4,6 +4,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/property"
 	genericcondition2 "github.com/hobbyfarm/gargantua/v4/pkg/genericcondition"
 	"github.com/rancher/wrangler/pkg/condition"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -736,14 +737,21 @@ type SessionStatus struct {
 	Progress []Progress `json:"progress"`
 }
 
-type Progress struct {
-	// CurrentStep is the 0-indexed step of the scenario that the user
-	// is currently on, or was on as of LastUpdate.
-	CurrentStep int `json:"currentStep"`
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-	// MaxStep is the 0-indexed *furthest* step the user has gotten to.
-	// May not be the current step the user is on, if they have backtracked.
-	MaxStep int `json:"maxStep"`
+// Progress holds the progress of a user through a particular scenario. It tracks items such as
+// the step the user is currently on, when they started and ended, etc.
+type Progress struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   ProgressSpec   `json:"spec"`
+	Status ProgressStatus `json:"status"`
+}
+
+type ProgressSpec struct {
+	// User is the object name of the user to whom this Progress belongs
+	User string `json:"user"`
 
 	// Scenario is the object name of the scenario to which this Progress
 	// relates.
@@ -755,6 +763,16 @@ type Progress struct {
 	// TotalStep is the total number of steps in the Scenario. It is copied into
 	// this struct to make visualizations and reasoning about step progress easier.
 	TotalStep int `json:"totalStep"`
+}
+
+type ProgressStatus struct {
+	// CurrentStep is the 0-indexed step of the scenario that the user
+	// is currently on, or was on as of LastUpdate.
+	CurrentStep int `json:"currentStep"`
+
+	// MaxStep is the 0-indexed *furthest* step the user has gotten to.
+	// May not be the current step the user is on, if they have backtracked.
+	MaxStep int `json:"maxStep"`
 
 	// Started is the timestamp when the user started the scenario.
 	Started metav1.Time `json:"started"`
@@ -770,8 +788,20 @@ type Progress struct {
 }
 
 type StepTime struct {
-	Step int         `json:"step"`
+	// Step is the number of the step
+	Step int `json:"step"`
+
+	// Time is the time at which the step was "started" (e.g. loaded in the UI)
 	Time metav1.Time `json:"time"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type ProgressList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []Progress `json:"items"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -957,7 +987,7 @@ type CourseSpec struct {
 	// The format of this field is an integer followed by an 'h' or 'm' designation for hours or minutes,
 	// respectively. MUST be parseabl by time.ParseDuration()
 	// Examples include "15m", "5h", "48h", or "120m"
-	PauseDuration string `json:"pauseDuration"`
+	PauseDuration string `json:"pauseDuration,omitempty"`
 
 	// MachinePersistenceStrategy determines what HobbyFarm should do with the Machine objects provisioned
 	// for this Course after a particular Scenario has been completed.
@@ -1056,7 +1086,8 @@ type ScenarioStep struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec ScenarioStepSpec `json:"spec"`
+	Spec   ScenarioStepSpec   `json:"spec"`
+	Status ScenarioStepStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -1074,6 +1105,11 @@ type ScenarioStepSpec struct {
 
 	// Content is the base64-encoded content of a Step.
 	Content string `json:"content"`
+}
+
+type ScenarioStepStatus struct {
+	// ReferringScenarios is a list of all the Scenario objects that reference this step.
+	ReferringScenarios []v1.ObjectReference `json:"referringScenarios"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -1098,10 +1134,10 @@ type OneTimeAccessCodeList struct {
 
 type OneTimeAccessCodeSpec struct {
 	// NotBefore is the timestamp before which a OneTimeAccessCode is invalid.
-	NotBefore metav1.Time `json:"notBefore"`
+	NotBefore *metav1.Time `json:"notBefore"`
 
 	// NotAfter is the timestamp after which a OneTimeAccessCode is invalid.
-	NotAfter metav1.Time `json:"notAfter"`
+	NotAfter *metav1.Time `json:"notAfter"`
 
 	// User is the object name of the user for whom the OneTimeAccessCode is intended.
 	User string `json:"user"`

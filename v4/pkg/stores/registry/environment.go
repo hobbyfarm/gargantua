@@ -12,21 +12,21 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 )
 
-type v4alpha1EnvironmentValidator struct {
+type environmentValidator struct {
 	providerGetter       strategy.Getter
 	machineSetLister     strategy.Lister
 	machineLister        strategy.Lister
 	scheduledEventLister strategy.Lister
 }
 
-func NewV4alpha1Storage(
+func NewEnvironmentStorage(
 	environmentStrategy strategy.CompleteStrategy,
 	providerGetter strategy.Getter,
 	machineSetLister strategy.Lister,
 	machineLister strategy.Lister,
 	scheduledEventLister strategy.Lister,
 ) (rest.Storage, error) {
-	ev := &v4alpha1EnvironmentValidator{
+	ev := &environmentValidator{
 		providerGetter:       providerGetter,
 		machineSetLister:     machineSetLister,
 		machineLister:        machineLister,
@@ -40,7 +40,7 @@ func NewV4alpha1Storage(
 		WithValidateDelete(ev).Build(), nil
 }
 
-func (ev *v4alpha1EnvironmentValidator) ValidateDelete(ctx context.Context, obj runtime.Object) *errors.StatusError {
+func (ev *environmentValidator) ValidateDelete(ctx context.Context, obj runtime.Object) *errors.StatusError {
 	// can only delete environment if not being referenced in other objects
 	// namely, machines, machinesets, and upcoming scheduledevents
 	env := obj.(*v4alpha1.Environment)
@@ -66,15 +66,15 @@ func (ev *v4alpha1EnvironmentValidator) ValidateDelete(ctx context.Context, obj 
 	return nil
 }
 
-func (ev *v4alpha1EnvironmentValidator) ValidateUpdate(ctx context.Context, obj runtime.Object, _ runtime.Object) (result field.ErrorList) {
+func (ev *environmentValidator) ValidateUpdate(ctx context.Context, obj runtime.Object, _ runtime.Object) (result field.ErrorList) {
 	return ev.doBasicValidations(ctx, obj)
 }
 
-func (ev *v4alpha1EnvironmentValidator) Validate(ctx context.Context, obj runtime.Object) (result field.ErrorList) {
+func (ev *environmentValidator) Validate(ctx context.Context, obj runtime.Object) (result field.ErrorList) {
 	return ev.doBasicValidations(ctx, obj)
 }
 
-func (ev *v4alpha1EnvironmentValidator) doBasicValidations(ctx context.Context, obj runtime.Object) (result field.ErrorList) {
+func (ev *environmentValidator) doBasicValidations(ctx context.Context, obj runtime.Object) (result field.ErrorList) {
 	env := obj.(*v4alpha1.Environment)
 
 	// Ensure the provider exists
@@ -101,7 +101,7 @@ func (ev *v4alpha1EnvironmentValidator) doBasicValidations(ctx context.Context, 
 	return
 }
 
-func (ev *v4alpha1EnvironmentValidator) getProvider(ctx context.Context, env *v4alpha1.Environment) (*v4alpha1.Provider, field.ErrorList) {
+func (ev *environmentValidator) getProvider(ctx context.Context, env *v4alpha1.Environment) (*v4alpha1.Provider, field.ErrorList) {
 	// Ensure the provider exists
 	provObj, err := ev.providerGetter.Get(ctx, env.Namespace, env.Spec.Provider)
 	if err != nil {

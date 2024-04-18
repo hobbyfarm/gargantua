@@ -5,24 +5,31 @@ import (
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
 	"github.com/hobbyfarm/gargantua/v4/pkg/scheme"
 	"github.com/hobbyfarm/gargantua/v4/pkg/stores/registry"
-	"github.com/hobbyfarm/gargantua/v4/pkg/stores/registry/accesscode"
 	"github.com/hobbyfarm/mink/pkg/serializer"
 	remote "github.com/hobbyfarm/mink/pkg/strategy/remote"
+	v12 "k8s.io/api/core/v1"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/server"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func NewKubernetesStorage(client client.WithWatch) (*server.APIGroupInfo, error) {
+func NewKubernetesStorage(client client.WithWatch) ([]*server.APIGroupInfo, error) {
 	v4alpha1Stores, err := V4Alpha1APIGroups(client)
 	if err != nil {
 		return nil, err
 	}
 
-	v1Stores, err := V1APIGroups(client)
+	corev1stores, err := CoreV1APIGroups(client)
 	if err != nil {
 		return nil, err
 	}
+
+	corev1apigroupinfo := server.NewDefaultAPIGroupInfo(
+		"",
+		scheme.Scheme,
+		scheme.ParameterCodec,
+		scheme.Codec,
+	)
 
 	apiGroupInfo := server.NewDefaultAPIGroupInfo(
 		"hobbyfarm.io",
@@ -32,25 +39,38 @@ func NewKubernetesStorage(client client.WithWatch) (*server.APIGroupInfo, error)
 	)
 
 	apiGroupInfo.VersionedResourcesStorageMap = map[string]map[string]rest.Storage{
-		"v1":       v1Stores,
 		"v4alpha1": v4alpha1Stores,
 	}
 	apiGroupInfo.NegotiatedSerializer = serializer.NewNoProtobufSerializer(apiGroupInfo.NegotiatedSerializer)
 
-	return &apiGroupInfo, nil
+	corev1apigroupinfo.VersionedResourcesStorageMap = map[string]map[string]rest.Storage{
+		"v1": corev1stores,
+	}
+	corev1apigroupinfo.NegotiatedSerializer = serializer.NewNoProtobufSerializer(corev1apigroupinfo.NegotiatedSerializer)
+
+	return []*server.APIGroupInfo{&apiGroupInfo, &corev1apigroupinfo}, nil
 }
 
-func V1APIGroups(client client.WithWatch) (map[string]rest.Storage, error) {
-	accessCodeRemote := remote.NewRemote(&v1.AccessCode{}, client)
+func CoreV1APIGroups(client client.WithWatch) (map[string]rest.Storage, error) {
+	secretRemote := remote.NewRemote(&v12.Secret{}, client)
+	serviceAccountRemote := remote.NewRemote(&v12.ServiceAccount{}, client)
 
-	accessCodeStorage, err := accesscode.NewV1Storage(accessCodeRemote)
+	secretStorage, err := registry.NewSecretStorage(secretRemote)
 	if err != nil {
 		return nil, err
 	}
 
-	return map[string]rest.Storage{
-		"accesscodes": accessCodeStorage,
-	}, nil
+	saStorage, err := registry.NewServiceAccountStorage(serviceAccountRemote)
+	if err != nil {
+		return nil, err
+	}
+
+	stores := map[string]rest.Storage{
+		"secrets":         secretStorage,
+		"serviceaccounts": saStorage,
+	}
+
+	return stores, nil
 }
 
 func V4Alpha1APIGroups(client client.WithWatch) (map[string]rest.Storage, error) {
@@ -63,6 +83,15 @@ func V4Alpha1APIGroups(client client.WithWatch) (map[string]rest.Storage, error)
 	scheduledEventRemote := remote.NewRemote(&v4alpha1.ScheduledEvent{}, client)
 	accessCodeRemote := remote.NewRemote(&v1.AccessCode{}, client)
 	sessionRemote := remote.NewRemote(&v4alpha1.Session{}, client)
+	courseRemote := remote.NewRemote(&v4alpha1.Course{}, client)
+	otacRemote := remote.NewRemote(&v4alpha1.OneTimeAccessCode{}, client)
+	predefinedServiceRemote := remote.NewRemote(&v4alpha1.PredefinedService{}, client)
+	progressRemote := remote.NewRemote(&v4alpha1.Progress{}, client)
+	scenarioRemote := remote.NewRemote(&v4alpha1.Scenario{}, client)
+	scenarioStepRemote := remote.NewRemote(&v4alpha1.ScenarioStep{}, client)
+	scopeRemote := remote.NewRemote(&v4alpha1.Scope{}, client)
+	settingRemote := remote.NewRemote(&v4alpha1.Setting{}, client)
+	userRemote := remote.NewRemote(&v4alpha1.User{}, client)
 
 	providerStorage, err := registry.NewProviderStorage(providerRemote, machineSetRemote, machineRemote, environmentRemote)
 	if err != nil {
@@ -74,7 +103,7 @@ func V4Alpha1APIGroups(client client.WithWatch) (map[string]rest.Storage, error)
 		return nil, err
 	}
 
-	environmentStorage, err := registry.NewV4alpha1Storage(environmentRemote, providerRemote,
+	environmentStorage, err := registry.NewEnvironmentStorage(environmentRemote, providerRemote,
 		machineSetRemote, machineRemote, scheduledEventRemote)
 	if err != nil {
 		return nil, err
@@ -95,12 +124,12 @@ func V4Alpha1APIGroups(client client.WithWatch) (map[string]rest.Storage, error)
 		return nil, err
 	}
 
-	scheduledEventStorage, err := registry.NewV4alpha1Storage(scheduledEventRemote)
+	scheduledEventStorage, err := registry.NewScheduledEventStorage(scheduledEventRemote)
 	if err != nil {
 		return nil, err
 	}
 
-	accessCodeStorage, err := registry.Newv4alpha1Storage(accessCodeRemote)
+	accessCodeStorage, err := registry.NewAccessCodeStorage(accessCodeRemote)
 	if err != nil {
 		return nil, err
 	}
@@ -110,16 +139,70 @@ func V4Alpha1APIGroups(client client.WithWatch) (map[string]rest.Storage, error)
 		return nil, err
 	}
 
+	courseStorage, err := registry.NewCourseStorage(courseRemote)
+	if err != nil {
+		return nil, err
+	}
+
+	otacStorage, err := registry.NewOneTimeAccessCodeStorage(otacRemote)
+	if err != nil {
+		return nil, err
+	}
+
+	predefinedServiceStorage, err := registry.NewPredefinedServiceStorage(predefinedServiceRemote)
+	if err != nil {
+		return nil, err
+	}
+
+	progressStorage, err := registry.NewProgressStorage(progressRemote)
+	if err != nil {
+		return nil, err
+	}
+
+	scenarioStorage, err := registry.NewScenarioStorage(scenarioRemote)
+	if err != nil {
+		return nil, err
+	}
+
+	scenarioStepStorage, err := registry.NewScenarioStepStorage(scenarioStepRemote)
+	if err != nil {
+		return nil, err
+	}
+
+	scopeStorage, err := registry.NewScopeStorage(scopeRemote)
+	if err != nil {
+		return nil, err
+	}
+
+	settingStorage, err := registry.NewSettingStorage(settingRemote)
+	if err != nil {
+		return nil, err
+	}
+
+	userStorage, err := registry.NewUserStorage(userRemote)
+	if err != nil {
+		return nil, err
+	}
+
 	stores := map[string]rest.Storage{
-		"providers":        providerStorage,
-		"machinetemplates": machineTemplateStorage,
-		"environments":     environmentStorage,
-		"machinesets":      machineSetStorage,
-		"machines":         machineStorage,
-		"machineclaims":    machineClaimStorage,
-		"scheduledevents":  scheduledEventStorage,
-		"accesscodes":      accessCodeStorage,
-		"sessions":         sessionStorage,
+		"providers":          providerStorage,
+		"machinetemplates":   machineTemplateStorage,
+		"environments":       environmentStorage,
+		"machinesets":        machineSetStorage,
+		"machines":           machineStorage,
+		"machineclaims":      machineClaimStorage,
+		"scheduledevents":    scheduledEventStorage,
+		"accesscodes":        accessCodeStorage,
+		"sessions":           sessionStorage,
+		"courses":            courseStorage,
+		"onetimeaccesscodes": otacStorage,
+		"predefinedservices": predefinedServiceStorage,
+		"progresses":         progressStorage,
+		"scenarios":          scenarioStorage,
+		"scenariosteps":      scenarioStepStorage,
+		"scopes":             scopeStorage,
+		"settings":           settingStorage,
+		"users":              userStorage,
 	}
 
 	return stores, nil

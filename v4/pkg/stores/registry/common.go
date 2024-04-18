@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/storage"
 	"net/http"
+	"time"
 )
 
 func HandleConflictList(ctx context.Context, namespace string, lister strategy.Lister, labelSelector map[string]string, objName string) *errors.StatusError {
@@ -64,4 +65,36 @@ func ValidateProviderConfigurationMap(confMap map[string]string, provider *v4alp
 	}
 
 	return
+}
+
+func ValidatePauseKeepaliveDurations(pauseDuration string, keepaliveDuration string) (result field.ErrorList) {
+	if pauseDuration != "" {
+		if _, err := time.ParseDuration(pauseDuration); err != nil {
+			result = append(result, field.Invalid(field.NewPath("spec", "pauseDuration"),
+				pauseDuration, fmt.Sprintf("error parsing pause duration: %v", err.Error())))
+		}
+	}
+
+	if keepaliveDuration != "" {
+		if _, err := time.ParseDuration(keepaliveDuration); err != nil {
+			result = append(result, field.Invalid(field.NewPath("spec", "keepaliveDuration"),
+				keepaliveDuration, fmt.Sprintf("error parsing keepalive duration: %v", err.Error())))
+		}
+	}
+
+	return
+}
+
+func ValidateNotBeforeNotAfter(notBefore *metav1.Time, notAfter *metav1.Time) (result field.ErrorList) {
+	if notAfter.Before(notBefore) {
+		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("notAfter"),
+			notAfter, "notAfter must be after notBefore")}
+	}
+
+	if notBefore.After(notAfter.Time) {
+		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("notBefore"),
+			notBefore, "notBefore must be before notAfter")}
+	}
+
+	return nil
 }

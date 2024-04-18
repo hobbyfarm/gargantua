@@ -7,7 +7,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 )
 
-func NewV4alpha1Storage(scheduledEventStrategy strategy.CompleteStrategy) (rest.Storage, error) {
+func NewScheduledEventStorage(scheduledEventStrategy strategy.CompleteStrategy) (rest.Storage, error) {
 	return stores.NewBuilder(scheduledEventStrategy.Scheme(), &v4alpha1.ScheduledEvent{}).
 		WithCompleteCRUD(scheduledEventStrategy).Build(), nil
 }

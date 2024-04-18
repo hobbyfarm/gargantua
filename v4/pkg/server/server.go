@@ -5,7 +5,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v4/pkg/scheme"
 	"github.com/hobbyfarm/gargantua/v4/pkg/stores/kubernetes"
 	"github.com/hobbyfarm/mink/pkg/server"
-	apiServer "k8s.io/apiserver/pkg/server"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -32,13 +31,11 @@ func NewKubernetesServer(client client.WithWatch) (*server.Server, error) {
 		Authenticator:                nil,
 		Authorization:                nil,
 		OpenAPIConfig:                hobbyfarm_io.GetOpenAPIDefinitions,
-		APIGroups: []*apiServer.APIGroupInfo{
-			storage,
-		},
-		PostStartFunc:         nil,
-		SupportAPIAggregation: false,
-		ReadinessCheckers:     nil,
+		APIGroups:                    storage,
+		PostStartFunc:                nil,
+		SupportAPIAggregation:        false,
+		ReadinessCheckers:            nil,
 	})
 
-	svr.GenericAPIServer.Handler.NonGoRestfulMux.HandleFunc("/login")
+	return svr, nil
 }

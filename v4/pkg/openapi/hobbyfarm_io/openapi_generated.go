@@ -75,6 +75,9 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.PredefinedServiceList":          schema_pkg_apis_hobbyfarmio_v4alpha1_PredefinedServiceList(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.PredefinedServiceSpec":          schema_pkg_apis_hobbyfarmio_v4alpha1_PredefinedServiceSpec(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Progress":                       schema_pkg_apis_hobbyfarmio_v4alpha1_Progress(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProgressList":                   schema_pkg_apis_hobbyfarmio_v4alpha1_ProgressList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProgressSpec":                   schema_pkg_apis_hobbyfarmio_v4alpha1_ProgressSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProgressStatus":                 schema_pkg_apis_hobbyfarmio_v4alpha1_ProgressStatus(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Provider":                       schema_pkg_apis_hobbyfarmio_v4alpha1_Provider(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProviderList":                   schema_pkg_apis_hobbyfarmio_v4alpha1_ProviderList(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProviderSpec":                   schema_pkg_apis_hobbyfarmio_v4alpha1_ProviderSpec(ref),
@@ -84,6 +87,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStep":                   schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioStep(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStepList":               schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioStepList(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStepSpec":               schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioStepSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStepStatus":             schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioStepStatus(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEvent":                 schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEvent(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventList":             schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventList(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScheduledEventSpec":             schema_pkg_apis_hobbyfarmio_v4alpha1_ScheduledEventSpec(ref),
@@ -976,7 +980,6 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_CourseSpec(ref common.ReferenceCallbac
 					"pauseDuration": {
 						SchemaProps: spec.SchemaProps{
 							Description: "PauseDuration is a string representing the period of time a user can prevent the reaping of their machines without continuous keepalive pings. While a Course is paused, the keepalive \"timer\" (described on KeepaliveDuration) is paused and HobbyFarm will not reclaim the Machine. For example, if this string is \"1h\" and KeepaliveDuration is \"30m\", if a user pauses their Course and closes their laptop (thus preventing keepalive pings from the UI), the KeepaliveDuration timer will not start until one hour after the Course was paused. Even if 30 minutes elapses machines will not be reaped as the countdown for keepalive is paused for the duration of the pause. A user may un-pause at any time.\n\nThe format of this field is an integer followed by an 'h' or 'm' designation for hours or minutes, respectively. MUST be parseabl by time.ParseDuration() Examples include \"15m\", \"5h\", \"48h\", or \"120m\"",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -998,7 +1001,7 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_CourseSpec(ref common.ReferenceCallbac
 						},
 					},
 				},
-				Required: []string{"displayName", "description", "scenarios", "categories", "tags", "machineRequirements", "keepaliveDuration", "pauseDuration", "machinePersistenceStrategy", "pauseBehavior"},
+				Required: []string{"displayName", "description", "scenarios", "categories", "tags", "machineRequirements", "keepaliveDuration", "machinePersistenceStrategy", "pauseBehavior"},
 			},
 		},
 		Dependencies: []string{
@@ -2528,22 +2531,110 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_Progress(ref common.ReferenceCallback)
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "Progress holds the progress of a user through a particular scenario. It tracks items such as the step the user is currently on, when they started and ended, etc.",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"currentStep": {
+					"kind": {
 						SchemaProps: spec.SchemaProps{
-							Description: "CurrentStep is the 0-indexed step of the scenario that the user is currently on, or was on as of LastUpdate.",
-							Default:     0,
-							Type:        []string{"integer"},
-							Format:      "int32",
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
-					"maxStep": {
+					"apiVersion": {
 						SchemaProps: spec.SchemaProps{
-							Description: "MaxStep is the 0-indexed *furthest* step the user has gotten to. May not be the current step the user is on, if they have backtracked.",
-							Default:     0,
-							Type:        []string{"integer"},
-							Format:      "int32",
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProgressSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProgressStatus"),
+						},
+					},
+				},
+				Required: []string{"spec", "status"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProgressSpec", "github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ProgressStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ProgressList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Progress"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.Progress", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ProgressSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"user": {
+						SchemaProps: spec.SchemaProps{
+							Description: "User is the object name of the user to whom this Progress belongs",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"scenario": {
@@ -2565,6 +2656,35 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_Progress(ref common.ReferenceCallback)
 					"totalStep": {
 						SchemaProps: spec.SchemaProps{
 							Description: "TotalStep is the total number of steps in the Scenario. It is copied into this struct to make visualizations and reasoning about step progress easier.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+				Required: []string{"user", "scenario", "course", "totalStep"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ProgressStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"currentStep": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CurrentStep is the 0-indexed step of the scenario that the user is currently on, or was on as of LastUpdate.",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"maxStep": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MaxStep is the 0-indexed *furthest* step the user has gotten to. May not be the current step the user is on, if they have backtracked.",
 							Default:     0,
 							Type:        []string{"integer"},
 							Format:      "int32",
@@ -2603,7 +2723,7 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_Progress(ref common.ReferenceCallback)
 						},
 					},
 				},
-				Required: []string{"currentStep", "maxStep", "scenario", "course", "totalStep", "started", "lasteUpdate", "finished", "stepTimes"},
+				Required: []string{"currentStep", "maxStep", "started", "lasteUpdate", "finished", "stepTimes"},
 			},
 		},
 		Dependencies: []string{
@@ -2982,12 +3102,18 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioStep(ref common.ReferenceCallb
 							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStepSpec"),
 						},
 					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStepStatus"),
+						},
+					},
 				},
-				Required: []string{"spec"},
+				Required: []string{"spec", "status"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStepSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStepSpec", "github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.ScenarioStepStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -3065,6 +3191,35 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioStepSpec(ref common.ReferenceC
 				Required: []string{"title", "content"},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_ScenarioStepStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"referringScenarios": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ReferringScenarios is a list of all the Scenario objects that reference this step.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.ObjectReference"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"referringScenarios"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.ObjectReference"},
 	}
 }
 
@@ -3732,14 +3887,16 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_StepTime(ref common.ReferenceCallback)
 				Properties: map[string]spec.Schema{
 					"step": {
 						SchemaProps: spec.SchemaProps{
-							Default: 0,
-							Type:    []string{"integer"},
-							Format:  "int32",
+							Description: "Step is the number of the step",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
 						},
 					},
 					"time": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Description: "Time is the time at which the step was \"started\" (e.g. loaded in the UI)",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
 				},
