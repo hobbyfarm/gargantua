@@ -52,6 +52,14 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&UserList{},
 		&ServiceAccount{},
 		&ServiceAccountList{},
+		&ConfigMap{},
+		&ConfigMapList{},
+		&Secret{},
+		&SecretList{},
+		&Role{},
+		&RoleList{},
+		&RoleBinding{},
+		&RoleBindingList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)

@@ -7,6 +7,10 @@ import (
 	"net/http"
 )
 
+type LoginHandler interface {
+	HandleLogin() http.HandlerFunc
+}
+
 type UsernamePasswordAuthRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`

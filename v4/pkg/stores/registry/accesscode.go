@@ -15,7 +15,7 @@ type accessCodeValidator struct {
 
 func NewAccessCodeStorage(accessCodeStrategy strategy.CompleteStrategy) (rest.Storage, error) {
 	acv := &accessCodeValidator{}
-
+	
 	return stores.NewBuilder(accessCodeStrategy.Scheme(), &v4alpha1.AccessCode{}).
 		WithCompleteCRUD(accessCodeStrategy).
 		WithValidateCreate(acv).

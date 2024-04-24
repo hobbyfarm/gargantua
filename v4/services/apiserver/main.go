@@ -13,13 +13,17 @@ import (
 )
 
 var (
-	kubeconfig  string
-	kubecontext string
+	kubeconfig     string
+	kubecontext    string
+	skipcrdinstall bool
+	namespace      string
 )
 
 func init() {
 	rootCmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig file, uses in-cluster if not set")
 	rootCmd.Flags().StringVar(&kubecontext, "context", "default", "kube context")
+	rootCmd.Flags().BoolVar(&skipcrdinstall, "skip-crd-installation", false, "skip installation of CRDs into remote cluster")
+	rootCmd.Flags().StringVar(&namespace, "namespace", "hobbyfarm", "namespace in which to store objects in remote cluster")
 }
 
 var rootCmd = &cobra.Command{
@@ -41,12 +45,14 @@ func app(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("could not build client: %v", err.Error())
 	}
 
-	crds := crd.GenerateCRDs()
-	if err := crder.InstallUpdateCRDs(cfg, crds...); err != nil {
-		return fmt.Errorf("error installing/updating crds: %v", err.Error())
+	if !skipcrdinstall {
+		crds := crd.GenerateCRDs()
+		if err := crder.InstallUpdateCRDs(cfg, crds...); err != nil {
+			return fmt.Errorf("error installing/updating crds: %v", err.Error())
+		}
 	}
 
-	server, err := server2.NewKubernetesServer(kClient)
+	server, err := server2.NewKubernetesServer(kClient, namespace)
 	if err != nil {
 		return fmt.Errorf("could not build server: %v", err.Error())
 	}

@@ -231,6 +231,16 @@ func GenerateCRDs() []crder.CRD {
 				IsNamespaced(true).
 				AddVersion("v4alpha1", &v4alpha1.ServiceAccount{}, nil)
 		}),
+		hobbyfarmCRD(&v4alpha1.Role{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v4alpha1", &v4alpha1.Role{}, nil)
+		}),
+		hobbyfarmCRD(&v4alpha1.RoleBinding{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v4alpha1", &v4alpha1.RoleBinding{}, nil)
+		}),
 	}
 }
 
