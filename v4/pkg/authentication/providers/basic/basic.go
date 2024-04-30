@@ -1,18 +1,24 @@
-package providers
+package basic
 
 import (
+	"context"
+	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
+	"github.com/hobbyfarm/gargantua/v4/pkg/authentication/providers"
 	hflabels "github.com/hobbyfarm/gargantua/v4/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v4/pkg/statuswriter"
+	hfStrategy "github.com/hobbyfarm/gargantua/v4/pkg/stores/strategy"
 	"github.com/hobbyfarm/mink/pkg/strategy"
 	"golang.org/x/crypto/bcrypt"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/storage"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -20,13 +26,21 @@ const (
 	authFailed = "authentication failed"
 )
 
+var _ authenticator.Request = (*BasicAuthProvider)(nil)
+
+type Claims struct {
+	jwt.StandardClaims
+	Principal   string `json:"principal"`
+	DisplayName string `json:"displayName"`
+}
+
 type BasicAuthProvider struct {
-	userLister    strategy.Lister
+	userLister    hfStrategy.ListerGetter
 	secretGetter  strategy.Getter
 	settingGetter strategy.Getter
 }
 
-func NewBasicAuthProvider(userLister strategy.Lister, secretGetter strategy.Getter, settingGetter strategy.Getter) BasicAuthProvider {
+func NewBasicAuthProvider(userLister hfStrategy.ListerGetter, secretGetter strategy.Getter, settingGetter strategy.Getter) BasicAuthProvider {
 	return BasicAuthProvider{
 		userLister:    userLister,
 		secretGetter:  secretGetter,
@@ -36,7 +50,7 @@ func NewBasicAuthProvider(userLister strategy.Lister, secretGetter strategy.Gett
 
 func (ba BasicAuthProvider) HandleLogin() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		up, err := ParseUsernamePasswordAuthRequest(request)
+		up, err := providers.ParseCredentials(request)
 
 		if err != nil {
 			br := errors.NewBadRequest(err.Error())
@@ -122,13 +136,19 @@ func (ba BasicAuthProvider) HandleLogin() http.HandlerFunc {
 			}
 		}
 
-		tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"userid":      u.Name,
-			"principal":   "local://" + u.Name,
-			"displayname": u.Spec.DisplayName,
-			"nbf":         time.Now().String(),
-			"exp":         timeout,
-		})
+		claims := Claims{
+			StandardClaims: jwt.StandardClaims{
+				ExpiresAt: timeout.Unix(),
+				IssuedAt:  time.Now().Unix(),
+				Issuer:    "hobbyfarm",
+				NotBefore: time.Now().Unix(),
+				Subject:   u.Name,
+			},
+			Principal:   "local://" + u.Name,
+			DisplayName: u.Spec.DisplayName,
+		}
+
+		tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 		tokenString, err := tok.SignedString(hashedPw)
 
@@ -140,4 +160,52 @@ func (ba BasicAuthProvider) HandleLogin() http.HandlerFunc {
 			Code:    http.StatusOK,
 		}, writer)
 	}
+}
+
+func (ba BasicAuthProvider) validateToken(ctx context.Context, tok string) (*BasicUser, bool) {
+	var uid string
+	token, err := jwt.ParseWithClaims(tok, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		claims := token.Claims.(*Claims)
+		// get user for verification
+		obj, err := ba.userLister.Get(ctx, "", claims.Subject)
+		if err != nil {
+			return nil, fmt.Errorf("could not find user")
+		}
+		user := obj.(*v4alpha1.User)
+
+		obj, err = ba.secretGetter.Get(ctx, "", user.Spec.LocalAuthDetails.PasswordSecret)
+		if err != nil {
+			return nil, fmt.Errorf("password lookup error")
+		}
+		sec := obj.(*v4alpha1.Secret)
+
+		uid = string(user.UID)
+		return sec.Data["password"], nil
+	})
+
+	if err != nil {
+		return nil, false
+	}
+
+	return &BasicUser{
+		name:   token.Claims.(*Claims).Subject,
+		uid:    uid,
+		groups: nil,
+	}, true
+}
+
+func (ba BasicAuthProvider) AuthenticateRequest(req *http.Request) (*authenticator.Response, bool, error) {
+	tok := req.Header.Get("Authorization")
+	if !strings.HasPrefix(tok, "Bearer ") {
+		return nil, false, fmt.Errorf("token error")
+	}
+
+	tok = strings.TrimPrefix(tok, "Bearer ")
+	if u, valid := ba.validateToken(req.Context(), tok); valid {
+		return &authenticator.Response{
+			User: u,
+		}, true, nil
+	}
+
+	return nil, false, nil
 }

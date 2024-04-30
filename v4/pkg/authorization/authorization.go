@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
 	"github.com/hobbyfarm/mink/pkg/strategy"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/storage"
@@ -12,11 +13,25 @@ import (
 var _ authorizer.Authorizer = (*Authorizer)(nil)
 
 type Authorizer struct {
-	roleBindingGetter strategy.Lister
+	roleBindingLister strategy.Lister
 	roleGetter        strategy.Getter
+	unprotectedPaths  sets.Set[string]
+}
+
+func NewAuthorizer(roleBindingLister strategy.Lister, roleGetter strategy.Getter, unprotectedPaths ...string) Authorizer {
+	return Authorizer{
+		roleBindingLister: roleBindingLister,
+		roleGetter:        roleGetter,
+		unprotectedPaths:  sets.New(unprotectedPaths...),
+	}
 }
 
 func (az Authorizer) Authorize(ctx context.Context, a authorizer.Attributes) (authorized authorizer.Decision, reason string, err error) {
+	// is this an unprotected path?
+	if az.unprotectedPaths.Has(a.GetPath()) {
+		return authorizer.DecisionAllow, "", nil
+	}
+
 	// first, get bindings for the user and its groups
 	bindings, err := az.GetBindings(ctx, a.GetUser())
 	if err != nil {
@@ -44,7 +59,7 @@ func (az Authorizer) Authorize(ctx context.Context, a authorizer.Attributes) (au
 }
 
 func (az Authorizer) GetBindings(ctx context.Context, u user.Info) (result []v4alpha1.RoleBinding, err error) {
-	bindings, err := az.roleBindingGetter.List(ctx, "", storage.ListOptions{})
+	bindings, err := az.roleBindingLister.List(ctx, "", storage.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

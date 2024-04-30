@@ -19,3 +19,7 @@ type RoleList struct {
 
 	Items []Role `json:"items"`
 }
+
+func (r Role) NamespaceScoped() bool {
+	return false
+}

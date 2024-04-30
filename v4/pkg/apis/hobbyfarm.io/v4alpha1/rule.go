@@ -21,12 +21,12 @@ var (
 var _ binding.Rule = (*Rule)(nil)
 
 type Rule struct {
-	APIGroups     []string
-	Resources     []string
-	SubResources  []string
-	ResourceNames []string
-	Verbs         []string
-	Paths         []string
+	APIGroups     []string `json:"apiGroups"`
+	Resources     []string `json:"resources"`
+	SubResources  []string `json:"subResources"`
+	ResourceNames []string `json:"resourceNames"`
+	Verbs         []string `json:"verbs"`
+	Paths         []string `json:"paths"`
 }
 
 func Matches(str string, allowed []string) bool {

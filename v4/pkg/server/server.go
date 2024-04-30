@@ -1,7 +1,8 @@
 package server
 
 import (
-	"github.com/hobbyfarm/gargantua/v4/pkg/authentication/providers"
+	"github.com/hobbyfarm/gargantua/v4/pkg/authentication/providers/basic"
+	"github.com/hobbyfarm/gargantua/v4/pkg/authorization"
 	"github.com/hobbyfarm/gargantua/v4/pkg/openapi/hobbyfarm_io"
 	"github.com/hobbyfarm/gargantua/v4/pkg/scheme"
 	"github.com/hobbyfarm/gargantua/v4/pkg/stores/kubernetes"
@@ -13,6 +14,9 @@ import (
 	apiserver "k8s.io/apiserver/pkg/server"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+type dispatcher struct {
+}
 
 // NewKubernetesServer creates a new hobbyfarm-api server backed by a remote Kubernetes cluster.
 // client is a k8s client with watch capabilities.
@@ -32,8 +36,11 @@ func NewKubernetesServer(client client.WithWatch, forceStorageNamespace string) 
 		return nil, err
 	}
 
-	basicAuthProvider := providers.NewBasicAuthProvider(v4alpha1Storage["users"],
+	basicAuthProvider := basic.NewBasicAuthProvider(v4alpha1Storage["users"],
 		v4alpha1Storage["secrets"], v4alpha1Storage["settings"])
+
+	authorizer := authorization.NewAuthorizer(v4alpha1Storage["rolebindings"],
+		v4alpha1Storage["roles"], "/login")
 
 	if err != nil {
 		return nil, err
@@ -53,8 +60,8 @@ func NewKubernetesServer(client client.WithWatch, forceStorageNamespace string) 
 		RemoteKubeConfigFileOptional: true,
 		IgnoreStartFailure:           false,
 		Middleware:                   nil,
-		Authenticator:                nil,
-		Authorization:                nil,
+		Authenticator:                basicAuthProvider,
+		Authorization:                authorizer,
 		OpenAPIConfig:                hobbyfarm_io.GetOpenAPIDefinitions,
 		APIGroups:                    storage,
 		PostStartFunc:                nil,
@@ -64,8 +71,8 @@ func NewKubernetesServer(client client.WithWatch, forceStorageNamespace string) 
 	if err != nil {
 		return nil, err
 	}
-
-	svr.GenericAPIServer.Handler.NonGoRestfulMux.HandleFunc("/login", basicAuthProvider.HandleLogin())
+	
+	svr.GenericAPIServer.Handler.NonGoRestfulMux.Handle("/login", basicAuthProvider.HandleLogin())
 
 	return svr, nil
 }

@@ -3,6 +3,7 @@ module github.com/hobbyfarm/gargantua
 go 1.22.0
 
 replace k8s.io/client-go => k8s.io/client-go v0.29.1
+replace github.com/hobbyfarm/mink => /Users/ebauman/code/github.com/hobbyfarm/mink
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible

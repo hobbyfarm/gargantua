@@ -11,18 +11,18 @@ type LoginHandler interface {
 	HandleLogin() http.HandlerFunc
 }
 
-type UsernamePasswordAuthRequest struct {
+type Credentials struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-func ParseUsernamePasswordAuthRequest(req *http.Request) (*UsernamePasswordAuthRequest, error) {
+func ParseCredentials(req *http.Request) (*Credentials, error) {
 	bodyBytes, err := io.ReadAll(req.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	var out = &UsernamePasswordAuthRequest{}
+	var out = &Credentials{}
 	if err := json.Unmarshal(bodyBytes, out); err != nil {
 		return nil, err
 	}
