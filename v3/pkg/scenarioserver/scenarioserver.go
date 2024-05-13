@@ -7,6 +7,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"slices"
+	"strconv"
+	"strings"
+
 	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
@@ -14,10 +19,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseclient"
 	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"net/http"
-	"slices"
-	"strconv"
-	"strings"
 
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"
@@ -50,13 +51,14 @@ type PreparedScenarioStep struct {
 }
 
 type PreparedScenario struct {
-	Id              string              `json:"id"`
-	Name            string              `json:"name"`
-	Description     string              `json:"description"`
-	StepCount       int                 `json:"stepcount"`
-	VirtualMachines []map[string]string `json:"virtualmachines"`
-	Pauseable       bool                `json:"pauseable"`
-	Printable       bool                `json:"printable"`
+	Id              string                     `json:"id"`
+	Name            string                     `json:"name"`
+	Description     string                     `json:"description"`
+	StepCount       int                        `json:"stepcount"`
+	VirtualMachines []map[string]string        `json:"virtualmachines"`
+	Pauseable       bool                       `json:"pauseable"`
+	Printable       bool                       `json:"printable"`
+	Tasks           []hfv1.VirtualMachineTasks `json:"vm_tasks"`
 }
 
 type AdminPreparedScenario struct {
@@ -111,7 +113,7 @@ func (s ScenarioServer) prepareScenario(scenario hfv1.Scenario, printable bool) 
 	ps.Pauseable = scenario.Spec.Pauseable
 	ps.Printable = printable
 	ps.StepCount = len(scenario.Spec.Steps)
-
+	ps.Tasks = scenario.Spec.Tasks
 	return ps, nil
 }
 
@@ -723,6 +725,31 @@ func (s ScenarioServer) CopyFunc(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func VerifyTaskContent(vm_tasks []hfv1.VirtualMachineTasks) error {
+	//Verify that name, description, command must not empty
+	for _, vm_task := range vm_tasks {
+		if vm_task.VMName == "" {
+			glog.Errorf("error while vm_name empty")
+			return fmt.Errorf("bad")
+		}
+		for _, task := range vm_task.Tasks {
+			if task.Name == "" {
+				glog.Errorf("error while Name of task empty")
+				return fmt.Errorf("bad")
+			}
+			if task.Description == "" {
+				glog.Errorf("error while Description of task empty")
+				return fmt.Errorf("bad")
+			}
+			if task.Command == "" || task.Command == "[]" {
+				glog.Errorf("error while Command of task empty")
+				return fmt.Errorf("bad")
+			}
+		}
+	}
+	return nil
+}
+
 func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := rbac2.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
@@ -813,6 +840,22 @@ func (s ScenarioServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	scenario.Spec.Categories = categories
 	scenario.Spec.Tags = tags
 	scenario.Spec.KeepAliveDuration = keepaliveDuration
+	rawVMTasks := r.PostFormValue("vm_tasks")
+	if rawVMTasks != "" {
+		vm_tasks := []hfv1.VirtualMachineTasks{}
+
+		err = json.Unmarshal([]byte(rawVMTasks), &vm_tasks)
+		if err != nil {
+			glog.Errorf("error while unmarshaling tasks %v", err)
+			return
+		}
+		err = VerifyTaskContent(vm_tasks)
+		if err != nil {
+			glog.Errorf("error tasks content %v", err)
+			return
+		}
+		scenario.Spec.Tasks = vm_tasks
+	}
 
 	scenario.Spec.Pauseable = false
 	if pauseable != "" {
@@ -875,6 +918,7 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		rawVirtualMachines := r.PostFormValue("virtualmachines")
 		rawCategories := r.PostFormValue("categories")
 		rawTags := r.PostFormValue("tags")
+		rawVMTasks := r.PostFormValue("vm_tasks")
 
 		if name != "" {
 			scenario.Spec.Name = name
@@ -954,6 +998,23 @@ func (s ScenarioServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 				return fmt.Errorf("bad")
 			}
 			scenario.Spec.Tags = tagsSlice
+		}
+
+		if rawVMTasks != "" {
+			vm_tasks := []hfv1.VirtualMachineTasks{}
+
+			err = json.Unmarshal([]byte(rawVMTasks), &vm_tasks)
+			if err != nil {
+				glog.Errorf("error while unmarshaling tasks %v", err)
+				return fmt.Errorf("bad")
+			}
+
+			err = VerifyTaskContent(vm_tasks)
+			if err != nil {
+				glog.Errorf("error tasks content %v", err)
+				return err
+			}
+			scenario.Spec.Tasks = vm_tasks
 		}
 
 		_, updateErr := s.hfClientSet.HobbyfarmV1().Scenarios(util.GetReleaseNamespace()).Update(s.ctx, scenario, metav1.UpdateOptions{})
