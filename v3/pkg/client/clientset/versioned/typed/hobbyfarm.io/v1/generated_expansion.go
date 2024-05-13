@@ -28,6 +28,8 @@ type EnvironmentExpansion interface{}
 
 type OneTimeAccessCodeExpansion interface{}
 
+type PasswordResetTokenExpansion interface{}
+
 type PredefinedServiceExpansion interface{}
 
 type ProgressExpansion interface{}

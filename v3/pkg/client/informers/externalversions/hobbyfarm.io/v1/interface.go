@@ -34,6 +34,8 @@ type Interface interface {
 	Environments() EnvironmentInformer
 	// OneTimeAccessCodes returns a OneTimeAccessCodeInformer.
 	OneTimeAccessCodes() OneTimeAccessCodeInformer
+	// PasswordResetTokens returns a PasswordResetTokenInformer.
+	PasswordResetTokens() PasswordResetTokenInformer
 	// PredefinedServices returns a PredefinedServiceInformer.
 	PredefinedServices() PredefinedServiceInformer
 	// Progresses returns a ProgressInformer.
@@ -94,6 +96,11 @@ func (v *version) Environments() EnvironmentInformer {
 // OneTimeAccessCodes returns a OneTimeAccessCodeInformer.
 func (v *version) OneTimeAccessCodes() OneTimeAccessCodeInformer {
 	return &oneTimeAccessCodeInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// PasswordResetTokens returns a PasswordResetTokenInformer.
+func (v *version) PasswordResetTokens() PasswordResetTokenInformer {
+	return &passwordResetTokenInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // PredefinedServices returns a PredefinedServiceInformer.
