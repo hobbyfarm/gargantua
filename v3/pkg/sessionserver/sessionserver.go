@@ -210,8 +210,9 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	session.Spec.ScenarioId = scenario.Name
 	session.Spec.UserId = user.GetId()
 	session.Spec.KeepCourseVM = course.Spec.KeepVM
+	session.Spec.AccessCode = accessCode // accessCode can be an OTAC or a normal AccessCode
 	labels := make(map[string]string)
-	labels[hflabels.AccessCodeLabel] = accessCodeObj.Name // map accesscode to session
+	labels[hflabels.AccessCodeLabel] = accessCodeObj.Name // map accesscode to session, this has to be the SE AccessCode in order for session cleanup to work upon SE deletion
 	labels[hflabels.UserLabel] = user.GetId()             // map user to session
 	session.Labels = labels
 	var vms []map[string]string
@@ -513,6 +514,16 @@ func (sss SessionServer) KeepAliveSessionFunc(w http.ResponseWriter, r *http.Req
 
 		util2.ReturnHTTPMessage(w, r, 202, "paused", timeUntilExpiration.String())
 		return
+	}
+
+	if ss.Spec.AccessCode != "" {
+		// If we receive an AccessCodeObj from the accessCode Client the AC from this session is still valid, if we find no AccessCode it was deleted or time ran out.
+		// We will gracefully end this session by just not increasing the Session ExpirationTime anymore. This will end the session at maximum <KeepAliveDuration> after the AC expired
+		_, err := sss.accessCodeClient.GetAccessCodeWithOTACs(ss.Spec.AccessCode)
+		if err != nil {
+			util2.ReturnHTTPMessage(w, r, 400, "error", "Session is overdue, can not increase duration")
+			return
+		}
 	}
 
 	var scenario hfv1.Scenario

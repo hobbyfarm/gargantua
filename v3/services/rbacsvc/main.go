@@ -69,13 +69,14 @@ func main() {
 	authrClient := authr.NewAuthRClient(connections[microservices.AuthR])
 
 	var wg sync.WaitGroup
-	wg.Add(1)
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
 	}()
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		rbacServer := rbacservice.NewRbacServer(rs, authnClient, authrClient)

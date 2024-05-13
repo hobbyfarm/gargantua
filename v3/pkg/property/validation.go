@@ -1,6 +1,7 @@
 package property
 
 import (
+	"fmt"
 	"github.com/peterhellberg/duration"
 	"github.com/xeipuuv/gojsonschema"
 	"math"
@@ -362,48 +363,73 @@ func validateFloatEnum(value float64, enum []string) error {
 func (p Property) validateUniqueItems(value any) error {
 	if p.UniqueItems {
 		switch v := value.(type) {
+		case []bool:
+			return p.validateUniqueItemsSlice(v)
 		case []string:
-			return validateUniqueItemsSlice(v)
+			return p.validateUniqueItemsSlice(v)
 		case []int:
-			return validateUniqueItemsSlice(v)
+			return p.validateUniqueItemsSlice(v)
 		case []float64:
-			return validateUniqueItemsSlice(v)
+			return p.validateUniqueItemsSlice(v)
+		case map[string]bool:
+			return p.validateUniqueItemsMap(v)
 		case map[string]string:
-			return validateUniqueItemsMap(v)
+			return p.validateUniqueItemsMap(v)
 		case map[string]int:
-			return validateUniqueItemsMap(v)
+			return p.validateUniqueItemsMap(v)
 		case map[string]float64:
-			return validateUniqueItemsMap(v)
+			return p.validateUniqueItemsMap(v)
 		}
 	}
 
 	return nil
 }
 
-func validateUniqueItemsSlice[GenericType any](items []GenericType) error {
+func (p Property) validateUniqueItemsSlice(value any) error {
 	var unique = map[any]bool{}
 
-	for _, i := range items {
-		if unique[i] {
-			return NewValidationErrorf("value %v not unique", i)
-		}
+	if reflect.TypeOf(value).Kind() == reflect.Slice {
+		s := reflect.ValueOf(value)
 
-		unique[i] = true
+		for i := 0; i < s.Len(); i++ {
+			var mapVal = reflectValueOf(s.Index(i), p.DataType)
+			if unique[mapVal] {
+				return fmt.Errorf("duplicate value %v in unique slice", s.Index(i).String())
+			}
+			unique[mapVal] = true
+		}
 	}
 
 	return nil
 }
 
-func validateUniqueItemsMap[GenericType any](items map[string]GenericType) error {
+func (p Property) validateUniqueItemsMap(value any) error {
 	var unique = map[any]bool{}
 
-	for _, i := range items {
-		if unique[i] {
-			return NewValidationErrorf("value %v not unique", i)
-		}
+	if reflect.TypeOf(value).Kind() == reflect.Map {
+		s := reflect.ValueOf(value)
 
-		unique[i] = true
+		for _, k := range s.MapKeys() {
+			var mapVal = reflectValueOf(s.MapIndex(k), p.DataType)
+			if unique[mapVal] {
+				return fmt.Errorf("duplicate value %v in unique map", s.MapIndex(k).String())
+			}
+			unique[mapVal] = true
+		}
 	}
 
 	return nil
+}
+
+func reflectValueOf(v reflect.Value, d DataType) any {
+	switch d {
+	case DataTypeInteger:
+		return v.Int()
+	case DataTypeBoolean:
+		return v.Bool()
+	case DataTypeFloat:
+		return v.Float()
+	default:
+		return v.String()
+	}
 }
