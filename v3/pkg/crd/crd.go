@@ -2,12 +2,12 @@ package crd
 
 import (
 	"github.com/ebauman/crder"
-//	"github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	//	"github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	terraformv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
 )
 
-func GenerateCRDs(caBundle string, reference ServiceReference) []crder.CRD {
+func GenerateCRDs() []crder.CRD {
 	return []crder.CRD{
 		hobbyfarmCRD(&v1.VirtualMachine{}, func(c *crder.CRD) {
 			c.
@@ -61,7 +61,7 @@ func GenerateCRDs(caBundle string, reference ServiceReference) []crder.CRD {
 			c.
 				IsNamespaced(true).
 				AddVersion("v1", &v1.Scenario{}, nil)
-		}),		
+		}),
 		hobbyfarmCRD(&v1.Session{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).
