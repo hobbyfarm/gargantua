@@ -2,7 +2,6 @@ package microservices
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"hash/fnv"
 	"io"
@@ -77,19 +76,11 @@ func (c *ShardedController) getShardPlacement(obj interface{}) (int, error) {
 		panic(err)
 	}
 
-	//store the has as bytearray
-	hash := hasher.Sum(nil)
-
-	// convert the hash into an integer by truncating it
-	truncatedHash := int(binary.BigEndian.Uint32(hash[:4]))
-
-	if truncatedHash < 0 {
-		//Ensure only positive values are taken
-		truncatedHash = -truncatedHash
-	}
+	//store the has as 32-bit unsigned int
+	hash := hasher.Sum32()
 
 	// return the hash modulo the total replica count, this creates an almost equally distributed placement
-	return truncatedHash % c.replica_count, nil
+	return int(hash) % c.replica_count, nil
 }
 
 // RunSharded will start a sharded controller that watches the parent StatefulSet and applies sharding based on the total replica count
