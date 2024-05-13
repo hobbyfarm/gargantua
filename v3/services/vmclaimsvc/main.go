@@ -71,7 +71,6 @@ func main() {
 
 	vs := vmclaimservice.NewGrpcVMClaimServer(hfClient, hfInformerFactory)
 	vmclaimProto.RegisterVMClaimSvcServer(gs, vs)
-	// @TODO: Push fully implemented controller.go for this service
 	vmClaimController, err := vmclaimservice.NewVMClaimController(
 		kubeClient,
 		vs,
