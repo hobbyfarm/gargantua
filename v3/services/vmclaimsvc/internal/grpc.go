@@ -22,20 +22,27 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/client-go/util/workqueue"
 )
 
 type GrpcVMClaimServer struct {
 	vmClaimProto.UnimplementedVMClaimSvcServer
-	vmClaimClient hfClientsetv1.VirtualMachineClaimInterface
-	vmClaimLister listersv1.VirtualMachineClaimLister
-	vmClaimSynced cache.InformerSynced
+	vmClaimClient    hfClientsetv1.VirtualMachineClaimInterface
+	vmClaimLister    listersv1.VirtualMachineClaimLister
+	vmClaimSynced    cache.InformerSynced
+	vmClaimWorkqueue workqueue.DelayingInterface
 }
 
-func NewGrpcVMClaimServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) *GrpcVMClaimServer {
+func NewGrpcVMClaimServer(
+	hfClientSet hfClientset.Interface,
+	hfInformerFactory hfInformers.SharedInformerFactory,
+	workqueue workqueue.DelayingInterface,
+) *GrpcVMClaimServer {
 	return &GrpcVMClaimServer{
-		vmClaimClient: hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()),
-		vmClaimLister: hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Lister(),
-		vmClaimSynced: hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced,
+		vmClaimClient:    hfClientSet.HobbyfarmV1().VirtualMachineClaims(util.GetReleaseNamespace()),
+		vmClaimLister:    hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Lister(),
+		vmClaimSynced:    hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer().HasSynced,
+		vmClaimWorkqueue: workqueue,
 	}
 }
 
@@ -312,4 +319,16 @@ func (s *GrpcVMClaimServer) ListVMClaim(ctx context.Context, listOptions *genera
 	}
 
 	return &vmClaimProto.ListVMClaimsResponse{Vmclaims: preparedVmcs}, nil
+}
+
+func (s *GrpcVMClaimServer) AddToWorkqueue(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+	if s.vmClaimWorkqueue == nil {
+		return &empty.Empty{}, hferrors.GrpcError(
+			codes.Internal,
+			"error adding item to workqueue: workqueue is nil",
+			req,
+		)
+	}
+	s.vmClaimWorkqueue.Add(req.GetId())
+	return &empty.Empty{}, nil
 }

@@ -28,6 +28,7 @@ const (
 	VMClaimSvc_DeleteVMClaim_FullMethodName           = "/vmclaim.VMClaimSvc/DeleteVMClaim"
 	VMClaimSvc_DeleteCollectionVMClaim_FullMethodName = "/vmclaim.VMClaimSvc/DeleteCollectionVMClaim"
 	VMClaimSvc_ListVMClaim_FullMethodName             = "/vmclaim.VMClaimSvc/ListVMClaim"
+	VMClaimSvc_AddToWorkqueue_FullMethodName          = "/vmclaim.VMClaimSvc/AddToWorkqueue"
 )
 
 // VMClaimSvcClient is the client API for VMClaimSvc service.
@@ -41,6 +42,7 @@ type VMClaimSvcClient interface {
 	DeleteVMClaim(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteCollectionVMClaim(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListVMClaim(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*ListVMClaimsResponse, error)
+	AddToWorkqueue(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type vMClaimSvcClient struct {
@@ -114,6 +116,15 @@ func (c *vMClaimSvcClient) ListVMClaim(ctx context.Context, in *general.ListOpti
 	return out, nil
 }
 
+func (c *vMClaimSvcClient) AddToWorkqueue(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, VMClaimSvc_AddToWorkqueue_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VMClaimSvcServer is the server API for VMClaimSvc service.
 // All implementations must embed UnimplementedVMClaimSvcServer
 // for forward compatibility
@@ -125,6 +136,7 @@ type VMClaimSvcServer interface {
 	DeleteVMClaim(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	DeleteCollectionVMClaim(context.Context, *general.ListOptions) (*emptypb.Empty, error)
 	ListVMClaim(context.Context, *general.ListOptions) (*ListVMClaimsResponse, error)
+	AddToWorkqueue(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	mustEmbedUnimplementedVMClaimSvcServer()
 }
 
@@ -152,6 +164,9 @@ func (UnimplementedVMClaimSvcServer) DeleteCollectionVMClaim(context.Context, *g
 }
 func (UnimplementedVMClaimSvcServer) ListVMClaim(context.Context, *general.ListOptions) (*ListVMClaimsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListVMClaim not implemented")
+}
+func (UnimplementedVMClaimSvcServer) AddToWorkqueue(context.Context, *general.ResourceId) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddToWorkqueue not implemented")
 }
 func (UnimplementedVMClaimSvcServer) mustEmbedUnimplementedVMClaimSvcServer() {}
 
@@ -292,6 +307,24 @@ func _VMClaimSvc_ListVMClaim_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VMClaimSvc_AddToWorkqueue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(general.ResourceId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VMClaimSvcServer).AddToWorkqueue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VMClaimSvc_AddToWorkqueue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VMClaimSvcServer).AddToWorkqueue(ctx, req.(*general.ResourceId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VMClaimSvc_ServiceDesc is the grpc.ServiceDesc for VMClaimSvc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -326,6 +359,10 @@ var VMClaimSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListVMClaim",
 			Handler:    _VMClaimSvc_ListVMClaim_Handler,
+		},
+		{
+			MethodName: "AddToWorkqueue",
+			Handler:    _VMClaimSvc_AddToWorkqueue_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -9,6 +9,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"k8s.io/client-go/util/workqueue"
 
 	"github.com/golang/glog"
 	vmclaimservice "github.com/hobbyfarm/gargantua/services/vmclaimsvc/v3/internal"
@@ -67,9 +68,11 @@ func main() {
 	vmClient := vm.NewVMSvcClient(connections[microservices.VM])
 	vmTemplateClient := vmtemplate.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
 
+	vmClaimWorkqueue := workqueue.NewDelayingQueueWithConfig(workqueue.DelayingQueueConfig{Name: "vmclaim-controller"})
+
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
-	vs := vmclaimservice.NewGrpcVMClaimServer(hfClient, hfInformerFactory)
+	vs := vmclaimservice.NewGrpcVMClaimServer(hfClient, hfInformerFactory, vmClaimWorkqueue)
 	vmclaimProto.RegisterVMClaimSvcServer(gs, vs)
 	vmClaimController, err := vmclaimservice.NewVMClaimController(
 		kubeClient,

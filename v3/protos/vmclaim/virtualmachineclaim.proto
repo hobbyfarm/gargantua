@@ -17,6 +17,7 @@ service VMClaimSvc {
     rpc DeleteVMClaim (general.ResourceId) returns (google.protobuf.Empty);
     rpc DeleteCollectionVMClaim (general.ListOptions) returns (google.protobuf.Empty);
     rpc ListVMClaim (general.ListOptions) returns (ListVMClaimsResponse);
+    rpc AddToWorkqueue (general.ResourceId) returns (google.protobuf.Empty);
 }
 
 message VMClaim {

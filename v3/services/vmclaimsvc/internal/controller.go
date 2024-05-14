@@ -27,7 +27,6 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/util/workqueue"
 )
 
 const (
@@ -70,6 +69,7 @@ func NewVMClaimController(
 		kubeClient,
 		"vmclaim-controller",
 		time.Minute*30,
+		internalVmClaimServer.vmClaimWorkqueue,
 	)
 
 	vmClaimController := &VMClaimController{
@@ -84,7 +84,6 @@ func NewVMClaimController(
 		vmClient:                    vmClient,
 		vmTemplateClient:            vmTemplateClient,
 	}
-	vmClaimController.SetWorkqueue(workqueue.New())
 	vmClaimController.SetReconciler(vmClaimController)
 
 	return vmClaimController, nil
