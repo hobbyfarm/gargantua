@@ -27,7 +27,7 @@ func NewRateLimitingWorkqueueController(ctx context.Context, informer cache.Shar
 func (rlwq *RateLimitingWorkqueueController) GetRateLimitingWorkqueue() (workqueue.RateLimitingInterface, error) {
 	rateLimitingQueue, ok := rlwq.GetWorkqueue().(workqueue.RateLimitingInterface)
 	if !ok {
-		return nil, fmt.Errorf("Workqueue is not a DelayingQueue")
+		return nil, fmt.Errorf("Workqueue is not a RateLimitingQueue")
 	}
 	return rateLimitingQueue, nil
 }
