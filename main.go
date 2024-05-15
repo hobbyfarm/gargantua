@@ -12,8 +12,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/controllers/scheduledevent"
 	"github.com/hobbyfarm/gargantua/v3/pkg/controllers/session"
 	"github.com/hobbyfarm/gargantua/v3/pkg/controllers/tfpcontroller"
-	"github.com/hobbyfarm/gargantua/v3/pkg/controllers/vmclaimcontroller"
-	"github.com/hobbyfarm/gargantua/v3/pkg/controllers/vmsetcontroller"
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
@@ -341,15 +339,7 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	if err != nil {
 		return err
 	}
-	vmClaimController, err := vmclaimcontroller.NewVMClaimController(hfClient, hfInformerFactory, acClient, gctx)
-	if err != nil {
-		return err
-	}
 	tfpController, err := tfpcontroller.NewTerraformProvisionerController(kubeClient, hfClient, hfInformerFactory, gctx)
-	if err != nil {
-		return err
-	}
-	vmSetController, err := vmsetcontroller.NewVirtualMachineSetController(hfClient, hfInformerFactory, gctx)
 	if err != nil {
 		return err
 	}
@@ -363,15 +353,7 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	})
 
 	g.Go(func() error {
-		return vmClaimController.Run(stopCh)
-	})
-
-	g.Go(func() error {
 		return tfpController.Run(stopCh)
-	})
-
-	g.Go(func() error {
-		return vmSetController.Run(stopCh)
 	})
 
 	hfInformerFactory.Start(stopCh)
