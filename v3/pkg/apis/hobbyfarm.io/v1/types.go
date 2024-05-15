@@ -31,7 +31,7 @@ type VirtualMachineList struct {
 	metav1.ListMeta `json:"metadata"`
 	Items           []VirtualMachine `json:"items"`
 }
-
+//  Todo isSharedVM Enam?
 type VirtualMachineSpec struct {
 	VirtualMachineTemplateId string `json:"vm_template_id"`
 	SshUsername              string `json:"ssh_username"`
@@ -41,7 +41,15 @@ type VirtualMachineSpec struct {
 	UserId                   string `json:"user"`
 	Provision                bool   `json:"provision"`
 	VirtualMachineSetId      string `json:"vm_set_id"`
+	VirtualMachineType       VirtualMachineType `json:"vm_type"`
 }
+
+type VirtualMachineType string
+
+const (
+	VirtualMachineTypeUser   VirtualMachineType = "User"
+	VirtualMachineTypeShared VirtualMachineType = "Shared"
+)
 
 type VirtualMachineStatus struct {
 	Status        VmStatus `json:"status"` // default is nothing, but could be one of the following: readyforprovisioning, provisioning, running, terminating
