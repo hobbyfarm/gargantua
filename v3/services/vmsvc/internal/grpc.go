@@ -103,7 +103,6 @@ func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmProto.CreateVMReques
 		},
 		Spec: hfv1.VirtualMachineSpec{
 			VirtualMachineTemplateId: vmTemplateId,
-			SshUsername:              sshUserName,
 			SecretName:               secretName,
 			Protocol:                 protocol,
 			VirtualMachineClaimId:    vmClaimId,
@@ -111,6 +110,10 @@ func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmProto.CreateVMReques
 			Provision:                provision,
 			VirtualMachineSetId:      vmSetId,
 		},
+	}
+
+	if sshUserName != "" {
+		vm.Spec.SshUsername = sshUserName
 	}
 
 	_, err := s.vmClient.Create(ctx, vm, metav1.CreateOptions{})
@@ -175,6 +178,7 @@ func (s *GrpcVMServer) UpdateVM(ctx context.Context, req *vmProto.UpdateVMReques
 	bound := req.GetBound()
 	vmClaimId := req.GetVmClaimId()
 	user := req.GetUser()
+	finalizers := req.GetFinalizers()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		vm, err := s.vmClient.Get(ctx, id, metav1.GetOptions{})
@@ -198,6 +202,10 @@ func (s *GrpcVMServer) UpdateVM(ctx context.Context, req *vmProto.UpdateVMReques
 
 		if user != nil {
 			vm.Spec.UserId = user.GetValue()
+		}
+
+		if finalizers != nil {
+			vm.SetFinalizers(finalizers.GetValues())
 		}
 
 		_, updateErr := s.vmClient.Update(ctx, vm, metav1.UpdateOptions{})
