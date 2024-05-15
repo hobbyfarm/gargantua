@@ -98,8 +98,7 @@ func (v *VMClaimController) Reconcile(objName string) error {
 			glog.Infof("vmClaim %s not found on queue.. ignoring", objName)
 			return nil
 		} else {
-			glog.Errorf("error while retrieving vmclaim %s from queue with err %v", objName, err)
-			return err
+			return fmt.Errorf("error while retrieving vmclaim %s from queue with err %v", objName, err)
 		}
 	}
 
