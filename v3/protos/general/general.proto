@@ -40,3 +40,8 @@ message OwnerReferences {
 message StringMap {
     map<string, string> value = 1;
 }
+
+// A wrapper for string slices in case we need to differ between an empty and unset slice
+message StringArray {
+    repeated string values = 1;
+}
