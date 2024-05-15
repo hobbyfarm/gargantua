@@ -7,6 +7,7 @@ option go_package = "github.com/hobbyfarm/gargantua/v3/protos/vm";
 import "general/general.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/wrappers.proto";
+import "google/protobuf/timestamp.proto";
 
 service VMSvc {
     rpc CreateVM (CreateVMRequest) returns (google.protobuf.Empty);
@@ -33,6 +34,7 @@ message VM {
     repeated string finalizers = 12;
     VMStatus status = 13;
     map<string, string> annotations = 14;
+    google.protobuf.Timestamp deletion_timestamp = 15;
 }
 
 message CreateVMRequest {

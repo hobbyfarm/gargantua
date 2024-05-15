@@ -16,6 +16,7 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
@@ -141,21 +142,27 @@ func (s *GrpcVMServer) GetVM(ctx context.Context, req *general.GetRequest) (*vmP
 		WsEndpoint:    vm.Status.WsEndpoint,
 	}
 
+	var deletionTimeStamp *timestamppb.Timestamp
+	if !vm.DeletionTimestamp.IsZero() {
+		deletionTimeStamp = timestamppb.New(vm.DeletionTimestamp.Time)
+	}
+
 	return &vmProto.VM{
-		Id:           vm.Name,
-		Uid:          string(vm.UID),
-		VmTemplateId: vm.Spec.VirtualMachineTemplateId,
-		SshUsername:  vm.Spec.SshUsername,
-		Protocol:     vm.Spec.Protocol,
-		SecretName:   vm.Spec.SecretName,
-		VmClaimId:    vm.Spec.VirtualMachineClaimId,
-		User:         vm.Spec.UserId,
-		Provision:    vm.Spec.Provision,
-		VmSetId:      vm.Spec.VirtualMachineSetId,
-		Labels:       vm.Labels,
-		Finalizers:   vm.Finalizers,
-		Status:       status,
-		Annotations:  vm.Annotations,
+		Id:                vm.Name,
+		Uid:               string(vm.UID),
+		VmTemplateId:      vm.Spec.VirtualMachineTemplateId,
+		SshUsername:       vm.Spec.SshUsername,
+		Protocol:          vm.Spec.Protocol,
+		SecretName:        vm.Spec.SecretName,
+		VmClaimId:         vm.Spec.VirtualMachineClaimId,
+		User:              vm.Spec.UserId,
+		Provision:         vm.Spec.Provision,
+		VmSetId:           vm.Spec.VirtualMachineSetId,
+		Labels:            vm.Labels,
+		Finalizers:        vm.Finalizers,
+		Status:            status,
+		Annotations:       vm.Annotations,
+		DeletionTimestamp: deletionTimeStamp,
 	}, nil
 }
 
@@ -332,21 +339,27 @@ func (s *GrpcVMServer) ListVM(ctx context.Context, listOptions *general.ListOpti
 			WsEndpoint:    vm.Status.WsEndpoint,
 		}
 
+		var deletionTimeStamp *timestamppb.Timestamp
+		if !vm.DeletionTimestamp.IsZero() {
+			deletionTimeStamp = timestamppb.New(vm.DeletionTimestamp.Time)
+		}
+
 		preparedVms = append(preparedVms, &vmProto.VM{
-			Id:           vm.Name,
-			Uid:          string(vm.UID),
-			VmTemplateId: vm.Spec.VirtualMachineTemplateId,
-			SshUsername:  vm.Spec.SshUsername,
-			Protocol:     vm.Spec.Protocol,
-			SecretName:   vm.Spec.SecretName,
-			VmClaimId:    vm.Spec.VirtualMachineClaimId,
-			User:         vm.Spec.UserId,
-			Provision:    vm.Spec.Provision,
-			VmSetId:      vm.Spec.VirtualMachineSetId,
-			Labels:       vm.Labels,
-			Finalizers:   vm.Finalizers,
-			Status:       status,
-			Annotations:  vm.Annotations,
+			Id:                vm.Name,
+			Uid:               string(vm.UID),
+			VmTemplateId:      vm.Spec.VirtualMachineTemplateId,
+			SshUsername:       vm.Spec.SshUsername,
+			Protocol:          vm.Spec.Protocol,
+			SecretName:        vm.Spec.SecretName,
+			VmClaimId:         vm.Spec.VirtualMachineClaimId,
+			User:              vm.Spec.UserId,
+			Provision:         vm.Spec.Provision,
+			VmSetId:           vm.Spec.VirtualMachineSetId,
+			Labels:            vm.Labels,
+			Finalizers:        vm.Finalizers,
+			Status:            status,
+			Annotations:       vm.Annotations,
+			DeletionTimestamp: deletionTimeStamp,
 		})
 	}
 
