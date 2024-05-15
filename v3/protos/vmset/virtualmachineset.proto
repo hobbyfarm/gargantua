@@ -16,6 +16,7 @@ service VMSetSvc {
     rpc DeleteVMSet (general.ResourceId) returns (google.protobuf.Empty);
     rpc DeleteCollectionVMSet (general.ListOptions) returns (google.protobuf.Empty);
     rpc ListVMSet (general.ListOptions) returns (ListVMSetsResponse);
+    rpc AddToWorkqueue (general.ResourceId) returns (google.protobuf.Empty);
 }
 
 message VMSet {

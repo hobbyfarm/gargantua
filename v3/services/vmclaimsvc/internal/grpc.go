@@ -322,13 +322,5 @@ func (s *GrpcVMClaimServer) ListVMClaim(ctx context.Context, listOptions *genera
 }
 
 func (s *GrpcVMClaimServer) AddToWorkqueue(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
-	if s.vmClaimWorkqueue == nil {
-		return &empty.Empty{}, hferrors.GrpcError(
-			codes.Internal,
-			"error adding item to workqueue: workqueue is nil",
-			req,
-		)
-	}
-	s.vmClaimWorkqueue.Add(req.GetId())
-	return &empty.Empty{}, nil
+	return util.AddToWorkqueue(s.vmClaimWorkqueue, req)
 }

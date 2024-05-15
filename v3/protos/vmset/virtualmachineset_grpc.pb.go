@@ -28,6 +28,7 @@ const (
 	VMSetSvc_DeleteVMSet_FullMethodName           = "/vmset.VMSetSvc/DeleteVMSet"
 	VMSetSvc_DeleteCollectionVMSet_FullMethodName = "/vmset.VMSetSvc/DeleteCollectionVMSet"
 	VMSetSvc_ListVMSet_FullMethodName             = "/vmset.VMSetSvc/ListVMSet"
+	VMSetSvc_AddToWorkqueue_FullMethodName        = "/vmset.VMSetSvc/AddToWorkqueue"
 )
 
 // VMSetSvcClient is the client API for VMSetSvc service.
@@ -41,6 +42,7 @@ type VMSetSvcClient interface {
 	DeleteVMSet(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteCollectionVMSet(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListVMSet(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*ListVMSetsResponse, error)
+	AddToWorkqueue(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type vMSetSvcClient struct {
@@ -114,6 +116,15 @@ func (c *vMSetSvcClient) ListVMSet(ctx context.Context, in *general.ListOptions,
 	return out, nil
 }
 
+func (c *vMSetSvcClient) AddToWorkqueue(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, VMSetSvc_AddToWorkqueue_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // VMSetSvcServer is the server API for VMSetSvc service.
 // All implementations must embed UnimplementedVMSetSvcServer
 // for forward compatibility
@@ -125,6 +136,7 @@ type VMSetSvcServer interface {
 	DeleteVMSet(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	DeleteCollectionVMSet(context.Context, *general.ListOptions) (*emptypb.Empty, error)
 	ListVMSet(context.Context, *general.ListOptions) (*ListVMSetsResponse, error)
+	AddToWorkqueue(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	mustEmbedUnimplementedVMSetSvcServer()
 }
 
@@ -152,6 +164,9 @@ func (UnimplementedVMSetSvcServer) DeleteCollectionVMSet(context.Context, *gener
 }
 func (UnimplementedVMSetSvcServer) ListVMSet(context.Context, *general.ListOptions) (*ListVMSetsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListVMSet not implemented")
+}
+func (UnimplementedVMSetSvcServer) AddToWorkqueue(context.Context, *general.ResourceId) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddToWorkqueue not implemented")
 }
 func (UnimplementedVMSetSvcServer) mustEmbedUnimplementedVMSetSvcServer() {}
 
@@ -292,6 +307,24 @@ func _VMSetSvc_ListVMSet_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VMSetSvc_AddToWorkqueue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(general.ResourceId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VMSetSvcServer).AddToWorkqueue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VMSetSvc_AddToWorkqueue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VMSetSvcServer).AddToWorkqueue(ctx, req.(*general.ResourceId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // VMSetSvc_ServiceDesc is the grpc.ServiceDesc for VMSetSvc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -326,6 +359,10 @@ var VMSetSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListVMSet",
 			Handler:    _VMSetSvc_ListVMSet_Handler,
+		},
+		{
+			MethodName: "AddToWorkqueue",
+			Handler:    _VMSetSvc_AddToWorkqueue_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

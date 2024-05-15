@@ -21,20 +21,27 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/client-go/util/workqueue"
 )
 
 type GrpcVMSetServer struct {
 	vmSetProto.UnimplementedVMSetSvcServer
-	vmSetClient hfClientsetv1.VirtualMachineSetInterface
-	vmSetLister listersv1.VirtualMachineSetLister
-	vmSetSynced cache.InformerSynced
+	vmSetClient    hfClientsetv1.VirtualMachineSetInterface
+	vmSetLister    listersv1.VirtualMachineSetLister
+	vmSetSynced    cache.InformerSynced
+	vmSetWorkqueue workqueue.DelayingInterface
 }
 
-func NewGrpcVMSetServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) *GrpcVMSetServer {
+func NewGrpcVMSetServer(
+	hfClientSet hfClientset.Interface,
+	hfInformerFactory hfInformers.SharedInformerFactory,
+	workqueue workqueue.DelayingInterface,
+) *GrpcVMSetServer {
 	return &GrpcVMSetServer{
-		vmSetClient: hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()),
-		vmSetLister: hfInformerFactory.Hobbyfarm().V1().VirtualMachineSets().Lister(),
-		vmSetSynced: hfInformerFactory.Hobbyfarm().V1().VirtualMachineSets().Informer().HasSynced,
+		vmSetClient:    hfClientSet.HobbyfarmV1().VirtualMachineSets(util.GetReleaseNamespace()),
+		vmSetLister:    hfInformerFactory.Hobbyfarm().V1().VirtualMachineSets().Lister(),
+		vmSetSynced:    hfInformerFactory.Hobbyfarm().V1().VirtualMachineSets().Informer().HasSynced,
+		vmSetWorkqueue: workqueue,
 	}
 }
 
@@ -306,4 +313,8 @@ func (s *GrpcVMSetServer) ListVMSet(ctx context.Context, listOptions *general.Li
 	}
 
 	return &vmSetProto.ListVMSetsResponse{Vmsets: preparedVmSets}, nil
+}
+
+func (s *GrpcVMSetServer) AddToWorkqueue(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+	return util.AddToWorkqueue(s.vmSetWorkqueue, req)
 }
