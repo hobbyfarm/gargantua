@@ -160,6 +160,7 @@ func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.Updat
 
 		if environment != "" {
 			vms.Spec.Environment = environment
+			vms.Labels[hflabels.EnvironmentLabel] = environment
 		}
 
 		if vmTemplate != "" {

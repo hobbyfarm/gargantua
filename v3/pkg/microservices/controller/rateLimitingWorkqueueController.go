@@ -14,7 +14,7 @@ type RateLimitingWorkqueueController struct {
 	ShardedController
 }
 
-func NewRateLimitingWorkqueueController(ctx context.Context, informer cache.SharedIndexInformer, kubeClient *kubernetes.Clientset, reconcileFunc func(objName string) error, name string, resyncPeriod time.Duration, rateLimiter workqueue.RateLimiter) *RateLimitingWorkqueueController {
+func NewRateLimitingWorkqueueController(ctx context.Context, informer cache.SharedIndexInformer, kubeClient *kubernetes.Clientset, name string, resyncPeriod time.Duration, rateLimiter workqueue.RateLimiter) *RateLimitingWorkqueueController {
 	rlwq := &RateLimitingWorkqueueController{
 		*NewShardedController(ctx, informer, kubeClient, name, resyncPeriod),
 	}

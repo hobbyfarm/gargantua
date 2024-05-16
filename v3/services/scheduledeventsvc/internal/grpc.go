@@ -316,6 +316,15 @@ func (s *GrpcScheduledEventServer) UpdateScheduledEventStatus(ctx context.Contex
 			event.Status.Provisioned = provisioned.GetValue()
 		}
 		if ready != nil {
+			if ready.GetValue() && (!event.Status.Provisioned || event.Status.Finished) {
+				glog.Errorf("scheduled event %s is not provisioned. Could not change status to active.", event.Name)
+				return hferrors.GrpcError(
+					codes.FailedPrecondition,
+					"error while updating scheduled event %s: events can only be activated if they are in a provisioned state and not yet finished",
+					req,
+					req.GetId(),
+				)
+			}
 			event.Status.Ready = ready.GetValue()
 		}
 		if finished != nil {
