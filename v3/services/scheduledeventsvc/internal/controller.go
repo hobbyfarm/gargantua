@@ -31,7 +31,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-type EventController struct {
+type ScheduledEventController struct {
 	controllers.RateLimitingWorkqueueController
 	controllers.Reconciler
 	internalScheduledEventServer *GrpcScheduledEventServer
@@ -61,7 +61,7 @@ func init() {
 	}
 }
 
-func NewEventController(
+func NewScheduledEventController(
 	kubeClient *kubernetes.Clientset,
 	internalScheduledEventServer *GrpcScheduledEventServer,
 	hfInformerFactory hfInformers.SharedInformerFactory,
@@ -74,7 +74,7 @@ func NewEventController(
 	vmTemplateClient vmtemplateProto.VMTemplateSvcClient,
 	settingClient settingProto.SettingSvcClient,
 	ctx context.Context,
-) (*EventController, error) {
+) (*ScheduledEventController, error) {
 	scheduledEventInformer := hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer()
 	rateLimitingWorkqueueController := *controllers.NewRateLimitingWorkqueueController(
 		ctx,
@@ -85,7 +85,7 @@ func NewEventController(
 		workqueue.NewItemExponentialFailureRateLimiter(ScheduledEventBaseDelay, ScheduledEventMaxDelay),
 	)
 
-	scheduledEventController := &EventController{
+	scheduledEventController := &ScheduledEventController{
 		RateLimitingWorkqueueController: rateLimitingWorkqueueController,
 		internalScheduledEventServer:    internalScheduledEventServer,
 		accessCodeClient:                acClient,
@@ -102,7 +102,7 @@ func NewEventController(
 	return scheduledEventController, nil
 }
 
-func (sc *EventController) Reconcile(objName string) error {
+func (sc *ScheduledEventController) Reconcile(objName string) error {
 	err := sc.reconcileScheduledEvent(objName)
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
@@ -116,7 +116,7 @@ func (sc *EventController) Reconcile(objName string) error {
 	return nil
 }
 
-func (sc *EventController) completeScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) completeScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
 	glog.V(6).Infof("ScheduledEvent %s is done, deleting corresponding VMSets and marking as finished", se.GetId())
 	// scheduled event is finished, we need to set the scheduled event to finished and delete the vm's
 
@@ -147,7 +147,7 @@ func (sc *EventController) completeScheduledEvent(se *scheduledeventProto.Schedu
 	return nil // break (return) here because we're done with this SE.
 }
 
-func (sc *EventController) deleteScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) deleteScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
 	glog.V(6).Infof("ScheduledEvent %s is done and retention time is over, deleting SE finally", se.GetId())
 
 	if !se.GetStatus().GetFinished() {
@@ -167,7 +167,7 @@ func (sc *EventController) deleteScheduledEvent(se *scheduledeventProto.Schedule
 	return nil // break (return) here because we're done with this SE.
 }
 
-func (sc *EventController) deleteVMSetsFromScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) deleteVMSetsFromScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
 	_, err := sc.vmSetClient.DeleteCollectionVMSet(sc.Context, &general.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.Name),
@@ -175,7 +175,7 @@ func (sc *EventController) deleteVMSetsFromScheduledEvent(se *scheduledeventProt
 	return err
 }
 
-func (sc *EventController) deleteProgressFromScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) deleteProgressFromScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
 	_, err := sc.progressClient.DeleteCollectionProgress(sc.Context, &general.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.GetId()),
@@ -187,7 +187,7 @@ func (sc *EventController) deleteProgressFromScheduledEvent(se *scheduledeventPr
 	return nil
 }
 
-func (sc *EventController) deleteAccessCode(seId string) error {
+func (sc *ScheduledEventController) deleteAccessCode(seId string) error {
 	// delete the access code for the corresponding ScheduledEvent
 	_, err := sc.accessCodeClient.DeleteCollectionAc(sc.Context, &general.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, seId),
@@ -195,7 +195,7 @@ func (sc *EventController) deleteAccessCode(seId string) error {
 	return err
 }
 
-func (sc *EventController) finishSessionsFromScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) finishSessionsFromScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
 	// get a list of sessions for the user
 	sessionList, err := sc.sessionClient.ListSession(sc.Context, &general.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", hflabels.AccessCodeLabel, se.GetAccessCode()),
@@ -223,7 +223,7 @@ func (sc *EventController) finishSessionsFromScheduledEvent(se *scheduledeventPr
 	return nil
 }
 
-func (sc *EventController) provisionScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
 	glog.V(6).Infof("ScheduledEvent %s is ready to be provisioned", se.Name)
 	// start creating resources related to this
 	vmSets := []string{}
@@ -353,7 +353,7 @@ func (sc *EventController) provisionScheduledEvent(se *scheduledeventProto.Sched
 	return nil
 }
 
-func (sc *EventController) createAccessCode(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) createAccessCode(se *scheduledeventProto.ScheduledEvent) error {
 	_, err := sc.accessCodeClient.CreateAc(sc.Context, &accesscodeProto.CreateAcRequest{
 		AcName:              se.GetAccessCode(),
 		SeName:              se.GetId(),
@@ -373,7 +373,7 @@ func (sc *EventController) createAccessCode(se *scheduledeventProto.ScheduledEve
 	return nil
 }
 
-func (sc *EventController) verifyScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) verifyScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
 	// check the state of the vmset and mark the sevent as ready if everything is OK
 	glog.V(6).Infof("ScheduledEvent %s is in provisioned status, checking status of VMSet Provisioning", se.Name)
 	vmsList, err := sc.vmSetClient.ListVMSet(sc.Context, &general.ListOptions{
@@ -422,7 +422,7 @@ func (sc *EventController) verifyScheduledEvent(se *scheduledeventProto.Schedule
 	return nil
 }
 
-func (sc *EventController) reconcileScheduledEvent(seName string) error {
+func (sc *ScheduledEventController) reconcileScheduledEvent(seName string) error {
 	glog.V(4).Infof("reconciling scheduled event %s", seName)
 
 	// fetch the scheduled event
