@@ -160,6 +160,7 @@ func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progressPr
 
 		if finished != "" {
 			progress.Spec.Finished = finished
+			progress.Labels["finished"] = finished
 		}
 
 		if len(steps) > 0 {

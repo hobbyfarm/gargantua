@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"sync"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
@@ -11,7 +13,10 @@ import (
 
 	sessionservice "github.com/hobbyfarm/gargantua/services/sessionsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	"github.com/hobbyfarm/gargantua/v3/protos/progress"
 	sessionProto "github.com/hobbyfarm/gargantua/v3/protos/session"
+	"github.com/hobbyfarm/gargantua/v3/protos/vm"
+	"github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
 )
 
 var (
@@ -24,18 +29,45 @@ func init() {
 
 func main() {
 	stopCh := signals.SetupSignalHandler()
+	ctx := context.Background()
 
-	cfg, hfClient, _ := microservices.BuildClusterConfig(serviceConfig)
+	cfg, hfClient, kubeClient := microservices.BuildClusterConfig(serviceConfig)
 
 	namespace := util.GetReleaseNamespace()
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 
 	crd.InstallCrds(sessionservice.SessionCRDInstaller{}, cfg, "session")
 
+	services := []microservices.MicroService{
+		microservices.Progress,
+		microservices.VM,
+		microservices.VMClaim,
+	}
+	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
+	for _, conn := range connections {
+		defer conn.Close()
+	}
+
+	progressClient := progress.NewProgressSvcClient(connections[microservices.Progress])
+	vmClient := vm.NewVMSvcClient(connections[microservices.VM])
+	vmClaimClient := vmclaim.NewVMClaimSvcClient(connections[microservices.VMClaim])
+
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
 	ss := sessionservice.NewGrpcSessionServer(hfClient, hfInformerFactory)
 	sessionProto.RegisterSessionSvcServer(gs, ss)
+	sessionController, err := sessionservice.NewSessionController(
+		kubeClient,
+		ss,
+		hfInformerFactory,
+		progressClient,
+		vmClient,
+		vmClaimClient,
+		ctx,
+	)
+	if err != nil {
+		glog.Fatalf("failed creating scheduled event controller: %s", err.Error())
+	}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -43,6 +75,11 @@ func main() {
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
+	}()
+
+	go func() {
+		defer wg.Done()
+		sessionController.RunSharded(stopCh, microservices.ScheduledEvent)
 	}()
 
 	hfInformerFactory.Start(stopCh)
