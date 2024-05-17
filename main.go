@@ -9,7 +9,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/v3/pkg/controllers/scheduledevent"
 	"github.com/hobbyfarm/gargantua/v3/pkg/controllers/session"
 	"github.com/hobbyfarm/gargantua/v3/pkg/controllers/tfpcontroller"
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseclient"
@@ -335,10 +334,6 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 	if err != nil {
 		return err
 	}
-	scheduledEventController, err := scheduledevent.NewScheduledEventController(hfClient, hfInformerFactory, gctx, settingClient)
-	if err != nil {
-		return err
-	}
 	tfpController, err := tfpcontroller.NewTerraformProvisionerController(kubeClient, hfClient, hfInformerFactory, gctx)
 	if err != nil {
 		return err
@@ -346,10 +341,6 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 
 	g.Go(func() error {
 		return sessionController.Run(stopCh)
-	})
-
-	g.Go(func() error {
-		return scheduledEventController.Run(stopCh)
 	})
 
 	g.Go(func() error {
