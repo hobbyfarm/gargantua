@@ -9,7 +9,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/v3/pkg/controllers/session"
 	"github.com/hobbyfarm/gargantua/v3/pkg/controllers/tfpcontroller"
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseserver"
@@ -330,18 +329,10 @@ func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientse
 
 	g, gctx := errgroup.WithContext(ctx)
 	glog.V(2).Infof("Starting controllers")
-	sessionController, err := session.NewSessionController(hfClient, hfInformerFactory, gctx)
-	if err != nil {
-		return err
-	}
 	tfpController, err := tfpcontroller.NewTerraformProvisionerController(kubeClient, hfClient, hfInformerFactory, gctx)
 	if err != nil {
 		return err
 	}
-
-	g.Go(func() error {
-		return sessionController.Run(stopCh)
-	})
 
 	g.Go(func() error {
 		return tfpController.Run(stopCh)
