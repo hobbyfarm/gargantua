@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package terraformpb;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/terraformpb";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+service TerraformSvc {
+    rpc CreateState (CreateStateRequest) returns (google.protobuf.Empty);
+    rpc GetState (general.GetRequest) returns (State);
+    rpc DeleteState (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionState (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListState (general.ListOptions) returns (ListStateResponse);
+    rpc GetExecution (general.GetRequest) returns (Execution);
+    rpc ListExecution (general.ListOptions) returns (ListExecutionResponse);
+}
+
+message CreateStateRequest {
+    string vm_id = 1;
+    string image = 2;
+    Variables variables = 3;
+    string module_name = 4;
+    map<string, string> data = 5;
+    bool auto_confirm = 6;
+    bool destroy_on_delete = 7;
+    int32 version = 8;
+}
+
+message State {
+    string id = 1;
+    string image = 2;
+    Variables variables = 3;
+    string module_name = 4;
+    map<string, string> data = 5;
+    bool auto_confirm = 6;
+    bool destroy_on_delete = 7;
+    int32 version = 8;
+    StateStatus status = 9;
+    google.protobuf.Timestamp creation_timestamp = 10;
+}
+
+message StateStatus {
+    repeated Condition conditions = 1;
+    string last_run_hash = 2;
+    string execution_name = 3;
+    string execution_plan_name = 4;
+}
+
+message ListStateResponse {
+    repeated State states = 1;
+}
+
+message Execution {
+    string id = 1;
+    bool auto_confirm = 2;
+    ModuleContent content = 3;
+    string content_hash = 4;
+    string run_hash = 5;
+    map<string, string> data = 6;
+    string execution_name = 7;
+    int32 execution_version = 8;
+    string secret_name = 9;
+    ExecutionStatus status = 10;
+    google.protobuf.Timestamp creation_timestamp = 11;
+}
+
+message ExecutionStatus {
+    repeated Condition conditions = 1;
+    string job_name = 2;
+    string job_logs = 3;
+    string plan_output = 4;
+    bool plan_confirmed = 5;
+    string apply_output = 6;
+    string outputs = 7;
+}
+
+message ListExecutionResponse {
+    repeated Execution executions = 1;
+}
+
+message Variables {
+    repeated string env_config_names = 1;
+    repeated string env_secret_names = 2;
+    repeated string config_names = 3;
+    repeated string secret_names = 4;
+}
+
+message Condition {
+    string type = 1;
+    enum ConditionStatus {
+        True = 0;
+        False = 1;
+        Unknown = 2;
+    }
+    string last_update_time = 3;
+    string last_transition_time = 4;
+    string reason = 5;
+    string message = 6;
+}
+
+message ModuleContent {
+    map<string, string> content = 1;
+    GitLocation git = 2;
+}
+
+message GitLocation {
+    string url = 1;
+    string branch = 2;
+    string tag = 3;
+    string commit = 4;
+    string secret_name = 5;
+    int64 interval_seconds = 6;
+}
