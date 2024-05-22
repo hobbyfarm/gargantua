@@ -27,12 +27,12 @@ func RemoveFinalizer(finalizers []string, finalizer string) []string {
 	return finalizers
 }
 
-// // ContainsFinalizer checks an Object that the provided finalizer is present.
-// func containsFinalizer(finalizers []string, finalizer string) bool {
-// 	for _, e := range finalizers {
-// 		if e == finalizer {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
+// ContainsFinalizer checks an Object that the provided finalizer is present.
+func ContainsFinalizer(finalizers []string, finalizer string) bool {
+	for _, e := range finalizers {
+		if e == finalizer {
+			return true
+		}
+	}
+	return false
+}
