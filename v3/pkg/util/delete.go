@@ -8,6 +8,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/protos/general"
 	"google.golang.org/grpc/codes"
 	empty "google.golang.org/protobuf/types/known/emptypb"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -29,7 +30,9 @@ func DeleteHfResource(
 	}
 
 	err := clientDelete.Delete(ctx, id, metav1.DeleteOptions{})
-	if err != nil {
+	if errors.IsNotFound(err) {
+		return &empty.Empty{}, hferrors.GrpcNotFoundError(req, resourceName)
+	} else if err != nil {
 		glog.Errorf("error deleting %s %s: %s", resourceName, id, err)
 		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
