@@ -178,6 +178,7 @@ func (s *GrpcVMServer) UpdateVM(ctx context.Context, req *vmProto.UpdateVMReques
 	bound := req.GetBound()
 	vmClaimId := req.GetVmClaimId()
 	user := req.GetUser()
+	secretName := req.GetSecretName()
 	finalizers := req.GetFinalizers()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -202,6 +203,10 @@ func (s *GrpcVMServer) UpdateVM(ctx context.Context, req *vmProto.UpdateVMReques
 
 		if user != nil {
 			vm.Spec.UserId = user.GetValue()
+		}
+
+		if secretName != "" {
+			vm.Spec.SecretName = secretName
 		}
 
 		if finalizers != nil {
