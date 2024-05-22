@@ -9,6 +9,7 @@ import (
 	controllers "github.com/hobbyfarm/gargantua/v3/pkg/microservices/controller"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"github.com/hobbyfarm/gargantua/v3/protos/general"
+	terraformpb "github.com/hobbyfarm/gargantua/v3/protos/terraform"
 
 	"github.com/golang/glog"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
@@ -26,6 +27,7 @@ type VMController struct {
 	controllers.DelayingWorkqueueController
 	controllers.Reconciler
 	internalVmServer *GrpcVMServer
+	terraformClient  terraformpb.TerraformSvcClient
 	vmClaimClient    vmclaimProto.VMClaimSvcClient
 	vmSetClient      vmsetProto.VMSetSvcClient
 }
@@ -34,6 +36,7 @@ func NewVMController(
 	kubeClient *kubernetes.Clientset,
 	internalVmServer *GrpcVMServer,
 	hfInformerFactory hfInformers.SharedInformerFactory,
+	terraformClient terraformpb.TerraformSvcClient,
 	vmClaimClient vmclaimProto.VMClaimSvcClient,
 	vmSetClient vmsetProto.VMSetSvcClient,
 	ctx context.Context,
@@ -51,6 +54,7 @@ func NewVMController(
 	vmController := &VMController{
 		DelayingWorkqueueController: delayingWorkqueueController,
 		internalVmServer:            internalVmServer,
+		terraformClient:             terraformClient,
 		vmClaimClient:               vmClaimClient,
 		vmSetClient:                 vmSetClient,
 	}
