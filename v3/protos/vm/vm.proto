@@ -58,7 +58,8 @@ message UpdateVMRequest {
     string bound = 2;
     google.protobuf.StringValue vm_claim_id = 3;
     google.protobuf.StringValue user = 4;
-    general.StringArray finalizers = 5;
+    string secret_name = 5;
+    general.StringArray finalizers = 6;
 }
 
 message UpdateVMStatusRequest {
