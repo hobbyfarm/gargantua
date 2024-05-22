@@ -13,10 +13,12 @@ import (
 
 	vmservice "github.com/hobbyfarm/gargantua/services/vmsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	environmentProto "github.com/hobbyfarm/gargantua/v3/protos/environment"
 	terraformpb "github.com/hobbyfarm/gargantua/v3/protos/terraform"
 	vmProto "github.com/hobbyfarm/gargantua/v3/protos/vm"
 	vmclaimProto "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
 	vmsetProto "github.com/hobbyfarm/gargantua/v3/protos/vmset"
+	vmtemplateProto "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 )
 
 var (
@@ -39,17 +41,21 @@ func main() {
 	crd.InstallCrds(vmservice.VmCRDInstaller{}, cfg, "virtual machine")
 
 	services := []microservices.MicroService{
+		microservices.Environment,
 		microservices.Terraform,
 		microservices.VMClaim,
 		microservices.VMSet,
+		microservices.VMTemplate,
 	}
 	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
 	for _, conn := range connections {
 		defer conn.Close()
 	}
+	environmentClient := environmentProto.NewEnvironmentSvcClient(connections[microservices.Environment])
 	terraformClient := terraformpb.NewTerraformSvcClient(connections[microservices.Terraform])
 	vmClaimClient := vmclaimProto.NewVMClaimSvcClient(connections[microservices.VMClaim])
 	vmSetClient := vmsetProto.NewVMSetSvcClient(connections[microservices.VMSet])
+	vmTemplateClient := vmtemplateProto.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
@@ -59,9 +65,11 @@ func main() {
 		kubeClient,
 		vs,
 		hfInformerFactory,
+		environmentClient,
 		terraformClient,
 		vmClaimClient,
 		vmSetClient,
+		vmTemplateClient,
 		ctx,
 	)
 	if err != nil {
