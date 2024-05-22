@@ -9,7 +9,6 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/v3/pkg/controllers/tfpcontroller"
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseclient"
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
@@ -31,12 +30,9 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/vmtemplateserver"
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/authr"
-	"github.com/hobbyfarm/gargantua/v3/protos/setting"
 
 	"github.com/ebauman/crder"
-	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/informers"
-	"k8s.io/client-go/tools/leaderelection"
 
 	"net/http"
 	"sync"
@@ -57,17 +53,15 @@ const (
 )
 
 var (
-	localMasterUrl     string
-	localKubeconfig    string
-	disableControllers bool
-	shellServer        bool
-	tlsCA              string
+	localMasterUrl  string
+	localKubeconfig string
+	shellServer     bool
+	tlsCA           string
 )
 
 func init() {
 	flag.StringVar(&localKubeconfig, "kubeconfig", "", "Path to kubeconfig of local cluster. Only required if out-of-cluster.")
 	flag.StringVar(&localMasterUrl, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
-	flag.BoolVar(&disableControllers, "disablecontrollers", false, "Disable the controllers")
 	flag.BoolVar(&shellServer, "shellserver", false, "Be a shell server")
 	flag.StringVar(&tlsCA, "tls-ca", "/etc/ssl/certs/ca.crt", "Path to CA cert for auth servers")
 }
@@ -126,7 +120,6 @@ func main() {
 	}
 
 	services := []microservices.MicroService{
-		microservices.Setting,
 		microservices.AuthN,
 		microservices.AuthR,
 	}
@@ -135,7 +128,6 @@ func main() {
 		defer conn.Close()
 	}
 
-	settingClient := setting.NewSettingSvcClient(connections[microservices.Setting])
 	authnClient := authn.NewAuthNClient(connections[microservices.AuthN])
 	authrClient := authr.NewAuthRClient(connections[microservices.AuthR])
 
@@ -281,70 +273,7 @@ func main() {
 		glog.Fatal(http.ListenAndServe(":"+apiPort, handlers.CORS(corsHeaders, corsOrigins, corsMethods)(r)))
 	}()
 
-	if !disableControllers {
-		lock, err := util.GetLock("controller-manager-gargantua", cfg)
-		if err != nil {
-			glog.Fatal(err)
-		}
-		leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
-			Lock:            lock,
-			ReleaseOnCancel: true,
-			LeaseDuration:   10 * time.Second,
-			RenewDeadline:   5 * time.Second,
-			RetryPeriod:     2 * time.Second,
-			Callbacks: leaderelection.LeaderCallbacks{
-				OnStartedLeading: func(c context.Context) {
-					err = bootStrapControllers(kubeClient, hfClient, hfInformerFactory, kubeInformerFactory, acClient, settingClient, ctx, stopCh)
-					if err != nil {
-						glog.Fatal(err)
-					}
-				},
-				OnStoppedLeading: func() {
-					// Need to start informer factory since even when not leader to ensure api layer
-					// keeps working.
-					hfInformerFactory.Start(stopCh)
-					glog.Info("waiting to be elected leader")
-				},
-				OnNewLeader: func(current_id string) {
-					hfInformerFactory.Start(stopCh)
-					if current_id == lock.Identity() {
-						glog.Info("currently the leader")
-						return
-					}
-					glog.Infof("current leader is %s", current_id)
-				},
-			},
-		})
-	} else {
-		// default fire up hfInformer as this is still needed by the shell server
-		hfInformerFactory.Start(stopCh)
-		kubeInformerFactory.Start(stopCh)
-	}
-	wg.Wait()
-}
-
-func bootStrapControllers(kubeClient *kubernetes.Clientset, hfClient *hfClientset.Clientset,
-	hfInformerFactory hfInformers.SharedInformerFactory, kubeInformerFactory informers.SharedInformerFactory, acClient *accesscode.AccessCodeClient,
-	settingClient setting.SettingSvcClient, ctx context.Context, stopCh <-chan struct{}) error {
-
-	g, gctx := errgroup.WithContext(ctx)
-	glog.V(2).Infof("Starting controllers")
-	tfpController, err := tfpcontroller.NewTerraformProvisionerController(kubeClient, hfClient, hfInformerFactory, gctx)
-	if err != nil {
-		return err
-	}
-
-	g.Go(func() error {
-		return tfpController.Run(stopCh)
-	})
-
 	hfInformerFactory.Start(stopCh)
 	kubeInformerFactory.Start(stopCh)
-
-	if err = g.Wait(); err != nil {
-		glog.Errorf("error starting up the controllers: %v", err)
-		return err
-	}
-
-	return nil
+	wg.Wait()
 }
