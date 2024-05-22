@@ -45,7 +45,7 @@ func NewGrpcTerraformServer(hfClientSet hfClientset.Interface, hfInformerFactory
 	}
 }
 
-func (s *GrpcTerraformServer) CreateState(ctx context.Context, req *terraformpb.CreateStateRequest) (*empty.Empty, error) {
+func (s *GrpcTerraformServer) CreateState(ctx context.Context, req *terraformpb.CreateStateRequest) (*general.ResourceId, error) {
 	vmId := req.GetVmId()
 	img := req.GetImage()
 	variables := req.GetVariables()
@@ -62,11 +62,11 @@ func (s *GrpcTerraformServer) CreateState(ctx context.Context, req *terraformpb.
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &empty.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &general.ResourceId{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 	if variables == nil || len(variables.GetConfigNames()) == 0 {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &general.ResourceId{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"invalid value \"%v\" for property %s",
 			req,
@@ -100,13 +100,13 @@ func (s *GrpcTerraformServer) CreateState(ctx context.Context, req *terraformpb.
 
 	_, err := s.stateClient.Create(ctx, tfs, metav1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &general.ResourceId{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &general.ResourceId{Id: tfs.Name}, nil
 }
 
 func (s *GrpcTerraformServer) GetState(ctx context.Context, req *general.GetRequest) (*terraformpb.State, error) {

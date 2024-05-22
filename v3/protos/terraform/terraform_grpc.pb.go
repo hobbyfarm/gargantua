@@ -34,7 +34,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TerraformSvcClient interface {
-	CreateState(ctx context.Context, in *CreateStateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CreateState(ctx context.Context, in *CreateStateRequest, opts ...grpc.CallOption) (*general.ResourceId, error)
 	GetState(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*State, error)
 	DeleteState(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteCollectionState(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -51,8 +51,8 @@ func NewTerraformSvcClient(cc grpc.ClientConnInterface) TerraformSvcClient {
 	return &terraformSvcClient{cc}
 }
 
-func (c *terraformSvcClient) CreateState(ctx context.Context, in *CreateStateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
+func (c *terraformSvcClient) CreateState(ctx context.Context, in *CreateStateRequest, opts ...grpc.CallOption) (*general.ResourceId, error) {
+	out := new(general.ResourceId)
 	err := c.cc.Invoke(ctx, TerraformSvc_CreateState_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func (c *terraformSvcClient) ListExecution(ctx context.Context, in *general.List
 // All implementations must embed UnimplementedTerraformSvcServer
 // for forward compatibility
 type TerraformSvcServer interface {
-	CreateState(context.Context, *CreateStateRequest) (*emptypb.Empty, error)
+	CreateState(context.Context, *CreateStateRequest) (*general.ResourceId, error)
 	GetState(context.Context, *general.GetRequest) (*State, error)
 	DeleteState(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	DeleteCollectionState(context.Context, *general.ListOptions) (*emptypb.Empty, error)
@@ -132,7 +132,7 @@ type TerraformSvcServer interface {
 type UnimplementedTerraformSvcServer struct {
 }
 
-func (UnimplementedTerraformSvcServer) CreateState(context.Context, *CreateStateRequest) (*emptypb.Empty, error) {
+func (UnimplementedTerraformSvcServer) CreateState(context.Context, *CreateStateRequest) (*general.ResourceId, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateState not implemented")
 }
 func (UnimplementedTerraformSvcServer) GetState(context.Context, *general.GetRequest) (*State, error) {
