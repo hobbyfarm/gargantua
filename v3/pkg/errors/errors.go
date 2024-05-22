@@ -7,6 +7,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// IdGetterProtoMessage is an interface that combines the GetId() function and the proto.Message interface.
+// general.GetRequest and general.ResourceId do implement this interface
+type IdGetterProtoMessage interface {
+	proto.Message
+	GetId() string
+}
+
 type HobbyfarmError struct {
 	Code        int
 	Message     string
@@ -64,9 +71,9 @@ func GrpcIdNotSpecifiedError[T proto.Message](protoMessage T) error {
 	return GrpcError[proto.Message](codes.InvalidArgument, "no id specified", protoMessage)
 }
 
-func GrpcNotFoundError(resourceId *general.GetRequest, resourceName string) error {
+func GrpcNotFoundError[T IdGetterProtoMessage](resourceId T, resourceName string) error {
 	id := resourceId.GetId()
-	return GrpcError[*general.GetRequest](codes.NotFound, "could not find %s for id %s", resourceId, resourceName, id)
+	return GrpcError[T](codes.NotFound, "could not find %s for id %s", resourceId, resourceName, id)
 }
 
 func IsGrpcNotFound(err error) bool {
