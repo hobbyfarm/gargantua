@@ -64,6 +64,7 @@ const (
 	ScheduledEvent MicroService = "scheduledevent-service"
 	Session        MicroService = "session-service"
 	Setting        MicroService = "setting-service"
+	Terraform      MicroService = "terraform-service"
 	User           MicroService = "user-service"
 	VMClaim        MicroService = "vmclaim-service"
 	VMSet          MicroService = "vmset-service"
