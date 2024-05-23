@@ -44,6 +44,7 @@ func (s *GrpcScenarioServer) CreateScenario(ctx context.Context, req *scenarioPr
 	rawCategories := req.GetRawCategories()
 	rawTags := req.GetRawTags()
 	rawVirtualMachines := req.GetRawVms()
+	rawVmTasks := req.GetRawVmTasks()
 	keepaliveDuration := req.GetKeepaliveDuration()
 	pauseDuration := req.GetPauseDuration()
 	pausable := req.GetPausable()
@@ -75,37 +76,48 @@ func (s *GrpcScenarioServer) CreateScenario(ctx context.Context, req *scenarioPr
 	}
 
 	if rawSteps != "" {
-		steps, err := util.GenericUnmarshal[[]hfv1.ScenarioStep](rawSteps, "rawSteps")
+		steps, err := util.GenericUnmarshal[[]hfv1.ScenarioStep](rawSteps, "raw_steps")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "rawSteps")
+			return &empty.Empty{}, hferrors.GrpcParsingError(req, "raw_steps")
 		}
 		scenario.Spec.Steps = steps
 	}
 	if rawCategories != "" {
-		categories, err := util.GenericUnmarshal[[]string](rawCategories, "rawCategories")
+		categories, err := util.GenericUnmarshal[[]string](rawCategories, "raw_categories")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "rawCategories")
+			return &empty.Empty{}, hferrors.GrpcParsingError(req, "raw_categories")
 		}
 		updatedLabels := labels.UpdateCategoryLabels(scenario.ObjectMeta.Labels, []string{}, categories)
 		scenario.ObjectMeta.Labels = updatedLabels
 		scenario.Spec.Categories = categories
 	}
 	if rawTags != "" {
-		tags, err := util.GenericUnmarshal[[]string](rawTags, "rawTags")
+		tags, err := util.GenericUnmarshal[[]string](rawTags, "raw_tags")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "rawTags")
+			return &empty.Empty{}, hferrors.GrpcParsingError(req, "raw_tags")
 		}
 		scenario.Spec.Tags = tags
 	}
 	if rawVirtualMachines != "" {
-		vms, err := util.GenericUnmarshal[[]map[string]string](rawVirtualMachines, "rawVirtualMachines")
+		vms, err := util.GenericUnmarshal[[]map[string]string](rawVirtualMachines, "raw_vms")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "rawVirtualMachines")
+			return &empty.Empty{}, hferrors.GrpcParsingError(req, "raw_vms")
 		}
 		scenario.Spec.VirtualMachines = vms
 	}
+	if rawVmTasks != "" {
+		vmTasks, err := util.GenericUnmarshal[[]hfv1.VirtualMachineTasks](rawSteps, "raw_vm_tasks")
+		if err != nil {
+			return &empty.Empty{}, hferrors.GrpcParsingError(req, "raw_vm_tasks")
+		}
+		scenario.Spec.Tasks = vmTasks
+	}
+	err := util.VerifyTaskContent(scenario.Spec.Tasks, req)
+	if err != nil {
+		return &empty.Empty{}, err
+	}
 
-	_, err := s.scenarioClient.Create(ctx, scenario, metav1.CreateOptions{})
+	_, err = s.scenarioClient.Create(ctx, scenario, metav1.CreateOptions{})
 	if err != nil {
 		return &empty.Empty{}, hferrors.GrpcError(
 			codes.Internal,
@@ -132,6 +144,25 @@ func (s *GrpcScenarioServer) GetScenario(ctx context.Context, req *general.GetRe
 		vms = append(vms, &general.StringMap{Value: vm})
 	}
 
+	vmTasks := []*scenarioProto.VirtualMachineTasks{}
+	for _, vmtask := range scenario.Spec.Tasks {
+		tasks := []*scenarioProto.Task{}
+		for _, task := range vmtask.Tasks {
+			tasks = append(tasks, &scenarioProto.Task{
+				Name:                task.Name,
+				Description:         task.Description,
+				Command:             task.Command,
+				ExpectedOutputValue: task.ExpectedOutputValue,
+				ExpectedReturnCode:  int32(task.ExpectedReturnCode),
+				ReturnType:          task.ReturnType,
+			})
+		}
+		vmTasks = append(vmTasks, &scenarioProto.VirtualMachineTasks{
+			VmId:  vmtask.VMName,
+			Tasks: tasks,
+		})
+	}
+
 	return &scenarioProto.Scenario{
 		Id:                scenario.Name,
 		Uid:               string(scenario.UID),
@@ -144,6 +175,7 @@ func (s *GrpcScenarioServer) GetScenario(ctx context.Context, req *general.GetRe
 		KeepaliveDuration: scenario.Spec.KeepAliveDuration,
 		PauseDuration:     scenario.Spec.PauseDuration,
 		Pausable:          scenario.Spec.Pauseable,
+		VmTasks:           vmTasks,
 		Labels:            scenario.Labels,
 	}, nil
 }
@@ -159,6 +191,7 @@ func (s *GrpcScenarioServer) UpdateScenario(ctx context.Context, req *scenarioPr
 	rawCategories := req.GetRawCategories()
 	rawTags := req.GetRawTags()
 	rawVirtualMachines := req.GetRawVms()
+	rawVmTasks := req.GetRawVmTasks()
 	keepaliveDuration := req.GetKeepaliveDuration()
 	pauseDuration := req.GetPauseDuration()
 	pausable := req.GetPausable()
@@ -190,16 +223,16 @@ func (s *GrpcScenarioServer) UpdateScenario(ctx context.Context, req *scenarioPr
 			scenario.Spec.Pauseable = pausable.GetValue()
 		}
 		if rawSteps != "" {
-			steps, err := util.GenericUnmarshal[[]hfv1.ScenarioStep](rawSteps, "rawSteps")
+			steps, err := util.GenericUnmarshal[[]hfv1.ScenarioStep](rawSteps, "raw_steps")
 			if err != nil {
-				return hferrors.GrpcParsingError(req, "rawSteps")
+				return hferrors.GrpcParsingError(req, "raw_steps")
 			}
 			scenario.Spec.Steps = steps
 		}
 		if rawCategories != "" {
-			newCategories, err := util.GenericUnmarshal[[]string](rawCategories, "rawCategories")
+			newCategories, err := util.GenericUnmarshal[[]string](rawCategories, "raw_categories")
 			if err != nil {
-				return hferrors.GrpcParsingError(req, "rawCategories")
+				return hferrors.GrpcParsingError(req, "raw_categories")
 			}
 			oldCategories := scenario.Spec.Categories
 			updatedLabels := labels.UpdateCategoryLabels(scenario.ObjectMeta.Labels, oldCategories, newCategories)
@@ -207,18 +240,29 @@ func (s *GrpcScenarioServer) UpdateScenario(ctx context.Context, req *scenarioPr
 			scenario.ObjectMeta.Labels = updatedLabels
 		}
 		if rawTags != "" {
-			tags, err := util.GenericUnmarshal[[]string](rawTags, "rawTags")
+			tags, err := util.GenericUnmarshal[[]string](rawTags, "raw_tags")
 			if err != nil {
-				return hferrors.GrpcParsingError(req, "rawTags")
+				return hferrors.GrpcParsingError(req, "raw_tags")
 			}
 			scenario.Spec.Tags = tags
 		}
 		if rawVirtualMachines != "" {
-			vms, err := util.GenericUnmarshal[[]map[string]string](rawVirtualMachines, "rawVirtualMachines")
+			vms, err := util.GenericUnmarshal[[]map[string]string](rawVirtualMachines, "raw_vms")
 			if err != nil {
-				return hferrors.GrpcParsingError(req, "rawVirtualMachines")
+				return hferrors.GrpcParsingError(req, "raw_vms")
 			}
 			scenario.Spec.VirtualMachines = vms
+		}
+		if rawVmTasks != "" {
+			vmTasks, err := util.GenericUnmarshal[[]hfv1.VirtualMachineTasks](rawSteps, "raw_vm_tasks")
+			if err != nil {
+				return hferrors.GrpcParsingError(req, "raw_vm_tasks")
+			}
+			scenario.Spec.Tasks = vmTasks
+		}
+		err = util.VerifyTaskContent(scenario.Spec.Tasks, req)
+		if err != nil {
+			return err
 		}
 
 		_, updateErr := s.scenarioClient.Update(ctx, scenario, metav1.UpdateOptions{})
@@ -276,6 +320,25 @@ func (s *GrpcScenarioServer) ListScenario(ctx context.Context, listOptions *gene
 			vms = append(vms, &general.StringMap{Value: vm})
 		}
 
+		vmTasks := []*scenarioProto.VirtualMachineTasks{}
+		for _, vmtask := range scenario.Spec.Tasks {
+			tasks := []*scenarioProto.Task{}
+			for _, task := range vmtask.Tasks {
+				tasks = append(tasks, &scenarioProto.Task{
+					Name:                task.Name,
+					Description:         task.Description,
+					Command:             task.Command,
+					ExpectedOutputValue: task.ExpectedOutputValue,
+					ExpectedReturnCode:  int32(task.ExpectedReturnCode),
+					ReturnType:          task.ReturnType,
+				})
+			}
+			vmTasks = append(vmTasks, &scenarioProto.VirtualMachineTasks{
+				VmId:  vmtask.VMName,
+				Tasks: tasks,
+			})
+		}
+
 		preparedScenarios = append(preparedScenarios, &scenarioProto.Scenario{
 			Id:                scenario.Name,
 			Uid:               string(scenario.UID),
@@ -288,6 +351,7 @@ func (s *GrpcScenarioServer) ListScenario(ctx context.Context, listOptions *gene
 			KeepaliveDuration: scenario.Spec.KeepAliveDuration,
 			PauseDuration:     scenario.Spec.PauseDuration,
 			Pausable:          scenario.Spec.Pauseable,
+			VmTasks:           vmTasks,
 			Labels:            scenario.Labels,
 		})
 	}
