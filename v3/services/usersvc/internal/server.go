@@ -15,13 +15,13 @@ type UserServer struct {
 	internalUserServer *GrpcUserServer
 }
 
-func NewUserServer(authnClient authnpb.AuthNClient, authrClient authrpb.AuthRClient, rbacClient rbacpb.RbacSvcClient, internalUserServer *GrpcUserServer) (UserServer, error) {
-	u := UserServer{}
-	u.authnClient = authnClient
-	u.authrClient = authrClient
-	u.rbacClient = rbacClient
-	u.internalUserServer = internalUserServer
-	return u, nil
+func NewUserServer(authnClient authnpb.AuthNClient, authrClient authrpb.AuthRClient, rbacClient rbacpb.RbacSvcClient, internalUserServer *GrpcUserServer) UserServer {
+	return UserServer{
+		authnClient:        authnClient,
+		authrClient:        authrClient,
+		rbacClient:         rbacClient,
+		internalUserServer: internalUserServer,
+	}
 }
 
 func (u UserServer) SetupRoutes(r *mux.Router) {

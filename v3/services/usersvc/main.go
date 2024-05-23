@@ -73,10 +73,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		userServer, err := userservice.NewUserServer(authnClient, authrClient, rbacClient, us)
-		if err != nil {
-			glog.Fatalf("Error creating userserver: %v", err)
-		}
+		userServer := userservice.NewUserServer(authnClient, authrClient, rbacClient, us)
 		microservices.StartAPIServer(userServer)
 	}()
 
