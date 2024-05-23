@@ -77,7 +77,7 @@ message Task {
     string name = 1;
     string description = 2;
     string command = 3;
-    int32 expected_output_value = 4;
-    uint32 expected_return_code = 5;
+    string expected_output_value = 4;
+    int32 expected_return_code = 5;
     string return_type = 6;
 }
