@@ -11,7 +11,7 @@ import (
 
 	courseservice "github.com/hobbyfarm/gargantua/services/coursesvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	courseProto "github.com/hobbyfarm/gargantua/v3/protos/course"
+	coursepb "github.com/hobbyfarm/gargantua/v3/protos/course"
 )
 
 var (
@@ -35,7 +35,7 @@ func main() {
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
 	cs := courseservice.NewGrpcCourseServer(hfClient, hfInformerFactory)
-	courseProto.RegisterCourseSvcServer(gs, cs)
+	coursepb.RegisterCourseSvcServer(gs, cs)
 
 	var wg sync.WaitGroup
 	wg.Add(1)

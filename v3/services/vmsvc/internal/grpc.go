@@ -3,11 +3,10 @@ package vmservice
 import (
 	"context"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	vmProto "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
@@ -16,6 +15,7 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -24,7 +24,7 @@ import (
 )
 
 type GrpcVMServer struct {
-	vmProto.UnimplementedVMSvcServer
+	vmpb.UnimplementedVMSvcServer
 	vmClient hfClientsetv1.VirtualMachineInterface
 	vmLister listersv1.VirtualMachineLister
 	vmSynced cache.InformerSynced
@@ -38,7 +38,7 @@ func NewGrpcVMServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInfo
 	}
 }
 
-func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmProto.CreateVMRequest) (*empty.Empty, error) {
+func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmpb.CreateVMRequest) (*emptypb.Empty, error) {
 	var ownerReferenceId string
 	var ownerReferenceUid types.UID
 	var ownerReferenceKind string
@@ -62,7 +62,7 @@ func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmProto.CreateVMReques
 	// either vmClaimId AND vmClaimUid or vmSetId AND vmSetUid need to be provided for the owner reference
 	// if that's not the case, return an error
 	if !vmSetOwner && !vmClaimOwner {
-		return &empty.Empty{}, hferrors.GrpcError(codes.InvalidArgument, "no ID and UID for owner reference provided", req)
+		return &emptypb.Empty{}, hferrors.GrpcError(codes.InvalidArgument, "no ID and UID for owner reference provided", req)
 	}
 
 	// vm set takes precedence over vm claim
@@ -83,7 +83,7 @@ func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmProto.CreateVMReques
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &empty.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &emptypb.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 
@@ -118,22 +118,22 @@ func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmProto.CreateVMReques
 
 	_, err := s.vmClient.Create(ctx, vm, metav1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcVMServer) GetVM(ctx context.Context, req *general.GetRequest) (*vmProto.VM, error) {
+func (s *GrpcVMServer) GetVM(ctx context.Context, req *generalpb.GetRequest) (*vmpb.VM, error) {
 	vm, err := util.GenericHfGetter(ctx, req, s.vmClient, s.vmLister.VirtualMachines(util.GetReleaseNamespace()), "virtual machine", s.vmSynced())
 	if err != nil {
-		return &vmProto.VM{}, err
+		return &vmpb.VM{}, err
 	}
 
-	status := &vmProto.VMStatus{
+	status := &vmpb.VMStatus{
 		Status:        string(vm.Status.Status),
 		Allocated:     vm.Status.Allocated,
 		Tainted:       vm.Status.Tainted,
@@ -150,7 +150,7 @@ func (s *GrpcVMServer) GetVM(ctx context.Context, req *general.GetRequest) (*vmP
 		deletionTimeStamp = timestamppb.New(vm.DeletionTimestamp.Time)
 	}
 
-	return &vmProto.VM{
+	return &vmpb.VM{
 		Id:                vm.Name,
 		Uid:               string(vm.UID),
 		VmTemplateId:      vm.Spec.VirtualMachineTemplateId,
@@ -169,10 +169,10 @@ func (s *GrpcVMServer) GetVM(ctx context.Context, req *general.GetRequest) (*vmP
 	}, nil
 }
 
-func (s *GrpcVMServer) UpdateVM(ctx context.Context, req *vmProto.UpdateVMRequest) (*empty.Empty, error) {
+func (s *GrpcVMServer) UpdateVM(ctx context.Context, req *vmpb.UpdateVMRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 
 	bound := req.GetBound()
@@ -218,20 +218,20 @@ func (s *GrpcVMServer) UpdateVM(ctx context.Context, req *vmProto.UpdateVMReques
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			req,
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcVMServer) UpdateVMStatus(ctx context.Context, req *vmProto.UpdateVMStatusRequest) (*empty.Empty, error) {
+func (s *GrpcVMServer) UpdateVMStatus(ctx context.Context, req *vmpb.UpdateVMStatusRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 
 	status := req.GetStatus()
@@ -301,25 +301,25 @@ func (s *GrpcVMServer) UpdateVMStatus(ctx context.Context, req *vmProto.UpdateVM
 		return nil
 	})
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update vm status: %v",
 			req,
 			retryErr,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcVMServer) DeleteVM(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (s *GrpcVMServer) DeleteVM(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.DeleteHfResource(ctx, req, s.vmClient, "virtual machine")
 }
 
-func (s *GrpcVMServer) DeleteCollectionVM(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
+func (s *GrpcVMServer) DeleteCollectionVM(ctx context.Context, listOptions *generalpb.ListOptions) (*emptypb.Empty, error) {
 	return util.DeleteHfCollection(ctx, listOptions, s.vmClient, "virtual machines")
 }
 
-func (s *GrpcVMServer) ListVM(ctx context.Context, listOptions *general.ListOptions) (*vmProto.ListVMsResponse, error) {
+func (s *GrpcVMServer) ListVM(ctx context.Context, listOptions *generalpb.ListOptions) (*vmpb.ListVMsResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var vms []hfv1.VirtualMachine
 	var err error
@@ -334,13 +334,13 @@ func (s *GrpcVMServer) ListVM(ctx context.Context, listOptions *general.ListOpti
 	}
 	if err != nil {
 		glog.Error(err)
-		return &vmProto.ListVMsResponse{}, err
+		return &vmpb.ListVMsResponse{}, err
 	}
 
-	preparedVms := []*vmProto.VM{}
+	preparedVms := []*vmpb.VM{}
 
 	for _, vm := range vms {
-		status := &vmProto.VMStatus{
+		status := &vmpb.VMStatus{
 			Status:        string(vm.Status.Status),
 			Allocated:     vm.Status.Allocated,
 			Tainted:       vm.Status.Tainted,
@@ -357,7 +357,7 @@ func (s *GrpcVMServer) ListVM(ctx context.Context, listOptions *general.ListOpti
 			deletionTimeStamp = timestamppb.New(vm.DeletionTimestamp.Time)
 		}
 
-		preparedVms = append(preparedVms, &vmProto.VM{
+		preparedVms = append(preparedVms, &vmpb.VM{
 			Id:                vm.Name,
 			Uid:               string(vm.UID),
 			VmTemplateId:      vm.Spec.VirtualMachineTemplateId,
@@ -376,5 +376,5 @@ func (s *GrpcVMServer) ListVM(ctx context.Context, listOptions *general.ListOpti
 		})
 	}
 
-	return &vmProto.ListVMsResponse{Vms: preparedVms}, nil
+	return &vmpb.ListVMsResponse{Vms: preparedVms}, nil
 }

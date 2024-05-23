@@ -15,8 +15,8 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -28,8 +28,8 @@ const (
 )
 
 type VMServer struct {
-	authnClient authn.AuthNClient
-	authrClient authr.AuthRClient
+	authnClient authnpb.AuthNClient
+	authrClient authrpb.AuthRClient
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 	vmIndexer   cache.Indexer
@@ -41,7 +41,7 @@ type PreparedVirtualMachine struct {
 	hfv1.VirtualMachineStatus
 }
 
-func NewVMServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMServer, error) {
+func NewVMServer(authnClient authnpb.AuthNClient, authrClient authrpb.AuthRClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMServer, error) {
 	vms := VMServer{}
 
 	vms.authnClient = authnClient

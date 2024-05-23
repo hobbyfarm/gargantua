@@ -14,9 +14,9 @@ import (
 	settingservice "github.com/hobbyfarm/gargantua/services/settingsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
-	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
 )
 
 var (
@@ -45,8 +45,8 @@ func main() {
 		defer conn.Close()
 	}
 
-	authnClient := authn.NewAuthNClient(connections[microservices.AuthN])
-	authrClient := authr.NewAuthRClient(connections[microservices.AuthR])
+	authnClient := authnpb.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authrpb.NewAuthRClient(connections[microservices.AuthR])
 
 	ctx := context.Background()
 
@@ -56,7 +56,7 @@ func main() {
 	}
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 	ss := settingservice.NewGrpcSettingServer(hfClient, hfInformerFactory)
-	settingProto.RegisterSettingSvcServer(gs, ss)
+	settingpb.RegisterSettingSvcServer(gs, ss)
 	settingservice.Preinstall(ctx, ss)
 
 	var wg sync.WaitGroup

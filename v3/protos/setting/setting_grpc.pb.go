@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: setting/setting.proto
 
-package setting
+package settingpb
 
 import (
 	context "context"

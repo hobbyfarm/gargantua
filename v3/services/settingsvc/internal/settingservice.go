@@ -14,8 +14,8 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -27,7 +27,7 @@ const (
 
 type PreparedSetting struct {
 	Name string `json:"name"`
-	*settingProto.Property
+	*settingpb.Property
 	DataType  property.DataType  `json:"dataType"`
 	ValueType property.ValueType `json:"valueType"`
 	Value     any                `json:"value"`
@@ -64,7 +64,7 @@ func (s SettingServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	labelSelector := fmt.Sprintf("%s=%s", labels.SettingScope, scope)
-	kSettings, err := s.internalSettingServer.ListSettings(r.Context(), &general.ListOptions{LabelSelector: labelSelector})
+	kSettings, err := s.internalSettingServer.ListSettings(r.Context(), &generalpb.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		glog.Errorf("error listing settings: %s", err.Error())
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing settings")
@@ -150,7 +150,7 @@ func (s SettingServer) UpdateCollection(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s SettingServer) update(w http.ResponseWriter, r *http.Request, updatedSetting PreparedSetting) bool {
-	setting, err := s.internalSettingServer.GetSetting(r.Context(), &general.GetRequest{Id: updatedSetting.Name})
+	setting, err := s.internalSettingServer.GetSetting(r.Context(), &generalpb.GetRequest{Id: updatedSetting.Name})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			if s.Code() == codes.NotFound {
@@ -180,7 +180,7 @@ func (s SettingServer) update(w http.ResponseWriter, r *http.Request, updatedSet
 	val, err := json.Marshal(updatedSetting.Value)
 
 	// json marshalled strings have quotes before & after, we don't need or want that
-	if setting.Property.GetDataType() == settingProto.DataType_DATA_TYPE_STRING && setting.Property.GetValueType() == settingProto.ValueType_VALUE_TYPE_SCALAR {
+	if setting.Property.GetDataType() == settingpb.DataType_DATA_TYPE_STRING && setting.Property.GetValueType() == settingpb.ValueType_VALUE_TYPE_SCALAR {
 		val = []byte(strings.Replace(string(val), "\"", "", 2))
 	}
 
@@ -227,7 +227,7 @@ func (s SettingServer) ListScopeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scopes, err := s.internalSettingServer.ListScopes(r.Context(), &general.ListOptions{})
+	scopes, err := s.internalSettingServer.ListScopes(r.Context(), &generalpb.ListOptions{})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "error listing scopes")
 		glog.Errorf("error while listing scopes: %s", err.Error())

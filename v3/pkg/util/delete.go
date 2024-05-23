@@ -5,9 +5,9 @@ import (
 
 	"github.com/golang/glog"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	"google.golang.org/grpc/codes"
-	empty "google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -19,22 +19,22 @@ type HfClientDelete interface {
 
 func DeleteHfResource(
 	ctx context.Context,
-	req *general.ResourceId,
+	req *generalpb.ResourceId,
 	clientDelete HfClientDelete,
 	resourceName string,
-) (*empty.Empty, error) {
+) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
 		glog.V(2).Infof("error no id provided for %s", resourceName)
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 
 	err := clientDelete.Delete(ctx, id, metav1.DeleteOptions{})
 	if errors.IsNotFound(err) {
-		return &empty.Empty{}, hferrors.GrpcNotFoundError(req, resourceName)
+		return &emptypb.Empty{}, hferrors.GrpcNotFoundError(req, resourceName)
 	} else if err != nil {
 		glog.Errorf("error deleting %s %s: %s", resourceName, id, err)
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error deleting %s %s",
 			req,
@@ -42,20 +42,20 @@ func DeleteHfResource(
 			id,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func DeleteHfCollection(
 	ctx context.Context,
-	listOptions *general.ListOptions,
+	listOptions *generalpb.ListOptions,
 	clientDelete HfClientDelete,
 	resourceName string,
-) (*empty.Empty, error) {
+) (*emptypb.Empty, error) {
 	err := clientDelete.DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 		LabelSelector: listOptions.GetLabelSelector(),
 	})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error deleting %s",
 			listOptions,
@@ -63,5 +63,5 @@ func DeleteHfCollection(
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }

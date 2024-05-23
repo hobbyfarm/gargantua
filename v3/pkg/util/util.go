@@ -17,10 +17,10 @@ import (
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
-	environmentProto "github.com/hobbyfarm/gargantua/v3/protos/environment"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	vmProto "github.com/hobbyfarm/gargantua/v3/protos/vm"
-	vmtemplateProto "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
+	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 
 	"github.com/golang/glog"
 	"golang.org/x/crypto/ssh"
@@ -435,24 +435,24 @@ func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environm
 	return virtualMachineCount, maximumVirtualMachineCount, nil
 }
 
-func CountMachinesPerTemplateAndEnvironment(ctx context.Context, vmClient vmProto.VMSvcClient, template string, enviroment string) (int, error) {
+func CountMachinesPerTemplateAndEnvironment(ctx context.Context, vmClient vmpb.VMSvcClient, template string, enviroment string) (int, error) {
 	vmLabels := labels.Set{
 		hflabels.EnvironmentLabel:       enviroment,
 		hflabels.VirtualMachineTemplate: template,
 	}
 
-	vmList, err := vmClient.ListVM(ctx, &general.ListOptions{LabelSelector: vmLabels.AsSelector().String(), LoadFromCache: true})
+	vmList, err := vmClient.ListVM(ctx, &generalpb.ListOptions{LabelSelector: vmLabels.AsSelector().String(), LoadFromCache: true})
 	return len(vmList.GetVms()), err
 }
 
-func CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(ctx context.Context, vmClient vmProto.VMSvcClient, template string, enviroment string, se string) (int, error) {
+func CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(ctx context.Context, vmClient vmpb.VMSvcClient, template string, enviroment string, se string) (int, error) {
 	vmLabels := labels.Set{
 		hflabels.EnvironmentLabel:       enviroment,
 		hflabels.VirtualMachineTemplate: template,
 		hflabels.ScheduledEventLabel:    se,
 	}
 
-	vmList, err := vmClient.ListVM(ctx, &general.ListOptions{LabelSelector: vmLabels.AsSelector().String(), LoadFromCache: true})
+	vmList, err := vmClient.ListVM(ctx, &generalpb.ListOptions{LabelSelector: vmLabels.AsSelector().String(), LoadFromCache: true})
 	return len(vmList.GetVms()), err
 }
 
@@ -493,7 +493,7 @@ func GetReleaseNamespace() string {
 	return provisionNS
 }
 
-func GetVMConfig(env *environmentProto.Environment, vmt *vmtemplateProto.VMTemplate) map[string]string {
+func GetVMConfig(env *environmentpb.Environment, vmt *vmtemplatepb.VMTemplate) map[string]string {
 	envSpecificConfigFromEnv := env.EnvironmentSpecifics
 	envTemplateInfo, exists := env.TemplateMapping[vmt.GetId()]
 

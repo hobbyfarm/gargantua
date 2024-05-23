@@ -4,7 +4,7 @@ import (
 	"context"
 
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	"google.golang.org/grpc/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -18,7 +18,7 @@ type GenericLister[T any] interface {
 	List(labels.Selector) ([]*T, error)
 }
 
-func ListByHfClient[T any, L HfClientList[T]](ctx context.Context, listOptions *general.ListOptions, lister L, resourcename string) (T, error) {
+func ListByHfClient[T any, L HfClientList[T]](ctx context.Context, listOptions *generalpb.ListOptions, lister L, resourcename string) (T, error) {
 	labelSelectorString := listOptions.GetLabelSelector()
 	objList, err := lister.List(ctx, metav1.ListOptions{
 		LabelSelector: labelSelectorString,
@@ -29,7 +29,7 @@ func ListByHfClient[T any, L HfClientList[T]](ctx context.Context, listOptions *
 	return objList, nil
 }
 
-func ListByCache[T any, L GenericLister[T]](listOptions *general.ListOptions, lister L, resourcename string, hasSynced bool) ([]T, error) {
+func ListByCache[T any, L GenericLister[T]](listOptions *generalpb.ListOptions, lister L, resourcename string, hasSynced bool) ([]T, error) {
 	labelSelectorString := listOptions.GetLabelSelector()
 	labelSelector, err := labels.Parse(labelSelectorString)
 	if err != nil {

@@ -2,7 +2,7 @@ package errors
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -80,8 +80,8 @@ func IsGrpcNotFound(err error) bool {
 	return status.Code(err) == codes.NotFound
 }
 
-func GrpcGetError(req *general.GetRequest, resourceName string, err error) error {
-	return GrpcError[*general.GetRequest](
+func GrpcGetError(req *generalpb.GetRequest, resourceName string, err error) error {
+	return GrpcError[*generalpb.GetRequest](
 		codes.Internal,
 		"error while retreiving %s by id %s with error: %v",
 		req,
@@ -91,8 +91,8 @@ func GrpcGetError(req *general.GetRequest, resourceName string, err error) error
 	)
 }
 
-func GrpcListError(listOptions *general.ListOptions, resourceName string) error {
-	return GrpcError[*general.ListOptions](codes.Internal, "error retreiving %s", listOptions, resourceName)
+func GrpcListError(listOptions *generalpb.ListOptions, resourceName string) error {
+	return GrpcError[*generalpb.ListOptions](codes.Internal, "error retreiving %s", listOptions, resourceName)
 }
 
 func GrpcCacheError[T proto.Message](protoMessage T, resourceName string) error {

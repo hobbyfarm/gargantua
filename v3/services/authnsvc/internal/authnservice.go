@@ -15,10 +15,10 @@ import (
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
-	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
+	userpb "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -35,7 +35,7 @@ type PreparedScheduledEvent struct {
 
 func (a AuthServer) ChangePasswordFunc(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("Authorization")
-	user, err := a.internalAuthnServer.AuthN(r.Context(), &authn.AuthNRequest{
+	user, err := a.internalAuthnServer.AuthN(r.Context(), &authnpb.AuthNRequest{
 		Token: token,
 	})
 	if err != nil {
@@ -62,7 +62,7 @@ func (a AuthServer) ChangePasswordFunc(w http.ResponseWriter, r *http.Request) {
 
 func (a AuthServer) UpdateSettingsFunc(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("Authorization")
-	user, err := a.internalAuthnServer.AuthN(r.Context(), &authn.AuthNRequest{
+	user, err := a.internalAuthnServer.AuthN(r.Context(), &authnpb.AuthNRequest{
 		Token: token,
 	})
 	if err != nil {
@@ -91,7 +91,7 @@ func (a AuthServer) UpdateSettingsFunc(w http.ResponseWriter, r *http.Request) {
 
 func (a AuthServer) ListAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("Authorization")
-	user, err := a.internalAuthnServer.AuthN(r.Context(), &authn.AuthNRequest{
+	user, err := a.internalAuthnServer.AuthN(r.Context(), &authnpb.AuthNRequest{
 		Token: token,
 	})
 	if err != nil {
@@ -116,7 +116,7 @@ func (a AuthServer) ListAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 
 func (a AuthServer) RetreiveSettingsFunc(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("Authorization")
-	user, err := a.internalAuthnServer.AuthN(r.Context(), &authn.AuthNRequest{
+	user, err := a.internalAuthnServer.AuthN(r.Context(), &authnpb.AuthNRequest{
 		Token: token,
 	})
 	if err != nil {
@@ -142,7 +142,7 @@ func (a AuthServer) RetreiveSettingsFunc(w http.ResponseWriter, r *http.Request)
 
 func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("Authorization")
-	user, err := a.internalAuthnServer.AuthN(r.Context(), &authn.AuthNRequest{
+	user, err := a.internalAuthnServer.AuthN(r.Context(), &authnpb.AuthNRequest{
 		Token: token,
 	})
 	if err != nil {
@@ -165,17 +165,17 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	set, err := a.settingClient.GetSettingValue(r.Context(), &general.ResourceId{Id: string(settingUtil.StrictAccessCodeValidation)})
+	set, err := a.settingClient.GetSettingValue(r.Context(), &generalpb.ResourceId{Id: string(settingUtil.StrictAccessCodeValidation)})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error adding accesscode")
 		return
 	}
 
-	if s, ok := set.GetValue().(*settingProto.SettingValue_BoolValue); err != nil || !ok || set == nil {
+	if s, ok := set.GetValue().(*settingpb.SettingValue_BoolValue); err != nil || !ok || set == nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error adding accesscode")
 		return
 	} else if s.BoolValue {
-		validation, err := a.acClient.ValidateExistence(r.Context(), &general.ResourceId{Id: accessCode})
+		validation, err := a.acClient.ValidateExistence(r.Context(), &generalpb.ResourceId{Id: accessCode})
 		if err != nil {
 			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error adding accesscode")
 			return
@@ -201,7 +201,7 @@ func (a AuthServer) AddAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 
 func (a AuthServer) RemoveAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("Authorization")
-	user, err := a.internalAuthnServer.AuthN(r.Context(), &authn.AuthNRequest{
+	user, err := a.internalAuthnServer.AuthN(r.Context(), &authnpb.AuthNRequest{
 		Token: token,
 	})
 	if err != nil {
@@ -226,7 +226,7 @@ func (a AuthServer) RemoveAccessCodeFunc(w http.ResponseWriter, r *http.Request)
 	glog.V(2).Infof("removed accesscode %s to user %s", accessCode, user.Email)
 }
 
-func (a AuthServer) AddAccessCode(user *userProto.User, accessCode string, ctx context.Context) error {
+func (a AuthServer) AddAccessCode(user *userpb.User, accessCode string, ctx context.Context) error {
 	if len(user.GetId()) == 0 || len(accessCode) == 0 {
 		return fmt.Errorf("bad parameters passed, %s:%s", user.GetId(), accessCode)
 	}
@@ -234,7 +234,7 @@ func (a AuthServer) AddAccessCode(user *userProto.User, accessCode string, ctx c
 	accessCode = strings.ToLower(accessCode)
 
 	// check if this is an otac
-	otac, err := a.acClient.GetOtac(ctx, &general.GetRequest{Id: accessCode})
+	otac, err := a.acClient.GetOtac(ctx, &generalpb.GetRequest{Id: accessCode})
 	if err != nil {
 		//otac does not exist. normal access code
 	} else {
@@ -267,7 +267,7 @@ func (a AuthServer) AddAccessCode(user *userProto.User, accessCode string, ctx c
 	// Important: user.GetPassword() contains the hashed password. Hence, it can and should not be updated!
 	// Otherwise the password would be updated to the current password hash value.
 	// To not update the password, we therefore need to provide an empty string or a user object without password.
-	user = &userProto.User{
+	user = &userpb.User{
 		Id:          user.Id,
 		AccessCodes: append(user.AccessCodes, accessCode),
 	}
@@ -281,7 +281,7 @@ func (a AuthServer) AddAccessCode(user *userProto.User, accessCode string, ctx c
 	return nil
 }
 
-func (a AuthServer) RemoveAccessCode(user *userProto.User, accessCode string, ctx context.Context) error {
+func (a AuthServer) RemoveAccessCode(user *userpb.User, accessCode string, ctx context.Context) error {
 	if len(user.GetId()) == 0 || len(accessCode) == 0 {
 		return fmt.Errorf("bad parameters passed, %s:%s", user.GetId(), accessCode)
 	}
@@ -313,7 +313,7 @@ func (a AuthServer) RemoveAccessCode(user *userProto.User, accessCode string, ct
 	// Important: user.GetPassword() contains the hashed password. Hence, it can and should not be updated!
 	// Otherwise the password would be updated to the current password hash value.
 	// To not update the password, we therefore need to provide an empty string or a user object without password.
-	updateAccessCode := &userProto.UpdateAccessCodesRequest{
+	updateAccessCode := &userpb.UpdateAccessCodesRequest{
 		Id:          user.Id,
 		AccessCodes: newAccessCodes,
 	}
@@ -327,7 +327,7 @@ func (a AuthServer) RemoveAccessCode(user *userProto.User, accessCode string, ct
 	return nil
 }
 
-func (a AuthServer) ChangePassword(user *userProto.User, oldPassword string, newPassword string, ctx context.Context) error {
+func (a AuthServer) ChangePassword(user *userpb.User, oldPassword string, newPassword string, ctx context.Context) error {
 	if len(user.GetId()) == 0 || len(oldPassword) == 0 || len(newPassword) == 0 {
 		return fmt.Errorf("bad parameters passed, %s", user.GetId())
 	}
@@ -350,12 +350,12 @@ func (a AuthServer) ChangePassword(user *userProto.User, oldPassword string, new
 	return nil
 }
 
-func (a AuthServer) UpdateSettings(user *userProto.User, newSettings map[string]string, ctx context.Context) error {
+func (a AuthServer) UpdateSettings(user *userpb.User, newSettings map[string]string, ctx context.Context) error {
 	if len(user.GetId()) == 0 {
 		return fmt.Errorf("bad parameters passed, %s", user.GetId())
 	}
 
-	user = &userProto.User{
+	user = &userpb.User{
 		Id:       user.GetId(),
 		Settings: newSettings,
 	}
@@ -370,13 +370,13 @@ func (a AuthServer) UpdateSettings(user *userProto.User, newSettings map[string]
 }
 
 func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Request) {
-	set, err := a.settingClient.GetSettingValue(r.Context(), &general.ResourceId{Id: string(settingUtil.SettingRegistrationDisabled)})
+	set, err := a.settingClient.GetSettingValue(r.Context(), &generalpb.ResourceId{Id: string(settingUtil.SettingRegistrationDisabled)})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
 		return
 	}
 
-	if s, ok := set.GetValue().(*settingProto.SettingValue_BoolValue); err != nil || !ok || set == nil {
+	if s, ok := set.GetValue().(*settingpb.SettingValue_BoolValue); err != nil || !ok || set == nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
 		return
 	} else if s.BoolValue {
@@ -406,17 +406,17 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	set, err = a.settingClient.GetSettingValue(r.Context(), &general.ResourceId{Id: string(settingUtil.StrictAccessCodeValidation)})
+	set, err = a.settingClient.GetSettingValue(r.Context(), &generalpb.ResourceId{Id: string(settingUtil.StrictAccessCodeValidation)})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
 		return
 	}
 
-	if s, ok := set.GetValue().(*settingProto.SettingValue_BoolValue); err != nil || !ok || set == nil {
+	if s, ok := set.GetValue().(*settingpb.SettingValue_BoolValue); err != nil || !ok || set == nil {
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
 		return
 	} else if s.BoolValue {
-		validation, err := a.acClient.ValidateExistence(r.Context(), &general.ResourceId{Id: accessCode})
+		validation, err := a.acClient.ValidateExistence(r.Context(), &generalpb.ResourceId{Id: accessCode})
 		if err != nil {
 			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error performing registration")
 			return
@@ -427,14 +427,14 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	userId, err := a.userClient.CreateUser(r.Context(), &userProto.CreateUserRequest{
+	userId, err := a.userClient.CreateUser(r.Context(), &userpb.CreateUserRequest{
 		Email:    email,
 		Password: password,
 	})
 
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
-			details := s.Details()[0].(*userProto.CreateUserRequest)
+			details := s.Details()[0].(*userpb.CreateUserRequest)
 			if s.Code() == codes.InvalidArgument {
 				glog.Errorf("error creating user, invalid argument for user with email: %s", details.Email)
 				util.ReturnHTTPMessage(w, r, 400, "error", s.Message())
@@ -456,13 +456,13 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	// from this point, the user is created
 	// we are now trying to add the access code he provided
 
-	user, err := a.userClient.GetUserById(r.Context(), &general.GetRequest{
+	user, err := a.userClient.GetUserById(r.Context(), &generalpb.GetRequest{
 		Id: userId.GetId(),
 	})
 
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
-			details := s.Details()[0].(*general.ResourceId)
+			details := s.Details()[0].(*generalpb.ResourceId)
 			if s.Code() == codes.InvalidArgument {
 				glog.Error("error retrieving created user, no id passed in")
 			} else {
@@ -489,7 +489,7 @@ func (a AuthServer) LoginFunc(w http.ResponseWriter, r *http.Request) {
 	email := r.PostFormValue("email")
 	password := r.PostFormValue("password")
 
-	user, err := a.userClient.GetUserByEmail(r.Context(), &userProto.GetUserByEmailRequest{Email: email})
+	user, err := a.userClient.GetUserByEmail(r.Context(), &userpb.GetUserByEmailRequest{Email: email})
 
 	if err != nil {
 		glog.Errorf("there was an error retrieving the user %s: %v", email, err)
@@ -511,20 +511,20 @@ func (a AuthServer) LoginFunc(w http.ResponseWriter, r *http.Request) {
 		glog.Error(err)
 	}
 
-	a.userClient.SetLastLoginTimestamp(r.Context(), &general.ResourceId{Id: user.GetId()})
+	a.userClient.SetLastLoginTimestamp(r.Context(), &generalpb.ResourceId{Id: user.GetId()})
 
 	util.ReturnHTTPMessage(w, r, 200, "authorized", token)
 }
 
-func (a AuthServer) GenerateJWT(user *userProto.User) (string, error) {
+func (a AuthServer) GenerateJWT(user *userpb.User) (string, error) {
 	// Get Expiration Date Setting
-	setting, err := a.settingClient.GetSettingValue(context.Background(), &general.ResourceId{Id: string(settingUtil.UserTokenExpiration)})
+	setting, err := a.settingClient.GetSettingValue(context.Background(), &generalpb.ResourceId{Id: string(settingUtil.UserTokenExpiration)})
 	if err != nil {
 		return "", err
 	}
 
 	tokenExpiration := time.Duration(24)
-	if s, ok := setting.GetValue().(*settingProto.SettingValue_Int64Value); err != nil || !ok || setting == nil {
+	if s, ok := setting.GetValue().(*settingpb.SettingValue_Int64Value); err != nil || !ok || setting == nil {
 		return "", fmt.Errorf("error retreiving retention Time setting")
 	} else {
 		tokenExpiration = time.Duration(s.Int64Value)
@@ -547,7 +547,7 @@ func (a AuthServer) GenerateJWT(user *userProto.User) (string, error) {
 
 func (a *AuthServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("Authorization")
-	user, err := a.internalAuthnServer.AuthN(r.Context(), &authn.AuthNRequest{
+	user, err := a.internalAuthnServer.AuthN(r.Context(), &authnpb.AuthNRequest{
 		Token: token,
 	})
 	if err != nil {
@@ -556,7 +556,7 @@ func (a *AuthServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// need to get the user's access set and publish to front end
-	as, err := a.rbacClient.GetAccessSet(r.Context(), &general.ResourceId{Id: user.GetId()})
+	as, err := a.rbacClient.GetAccessSet(r.Context(), &generalpb.ResourceId{Id: user.GetId()})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error fetching access set")
 		glog.Error(err)
@@ -575,7 +575,7 @@ func (a *AuthServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
 
 func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("Authorization")
-	user, err := a.internalAuthnServer.AuthN(r.Context(), &authn.AuthNRequest{
+	user, err := a.internalAuthnServer.AuthN(r.Context(), &authnpb.AuthNRequest{
 		Token: token,
 	})
 	if err != nil {
@@ -591,11 +591,11 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 	selector := labels.NewSelector()
 	selector = selector.Add(*otacReq)
 
-	otacList, err := a.acClient.ListOtac(r.Context(), &general.ListOptions{LabelSelector: selector.String()})
+	otacList, err := a.acClient.ListOtac(r.Context(), &generalpb.ListOptions{LabelSelector: selector.String()})
 
 	if err == nil {
 		for _, otac := range otacList.GetOtacs() {
-			se, err := a.scheduledEventClient.GetScheduledEvent(r.Context(), &general.GetRequest{Id: otac.Labels[hflabels.ScheduledEventLabel]})
+			se, err := a.scheduledEventClient.GetScheduledEvent(r.Context(), &generalpb.GetRequest{Id: otac.Labels[hflabels.ScheduledEventLabel]})
 			if err != nil {
 				continue
 			}
@@ -629,7 +629,7 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 	selector = selector.Add(*acReq)
 
 	// Afterwards we retreive the normal AccessCodes
-	acList, err := a.acClient.ListAc(r.Context(), &general.ListOptions{LabelSelector: selector.String()})
+	acList, err := a.acClient.ListAc(r.Context(), &generalpb.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "internal error while retrieving scheduled events")
 		return
@@ -637,7 +637,7 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 	accessCodes := acList.GetAccessCodes()
 	//Getting single SEs should be faster than listing all of them and iterating them in O(n^2), in most cases users only have a hand full of accessCodes.
 	for _, ac := range accessCodes {
-		se, err := a.scheduledEventClient.GetScheduledEvent(r.Context(), &general.GetRequest{Id: ac.GetLabels()[hflabels.ScheduledEventLabel]})
+		se, err := a.scheduledEventClient.GetScheduledEvent(r.Context(), &generalpb.GetRequest{Id: ac.GetLabels()[hflabels.ScheduledEventLabel]})
 		if err != nil {
 			glog.Error(err)
 			continue

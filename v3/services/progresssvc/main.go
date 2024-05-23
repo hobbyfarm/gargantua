@@ -11,7 +11,7 @@ import (
 
 	progressService "github.com/hobbyfarm/gargantua/services/progresssvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	progressProto "github.com/hobbyfarm/gargantua/v3/protos/progress"
+	progresspb "github.com/hobbyfarm/gargantua/v3/protos/progress"
 )
 
 var (
@@ -34,7 +34,7 @@ func main() {
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
 	ds := progressService.NewGrpcProgressServer(hfClient, hfInformerFactory)
-	progressProto.RegisterProgressSvcServer(gs, ds)
+	progresspb.RegisterProgressSvcServer(gs, ds)
 
 	var wg sync.WaitGroup
 	wg.Add(1)

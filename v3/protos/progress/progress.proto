@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package progress;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/progress";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/progress;progresspb";
 
 import "general/general.proto";
 import "google/protobuf/empty.proto";

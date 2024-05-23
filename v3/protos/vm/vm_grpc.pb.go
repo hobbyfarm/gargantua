@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: vm/vm.proto
 
-package vm
+package vmpb
 
 import (
 	context "context"

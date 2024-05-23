@@ -15,8 +15,8 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -27,8 +27,8 @@ const (
 )
 
 type VMSetServer struct {
-	authnClient authn.AuthNClient
-	authrClient authr.AuthRClient
+	authnClient authnpb.AuthNClient
+	authrClient authrpb.AuthRClient
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 	vmIndexer   cache.Indexer
@@ -40,7 +40,7 @@ type PreparedVirtualMachineSet struct {
 	hfv1.VirtualMachineSetStatus
 }
 
-func NewVMSetServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMSetServer, error) {
+func NewVMSetServer(authnClient authnpb.AuthNClient, authrClient authrpb.AuthRClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*VMSetServer, error) {
 	vms := VMSetServer{}
 
 	vms.authnClient = authnClient

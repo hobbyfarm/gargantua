@@ -11,11 +11,11 @@ import (
 
 	"github.com/golang/glog"
 	controllers "github.com/hobbyfarm/gargantua/v3/pkg/microservices/controller"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	progressProto "github.com/hobbyfarm/gargantua/v3/protos/progress"
-	"github.com/hobbyfarm/gargantua/v3/protos/session"
-	vmProto "github.com/hobbyfarm/gargantua/v3/protos/vm"
-	vmclaimProto "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	progresspb "github.com/hobbyfarm/gargantua/v3/protos/progress"
+	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	vmclaimpb "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -23,18 +23,18 @@ type SessionController struct {
 	controllers.DelayingWorkqueueController
 	controllers.Reconciler
 	internalSessioServer *GrpcSessionServer
-	progressClient       progressProto.ProgressSvcClient
-	vmClient             vmProto.VMSvcClient
-	vmClaimClient        vmclaimProto.VMClaimSvcClient
+	progressClient       progresspb.ProgressSvcClient
+	vmClient             vmpb.VMSvcClient
+	vmClaimClient        vmclaimpb.VMClaimSvcClient
 }
 
 func NewSessionController(
 	kubeClient *kubernetes.Clientset,
 	internalSessionServer *GrpcSessionServer,
 	hfInformerFactory hfInformers.SharedInformerFactory,
-	progressClient progressProto.ProgressSvcClient,
-	vmClient vmProto.VMSvcClient,
-	vmClaimClient vmclaimProto.VMClaimSvcClient,
+	progressClient progresspb.ProgressSvcClient,
+	vmClient vmpb.VMSvcClient,
+	vmClaimClient vmclaimpb.VMClaimSvcClient,
 	ctx context.Context,
 ) (*SessionController, error) {
 	sessionInformer := hfInformerFactory.Hobbyfarm().V1().Sessions().Informer()
@@ -74,7 +74,7 @@ func (s *SessionController) Reconcile(objName string) error {
 func (s *SessionController) reconcileSession(ssName string) error {
 	glog.V(4).Infof("reconciling session %s", ssName)
 
-	ss, err := s.internalSessioServer.GetSession(s.Context, &general.GetRequest{
+	ss, err := s.internalSessioServer.GetSession(s.Context, &generalpb.GetRequest{
 		Id:            ssName,
 		LoadFromCache: true,
 	})
@@ -98,7 +98,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 		glog.V(6).Infof("deleted finished session  %s", ss.GetId())
 
 		// now that the vmclaims are deleted, go ahead and delete the session
-		_, err = s.internalSessioServer.DeleteSession(s.Context, &general.ResourceId{Id: ss.GetId()})
+		_, err = s.internalSessioServer.DeleteSession(s.Context, &generalpb.ResourceId{Id: ss.GetId()})
 
 		if err != nil {
 			return fmt.Errorf("error deleting session %s: %v", ss.GetId(), err)
@@ -127,7 +127,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 			glog.V(4).Infof("Session %s was paused, but the pause expiration was before now, so cleaning up.", ss.GetId())
 		}
 		for _, vmc := range ss.GetVmClaim() {
-			vmcObj, err := s.vmClaimClient.GetVMClaim(s.Context, &general.GetRequest{
+			vmcObj, err := s.vmClaimClient.GetVMClaim(s.Context, &generalpb.GetRequest{
 				Id:            vmc,
 				LoadFromCache: true,
 			})
@@ -153,7 +153,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 			}
 		}
 
-		_, err = s.internalSessioServer.UpdateSessionStatus(s.Context, &session.UpdateSessionStatusRequest{
+		_, err = s.internalSessioServer.UpdateSessionStatus(s.Context, &sessionpb.UpdateSessionStatusRequest{
 			Id:       ssName,
 			Finished: wrapperspb.Bool(true),
 			Active:   wrapperspb.Bool(false),
@@ -179,7 +179,7 @@ func (s *SessionController) reconcileSession(ssName string) error {
 
 func (s *SessionController) taintVM(vmName string) error {
 	glog.V(5).Infof("tainting VM %s", vmName)
-	_, err := s.vmClient.UpdateVMStatus(s.Context, &vmProto.UpdateVMStatusRequest{
+	_, err := s.vmClient.UpdateVMStatus(s.Context, &vmpb.UpdateVMStatusRequest{
 		Id:      vmName,
 		Tainted: wrapperspb.Bool(true),
 	})
@@ -190,7 +190,7 @@ func (s *SessionController) taintVM(vmName string) error {
 
 func (s *SessionController) taintVMC(vmcName string) error {
 	glog.V(5).Infof("tainting VMC %s", vmcName)
-	_, err := s.vmClaimClient.UpdateVMClaimStatus(s.Context, &vmclaimProto.UpdateVMClaimStatusRequest{
+	_, err := s.vmClaimClient.UpdateVMClaimStatus(s.Context, &vmclaimpb.UpdateVMClaimStatusRequest{
 		Id:      vmcName,
 		Tainted: wrapperspb.Bool(true),
 	})
@@ -202,7 +202,7 @@ func (s *SessionController) taintVMC(vmcName string) error {
 func (s *SessionController) FinishProgress(sessionId string, userId string) {
 	now := time.Now()
 
-	progressList, err := s.progressClient.ListProgress(s.Context, &general.ListOptions{
+	progressList, err := s.progressClient.ListProgress(s.Context, &generalpb.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", hflabels.SessionLabel, sessionId, hflabels.UserLabel, userId),
 	})
 
@@ -212,7 +212,7 @@ func (s *SessionController) FinishProgress(sessionId string, userId string) {
 	}
 
 	for _, p := range progressList.GetProgresses() {
-		_, err = s.progressClient.UpdateProgress(s.Context, &progressProto.UpdateProgressRequest{
+		_, err = s.progressClient.UpdateProgress(s.Context, &progresspb.UpdateProgressRequest{
 			Id:         p.GetId(),
 			LastUpdate: now.Format(time.UnixDate),
 			Finished:   "true",

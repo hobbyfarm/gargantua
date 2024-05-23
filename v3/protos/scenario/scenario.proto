@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package scenario;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/scenario";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/scenario;scenariopb";
 
 import "general/general.proto";
 import "google/protobuf/empty.proto";

@@ -10,8 +10,8 @@ import (
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -42,7 +42,7 @@ func (s Server) ListRoles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	labelSelector := fmt.Sprintf("%s=%t", hflabels.RBACManagedLabel, true)
-	roles, err := s.internalRbacServer.ListRole(r.Context(), &general.ListOptions{LabelSelector: labelSelector})
+	roles, err := s.internalRbacServer.ListRole(r.Context(), &generalpb.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			switch s.Code() {
@@ -87,7 +87,7 @@ func (s Server) GetRole(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	roleId := vars["id"]
 
-	preparedRole, err := s.internalRbacServer.GetRole(r.Context(), &general.GetRequest{Id: roleId})
+	preparedRole, err := s.internalRbacServer.GetRole(r.Context(), &generalpb.GetRequest{Id: roleId})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			switch s.Code() {
@@ -130,7 +130,7 @@ func (s Server) CreateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var preparedRole *rbacProto.Role
+	var preparedRole *rbacpb.Role
 	err = json.NewDecoder(r.Body).Decode(&preparedRole)
 	if err != nil {
 		glog.Errorf("error decoding json from create role request: %v", err)
@@ -167,7 +167,7 @@ func (s Server) UpdateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var preparedRole *rbacProto.Role
+	var preparedRole *rbacpb.Role
 	err = json.NewDecoder(r.Body).Decode(&preparedRole)
 	if err != nil {
 		glog.Errorf("error decoding json from update role request: %v", err)
@@ -207,7 +207,7 @@ func (s Server) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	roleId := vars["id"]
 
-	_, err = s.internalRbacServer.DeleteRole(r.Context(), &general.ResourceId{Id: roleId})
+	_, err = s.internalRbacServer.DeleteRole(r.Context(), &generalpb.ResourceId{Id: roleId})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
 			if s.Code() == codes.InvalidArgument {
@@ -222,7 +222,7 @@ func (s Server) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPMessage(w, r, http.StatusOK, "deleted", "deleted")
 }
 
-func (s Server) prepareRole(role *rbacProto.Role) (preparedRole PreparedRole) {
+func (s Server) prepareRole(role *rbacpb.Role) (preparedRole PreparedRole) {
 	pr := PreparedRole{
 		Name:  role.GetName(),
 		Rules: []PreparedRule{},

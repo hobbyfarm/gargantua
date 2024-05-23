@@ -15,17 +15,17 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/property"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
 	"google.golang.org/grpc/codes"
-	empty "google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
 type GrpcSettingServer struct {
-	settingProto.UnimplementedSettingSvcServer
+	settingpb.UnimplementedSettingSvcServer
 	settingClient hfClientsetv1.SettingInterface
 	settingLister listersv1.SettingLister
 	settingSynced cache.InformerSynced
@@ -46,7 +46,7 @@ func NewGrpcSettingServer(hfClientSet hfClientset.Interface, hfInformerFactory h
 	}
 }
 
-func (s *GrpcSettingServer) CreateScope(ctx context.Context, creq *settingProto.CreateScopeRequest) (*empty.Empty, error) {
+func (s *GrpcSettingServer) CreateScope(ctx context.Context, creq *settingpb.CreateScopeRequest) (*emptypb.Empty, error) {
 	hfScope := &hfv1.Scope{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      creq.GetName(),
@@ -56,25 +56,25 @@ func (s *GrpcSettingServer) CreateScope(ctx context.Context, creq *settingProto.
 	}
 	_, err := s.scopeClient.Create(ctx, hfScope, metav1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			creq,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcSettingServer) GetScope(ctx context.Context, req *general.GetRequest) (*settingProto.Scope, error) {
+func (s *GrpcSettingServer) GetScope(ctx context.Context, req *generalpb.GetRequest) (*settingpb.Scope, error) {
 	scope, err := util.GenericHfGetter(ctx, req, s.scopeClient, s.scopeLister.Scopes(util.GetReleaseNamespace()), "scope", s.scopeSynced())
 	if err != nil {
-		return &settingProto.Scope{}, err
+		return &settingpb.Scope{}, err
 	}
 
-	return &settingProto.Scope{Name: scope.Name, Uid: string(scope.UID), DisplayName: scope.DisplayName}, nil
+	return &settingpb.Scope{Name: scope.Name, Uid: string(scope.UID), DisplayName: scope.DisplayName}, nil
 }
 
-func (s *GrpcSettingServer) ListScopes(ctx context.Context, listOptions *general.ListOptions) (*settingProto.Scopes, error) {
+func (s *GrpcSettingServer) ListScopes(ctx context.Context, listOptions *generalpb.ListOptions) (*settingpb.Scopes, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var scopes []hfv1.Scope
 	var err error
@@ -89,22 +89,22 @@ func (s *GrpcSettingServer) ListScopes(ctx context.Context, listOptions *general
 	}
 	if err != nil {
 		glog.Error(err)
-		return &settingProto.Scopes{}, err
+		return &settingpb.Scopes{}, err
 	}
 
-	var preparedScopes = make([]*settingProto.Scope, len(scopes))
+	var preparedScopes = make([]*settingpb.Scope, len(scopes))
 
 	for i, s := range scopes {
-		preparedScopes[i] = &settingProto.Scope{
+		preparedScopes[i] = &settingpb.Scope{
 			Name:        s.Name,
 			Uid:         string(s.UID),
 			DisplayName: s.DisplayName,
 		}
 	}
-	return &settingProto.Scopes{Scopes: preparedScopes}, nil
+	return &settingpb.Scopes{Scopes: preparedScopes}, nil
 }
 
-func (s *GrpcSettingServer) CreateSetting(ctx context.Context, creq *settingProto.CreateSettingRequest) (*empty.Empty, error) {
+func (s *GrpcSettingServer) CreateSetting(ctx context.Context, creq *settingpb.CreateSettingRequest) (*emptypb.Empty, error) {
 	hfSetting := &hfv1.Setting{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      creq.GetName(),
@@ -120,21 +120,21 @@ func (s *GrpcSettingServer) CreateSetting(ctx context.Context, creq *settingProt
 	}
 	_, err := s.settingClient.Create(ctx, hfSetting, metav1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			creq,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcSettingServer) GetSettingValue(ctx context.Context, sreq *general.ResourceId) (*settingProto.SettingValue, error) {
-	resp := &settingProto.SettingValue{}
+func (s *GrpcSettingServer) GetSettingValue(ctx context.Context, sreq *generalpb.ResourceId) (*settingpb.SettingValue, error) {
+	resp := &settingpb.SettingValue{}
 	setting, err := GetSetting(settingUtil.SettingName(sreq.GetId()))
 
 	if err != nil {
-		return &settingProto.SettingValue{}, hferrors.GrpcError(
+		return &settingpb.SettingValue{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			err.Error(),
 			sreq,
@@ -145,7 +145,7 @@ func (s *GrpcSettingServer) GetSettingValue(ctx context.Context, sreq *general.R
 
 	if err != nil {
 		glog.Error("could not parse JSON value")
-		return &settingProto.SettingValue{}, hferrors.GrpcError(
+		return &settingpb.SettingValue{}, hferrors.GrpcError(
 			codes.Internal,
 			"error parsing JSON value for setting %s",
 			sreq,
@@ -155,15 +155,15 @@ func (s *GrpcSettingServer) GetSettingValue(ctx context.Context, sreq *general.R
 
 	switch v := settingValue.(type) {
 	case bool:
-		resp.Value = &settingProto.SettingValue_BoolValue{BoolValue: v}
+		resp.Value = &settingpb.SettingValue_BoolValue{BoolValue: v}
 	case string:
-		resp.Value = &settingProto.SettingValue_StringValue{StringValue: v}
+		resp.Value = &settingpb.SettingValue_StringValue{StringValue: v}
 	case float64:
-		resp.Value = &settingProto.SettingValue_Float64Value{Float64Value: v}
+		resp.Value = &settingpb.SettingValue_Float64Value{Float64Value: v}
 	case int:
-		resp.Value = &settingProto.SettingValue_Int64Value{Int64Value: int64(v)}
+		resp.Value = &settingpb.SettingValue_Int64Value{Int64Value: int64(v)}
 	default:
-		return &settingProto.SettingValue{}, hferrors.GrpcError(
+		return &settingpb.SettingValue{}, hferrors.GrpcError(
 			codes.Internal,
 			"error setting %s did not match any of the following types: bool, string, float64, int",
 			sreq,
@@ -173,7 +173,7 @@ func (s *GrpcSettingServer) GetSettingValue(ctx context.Context, sreq *general.R
 	return resp, nil
 }
 
-func (s *GrpcSettingServer) ListSettings(ctx context.Context, listOptions *general.ListOptions) (*settingProto.ListSettingsResponse, error) {
+func (s *GrpcSettingServer) ListSettings(ctx context.Context, listOptions *generalpb.ListOptions) (*settingpb.ListSettingsResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var settings []hfv1.Setting
 	var err error
@@ -188,16 +188,16 @@ func (s *GrpcSettingServer) ListSettings(ctx context.Context, listOptions *gener
 	}
 	if err != nil {
 		glog.Error(err)
-		return &settingProto.ListSettingsResponse{}, err
+		return &settingpb.ListSettingsResponse{}, err
 	}
 
-	var preparedSettings []*settingProto.PreparedListSetting
+	var preparedSettings []*settingpb.PreparedListSetting
 	for _, ks := range settings {
 		scope := ks.Labels[labels.SettingScope]
 		weight := ks.Labels[labels.SettingWeight]
 		group := ks.Labels[labels.SettingGroup]
 		iweight, _ := strconv.Atoi(weight)
-		prepListSetting := &settingProto.PreparedListSetting{Name: ks.Name, Uid: string(ks.UID), Property: &settingProto.Property{
+		prepListSetting := &settingpb.PreparedListSetting{Name: ks.Name, Uid: string(ks.UID), Property: &settingpb.Property{
 			DataType:    settingUtil.DataTypeMappingToProto[ks.Property.DataType],
 			ValueType:   settingUtil.ValueTypeMappingToProto[ks.Property.ValueType],
 			DisplayName: ks.DisplayName,
@@ -228,27 +228,27 @@ func (s *GrpcSettingServer) ListSettings(ctx context.Context, listOptions *gener
 		}
 		preparedSettings = append(preparedSettings, prepListSetting)
 	}
-	return &settingProto.ListSettingsResponse{Settings: preparedSettings}, nil
+	return &settingpb.ListSettingsResponse{Settings: preparedSettings}, nil
 }
 
-func (s *GrpcSettingServer) GetSetting(ctx context.Context, req *general.GetRequest) (*settingProto.Setting, error) {
+func (s *GrpcSettingServer) GetSetting(ctx context.Context, req *generalpb.GetRequest) (*settingpb.Setting, error) {
 	setting, err := util.GenericHfGetter(ctx, req, s.settingClient, s.settingLister.Settings(util.GetReleaseNamespace()), "setting", s.settingSynced())
 	if err != nil {
-		return &settingProto.Setting{}, err
+		return &settingpb.Setting{}, err
 	}
 
 	// check if the user has permissions to do this action
 	scope, ok := setting.Labels[labels.SettingScope]
 	if !ok {
 		glog.Errorf("setting %s does not have scope label", setting.Name)
-		return &settingProto.Setting{}, hferrors.GrpcError(
+		return &settingpb.Setting{}, hferrors.GrpcError(
 			codes.Internal,
 			"error retrieving scope label",
 			req,
 		)
 	}
 
-	prepSetting := &settingProto.Setting{Name: setting.Name, Uid: string(setting.UID), Property: &settingProto.Property{
+	prepSetting := &settingpb.Setting{Name: setting.Name, Uid: string(setting.UID), Property: &settingpb.Property{
 		DataType:    settingUtil.DataTypeMappingToProto[setting.Property.DataType],
 		ValueType:   settingUtil.ValueTypeMappingToProto[setting.Property.ValueType],
 		DisplayName: setting.DisplayName,
@@ -282,10 +282,10 @@ func (s *GrpcSettingServer) GetSetting(ctx context.Context, req *general.GetRequ
 	return prepSetting, nil
 }
 
-func (s *GrpcSettingServer) UpdateSetting(ctx context.Context, setting *settingProto.Setting) (*empty.Empty, error) {
+func (s *GrpcSettingServer) UpdateSetting(ctx context.Context, setting *settingpb.Setting) (*emptypb.Empty, error) {
 	kSetting, err := s.settingClient.Get(ctx, setting.GetName(), metav1.GetOptions{})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"error updating setting: %s",
 			setting,
@@ -296,7 +296,7 @@ func (s *GrpcSettingServer) UpdateSetting(ctx context.Context, setting *settingP
 	// validate the value
 	if err := kSetting.Validate(setting.GetValue()); err != nil {
 		glog.Errorf("error validating value: %s", err.Error())
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"error updating setting: %s",
 			setting,
@@ -309,12 +309,12 @@ func (s *GrpcSettingServer) UpdateSetting(ctx context.Context, setting *settingP
 	_, err = s.settingClient.Update(ctx, kSetting, metav1.UpdateOptions{})
 	if err != nil {
 		glog.Errorf("error updating setting: %s", err.Error())
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error updating setting",
 			setting,
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }

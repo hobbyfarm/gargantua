@@ -13,10 +13,10 @@ import (
 
 	sessionservice "github.com/hobbyfarm/gargantua/services/sessionsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/v3/protos/progress"
-	sessionProto "github.com/hobbyfarm/gargantua/v3/protos/session"
-	"github.com/hobbyfarm/gargantua/v3/protos/vm"
-	"github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
+	progresspb "github.com/hobbyfarm/gargantua/v3/protos/progress"
+	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	vmclaimpb "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
 )
 
 var (
@@ -48,14 +48,14 @@ func main() {
 		defer conn.Close()
 	}
 
-	progressClient := progress.NewProgressSvcClient(connections[microservices.Progress])
-	vmClient := vm.NewVMSvcClient(connections[microservices.VM])
-	vmClaimClient := vmclaim.NewVMClaimSvcClient(connections[microservices.VMClaim])
+	progressClient := progresspb.NewProgressSvcClient(connections[microservices.Progress])
+	vmClient := vmpb.NewVMSvcClient(connections[microservices.VM])
+	vmClaimClient := vmclaimpb.NewVMClaimSvcClient(connections[microservices.VMClaim])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
 	ss := sessionservice.NewGrpcSessionServer(hfClient, hfInformerFactory)
-	sessionProto.RegisterSessionSvcServer(gs, ss)
+	sessionpb.RegisterSessionSvcServer(gs, ss)
 	sessionController, err := sessionservice.NewSessionController(
 		kubeClient,
 		ss,

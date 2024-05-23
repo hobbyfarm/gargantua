@@ -5,11 +5,10 @@ import (
 	"fmt"
 
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	vmClaimProto "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	vmclaimpb "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
@@ -18,6 +17,7 @@ import (
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -26,7 +26,7 @@ import (
 )
 
 type GrpcVMClaimServer struct {
-	vmClaimProto.UnimplementedVMClaimSvcServer
+	vmclaimpb.UnimplementedVMClaimSvcServer
 	vmClaimClient    hfClientsetv1.VirtualMachineClaimInterface
 	vmClaimLister    listersv1.VirtualMachineClaimLister
 	vmClaimSynced    cache.InformerSynced
@@ -46,7 +46,7 @@ func NewGrpcVMClaimServer(
 	}
 }
 
-func (s *GrpcVMClaimServer) CreateVMClaim(ctx context.Context, req *vmClaimProto.CreateVMClaimRequest) (*empty.Empty, error) {
+func (s *GrpcVMClaimServer) CreateVMClaim(ctx context.Context, req *vmclaimpb.CreateVMClaimRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	userName := req.GetUserName()
 	vmset := req.GetVmset()
@@ -80,32 +80,32 @@ func (s *GrpcVMClaimServer) CreateVMClaim(ctx context.Context, req *vmClaimProto
 
 	_, err := s.vmClaimClient.Create(ctx, vmClaim, metav1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcVMClaimServer) GetVMClaim(ctx context.Context, req *general.GetRequest) (*vmClaimProto.VMClaim, error) {
+func (s *GrpcVMClaimServer) GetVMClaim(ctx context.Context, req *generalpb.GetRequest) (*vmclaimpb.VMClaim, error) {
 	vmc, err := util.GenericHfGetter(ctx, req, s.vmClaimClient, s.vmClaimLister.VirtualMachineClaims(util.GetReleaseNamespace()), "virtual machine claim", s.vmClaimSynced())
 	if err != nil {
-		return &vmClaimProto.VMClaim{}, err
+		return &vmclaimpb.VMClaim{}, err
 	}
 
-	vmClaimVMs := make(map[string]*vmClaimProto.VMClaimVM)
+	vmClaimVMs := make(map[string]*vmclaimpb.VMClaimVM)
 
 	for key, vm := range vmc.Spec.VirtualMachines {
-		vmClaimVM := &vmClaimProto.VMClaimVM{
+		vmClaimVM := &vmclaimpb.VMClaimVM{
 			Template:         vm.Template,
 			VirtualMachineId: vm.VirtualMachineId,
 		}
 		vmClaimVMs[key] = vmClaimVM
 	}
 
-	status := &vmClaimProto.VMClaimStatus{
+	status := &vmclaimpb.VMClaimStatus{
 		BindMode:           vmc.Status.BindMode,
 		StaticBindAttempts: uint32(vmc.Status.StaticBindAttempts),
 		Bound:              vmc.Status.Bound,
@@ -118,7 +118,7 @@ func (s *GrpcVMClaimServer) GetVMClaim(ctx context.Context, req *general.GetRequ
 		deletionTimeStamp = timestamppb.New(vmc.DeletionTimestamp.Time)
 	}
 
-	return &vmClaimProto.VMClaim{
+	return &vmclaimpb.VMClaim{
 		Id:                  vmc.Name,
 		Uid:                 string(vmc.UID),
 		UserId:              vmc.Spec.UserId,
@@ -133,10 +133,10 @@ func (s *GrpcVMClaimServer) GetVMClaim(ctx context.Context, req *general.GetRequ
 	}, nil
 }
 
-func (s *GrpcVMClaimServer) UpdateVMClaim(ctx context.Context, req *vmClaimProto.UpdateVMClaimRequest) (*empty.Empty, error) {
+func (s *GrpcVMClaimServer) UpdateVMClaim(ctx context.Context, req *vmclaimpb.UpdateVMClaimRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 
 	vmset := req.GetVmset()
@@ -180,20 +180,20 @@ func (s *GrpcVMClaimServer) UpdateVMClaim(ctx context.Context, req *vmClaimProto
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			req,
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcVMClaimServer) UpdateVMClaimStatus(ctx context.Context, req *vmClaimProto.UpdateVMClaimStatusRequest) (*empty.Empty, error) {
+func (s *GrpcVMClaimServer) UpdateVMClaimStatus(ctx context.Context, req *vmclaimpb.UpdateVMClaimStatusRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 	bindMode := req.GetBindMode()
 	staticBindAttempts := req.GetStaticBindAttempts()
@@ -242,25 +242,25 @@ func (s *GrpcVMClaimServer) UpdateVMClaimStatus(ctx context.Context, req *vmClai
 		return nil
 	})
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update vmc status: %v",
 			req,
 			retryErr,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcVMClaimServer) DeleteVMClaim(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (s *GrpcVMClaimServer) DeleteVMClaim(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.DeleteHfResource(ctx, req, s.vmClaimClient, "virtual machine claim")
 }
 
-func (s *GrpcVMClaimServer) DeleteCollectionVMClaim(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
+func (s *GrpcVMClaimServer) DeleteCollectionVMClaim(ctx context.Context, listOptions *generalpb.ListOptions) (*emptypb.Empty, error) {
 	return util.DeleteHfCollection(ctx, listOptions, s.vmClaimClient, "virtual machine claims")
 }
 
-func (s *GrpcVMClaimServer) ListVMClaim(ctx context.Context, listOptions *general.ListOptions) (*vmClaimProto.ListVMClaimsResponse, error) {
+func (s *GrpcVMClaimServer) ListVMClaim(ctx context.Context, listOptions *generalpb.ListOptions) (*vmclaimpb.ListVMClaimsResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var vmClaims []hfv1.VirtualMachineClaim
 	var err error
@@ -275,22 +275,22 @@ func (s *GrpcVMClaimServer) ListVMClaim(ctx context.Context, listOptions *genera
 	}
 	if err != nil {
 		glog.Error(err)
-		return &vmClaimProto.ListVMClaimsResponse{}, err
+		return &vmclaimpb.ListVMClaimsResponse{}, err
 	}
 
-	preparedVmcs := []*vmClaimProto.VMClaim{}
+	preparedVmcs := []*vmclaimpb.VMClaim{}
 
 	for _, vmc := range vmClaims {
-		vmClaimVMs := make(map[string]*vmClaimProto.VMClaimVM)
+		vmClaimVMs := make(map[string]*vmclaimpb.VMClaimVM)
 		for key, vm := range vmc.Spec.VirtualMachines {
-			vmClaimVM := &vmClaimProto.VMClaimVM{
+			vmClaimVM := &vmclaimpb.VMClaimVM{
 				Template:         vm.Template,
 				VirtualMachineId: vm.VirtualMachineId,
 			}
 			vmClaimVMs[key] = vmClaimVM
 		}
 
-		status := &vmClaimProto.VMClaimStatus{
+		status := &vmclaimpb.VMClaimStatus{
 			BindMode:           vmc.Status.BindMode,
 			StaticBindAttempts: uint32(vmc.Status.StaticBindAttempts),
 			Bound:              vmc.Status.Bound,
@@ -303,7 +303,7 @@ func (s *GrpcVMClaimServer) ListVMClaim(ctx context.Context, listOptions *genera
 			deletionTimeStamp = timestamppb.New(vmc.DeletionTimestamp.Time)
 		}
 
-		preparedVmcs = append(preparedVmcs, &vmClaimProto.VMClaim{
+		preparedVmcs = append(preparedVmcs, &vmclaimpb.VMClaim{
 			Id:                  vmc.Name,
 			Uid:                 string(vmc.UID),
 			UserId:              vmc.Spec.UserId,
@@ -318,9 +318,9 @@ func (s *GrpcVMClaimServer) ListVMClaim(ctx context.Context, listOptions *genera
 		})
 	}
 
-	return &vmClaimProto.ListVMClaimsResponse{Vmclaims: preparedVmcs}, nil
+	return &vmclaimpb.ListVMClaimsResponse{Vmclaims: preparedVmcs}, nil
 }
 
-func (s *GrpcVMClaimServer) AddToWorkqueue(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (s *GrpcVMClaimServer) AddToWorkqueue(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.AddToWorkqueue(s.vmClaimWorkqueue, req)
 }

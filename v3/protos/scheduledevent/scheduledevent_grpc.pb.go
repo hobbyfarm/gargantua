@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: scheduledevent/scheduledevent.proto
 
-package scheduledevent
+package scheduledeventpb
 
 import (
 	context "context"

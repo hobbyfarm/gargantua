@@ -18,8 +18,8 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/scenarioclient"
 	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -37,8 +37,8 @@ const (
 )
 
 type SessionServer struct {
-	authnClient      authn.AuthNClient
-	authrClient      authr.AuthRClient
+	authnClient      authnpb.AuthNClient
+	authrClient      authrpb.AuthRClient
 	hfClientSet      hfClientset.Interface
 	courseClient     *courseclient.CourseClient
 	scenarioClient   *scenarioclient.ScenarioClient
@@ -52,7 +52,7 @@ type preparedSession struct {
 	hfv1.SessionSpec
 }
 
-func NewSessionServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, accessCodeClient *accesscode.AccessCodeClient, scenarioClient *scenarioclient.ScenarioClient, courseClient *courseclient.CourseClient, hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*SessionServer, error) {
+func NewSessionServer(authnClient authnpb.AuthNClient, authrClient authrpb.AuthRClient, accessCodeClient *accesscode.AccessCodeClient, scenarioClient *scenarioclient.ScenarioClient, courseClient *courseclient.CourseClient, hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*SessionServer, error) {
 	a := SessionServer{}
 	a.authnClient = authnClient
 	a.authrClient = authrClient

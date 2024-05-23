@@ -3,11 +3,10 @@ package vmsetservice
 import (
 	"context"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	vmSetProto "github.com/hobbyfarm/gargantua/v3/protos/vmset"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
@@ -17,6 +16,7 @@ import (
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/emptypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
@@ -25,7 +25,7 @@ import (
 )
 
 type GrpcVMSetServer struct {
-	vmSetProto.UnimplementedVMSetSvcServer
+	vmsetpb.UnimplementedVMSetSvcServer
 	vmSetClient    hfClientsetv1.VirtualMachineSetInterface
 	vmSetLister    listersv1.VirtualMachineSetLister
 	vmSetSynced    cache.InformerSynced
@@ -45,7 +45,7 @@ func NewGrpcVMSetServer(
 	}
 }
 
-func (s *GrpcVMSetServer) CreateVMSet(ctx context.Context, req *vmSetProto.CreateVMSetRequest) (*empty.Empty, error) {
+func (s *GrpcVMSetServer) CreateVMSet(ctx context.Context, req *vmsetpb.CreateVMSetRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	count := req.GetCount()
 	environment := req.GetEnvironment()
@@ -85,25 +85,25 @@ func (s *GrpcVMSetServer) CreateVMSet(ctx context.Context, req *vmSetProto.Creat
 
 	_, err := s.vmSetClient.Create(ctx, vms, metav1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcVMSetServer) GetVMSet(ctx context.Context, req *general.GetRequest) (*vmSetProto.VMSet, error) {
+func (s *GrpcVMSetServer) GetVMSet(ctx context.Context, req *generalpb.GetRequest) (*vmsetpb.VMSet, error) {
 	vms, err := util.GenericHfGetter(ctx, req, s.vmSetClient, s.vmSetLister.VirtualMachineSets(util.GetReleaseNamespace()), "virtual machine set", s.vmSetSynced())
 	if err != nil {
-		return &vmSetProto.VMSet{}, err
+		return &vmsetpb.VMSet{}, err
 	}
 
-	vmSetVMs := []*vmSetProto.VMProvision{}
+	vmSetVMs := []*vmsetpb.VMProvision{}
 
 	for _, vm := range vms.Status.Machines {
-		vmSetVM := &vmSetProto.VMProvision{
+		vmSetVM := &vmsetpb.VMProvision{
 			VmName:   vm.VirtualMachineName,
 			TfcState: vm.TFControllerState,
 			TfcCm:    vm.TFControllerCM,
@@ -111,13 +111,13 @@ func (s *GrpcVMSetServer) GetVMSet(ctx context.Context, req *general.GetRequest)
 		vmSetVMs = append(vmSetVMs, vmSetVM)
 	}
 
-	status := &vmSetProto.VMSetStatus{
+	status := &vmsetpb.VMSetStatus{
 		Machines:    vmSetVMs,
 		Available:   uint32(vms.Status.AvailableCount),
 		Provisioned: uint32(vms.Status.ProvisionedCount),
 	}
 
-	return &vmSetProto.VMSet{
+	return &vmsetpb.VMSet{
 		Id:                  vms.Name,
 		Uid:                 string(vms.UID),
 		Count:               uint32(vms.Spec.Count),
@@ -131,10 +131,10 @@ func (s *GrpcVMSetServer) GetVMSet(ctx context.Context, req *general.GetRequest)
 	}, nil
 }
 
-func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.UpdateVMSetRequest) (*empty.Empty, error) {
+func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmsetpb.UpdateVMSetRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 
 	count := req.GetCount()
@@ -181,20 +181,20 @@ func (s *GrpcVMSetServer) UpdateVMSet(ctx context.Context, req *vmSetProto.Updat
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			req,
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcVMSetServer) UpdateVMSetStatus(ctx context.Context, req *vmSetProto.UpdateVMSetStatusRequest) (*empty.Empty, error) {
+func (s *GrpcVMSetServer) UpdateVMSetStatus(ctx context.Context, req *vmsetpb.UpdateVMSetStatusRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 	machines := req.GetMachines()
 	available := req.GetAvailable()
@@ -243,25 +243,25 @@ func (s *GrpcVMSetServer) UpdateVMSetStatus(ctx context.Context, req *vmSetProto
 		return nil
 	})
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update vms status: %v",
 			req,
 			retryErr,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcVMSetServer) DeleteVMSet(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (s *GrpcVMSetServer) DeleteVMSet(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.DeleteHfResource(ctx, req, s.vmSetClient, "virtual machine set")
 }
 
-func (s *GrpcVMSetServer) DeleteCollectionVMSet(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
+func (s *GrpcVMSetServer) DeleteCollectionVMSet(ctx context.Context, listOptions *generalpb.ListOptions) (*emptypb.Empty, error) {
 	return util.DeleteHfCollection(ctx, listOptions, s.vmSetClient, "virtual machine sets")
 }
 
-func (s *GrpcVMSetServer) ListVMSet(ctx context.Context, listOptions *general.ListOptions) (*vmSetProto.ListVMSetsResponse, error) {
+func (s *GrpcVMSetServer) ListVMSet(ctx context.Context, listOptions *generalpb.ListOptions) (*vmsetpb.ListVMSetsResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var vmSets []hfv1.VirtualMachineSet
 	var err error
@@ -276,15 +276,15 @@ func (s *GrpcVMSetServer) ListVMSet(ctx context.Context, listOptions *general.Li
 	}
 	if err != nil {
 		glog.Error(err)
-		return &vmSetProto.ListVMSetsResponse{}, err
+		return &vmsetpb.ListVMSetsResponse{}, err
 	}
 
-	preparedVmSets := []*vmSetProto.VMSet{}
+	preparedVmSets := []*vmsetpb.VMSet{}
 
 	for _, vms := range vmSets {
-		vmSetVMs := []*vmSetProto.VMProvision{}
+		vmSetVMs := []*vmsetpb.VMProvision{}
 		for key, vm := range vms.Status.Machines {
-			vmSetVM := &vmSetProto.VMProvision{
+			vmSetVM := &vmsetpb.VMProvision{
 				VmName:   vm.VirtualMachineName,
 				TfcState: vm.TFControllerState,
 				TfcCm:    vm.TFControllerCM,
@@ -293,13 +293,13 @@ func (s *GrpcVMSetServer) ListVMSet(ctx context.Context, listOptions *general.Li
 			vmSetVMs = append(vmSetVMs, vmSetVM)
 		}
 
-		status := &vmSetProto.VMSetStatus{
+		status := &vmsetpb.VMSetStatus{
 			Machines:    vmSetVMs,
 			Available:   uint32(vms.Status.AvailableCount),
 			Provisioned: uint32(vms.Status.ProvisionedCount),
 		}
 
-		preparedVmSets = append(preparedVmSets, &vmSetProto.VMSet{
+		preparedVmSets = append(preparedVmSets, &vmsetpb.VMSet{
 			Id:                  vms.Name,
 			Uid:                 string(vms.UID),
 			Count:               uint32(vms.Spec.Count),
@@ -313,9 +313,9 @@ func (s *GrpcVMSetServer) ListVMSet(ctx context.Context, listOptions *general.Li
 		})
 	}
 
-	return &vmSetProto.ListVMSetsResponse{Vmsets: preparedVmSets}, nil
+	return &vmsetpb.ListVMSetsResponse{Vmsets: preparedVmSets}, nil
 }
 
-func (s *GrpcVMSetServer) AddToWorkqueue(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (s *GrpcVMSetServer) AddToWorkqueue(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.AddToWorkqueue(s.vmSetWorkqueue, req)
 }

@@ -11,7 +11,7 @@ import (
 
 	environmentservice "github.com/hobbyfarm/gargantua/services/environmentsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	environmentProto "github.com/hobbyfarm/gargantua/v3/protos/environment"
+	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
 )
 
 var (
@@ -35,7 +35,7 @@ func main() {
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
 	es := environmentservice.NewGrpcEnvironmentServer(hfClient, hfInformerFactory)
-	environmentProto.RegisterEnvironmentSvcServer(gs, es)
+	environmentpb.RegisterEnvironmentSvcServer(gs, es)
 
 	var wg sync.WaitGroup
 	wg.Add(1)

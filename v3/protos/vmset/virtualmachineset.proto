@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package vmset;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/vmset";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/vmset;vmsetpb";
 
 import "general/general.proto";
 import "google/protobuf/empty.proto";

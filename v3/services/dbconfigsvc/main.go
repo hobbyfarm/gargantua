@@ -11,7 +11,7 @@ import (
 
 	dbconfigservice "github.com/hobbyfarm/gargantua/services/dbconfigsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	dbconfigProto "github.com/hobbyfarm/gargantua/v3/protos/dbconfig"
+	dbconfigpb "github.com/hobbyfarm/gargantua/v3/protos/dbconfig"
 )
 
 var (
@@ -34,7 +34,7 @@ func main() {
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
 	ds := dbconfigservice.NewGrpcDynamicBindConfigurationServer(hfClient, hfInformerFactory)
-	dbconfigProto.RegisterDynamicBindConfigSvcServer(gs, ds)
+	dbconfigpb.RegisterDynamicBindConfigSvcServer(gs, ds)
 
 	var wg sync.WaitGroup
 	wg.Add(1)

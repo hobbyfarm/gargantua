@@ -3,19 +3,19 @@ package userservice
 import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
-	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 )
 
 type UserServer struct {
-	authnClient        authn.AuthNClient
-	authrClient        authr.AuthRClient
-	rbacClient         rbac.RbacSvcClient
+	authnClient        authnpb.AuthNClient
+	authrClient        authrpb.AuthRClient
+	rbacClient         rbacpb.RbacSvcClient
 	internalUserServer *GrpcUserServer
 }
 
-func NewUserServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, rbacClient rbac.RbacSvcClient, internalUserServer *GrpcUserServer) (UserServer, error) {
+func NewUserServer(authnClient authnpb.AuthNClient, authrClient authrpb.AuthRClient, rbacClient rbacpb.RbacSvcClient, internalUserServer *GrpcUserServer) (UserServer, error) {
 	u := UserServer{}
 	u.authnClient = authnClient
 	u.authrClient = authrClient

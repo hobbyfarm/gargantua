@@ -3,17 +3,18 @@ package vmclaimserver
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"net/http"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -23,14 +24,14 @@ const (
 )
 
 type VMClaimServer struct {
-	authnClient authn.AuthNClient
-	authrClient authr.AuthRClient
+	authnClient authnpb.AuthNClient
+	authrClient authrpb.AuthRClient
 	hfClientSet hfClientset.Interface
 
 	vmClaimIndexer cache.Indexer
 }
 
-func NewVMClaimServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*VMClaimServer, error) {
+func NewVMClaimServer(authnClient authnpb.AuthNClient, authrClient authrpb.AuthRClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) (*VMClaimServer, error) {
 	vmcs := VMClaimServer{}
 
 	vmcs.authnClient = authnClient

@@ -10,17 +10,17 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	controllers "github.com/hobbyfarm/gargantua/v3/pkg/microservices/controller"
-	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
-	accesscodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
-	dbconfigProto "github.com/hobbyfarm/gargantua/v3/protos/dbconfig"
-	environmentProto "github.com/hobbyfarm/gargantua/v3/protos/environment"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	progressProto "github.com/hobbyfarm/gargantua/v3/protos/progress"
-	eventProto "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
-	sessionProto "github.com/hobbyfarm/gargantua/v3/protos/session"
-	vmProto "github.com/hobbyfarm/gargantua/v3/protos/vm"
-	vmclaimProto "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
-	vmtemplateProto "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	dbconfigpb "github.com/hobbyfarm/gargantua/v3/protos/dbconfig"
+	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	progresspb "github.com/hobbyfarm/gargantua/v3/protos/progress"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
+	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	vmclaimpb "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
+	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/golang/glog"
@@ -38,28 +38,28 @@ type VMClaimController struct {
 	controllers.DelayingWorkqueueController
 	controllers.Reconciler
 	internalVmClaimServer *GrpcVMClaimServer
-	accessCodeClient      accesscodeProto.AccessCodeSvcClient
-	sessionClient         sessionProto.SessionSvcClient
-	progressClient        progressProto.ProgressSvcClient
-	environmentClient     environmentProto.EnvironmentSvcClient
-	dbConfigClient        dbconfigProto.DynamicBindConfigSvcClient
-	vmClient              vmProto.VMSvcClient
-	vmTemplateClient      vmtemplateProto.VMTemplateSvcClient
-	eventClient           eventProto.ScheduledEventSvcClient
+	accessCodeClient      accesscodepb.AccessCodeSvcClient
+	sessionClient         sessionpb.SessionSvcClient
+	progressClient        progresspb.ProgressSvcClient
+	environmentClient     environmentpb.EnvironmentSvcClient
+	dbConfigClient        dbconfigpb.DynamicBindConfigSvcClient
+	vmClient              vmpb.VMSvcClient
+	vmTemplateClient      vmtemplatepb.VMTemplateSvcClient
+	eventClient           scheduledeventpb.ScheduledEventSvcClient
 }
 
 func NewVMClaimController(
 	kubeClient *kubernetes.Clientset,
 	internalVmClaimServer *GrpcVMClaimServer,
 	hfInformerFactory hfInformers.SharedInformerFactory,
-	acClient accesscodeProto.AccessCodeSvcClient,
-	dbConfigClient dbconfigProto.DynamicBindConfigSvcClient,
-	environmentClient environmentProto.EnvironmentSvcClient,
-	eventClient eventProto.ScheduledEventSvcClient,
-	progressClient progressProto.ProgressSvcClient,
-	sessionClient sessionProto.SessionSvcClient,
-	vmClient vmProto.VMSvcClient,
-	vmTemplateClient vmtemplateProto.VMTemplateSvcClient,
+	acClient accesscodepb.AccessCodeSvcClient,
+	dbConfigClient dbconfigpb.DynamicBindConfigSvcClient,
+	environmentClient environmentpb.EnvironmentSvcClient,
+	eventClient scheduledeventpb.ScheduledEventSvcClient,
+	progressClient progresspb.ProgressSvcClient,
+	sessionClient sessionpb.SessionSvcClient,
+	vmClient vmpb.VMSvcClient,
+	vmTemplateClient vmtemplatepb.VMTemplateSvcClient,
 	ctx context.Context,
 ) (*VMClaimController, error) {
 	vmClaimInformer := hfInformerFactory.Hobbyfarm().V1().VirtualMachineClaims().Informer()
@@ -92,7 +92,7 @@ func NewVMClaimController(
 func (v *VMClaimController) Reconcile(objName string) error {
 	glog.V(8).Infof("reconciling vmclaim %s inside vm claim controller", objName)
 	// fetch vmClaim
-	vmClaim, err := v.internalVmClaimServer.GetVMClaim(v.Context, &general.GetRequest{Id: objName})
+	vmClaim, err := v.internalVmClaimServer.GetVMClaim(v.Context, &generalpb.GetRequest{Id: objName})
 	if err != nil {
 		if hferrors.IsGrpcNotFound(err) {
 			glog.Infof("vmClaim %s not found on queue.. ignoring", objName)
@@ -109,8 +109,8 @@ func (v *VMClaimController) Reconcile(objName string) error {
 	return nil
 }
 
-func (v *VMClaimController) updateVMClaimStatus(bound bool, ready bool, vmc *vmclaimProto.VMClaim) error {
-	_, err := v.internalVmClaimServer.UpdateVMClaimStatus(v.Context, &vmclaimProto.UpdateVMClaimStatusRequest{
+func (v *VMClaimController) updateVMClaimStatus(bound bool, ready bool, vmc *vmclaimpb.VMClaim) error {
+	_, err := v.internalVmClaimServer.UpdateVMClaimStatus(v.Context, &vmclaimpb.UpdateVMClaimStatusRequest{
 		Bound: wrapperspb.Bool(bound),
 		Ready: wrapperspb.Bool(ready),
 	})
@@ -118,10 +118,10 @@ func (v *VMClaimController) updateVMClaimStatus(bound bool, ready bool, vmc *vmc
 	return err
 }
 
-func (v *VMClaimController) processVMClaim(vmc *vmclaimProto.VMClaim) (err error) {
+func (v *VMClaimController) processVMClaim(vmc *vmclaimpb.VMClaim) (err error) {
 	if vmc.Status.Tainted {
 		glog.Infof("vmclaim %s is tainted.. cleaning it up", vmc.GetId())
-		_, err := v.internalVmClaimServer.DeleteVMClaim(v.Context, &general.ResourceId{Id: vmc.GetId()})
+		_, err := v.internalVmClaimServer.DeleteVMClaim(v.Context, &generalpb.ResourceId{Id: vmc.GetId()})
 		return err
 	}
 
@@ -172,7 +172,7 @@ func (v *VMClaimController) processVMClaim(vmc *vmclaimProto.VMClaim) (err error
 }
 
 func (v *VMClaimController) taintSession(session string) error {
-	_, err := v.sessionClient.UpdateSessionStatus(v.Context, &sessionProto.UpdateSessionStatusRequest{
+	_, err := v.sessionClient.UpdateSessionStatus(v.Context, &sessionpb.UpdateSessionStatusRequest{
 		Id:             session,
 		ExpirationTime: time.Now().Format(time.UnixDate),
 		Active:         wrapperspb.Bool(false),
@@ -182,7 +182,7 @@ func (v *VMClaimController) taintSession(session string) error {
 	}
 
 	// Remove outstanding Progresses as there was an error with this session
-	_, err = v.progressClient.DeleteCollectionProgress(v.Context, &general.ListOptions{
+	_, err = v.progressClient.DeleteCollectionProgress(v.Context, &generalpb.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s,finished=false", hflabels.SessionLabel, session),
 	})
 
@@ -190,11 +190,11 @@ func (v *VMClaimController) taintSession(session string) error {
 }
 
 type VMEnvironment struct {
-	Environment              *environmentProto.Environment
-	DynamicBindConfiguration *dbconfigProto.DynamicBindConfig
+	Environment              *environmentpb.Environment
+	DynamicBindConfiguration *dbconfigpb.DynamicBindConfig
 }
 
-func (v *VMClaimController) submitVirtualMachines(vmc *vmclaimProto.VMClaim) (err error) {
+func (v *VMClaimController) submitVirtualMachines(vmc *vmclaimpb.VMClaim) (err error) {
 	accessCode, ok := vmc.Labels[hflabels.AccessCodeLabel]
 	if !ok {
 		glog.Error("accessCode label not set on vmc, aborting")
@@ -243,7 +243,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *vmclaimProto.VMClaim) (er
 		}
 	} else {
 		// One DBC for them all
-		enviroment := &environmentProto.Environment{}
+		enviroment := &environmentpb.Environment{}
 		for _, e := range environments {
 			if e.GetId() == bestDBC.GetEnvironment() {
 				enviroment = e
@@ -255,12 +255,12 @@ func (v *VMClaimController) submitVirtualMachines(vmc *vmclaimProto.VMClaim) (er
 		}
 	}
 
-	vmMap := make(map[string]*vmclaimProto.VMClaimVM)
+	vmMap := make(map[string]*vmclaimpb.VMClaimVM)
 	for vmName, vmDetails := range vmc.GetVms() {
 		genName := fmt.Sprintf("%s-%08x", vmc.GetBaseName(), rand.Uint32())
 		environment := environmentMap[vmName].Environment
 		dbc := environmentMap[vmName].DynamicBindConfiguration
-		vm := &vmProto.CreateVMRequest{
+		vm := &vmpb.CreateVMRequest{
 			Id:           genName,
 			VmTemplateId: vmDetails.Template,
 			Protocol:     "ssh",
@@ -281,18 +281,18 @@ func (v *VMClaimController) submitVirtualMachines(vmc *vmclaimProto.VMClaim) (er
 			},
 		}
 		// used to later repopulate the info back //
-		vmMap[vmName] = &vmclaimProto.VMClaimVM{
+		vmMap[vmName] = &vmclaimpb.VMClaimVM{
 			Template:         vmDetails.Template,
 			VirtualMachineId: genName,
 		}
 
-		vmt, err := v.vmTemplateClient.GetVMTemplate(v.Context, &general.GetRequest{Id: vmDetails.Template, LoadFromCache: true})
+		vmt, err := v.vmTemplateClient.GetVMTemplate(v.Context, &generalpb.GetRequest{Id: vmDetails.Template, LoadFromCache: true})
 		if err != nil {
 			glog.Errorf("error getting vmt %v", err)
 			return err
 		}
 
-		config := util2.GetVMConfig(environment, vmt)
+		config := util.GetVMConfig(environment, vmt)
 
 		protocol, exists := config["protocol"]
 		if exists {
@@ -319,7 +319,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *vmclaimProto.VMClaim) (er
 			return err
 		}
 
-		_, err = v.vmClient.UpdateVMStatus(v.Context, &vmProto.UpdateVMStatusRequest{
+		_, err = v.vmClient.UpdateVMStatus(v.Context, &vmpb.UpdateVMStatusRequest{
 			Id:            genName,
 			Status:        string(hfv1.VmStatusRFP),
 			Allocated:     wrapperspb.Bool(true),
@@ -336,7 +336,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *vmclaimProto.VMClaim) (er
 
 	vmc.Vms = vmMap
 
-	_, err = v.internalVmClaimServer.UpdateVMClaim(v.Context, &vmclaimProto.UpdateVMClaimRequest{
+	_, err = v.internalVmClaimServer.UpdateVMClaim(v.Context, &vmclaimpb.UpdateVMClaimRequest{
 		Vmset: vmMap,
 	})
 	if err != nil {
@@ -347,13 +347,13 @@ func (v *VMClaimController) submitVirtualMachines(vmc *vmclaimProto.VMClaim) (er
 }
 
 // Based on the given VirtualMachineClaim and ScheduledEvent find all suitable Environments (e.g. environment provides required VMTeplate & ScheduledEvents allows this environment and VMTemplate configuration etc.)
-func (v *VMClaimController) findEnvironmentsForVM(accessCode string, vmc *vmclaimProto.VMClaim) (environments []*environmentProto.Environment, seName string, dbc []*dbconfigProto.DynamicBindConfig, err error) {
+func (v *VMClaimController) findEnvironmentsForVM(accessCode string, vmc *vmclaimpb.VMClaim) (environments []*environmentpb.Environment, seName string, dbc []*dbconfigpb.DynamicBindConfig, err error) {
 	seName, _, err = v.findScheduledEvent(accessCode)
 	if err != nil {
 		return environments, seName, dbc, err
 	}
 
-	dbcList, err := v.dbConfigClient.ListDynamicBindConfig(v.Context, &general.ListOptions{
+	dbcList, err := v.dbConfigClient.ListDynamicBindConfig(v.Context, &generalpb.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, seName),
 	})
 
@@ -363,7 +363,7 @@ func (v *VMClaimController) findEnvironmentsForVM(accessCode string, vmc *vmclai
 	}
 
 	for _, dbc := range dbcList.GetDbConfig() {
-		env, err := v.environmentClient.GetEnvironment(v.Context, &general.GetRequest{Id: dbc.GetId()})
+		env, err := v.environmentClient.GetEnvironment(v.Context, &generalpb.GetRequest{Id: dbc.GetId()})
 		if err != nil {
 			glog.Errorf("error fetching environment %v", err)
 			return environments, seName, dbcList.GetDbConfig(), err
@@ -379,20 +379,20 @@ func (v *VMClaimController) findEnvironmentsForVM(accessCode string, vmc *vmclai
 }
 
 // Can one DBC provide all VMs when considering the limits? Return the DBC if there exists one
-func (v *VMClaimController) findBestDBCForVMs(dbcList []*dbconfigProto.DynamicBindConfig, requiredTemplateCount map[string]int, scheduledEvent string) (*dbconfigProto.DynamicBindConfig, error) {
+func (v *VMClaimController) findBestDBCForVMs(dbcList []*dbconfigpb.DynamicBindConfig, requiredTemplateCount map[string]int, scheduledEvent string) (*dbconfigpb.DynamicBindConfig, error) {
 	// Try to find best possible environment / DBC = All required VMs can be provisioned here
 	for _, dbc := range dbcList {
 		satisfiedDBC := true
-		env, err := v.environmentClient.GetEnvironment(v.Context, &general.GetRequest{Id: dbc.Environment})
+		env, err := v.environmentClient.GetEnvironment(v.Context, &generalpb.GetRequest{Id: dbc.Environment})
 		if err != nil {
-			return &dbconfigProto.DynamicBindConfig{}, fmt.Errorf("error fetching environment")
+			return &dbconfigpb.DynamicBindConfig{}, fmt.Errorf("error fetching environment")
 		}
 		for requiredTemplate, requiredCount := range requiredTemplateCount {
 			dbcCapacity, foundDBC := dbc.BurstCountCapacity[requiredTemplate]
 			envCapacity, foundEnv := env.CountCapacity[requiredTemplate]
 			if foundDBC && foundEnv {
 				// Does the DBC satisfy this amount?
-				count, err := util2.CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(v.Context, v.vmClient, requiredTemplate, dbc.Environment, scheduledEvent)
+				count, err := util.CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(v.Context, v.vmClient, requiredTemplate, dbc.Environment, scheduledEvent)
 				if err != nil {
 					satisfiedDBC = false
 					break
@@ -403,7 +403,7 @@ func (v *VMClaimController) findBestDBCForVMs(dbcList []*dbconfigProto.DynamicBi
 				}
 
 				// Does the environment satisfy this amount?
-				count, err = util2.CountMachinesPerTemplateAndEnvironment(v.Context, v.vmClient, requiredTemplate, dbc.Environment)
+				count, err = util.CountMachinesPerTemplateAndEnvironment(v.Context, v.vmClient, requiredTemplate, dbc.Environment)
 				if err != nil {
 					satisfiedDBC = false
 					break
@@ -425,12 +425,12 @@ func (v *VMClaimController) findBestDBCForVMs(dbcList []*dbconfigProto.DynamicBi
 			return dbc, nil
 		}
 	}
-	return &dbconfigProto.DynamicBindConfig{}, fmt.Errorf("there is no best environment")
+	return &dbconfigpb.DynamicBindConfig{}, fmt.Errorf("there is no best environment")
 }
 
-func (v *VMClaimController) findSuitableEnvironmentForVMTemplate(environments []*environmentProto.Environment, dbcList []*dbconfigProto.DynamicBindConfig, template string, reservedCapacity map[string]map[string]int, scheduledEvent string) (*environmentProto.Environment, *dbconfigProto.DynamicBindConfig, error) {
+func (v *VMClaimController) findSuitableEnvironmentForVMTemplate(environments []*environmentpb.Environment, dbcList []*dbconfigpb.DynamicBindConfig, template string, reservedCapacity map[string]map[string]int, scheduledEvent string) (*environmentpb.Environment, *dbconfigpb.DynamicBindConfig, error) {
 	for _, environment := range environments {
-		countEnv, err := util2.CountMachinesPerTemplateAndEnvironment(v.Context, v.vmClient, template, environment.GetId())
+		countEnv, err := util.CountMachinesPerTemplateAndEnvironment(v.Context, v.vmClient, template, environment.GetId())
 		if err != nil {
 			continue
 		}
@@ -442,7 +442,7 @@ func (v *VMClaimController) findSuitableEnvironmentForVMTemplate(environments []
 			continue
 		}
 
-		countDBC, err := util2.CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(v.Context, v.vmClient, template, environment.GetId(), scheduledEvent)
+		countDBC, err := util.CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(v.Context, v.vmClient, template, environment.GetId(), scheduledEvent)
 		if err != nil {
 			continue
 		}
@@ -464,13 +464,13 @@ func (v *VMClaimController) findSuitableEnvironmentForVMTemplate(environments []
 
 	}
 
-	return &environmentProto.Environment{}, &dbconfigProto.DynamicBindConfig{}, fmt.Errorf("no suitable environment found. capacity reached")
+	return &environmentpb.Environment{}, &dbconfigpb.DynamicBindConfig{}, fmt.Errorf("no suitable environment found. capacity reached")
 }
 
-func (v *VMClaimController) checkVMStatus(vmc *vmclaimProto.VMClaim) (ready bool, err error) {
+func (v *VMClaimController) checkVMStatus(vmc *vmclaimpb.VMClaim) (ready bool, err error) {
 	ready = true
 	for _, vmTemplate := range vmc.Vms {
-		vm, err := v.vmClient.GetVM(v.Context, &general.GetRequest{Id: vmTemplate.VirtualMachineId})
+		vm, err := v.vmClient.GetVM(v.Context, &generalpb.GetRequest{Id: vmTemplate.VirtualMachineId})
 		if err != nil {
 			return ready, err
 		}
@@ -484,13 +484,13 @@ func (v *VMClaimController) checkVMStatus(vmc *vmclaimProto.VMClaim) (ready bool
 	return ready, err
 }
 
-func (v *VMClaimController) findScheduledEvent(accessCode string) (schedEvent string, environments map[string]*eventProto.VMTemplateCountMap, err error) {
-	ac, err := v.accessCodeClient.GetAccessCodeWithOTACs(v.Context, &general.ResourceId{Id: accessCode})
+func (v *VMClaimController) findScheduledEvent(accessCode string) (schedEvent string, environments map[string]*scheduledeventpb.VMTemplateCountMap, err error) {
+	ac, err := v.accessCodeClient.GetAccessCodeWithOTACs(v.Context, &generalpb.ResourceId{Id: accessCode})
 	if err != nil {
 		return schedEvent, environments, err
 	}
 
-	se, err := v.eventClient.GetScheduledEvent(v.Context, &general.GetRequest{Id: ac.Labels[hflabels.ScheduledEventLabel]})
+	se, err := v.eventClient.GetScheduledEvent(v.Context, &generalpb.GetRequest{Id: ac.Labels[hflabels.ScheduledEventLabel]})
 
 	if err != nil {
 		return schedEvent, environments, err
@@ -501,7 +501,7 @@ func (v *VMClaimController) findScheduledEvent(accessCode string) (schedEvent st
 	return schedEvent, environments, nil
 }
 
-func (v *VMClaimController) findVirtualMachines(vmc *vmclaimProto.VMClaim) (err error) {
+func (v *VMClaimController) findVirtualMachines(vmc *vmclaimpb.VMClaim) (err error) {
 	accessCode, ok := vmc.Labels[hflabels.AccessCodeLabel]
 	if !ok {
 		glog.Error("accessCode label not set on vmc, aborting")
@@ -514,7 +514,7 @@ func (v *VMClaimController) findVirtualMachines(vmc *vmclaimProto.VMClaim) (err 
 		return err
 	}
 
-	vmMap := make(map[string]*vmclaimProto.VMClaimVM)
+	vmMap := make(map[string]*vmclaimpb.VMClaimVM)
 	for name, vmStruct := range vmc.GetVms() {
 		if vmStruct.VirtualMachineId == "" {
 			glog.Info("assigning a vm")
@@ -526,13 +526,13 @@ func (v *VMClaimController) findVirtualMachines(vmc *vmclaimProto.VMClaim) (err 
 				}
 				return err
 			}
-			vmMap[name] = &vmclaimProto.VMClaimVM{
+			vmMap[name] = &vmclaimpb.VMClaimVM{
 				Template:         vmStruct.Template,
 				VirtualMachineId: vmID,
 			}
 		}
 	}
-	_, err = v.internalVmClaimServer.UpdateVMClaim(v.Context, &vmclaimProto.UpdateVMClaimRequest{
+	_, err = v.internalVmClaimServer.UpdateVMClaim(v.Context, &vmclaimpb.UpdateVMClaimRequest{
 		Vmset: vmMap,
 	})
 	if err != nil {
@@ -543,7 +543,7 @@ func (v *VMClaimController) findVirtualMachines(vmc *vmclaimProto.VMClaim) (err 
 }
 
 func (v *VMClaimController) assignVM(vmClaimId string, user string, vmId string) error {
-	_, err := v.vmClient.UpdateVM(v.Context, &vmProto.UpdateVMRequest{
+	_, err := v.vmClient.UpdateVM(v.Context, &vmpb.UpdateVMRequest{
 		Id:        vmId,
 		Bound:     "true",
 		VmClaimId: wrapperspb.String(vmClaimId),
@@ -552,7 +552,7 @@ func (v *VMClaimController) assignVM(vmClaimId string, user string, vmId string)
 	if err != nil {
 		return err
 	}
-	_, err = v.vmClient.UpdateVMStatus(v.Context, &vmProto.UpdateVMStatusRequest{
+	_, err = v.vmClient.UpdateVMStatus(v.Context, &vmpb.UpdateVMStatusRequest{
 		Id:        vmId,
 		Allocated: wrapperspb.Bool(true),
 	})
@@ -565,7 +565,7 @@ func (v *VMClaimController) assignVM(vmClaimId string, user string, vmId string)
 }
 
 func (v *VMClaimController) unassignVM(vmId string) (string, error) {
-	_, err := v.vmClient.UpdateVM(v.Context, &vmProto.UpdateVMRequest{
+	_, err := v.vmClient.UpdateVM(v.Context, &vmpb.UpdateVMRequest{
 		Id:        vmId,
 		Bound:     "false",
 		VmClaimId: wrapperspb.String(""),
@@ -574,7 +574,7 @@ func (v *VMClaimController) unassignVM(vmId string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	_, err = v.vmClient.UpdateVMStatus(v.Context, &vmProto.UpdateVMStatusRequest{
+	_, err = v.vmClient.UpdateVMStatus(v.Context, &vmpb.UpdateVMStatusRequest{
 		Id:        vmId,
 		Allocated: wrapperspb.Bool(false),
 	})
@@ -585,7 +585,7 @@ func (v *VMClaimController) unassignVM(vmId string) (string, error) {
 	return vmId, nil
 }
 
-func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, environments map[string]*eventProto.VMTemplateCountMap, template string, restrictedBind bool, restrictedBindValue string) (string, error) {
+func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, environments map[string]*scheduledeventpb.VMTemplateCountMap, template string, restrictedBind bool, restrictedBindValue string) (string, error) {
 	vmLabels := labels.Set{
 		"bound":                         "false",
 		hflabels.VirtualMachineTemplate: template,
@@ -598,7 +598,7 @@ func (v *VMClaimController) assignNextFreeVM(vmClaimId string, user string, envi
 		vmLabels["restrictedbind"] = "false"
 	}
 
-	vmList, err := v.vmClient.ListVM(v.Context, &general.ListOptions{LabelSelector: vmLabels.AsSelector().String(), LoadFromCache: true})
+	vmList, err := v.vmClient.ListVM(v.Context, &generalpb.ListOptions{LabelSelector: vmLabels.AsSelector().String(), LoadFromCache: true})
 	vms := vmList.GetVms()
 	glog.V(4).Infof("found %d vm's matching this requirement", len(vms))
 	if err != nil {

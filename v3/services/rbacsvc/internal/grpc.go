@@ -2,7 +2,7 @@ package rbac
 
 import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	rbacv1 "k8s.io/client-go/kubernetes/typed/rbac/v1"
@@ -11,7 +11,7 @@ import (
 )
 
 type GrpcRbacServer struct {
-	rbacProto.UnimplementedRbacSvcServer
+	rbacpb.UnimplementedRbacSvcServer
 	roleClient        rbacv1.RoleInterface
 	roleBindingClient rbacv1.RoleBindingInterface
 	userIndex         *Index

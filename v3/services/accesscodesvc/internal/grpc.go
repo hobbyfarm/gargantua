@@ -13,11 +13,11 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	accessCodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	eventProto "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 	"google.golang.org/grpc/codes"
-	empty "google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/emptypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -27,17 +27,17 @@ import (
 )
 
 type GrpcAccessCodeServer struct {
-	accessCodeProto.UnimplementedAccessCodeSvcServer
+	accesscodepb.UnimplementedAccessCodeSvcServer
 	acClient    hfClientsetv1.AccessCodeInterface
 	acLister    listersv1.AccessCodeLister
 	acSynced    cache.InformerSynced
 	otacClient  hfClientsetv1.OneTimeAccessCodeInterface
 	otacLister  listersv1.OneTimeAccessCodeLister
 	otacSynced  cache.InformerSynced
-	eventClient eventProto.ScheduledEventSvcClient
+	eventClient scheduledeventpb.ScheduledEventSvcClient
 }
 
-func NewGrpcAccessCodeServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, eventClient eventProto.ScheduledEventSvcClient) *GrpcAccessCodeServer {
+func NewGrpcAccessCodeServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, eventClient scheduledeventpb.ScheduledEventSvcClient) *GrpcAccessCodeServer {
 	return &GrpcAccessCodeServer{
 		acClient:    hfClientSet.HobbyfarmV1().AccessCodes(util.GetReleaseNamespace()),
 		acLister:    hfInformerFactory.Hobbyfarm().V1().AccessCodes().Lister(),
@@ -55,10 +55,10 @@ func NewGrpcAccessCodeServer(hfClientSet hfClientset.Interface, hfInformerFactor
  * The following functions implement the resource oriented RPCs for AccessCodes
  **************************************************************************************************************/
 
-func (a *GrpcAccessCodeServer) CreateAc(ctx context.Context, cr *accessCodeProto.CreateAcRequest) (*empty.Empty, error) {
+func (a *GrpcAccessCodeServer) CreateAc(ctx context.Context, cr *accesscodepb.CreateAcRequest) (*emptypb.Empty, error) {
 
 	if err := a.checkInputParamsForCreateAc(cr); err != nil {
-		return &empty.Empty{}, err
+		return &emptypb.Empty{}, err
 	}
 	acName := cr.GetAcName()
 	seName := cr.GetSeName()
@@ -104,19 +104,19 @@ func (a *GrpcAccessCodeServer) CreateAc(ctx context.Context, cr *accessCodeProto
 
 	_, err := a.acClient.Create(ctx, ac, metav1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, err
+		return &emptypb.Empty{}, err
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (a *GrpcAccessCodeServer) GetAc(ctx context.Context, req *general.GetRequest) (*accessCodeProto.AccessCode, error) {
+func (a *GrpcAccessCodeServer) GetAc(ctx context.Context, req *generalpb.GetRequest) (*accesscodepb.AccessCode, error) {
 	ac, err := util.GenericHfGetter(ctx, req, a.acClient, a.acLister.AccessCodes(util.GetReleaseNamespace()), "access code", a.acSynced())
 	if err != nil {
-		return &accessCodeProto.AccessCode{}, err
+		return &accesscodepb.AccessCode{}, err
 	}
 
-	return &accessCodeProto.AccessCode{
+	return &accesscodepb.AccessCode{
 		Id:                  ac.Name,
 		Uid:                 string(ac.UID),
 		Description:         ac.Spec.Description,
@@ -130,10 +130,10 @@ func (a *GrpcAccessCodeServer) GetAc(ctx context.Context, req *general.GetReques
 	}, nil
 }
 
-func (a *GrpcAccessCodeServer) UpdateAc(ctx context.Context, acRequest *accessCodeProto.UpdateAccessCodeRequest) (*empty.Empty, error) {
+func (a *GrpcAccessCodeServer) UpdateAc(ctx context.Context, acRequest *accesscodepb.UpdateAccessCodeRequest) (*emptypb.Empty, error) {
 	id := acRequest.GetId()
 	if id == "" {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"no ID passed in",
 			acRequest,
@@ -196,25 +196,25 @@ func (a *GrpcAccessCodeServer) UpdateAc(ctx context.Context, acRequest *accessCo
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			acRequest,
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (a *GrpcAccessCodeServer) DeleteAc(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (a *GrpcAccessCodeServer) DeleteAc(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.DeleteHfResource(ctx, req, a.acClient, "access code")
 }
 
-func (a *GrpcAccessCodeServer) DeleteCollectionAc(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
+func (a *GrpcAccessCodeServer) DeleteCollectionAc(ctx context.Context, listOptions *generalpb.ListOptions) (*emptypb.Empty, error) {
 	return util.DeleteHfCollection(ctx, listOptions, a.acClient, "access codes")
 }
 
-func (a *GrpcAccessCodeServer) ListAc(ctx context.Context, listOptions *general.ListOptions) (*accessCodeProto.ListAcsResponse, error) {
+func (a *GrpcAccessCodeServer) ListAc(ctx context.Context, listOptions *generalpb.ListOptions) (*accesscodepb.ListAcsResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var accessCodes []hfv1.AccessCode
 	var err error
@@ -229,10 +229,10 @@ func (a *GrpcAccessCodeServer) ListAc(ctx context.Context, listOptions *general.
 	}
 	if err != nil {
 		glog.Error(err)
-		return &accessCodeProto.ListAcsResponse{}, err
+		return &accesscodepb.ListAcsResponse{}, err
 	}
 
-	preparedAcs := []*accessCodeProto.AccessCode{}
+	preparedAcs := []*accesscodepb.AccessCode{}
 
 	for _, accessCode := range accessCodes {
 
@@ -240,7 +240,7 @@ func (a *GrpcAccessCodeServer) ListAc(ctx context.Context, listOptions *general.
 			expiration, err := time.Parse(time.UnixDate, accessCode.Spec.Expiration)
 
 			if err != nil {
-				return &accessCodeProto.ListAcsResponse{}, hferrors.GrpcError(
+				return &accesscodepb.ListAcsResponse{}, hferrors.GrpcError(
 					codes.Internal,
 					"error while parsing expiration time for access code %s %v",
 					listOptions,
@@ -255,7 +255,7 @@ func (a *GrpcAccessCodeServer) ListAc(ctx context.Context, listOptions *general.
 			}
 		}
 
-		preparedAcs = append(preparedAcs, &accessCodeProto.AccessCode{
+		preparedAcs = append(preparedAcs, &accesscodepb.AccessCode{
 			Id:                  accessCode.Name,
 			Uid:                 string(accessCode.UID),
 			Description:         accessCode.Spec.Description,
@@ -271,7 +271,7 @@ func (a *GrpcAccessCodeServer) ListAc(ctx context.Context, listOptions *general.
 
 	glog.V(2).Infof("listed access codes")
 
-	return &accessCodeProto.ListAcsResponse{AccessCodes: preparedAcs}, nil
+	return &accesscodepb.ListAcsResponse{AccessCodes: preparedAcs}, nil
 }
 
 /**************************************************************************************************************
@@ -280,7 +280,7 @@ func (a *GrpcAccessCodeServer) ListAc(ctx context.Context, listOptions *general.
  * The following functions implement the resource oriented RPCs for OneTimeAccessCodes
  **************************************************************************************************************/
 
-func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accessCodeProto.CreateOtacRequest) (*accessCodeProto.OneTimeAccessCode, error) {
+func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accesscodepb.CreateOtacRequest) (*accesscodepb.OneTimeAccessCode, error) {
 	// Generate an access code that can not be guessed
 	genName := ""
 	for genParts := 0; genParts < 3; genParts++ {
@@ -290,7 +290,7 @@ func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accessCodePro
 
 	scheduledEventName := cr.GetSeName()
 	if scheduledEventName == "" {
-		return &accessCodeProto.OneTimeAccessCode{}, hferrors.GrpcError(
+		return &accesscodepb.OneTimeAccessCode{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"error creating otac, se_name field blank",
 			cr,
@@ -299,7 +299,7 @@ func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accessCodePro
 
 	scheduledUid := cr.GetSeUid()
 	if scheduledUid == "" {
-		return &accessCodeProto.OneTimeAccessCode{}, hferrors.GrpcError(
+		return &accesscodepb.OneTimeAccessCode{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"error creating otac, se_uid field blank",
 			cr,
@@ -333,7 +333,7 @@ func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accessCodePro
 		glog.Errorf("error creating one time access code %v", err)
 		// error handling
 	}
-	return &accessCodeProto.OneTimeAccessCode{
+	return &accesscodepb.OneTimeAccessCode{
 		Id:                otac.Name,
 		User:              otac.Spec.User,
 		RedeemedTimestamp: otac.Spec.RedeemedTimestamp,
@@ -342,15 +342,15 @@ func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accessCodePro
 	}, nil
 }
 
-func (a *GrpcAccessCodeServer) GetOtac(ctx context.Context, req *general.GetRequest) (*accessCodeProto.OneTimeAccessCode, error) {
+func (a *GrpcAccessCodeServer) GetOtac(ctx context.Context, req *generalpb.GetRequest) (*accesscodepb.OneTimeAccessCode, error) {
 	otac, err := util.GenericHfGetter(ctx, req, a.otacClient, a.otacLister.OneTimeAccessCodes(util.GetReleaseNamespace()), "OTAC", a.otacSynced())
 	if err != nil {
-		return &accessCodeProto.OneTimeAccessCode{}, err
+		return &accesscodepb.OneTimeAccessCode{}, err
 	}
 
 	glog.V(2).Infof("retrieved OTAC %s", otac.Name)
 
-	return &accessCodeProto.OneTimeAccessCode{
+	return &accesscodepb.OneTimeAccessCode{
 		Id:                otac.Name,
 		Uid:               string(otac.UID),
 		User:              otac.Spec.User,
@@ -360,10 +360,10 @@ func (a *GrpcAccessCodeServer) GetOtac(ctx context.Context, req *general.GetRequ
 	}, nil
 }
 
-func (a *GrpcAccessCodeServer) UpdateOtac(ctx context.Context, otacRequest *accessCodeProto.OneTimeAccessCode) (*empty.Empty, error) {
+func (a *GrpcAccessCodeServer) UpdateOtac(ctx context.Context, otacRequest *accesscodepb.OneTimeAccessCode) (*emptypb.Empty, error) {
 	id := otacRequest.GetId()
 	if id == "" {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"no ID passed in",
 			otacRequest,
@@ -392,25 +392,25 @@ func (a *GrpcAccessCodeServer) UpdateOtac(ctx context.Context, otacRequest *acce
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			otacRequest,
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (a *GrpcAccessCodeServer) DeleteOtac(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (a *GrpcAccessCodeServer) DeleteOtac(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.DeleteHfResource(ctx, req, a.otacClient, "OTAC")
 }
 
-func (a *GrpcAccessCodeServer) DeleteCollectionOtac(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
+func (a *GrpcAccessCodeServer) DeleteCollectionOtac(ctx context.Context, listOptions *generalpb.ListOptions) (*emptypb.Empty, error) {
 	return util.DeleteHfCollection(ctx, listOptions, a.otacClient, "OTACs")
 }
 
-func (a *GrpcAccessCodeServer) ListOtac(ctx context.Context, listOptions *general.ListOptions) (*accessCodeProto.ListOtacsResponse, error) {
+func (a *GrpcAccessCodeServer) ListOtac(ctx context.Context, listOptions *generalpb.ListOptions) (*accesscodepb.ListOtacsResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var otacs []hfv1.OneTimeAccessCode
 	var err error
@@ -425,12 +425,12 @@ func (a *GrpcAccessCodeServer) ListOtac(ctx context.Context, listOptions *genera
 	}
 	if err != nil {
 		glog.Error(err)
-		return &accessCodeProto.ListOtacsResponse{}, err
+		return &accesscodepb.ListOtacsResponse{}, err
 	}
 
-	preparedOtacs := []*accessCodeProto.OneTimeAccessCode{} // must be declared this way so as to JSON marshal into [] instead of null
+	preparedOtacs := []*accesscodepb.OneTimeAccessCode{} // must be declared this way so as to JSON marshal into [] instead of null
 	for _, otac := range otacs {
-		preparedOtacs = append(preparedOtacs, &accessCodeProto.OneTimeAccessCode{
+		preparedOtacs = append(preparedOtacs, &accesscodepb.OneTimeAccessCode{
 			Id:                otac.Name,
 			Uid:               string(otac.UID),
 			User:              otac.Spec.User,
@@ -442,7 +442,7 @@ func (a *GrpcAccessCodeServer) ListOtac(ctx context.Context, listOptions *genera
 
 	glog.V(2).Infof("listed otacs")
 
-	return &accessCodeProto.ListOtacsResponse{Otacs: preparedOtacs}, nil
+	return &accesscodepb.ListOtacsResponse{Otacs: preparedOtacs}, nil
 }
 
 /**************************************************************************************************************
@@ -452,9 +452,9 @@ func (a *GrpcAccessCodeServer) ListOtac(ctx context.Context, listOptions *genera
  * These RPCs provide advanced functionalities beyond basic resource-related operations.
  **************************************************************************************************************/
 
-func (a *GrpcAccessCodeServer) ValidateExistence(ctx context.Context, gor *general.ResourceId) (*accessCodeProto.ResourceValidation, error) {
+func (a *GrpcAccessCodeServer) ValidateExistence(ctx context.Context, gor *generalpb.ResourceId) (*accesscodepb.ResourceValidation, error) {
 	if len(gor.GetId()) == 0 {
-		return &accessCodeProto.ResourceValidation{Valid: false}, hferrors.GrpcIdNotSpecifiedError(gor)
+		return &accesscodepb.ResourceValidation{Valid: false}, hferrors.GrpcIdNotSpecifiedError(gor)
 	}
 
 	_, err := a.acClient.Get(ctx, gor.GetId(), metav1.GetOptions{})
@@ -462,18 +462,18 @@ func (a *GrpcAccessCodeServer) ValidateExistence(ctx context.Context, gor *gener
 		// If AccessCode does not exist check if this might be an OTAC
 		_, err := a.otacClient.Get(ctx, gor.GetId(), metav1.GetOptions{})
 		if err != nil {
-			return &accessCodeProto.ResourceValidation{Valid: false}, nil
+			return &accesscodepb.ResourceValidation{Valid: false}, nil
 		}
 	}
 
-	return &accessCodeProto.ResourceValidation{Valid: true}, nil
+	return &accesscodepb.ResourceValidation{Valid: true}, nil
 }
 
-func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, codeIds *accessCodeProto.ResourceIds) (*accessCodeProto.ListAcsResponse, error) {
+func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, codeIds *accesscodepb.ResourceIds) (*accesscodepb.ListAcsResponse, error) {
 	ids := codeIds.GetIds()
 	otacReq, err := labels.NewRequirement(hflabels.OneTimeAccessCodeLabel, selection.In, ids)
 	if err != nil {
-		return &accessCodeProto.ListAcsResponse{}, hferrors.GrpcError(
+		return &accesscodepb.ListAcsResponse{}, hferrors.GrpcError(
 			codes.Internal,
 			"Unable to create label selector from access code ids",
 			codeIds,
@@ -484,7 +484,7 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 	selectorString := selector.String()
 
 	// First get the oneTimeAccessCodes
-	otacList, err := a.ListOtac(ctx, &general.ListOptions{LabelSelector: selectorString})
+	otacList, err := a.ListOtac(ctx, &generalpb.ListOptions{LabelSelector: selectorString})
 
 	if err != nil {
 		return nil, err
@@ -492,10 +492,10 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 
 	//Append the value of onetime access codes to the list
 	for _, otac := range otacList.Otacs {
-		se, err := a.eventClient.GetScheduledEvent(ctx, &general.GetRequest{Id: otac.Labels[hflabels.ScheduledEventLabel]})
+		se, err := a.eventClient.GetScheduledEvent(ctx, &generalpb.GetRequest{Id: otac.Labels[hflabels.ScheduledEventLabel]})
 		if err != nil {
 			glog.Error(err)
-			return &accessCodeProto.ListAcsResponse{}, hferrors.GrpcError(
+			return &accesscodepb.ListAcsResponse{}, hferrors.GrpcError(
 				codes.Internal,
 				"error retreiving scheduled event from OTAC: %v",
 				codeIds,
@@ -508,7 +508,7 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 	// Update the label selector
 	acReq, err := labels.NewRequirement(hflabels.AccessCodeLabel, selection.In, ids)
 	if err != nil {
-		return &accessCodeProto.ListAcsResponse{}, hferrors.GrpcError(
+		return &accesscodepb.ListAcsResponse{}, hferrors.GrpcError(
 			codes.Internal,
 			"Unable to create label selector from access code ids",
 			codeIds,
@@ -518,20 +518,20 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 	selector = selector.Add(*acReq)
 	selectorString = selector.String()
 
-	accessCodes, err := a.ListAc(ctx, &general.ListOptions{LabelSelector: selectorString})
+	accessCodes, err := a.ListAc(ctx, &generalpb.ListOptions{LabelSelector: selectorString})
 	return accessCodes, err
 }
 
-func (a *GrpcAccessCodeServer) GetAccessCodeWithOTACs(ctx context.Context, codeId *general.ResourceId) (*accessCodeProto.AccessCode, error) {
+func (a *GrpcAccessCodeServer) GetAccessCodeWithOTACs(ctx context.Context, codeId *generalpb.ResourceId) (*accesscodepb.AccessCode, error) {
 	accessCodeId := codeId.GetId()
 	if len(accessCodeId) == 0 {
-		return &accessCodeProto.AccessCode{}, hferrors.GrpcIdNotSpecifiedError(codeId)
+		return &accesscodepb.AccessCode{}, hferrors.GrpcIdNotSpecifiedError(codeId)
 	}
 
-	accessCodeList, err := a.GetAccessCodesWithOTACs(ctx, &accessCodeProto.ResourceIds{Ids: []string{accessCodeId}})
+	accessCodeList, err := a.GetAccessCodesWithOTACs(ctx, &accesscodepb.ResourceIds{Ids: []string{accessCodeId}})
 
 	if err != nil {
-		return &accessCodeProto.AccessCode{}, hferrors.GrpcError(
+		return &accesscodepb.AccessCode{}, hferrors.GrpcError(
 			codes.NotFound,
 			"access code (%s) not found: %v",
 			codeId,
@@ -543,7 +543,7 @@ func (a *GrpcAccessCodeServer) GetAccessCodeWithOTACs(ctx context.Context, codeI
 	accessCodes := accessCodeList.GetAccessCodes()
 
 	if len(accessCodes) != 1 {
-		return &accessCodeProto.AccessCode{}, hferrors.GrpcError(
+		return &accesscodepb.AccessCode{}, hferrors.GrpcError(
 			codes.Internal,
 			"insane result found",
 			codeId,
@@ -553,7 +553,7 @@ func (a *GrpcAccessCodeServer) GetAccessCodeWithOTACs(ctx context.Context, codeI
 	return accessCodes[0], nil
 }
 
-func (a *GrpcAccessCodeServer) GetAcOwnerReferences(ctx context.Context, req *general.GetRequest) (*general.OwnerReferences, error) {
+func (a *GrpcAccessCodeServer) GetAcOwnerReferences(ctx context.Context, req *generalpb.GetRequest) (*generalpb.OwnerReferences, error) {
 	return util.GetOwnerReferences(ctx, req, a.acClient, a.acLister.AccessCodes(util.GetReleaseNamespace()), "access code", a.acSynced())
 }
 
@@ -563,7 +563,7 @@ func (a *GrpcAccessCodeServer) GetAcOwnerReferences(ctx context.Context, req *ge
  * Internal helper functions which are only used within this file
  **************************************************************************************************************/
 
-func (a *GrpcAccessCodeServer) checkInputParamsForCreateAc(cr *accessCodeProto.CreateAcRequest) error {
+func (a *GrpcAccessCodeServer) checkInputParamsForCreateAc(cr *accesscodepb.CreateAcRequest) error {
 	if cr.GetAcName() == "" ||
 		cr.GetDescription() == "" ||
 		cr.GetExpiration() == "" ||

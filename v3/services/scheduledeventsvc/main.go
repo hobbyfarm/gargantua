@@ -13,15 +13,15 @@ import (
 
 	eventservice "github.com/hobbyfarm/gargantua/services/scheduledeventsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	accesscodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
-	dbconfigProto "github.com/hobbyfarm/gargantua/v3/protos/dbconfig"
-	"github.com/hobbyfarm/gargantua/v3/protos/environment"
-	"github.com/hobbyfarm/gargantua/v3/protos/progress"
-	eventProto "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
-	"github.com/hobbyfarm/gargantua/v3/protos/session"
-	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
-	"github.com/hobbyfarm/gargantua/v3/protos/vmset"
-	"github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	dbconfigpb "github.com/hobbyfarm/gargantua/v3/protos/dbconfig"
+	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
+	progresspb "github.com/hobbyfarm/gargantua/v3/protos/progress"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
+	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
+	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
+	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
+	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 )
 
 var (
@@ -58,19 +58,19 @@ func main() {
 		defer conn.Close()
 	}
 
-	acClient := accesscodeProto.NewAccessCodeSvcClient(connections[microservices.AccessCode])
-	dbcClient := dbconfigProto.NewDynamicBindConfigSvcClient(connections[microservices.DBConfig])
-	envClient := environment.NewEnvironmentSvcClient(connections[microservices.Environment])
-	progressClient := progress.NewProgressSvcClient(connections[microservices.Progress])
-	sessionClient := session.NewSessionSvcClient(connections[microservices.Session])
-	vmSetClient := vmset.NewVMSetSvcClient(connections[microservices.VMSet])
-	vmTemplateClient := vmtemplate.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
-	settingClient := settingProto.NewSettingSvcClient(connections[microservices.Setting])
+	acClient := accesscodepb.NewAccessCodeSvcClient(connections[microservices.AccessCode])
+	dbcClient := dbconfigpb.NewDynamicBindConfigSvcClient(connections[microservices.DBConfig])
+	envClient := environmentpb.NewEnvironmentSvcClient(connections[microservices.Environment])
+	progressClient := progresspb.NewProgressSvcClient(connections[microservices.Progress])
+	sessionClient := sessionpb.NewSessionSvcClient(connections[microservices.Session])
+	vmSetClient := vmsetpb.NewVMSetSvcClient(connections[microservices.VMSet])
+	vmTemplateClient := vmtemplatepb.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
+	settingClient := settingpb.NewSettingSvcClient(connections[microservices.Setting])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
 	ss := eventservice.NewGrpcScheduledEventServer(hfClient, hfInformerFactory)
-	eventProto.RegisterScheduledEventSvcServer(gs, ss)
+	scheduledeventpb.RegisterScheduledEventSvcServer(gs, ss)
 	seController, err := eventservice.NewScheduledEventController(
 		kubeClient,
 		ss,

@@ -15,8 +15,8 @@ import (
 	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -30,13 +30,13 @@ const (
 )
 
 type VirtualMachineTemplateServer struct {
-	authnClient authn.AuthNClient
-	authrClient authr.AuthRClient
+	authnClient authnpb.AuthNClient
+	authrClient authrpb.AuthRClient
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
 
-func NewVirtualMachineTemplateServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, hfClientset hfClientset.Interface, ctx context.Context) (*VirtualMachineTemplateServer, error) {
+func NewVirtualMachineTemplateServer(authnClient authnpb.AuthNClient, authrClient authrpb.AuthRClient, hfClientset hfClientset.Interface, ctx context.Context) (*VirtualMachineTemplateServer, error) {
 	as := VirtualMachineTemplateServer{}
 
 	as.authnClient = authnClient

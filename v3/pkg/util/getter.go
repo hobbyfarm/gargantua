@@ -5,7 +5,7 @@ import (
 
 	"github.com/golang/glog"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +21,7 @@ type GenericCacheRetriever[T metav1.Object] interface {
 
 func GenericHfGetter[T metav1.Object, G HfClientGet[T], C GenericCacheRetriever[T]](
 	ctx context.Context,
-	req *general.GetRequest,
+	req *generalpb.GetRequest,
 	getter G,
 	cacheGetter C,
 	resourceName string,
@@ -57,23 +57,23 @@ func GenericHfGetter[T metav1.Object, G HfClientGet[T], C GenericCacheRetriever[
 
 func GetOwnerReferences[T metav1.Object, G HfClientGet[T], C GenericCacheRetriever[T]](
 	ctx context.Context,
-	req *general.GetRequest,
+	req *generalpb.GetRequest,
 	getter G,
 	cacheGetter C,
 	resourceName string,
 	hasSynced bool,
-) (*general.OwnerReferences, error) {
+) (*generalpb.OwnerReferences, error) {
 	obj, err := GenericHfGetter(ctx, req, getter, cacheGetter, resourceName, hasSynced)
 	if err != nil {
-		return &general.OwnerReferences{}, err
+		return &generalpb.OwnerReferences{}, err
 	}
 
-	preparedOwnerRefs := []*general.OwnerReference{}
+	preparedOwnerRefs := []*generalpb.OwnerReference{}
 
 	for _, ownerRef := range obj.GetOwnerReferences() {
 		hasManagingController := ownerRef.Controller
 		hasBlockOwnerDeletion := ownerRef.BlockOwnerDeletion
-		tempOwnerRef := &general.OwnerReference{
+		tempOwnerRef := &generalpb.OwnerReference{
 			ApiVersion: ownerRef.APIVersion,
 			Kind:       ownerRef.Kind,
 			Name:       ownerRef.Name,
@@ -88,5 +88,5 @@ func GetOwnerReferences[T metav1.Object, G HfClientGet[T], C GenericCacheRetriev
 		preparedOwnerRefs = append(preparedOwnerRefs, tempOwnerRef)
 	}
 
-	return &general.OwnerReferences{OwnerReferences: preparedOwnerRefs}, nil
+	return &generalpb.OwnerReferences{OwnerReferences: preparedOwnerRefs}, nil
 }

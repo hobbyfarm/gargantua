@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: vmclaim/virtualmachineclaim.proto
 
-package vmclaim
+package vmclaimpb
 
 import (
 	context "context"

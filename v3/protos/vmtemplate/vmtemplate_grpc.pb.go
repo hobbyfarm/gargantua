@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: vmtemplate/vmtemplate.proto
 
-package vmtemplate
+package vmtemplatepb
 
 import (
 	context "context"

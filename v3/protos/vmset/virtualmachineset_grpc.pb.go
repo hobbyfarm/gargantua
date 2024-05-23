@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: vmset/virtualmachineset.proto
 
-package vmset
+package vmsetpb
 
 import (
 	context "context"

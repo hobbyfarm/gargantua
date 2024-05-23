@@ -11,8 +11,8 @@ import (
 
 	accesscodeservice "github.com/hobbyfarm/gargantua/services/accesscodesvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	accessCodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
-	eventProto "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 )
 
 var (
@@ -40,11 +40,11 @@ func main() {
 		defer conn.Close()
 	}
 
-	eventClient := eventProto.NewScheduledEventSvcClient(connections[microservices.ScheduledEvent])
+	eventClient := scheduledeventpb.NewScheduledEventSvcClient(connections[microservices.ScheduledEvent])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 	as := accesscodeservice.NewGrpcAccessCodeServer(hfClient, hfInformerFactory, eventClient)
-	accessCodeProto.RegisterAccessCodeSvcServer(gs, as)
+	accesscodepb.RegisterAccessCodeSvcServer(gs, as)
 
 	var wg sync.WaitGroup
 	wg.Add(1)

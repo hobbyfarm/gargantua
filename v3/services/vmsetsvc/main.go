@@ -14,10 +14,10 @@ import (
 
 	vmsetservice "github.com/hobbyfarm/gargantua/services/vmsetsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	"github.com/hobbyfarm/gargantua/v3/protos/environment"
-	"github.com/hobbyfarm/gargantua/v3/protos/vm"
-	vmsetProto "github.com/hobbyfarm/gargantua/v3/protos/vmset"
-	"github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
+	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
+	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 )
 
 var (
@@ -49,16 +49,16 @@ func main() {
 		defer conn.Close()
 	}
 
-	envClient := environment.NewEnvironmentSvcClient(connections[microservices.Environment])
-	vmClient := vm.NewVMSvcClient(connections[microservices.VM])
-	vmTemplateClient := vmtemplate.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
+	envClient := environmentpb.NewEnvironmentSvcClient(connections[microservices.Environment])
+	vmClient := vmpb.NewVMSvcClient(connections[microservices.VM])
+	vmTemplateClient := vmtemplatepb.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
 
 	vmSetWorkqueue := workqueue.NewDelayingQueueWithConfig(workqueue.DelayingQueueConfig{Name: "vmclaim-controller"})
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
 	vs := vmsetservice.NewGrpcVMSetServer(hfClient, hfInformerFactory, vmSetWorkqueue)
-	vmsetProto.RegisterVMSetSvcServer(gs, vs)
+	vmsetpb.RegisterVMSetSvcServer(gs, vs)
 	vmSetController, err := vmsetservice.NewVMSetController(
 		kubeClient,
 		vs,

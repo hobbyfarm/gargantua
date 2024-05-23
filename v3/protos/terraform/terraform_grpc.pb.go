@@ -21,13 +21,13 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	TerraformSvc_CreateState_FullMethodName           = "/terraformpb.TerraformSvc/CreateState"
-	TerraformSvc_GetState_FullMethodName              = "/terraformpb.TerraformSvc/GetState"
-	TerraformSvc_DeleteState_FullMethodName           = "/terraformpb.TerraformSvc/DeleteState"
-	TerraformSvc_DeleteCollectionState_FullMethodName = "/terraformpb.TerraformSvc/DeleteCollectionState"
-	TerraformSvc_ListState_FullMethodName             = "/terraformpb.TerraformSvc/ListState"
-	TerraformSvc_GetExecution_FullMethodName          = "/terraformpb.TerraformSvc/GetExecution"
-	TerraformSvc_ListExecution_FullMethodName         = "/terraformpb.TerraformSvc/ListExecution"
+	TerraformSvc_CreateState_FullMethodName           = "/terraform.TerraformSvc/CreateState"
+	TerraformSvc_GetState_FullMethodName              = "/terraform.TerraformSvc/GetState"
+	TerraformSvc_DeleteState_FullMethodName           = "/terraform.TerraformSvc/DeleteState"
+	TerraformSvc_DeleteCollectionState_FullMethodName = "/terraform.TerraformSvc/DeleteCollectionState"
+	TerraformSvc_ListState_FullMethodName             = "/terraform.TerraformSvc/ListState"
+	TerraformSvc_GetExecution_FullMethodName          = "/terraform.TerraformSvc/GetExecution"
+	TerraformSvc_ListExecution_FullMethodName         = "/terraform.TerraformSvc/ListExecution"
 )
 
 // TerraformSvcClient is the client API for TerraformSvc service.
@@ -296,7 +296,7 @@ func _TerraformSvc_ListExecution_Handler(srv interface{}, ctx context.Context, d
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var TerraformSvc_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "terraformpb.TerraformSvc",
+	ServiceName: "terraform.TerraformSvc",
 	HandlerType: (*TerraformSvcServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

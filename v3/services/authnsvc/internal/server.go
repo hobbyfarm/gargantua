@@ -3,28 +3,28 @@ package authnservice
 import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/v3/protos/accesscode"
-	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
-	"github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
-	"github.com/hobbyfarm/gargantua/v3/protos/setting"
-	"github.com/hobbyfarm/gargantua/v3/protos/user"
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
+	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
+	userpb "github.com/hobbyfarm/gargantua/v3/protos/user"
 )
 
 type AuthServer struct {
-	acClient             accesscode.AccessCodeSvcClient
-	rbacClient           rbac.RbacSvcClient
-	scheduledEventClient scheduledevent.ScheduledEventSvcClient
-	settingClient        setting.SettingSvcClient
-	userClient           user.UserSvcClient
+	acClient             accesscodepb.AccessCodeSvcClient
+	rbacClient           rbacpb.RbacSvcClient
+	scheduledEventClient scheduledeventpb.ScheduledEventSvcClient
+	settingClient        settingpb.SettingSvcClient
+	userClient           userpb.UserSvcClient
 	internalAuthnServer  *GrpcAuthnServer
 }
 
 func NewAuthServer(
-	accesscodeClient accesscode.AccessCodeSvcClient,
-	rbacClient rbac.RbacSvcClient,
-	scheduledEventClient scheduledevent.ScheduledEventSvcClient,
-	settingClient setting.SettingSvcClient,
-	userClient user.UserSvcClient,
+	accesscodeClient accesscodepb.AccessCodeSvcClient,
+	rbacClient rbacpb.RbacSvcClient,
+	scheduledEventClient scheduledeventpb.ScheduledEventSvcClient,
+	settingClient settingpb.SettingSvcClient,
+	userClient userpb.UserSvcClient,
 	internalAuthnServer *GrpcAuthnServer,
 ) (AuthServer, error) {
 	a := AuthServer{}

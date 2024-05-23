@@ -11,7 +11,7 @@ import (
 
 	scenarioservice "github.com/hobbyfarm/gargantua/services/scenariosvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	scenarioProto "github.com/hobbyfarm/gargantua/v3/protos/scenario"
+	scenariopb "github.com/hobbyfarm/gargantua/v3/protos/scenario"
 )
 
 var (
@@ -35,7 +35,7 @@ func main() {
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
 	ss := scenarioservice.NewGrpcScenarioServer(hfClient, hfInformerFactory)
-	scenarioProto.RegisterScenarioSvcServer(gs, ss)
+	scenariopb.RegisterScenarioSvcServer(gs, ss)
 
 	var wg sync.WaitGroup
 	wg.Add(1)

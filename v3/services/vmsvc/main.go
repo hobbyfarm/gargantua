@@ -13,12 +13,12 @@ import (
 
 	vmservice "github.com/hobbyfarm/gargantua/services/vmsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	environmentProto "github.com/hobbyfarm/gargantua/v3/protos/environment"
+	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
 	terraformpb "github.com/hobbyfarm/gargantua/v3/protos/terraform"
-	vmProto "github.com/hobbyfarm/gargantua/v3/protos/vm"
-	vmclaimProto "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
-	vmsetProto "github.com/hobbyfarm/gargantua/v3/protos/vmset"
-	vmtemplateProto "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	vmclaimpb "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
+	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
+	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 )
 
 var (
@@ -51,16 +51,16 @@ func main() {
 	for _, conn := range connections {
 		defer conn.Close()
 	}
-	environmentClient := environmentProto.NewEnvironmentSvcClient(connections[microservices.Environment])
+	environmentClient := environmentpb.NewEnvironmentSvcClient(connections[microservices.Environment])
 	terraformClient := terraformpb.NewTerraformSvcClient(connections[microservices.Terraform])
-	vmClaimClient := vmclaimProto.NewVMClaimSvcClient(connections[microservices.VMClaim])
-	vmSetClient := vmsetProto.NewVMSetSvcClient(connections[microservices.VMSet])
-	vmTemplateClient := vmtemplateProto.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
+	vmClaimClient := vmclaimpb.NewVMClaimSvcClient(connections[microservices.VMClaim])
+	vmSetClient := vmsetpb.NewVMSetSvcClient(connections[microservices.VMSet])
+	vmTemplateClient := vmtemplatepb.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
 	vs := vmservice.NewGrpcVMServer(hfClient, hfInformerFactory)
-	vmProto.RegisterVMSvcServer(gs, vs)
+	vmpb.RegisterVMSvcServer(gs, vs)
 	vmController, err := vmservice.NewVMController(
 		kubeClient,
 		vs,

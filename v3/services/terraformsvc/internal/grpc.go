@@ -6,11 +6,10 @@ import (
 	"math/rand"
 	"strings"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	terraformpb "github.com/hobbyfarm/gargantua/v3/protos/terraform"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/ptypes/empty"
 	tfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	tfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/terraformcontroller.cattle.io/v1"
@@ -19,6 +18,7 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
@@ -45,7 +45,7 @@ func NewGrpcTerraformServer(hfClientSet hfClientset.Interface, hfInformerFactory
 	}
 }
 
-func (s *GrpcTerraformServer) CreateState(ctx context.Context, req *terraformpb.CreateStateRequest) (*general.ResourceId, error) {
+func (s *GrpcTerraformServer) CreateState(ctx context.Context, req *terraformpb.CreateStateRequest) (*generalpb.ResourceId, error) {
 	vmId := req.GetVmId()
 	img := req.GetImage()
 	variables := req.GetVariables()
@@ -62,11 +62,11 @@ func (s *GrpcTerraformServer) CreateState(ctx context.Context, req *terraformpb.
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &general.ResourceId{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &generalpb.ResourceId{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 	if variables == nil || len(variables.GetConfigNames()) == 0 {
-		return &general.ResourceId{}, hferrors.GrpcError(
+		return &generalpb.ResourceId{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"invalid value \"%v\" for property %s",
 			req,
@@ -100,16 +100,16 @@ func (s *GrpcTerraformServer) CreateState(ctx context.Context, req *terraformpb.
 
 	_, err := s.stateClient.Create(ctx, tfs, metav1.CreateOptions{})
 	if err != nil {
-		return &general.ResourceId{}, hferrors.GrpcError(
+		return &generalpb.ResourceId{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &general.ResourceId{Id: tfs.Name}, nil
+	return &generalpb.ResourceId{Id: tfs.Name}, nil
 }
 
-func (s *GrpcTerraformServer) GetState(ctx context.Context, req *general.GetRequest) (*terraformpb.State, error) {
+func (s *GrpcTerraformServer) GetState(ctx context.Context, req *generalpb.GetRequest) (*terraformpb.State, error) {
 	state, err := util.GenericHfGetter(ctx, req, s.stateClient, s.stateLister.States(util.GetReleaseNamespace()), "state", s.stateSynced())
 	if err != nil {
 		return &terraformpb.State{}, err
@@ -159,15 +159,15 @@ func (s *GrpcTerraformServer) GetState(ctx context.Context, req *general.GetRequ
 	}, nil
 }
 
-func (s *GrpcTerraformServer) DeleteState(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (s *GrpcTerraformServer) DeleteState(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.DeleteHfResource(ctx, req, s.stateClient, "state")
 }
 
-func (s *GrpcTerraformServer) DeleteCollectionState(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
+func (s *GrpcTerraformServer) DeleteCollectionState(ctx context.Context, listOptions *generalpb.ListOptions) (*emptypb.Empty, error) {
 	return util.DeleteHfCollection(ctx, listOptions, s.stateClient, "state")
 }
 
-func (s *GrpcTerraformServer) ListState(ctx context.Context, listOptions *general.ListOptions) (*terraformpb.ListStateResponse, error) {
+func (s *GrpcTerraformServer) ListState(ctx context.Context, listOptions *generalpb.ListOptions) (*terraformpb.ListStateResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var states []tfv1.State
 	var err error
@@ -235,7 +235,7 @@ func (s *GrpcTerraformServer) ListState(ctx context.Context, listOptions *genera
 	return &terraformpb.ListStateResponse{States: preparedStates}, nil
 }
 
-func (s *GrpcTerraformServer) GetExecution(ctx context.Context, req *general.GetRequest) (*terraformpb.Execution, error) {
+func (s *GrpcTerraformServer) GetExecution(ctx context.Context, req *generalpb.GetRequest) (*terraformpb.Execution, error) {
 	execution, err := util.GenericHfGetter(ctx, req, s.executionClient, s.executionLister.Executions(util.GetReleaseNamespace()), "execution", s.executionSynced())
 	if err != nil {
 		return &terraformpb.Execution{}, err
@@ -296,7 +296,7 @@ func (s *GrpcTerraformServer) GetExecution(ctx context.Context, req *general.Get
 	}, nil
 }
 
-func (s *GrpcTerraformServer) ListExecution(ctx context.Context, listOptions *general.ListOptions) (*terraformpb.ListExecutionResponse, error) {
+func (s *GrpcTerraformServer) ListExecution(ctx context.Context, listOptions *generalpb.ListOptions) (*terraformpb.ListExecutionResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var executions []tfv1.Execution
 	var err error

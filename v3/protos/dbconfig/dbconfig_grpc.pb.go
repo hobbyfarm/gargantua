@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: dbconfig/dbconfig.proto
 
-package dbconfig
+package dbconfigpb
 
 import (
 	context "context"

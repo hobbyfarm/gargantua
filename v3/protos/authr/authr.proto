@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package authr;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/authr";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/authr;authrpb";
 
 // Service definition
 service AuthR {

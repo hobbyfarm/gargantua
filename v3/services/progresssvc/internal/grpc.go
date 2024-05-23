@@ -4,11 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	progressProto "github.com/hobbyfarm/gargantua/v3/protos/progress"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	progresspb "github.com/hobbyfarm/gargantua/v3/protos/progress"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
@@ -17,13 +16,14 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/emptypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 type GrpcProgressServer struct {
-	progressProto.UnimplementedProgressSvcServer
+	progresspb.UnimplementedProgressSvcServer
 	progressClient hfClientsetv1.ProgressInterface
 	progressLister listersv1.ProgressLister
 	progressSynced cache.InformerSynced
@@ -37,7 +37,7 @@ func NewGrpcProgressServer(hfClientSet hfClientset.Interface, hfInformerFactory 
 	}
 }
 
-func (s *GrpcProgressServer) CreateProgress(ctx context.Context, req *progressProto.CreateProgressRequest) (*empty.Empty, error) {
+func (s *GrpcProgressServer) CreateProgress(ctx context.Context, req *progresspb.CreateProgressRequest) (*emptypb.Empty, error) {
 	random := util.RandStringRunes(16)
 	now := time.Now()
 	progressId := util.GenerateResourceName("progress", random, 16)
@@ -75,32 +75,32 @@ func (s *GrpcProgressServer) CreateProgress(ctx context.Context, req *progressPr
 
 	_, err := s.progressClient.Create(ctx, progress, metav1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcProgressServer) GetProgress(ctx context.Context, req *general.GetRequest) (*progressProto.Progress, error) {
+func (s *GrpcProgressServer) GetProgress(ctx context.Context, req *generalpb.GetRequest) (*progresspb.Progress, error) {
 	progress, err := util.GenericHfGetter(ctx, req, s.progressClient, s.progressLister.Progresses(util.GetReleaseNamespace()), "progress", s.progressSynced())
 	if err != nil {
-		return &progressProto.Progress{}, err
+		return &progresspb.Progress{}, err
 	}
 
-	progressSteps := []*progressProto.ProgressStep{}
+	progressSteps := []*progresspb.ProgressStep{}
 
 	for _, step := range progress.Spec.Steps {
-		progressStep := &progressProto.ProgressStep{
+		progressStep := &progresspb.ProgressStep{
 			Step:      uint32(step.Step),
 			Timestamp: step.Timestamp,
 		}
 		progressSteps = append(progressSteps, progressStep)
 	}
 
-	return &progressProto.Progress{
+	return &progresspb.Progress{
 		Id:          progress.Name,
 		Uid:         string(progress.UID),
 		CurrentStep: uint32(progress.Spec.CurrentStep),
@@ -117,10 +117,10 @@ func (s *GrpcProgressServer) GetProgress(ctx context.Context, req *general.GetRe
 	}, nil
 }
 
-func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progressProto.UpdateProgressRequest) (*empty.Empty, error) {
+func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progresspb.UpdateProgressRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 
 	currentStep := req.GetCurrentStep()
@@ -180,25 +180,25 @@ func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progressPr
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			req,
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcProgressServer) DeleteProgress(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (s *GrpcProgressServer) DeleteProgress(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.DeleteHfResource(ctx, req, s.progressClient, "progress")
 }
 
-func (s *GrpcProgressServer) DeleteCollectionProgress(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
+func (s *GrpcProgressServer) DeleteCollectionProgress(ctx context.Context, listOptions *generalpb.ListOptions) (*emptypb.Empty, error) {
 	return util.DeleteHfCollection(ctx, listOptions, s.progressClient, "progresses")
 }
 
-func (s *GrpcProgressServer) ListProgress(ctx context.Context, listOptions *general.ListOptions) (*progressProto.ListProgressesResponse, error) {
+func (s *GrpcProgressServer) ListProgress(ctx context.Context, listOptions *generalpb.ListOptions) (*progresspb.ListProgressesResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var progresses []hfv1.Progress
 	var err error
@@ -213,22 +213,22 @@ func (s *GrpcProgressServer) ListProgress(ctx context.Context, listOptions *gene
 	}
 	if err != nil {
 		glog.Error(err)
-		return &progressProto.ListProgressesResponse{}, err
+		return &progresspb.ListProgressesResponse{}, err
 	}
 
-	preparedProgress := []*progressProto.Progress{}
+	preparedProgress := []*progresspb.Progress{}
 
 	for _, progress := range progresses {
-		progressSteps := []*progressProto.ProgressStep{}
+		progressSteps := []*progresspb.ProgressStep{}
 		for _, step := range progress.Spec.Steps {
-			progressStep := &progressProto.ProgressStep{
+			progressStep := &progresspb.ProgressStep{
 				Step:      uint32(step.Step),
 				Timestamp: step.Timestamp,
 			}
 			progressSteps = append(progressSteps, progressStep)
 		}
 
-		preparedProgress = append(preparedProgress, &progressProto.Progress{
+		preparedProgress = append(preparedProgress, &progresspb.Progress{
 			Id:          progress.Name,
 			Uid:         string(progress.UID),
 			CurrentStep: uint32(progress.Spec.CurrentStep),
@@ -245,5 +245,5 @@ func (s *GrpcProgressServer) ListProgress(ctx context.Context, listOptions *gene
 		})
 	}
 
-	return &progressProto.ListProgressesResponse{Progresses: preparedProgress}, nil
+	return &progresspb.ListProgressesResponse{Progresses: preparedProgress}, nil
 }

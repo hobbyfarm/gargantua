@@ -16,8 +16,8 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
@@ -28,8 +28,8 @@ const (
 )
 
 type ProgressServer struct {
-	authnClient authn.AuthNClient
-	authrClient authr.AuthRClient
+	authnClient authnpb.AuthNClient
+	authrClient authrpb.AuthRClient
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
@@ -51,7 +51,7 @@ type ScheduledEventProgressCount struct {
 	CountMap map[string]int `json:"count_map"`
 }
 
-func NewProgressServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, hfClientset hfClientset.Interface, ctx context.Context) (*ProgressServer, error) {
+func NewProgressServer(authnClient authnpb.AuthNClient, authrClient authrpb.AuthRClient, hfClientset hfClientset.Interface, ctx context.Context) (*ProgressServer, error) {
 	progress := ProgressServer{}
 
 	progress.hfClientSet = hfClientset

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package vmclaim;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/vmclaim";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/vmclaim;vmclaimpb";
 
 import "general/general.proto";
 import "google/protobuf/empty.proto";

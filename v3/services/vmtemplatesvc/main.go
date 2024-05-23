@@ -11,7 +11,7 @@ import (
 
 	vmtemplateservice "github.com/hobbyfarm/gargantua/services/vmtemplatesvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	vmtemplateProto "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
+	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 )
 
 var (
@@ -36,7 +36,7 @@ func main() {
 
 	ds := vmtemplateservice.NewGrpcVMTemplateServer(hfClient, hfInformerFactory)
 
-	vmtemplateProto.RegisterVMTemplateSvcServer(gs, ds)
+	vmtemplatepb.RegisterVMTemplateSvcServer(gs, ds)
 
 	var wg sync.WaitGroup
 	wg.Add(1)

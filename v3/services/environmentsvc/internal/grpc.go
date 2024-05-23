@@ -7,11 +7,10 @@ import (
 	"strings"
 	"time"
 
-	environmentProto "github.com/hobbyfarm/gargantua/v3/protos/environment"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
+	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
@@ -20,13 +19,14 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/emptypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 type GrpcEnvironmentServer struct {
-	environmentProto.UnimplementedEnvironmentSvcServer
+	environmentpb.UnimplementedEnvironmentSvcServer
 	environmentClient hfClientsetv1.EnvironmentInterface
 	environmentLister listersv1.EnvironmentLister
 	environmentSynced cache.InformerSynced
@@ -40,7 +40,7 @@ func NewGrpcEnvironmentServer(hfClientSet hfClientset.Interface, hfInformerFacto
 	}
 }
 
-func (s *GrpcEnvironmentServer) CreateEnvironment(ctx context.Context, req *environmentProto.CreateEnvironmentRequest) (*empty.Empty, error) {
+func (s *GrpcEnvironmentServer) CreateEnvironment(ctx context.Context, req *environmentpb.CreateEnvironmentRequest) (*emptypb.Empty, error) {
 	displayName := req.GetDisplayName()
 	dnsSuffix := req.GetDnssuffix() // optional
 	provider := req.GetProvider()
@@ -61,25 +61,25 @@ func (s *GrpcEnvironmentServer) CreateEnvironment(ctx context.Context, req *envi
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &empty.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &emptypb.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 
 	templateMapping, err := util.GenericUnmarshal[map[string]map[string]string](templateMappingRaw, "templateMapping")
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcParsingError(req, "templateMapping")
+		return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "templateMapping")
 	}
 	countCapacity, err := util.GenericUnmarshal[map[string]int](countCapacityRaw, "countCapacity")
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcParsingError(req, "countCapacity")
+		return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "countCapacity")
 	}
 	environmentSpecifics, err := util.GenericUnmarshal[map[string]string](environmentSpecificsRaw, "environmentSpecifics")
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcParsingError(req, "environmentSpecifics")
+		return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "environmentSpecifics")
 	}
 	ipTranslationMap, err := util.GenericUnmarshal[map[string]string](ipTranslationMapRaw, "ipTranslationMap")
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcParsingError(req, "ipTranslationMap")
+		return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "ipTranslationMap")
 	}
 
 	hasher := sha256.New()
@@ -105,27 +105,27 @@ func (s *GrpcEnvironmentServer) CreateEnvironment(ctx context.Context, req *envi
 
 	_, err = s.environmentClient.Create(ctx, environment, metav1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcEnvironmentServer) GetEnvironment(ctx context.Context, req *general.GetRequest) (*environmentProto.Environment, error) {
+func (s *GrpcEnvironmentServer) GetEnvironment(ctx context.Context, req *generalpb.GetRequest) (*environmentpb.Environment, error) {
 	environment, err := util.GenericHfGetter(ctx, req, s.environmentClient, s.environmentLister.Environments(util.GetReleaseNamespace()), "environment", s.environmentSynced())
 	if err != nil {
-		return &environmentProto.Environment{}, err
+		return &environmentpb.Environment{}, err
 	}
 
-	templateMapping := make(map[string]*general.StringMap)
+	templateMapping := make(map[string]*generalpb.StringMap)
 	for templateName, keyValueMap := range environment.Spec.TemplateMapping {
-		templateMapping[templateName] = &general.StringMap{Value: keyValueMap}
+		templateMapping[templateName] = &generalpb.StringMap{Value: keyValueMap}
 	}
 
-	return &environmentProto.Environment{
+	return &environmentpb.Environment{
 		Id:                   environment.Name,
 		Uid:                  string(environment.UID),
 		DisplayName:          environment.Spec.DisplayName,
@@ -140,10 +140,10 @@ func (s *GrpcEnvironmentServer) GetEnvironment(ctx context.Context, req *general
 	}, nil
 }
 
-func (s *GrpcEnvironmentServer) UpdateEnvironment(ctx context.Context, req *environmentProto.UpdateEnvironmentRequest) (*empty.Empty, error) {
+func (s *GrpcEnvironmentServer) UpdateEnvironment(ctx context.Context, req *environmentpb.UpdateEnvironmentRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 	displayName := req.GetDisplayName()
 	dnsSuffix := req.GetDnssuffix() // optional
@@ -211,25 +211,25 @@ func (s *GrpcEnvironmentServer) UpdateEnvironment(ctx context.Context, req *envi
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			req,
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcEnvironmentServer) DeleteEnvironment(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (s *GrpcEnvironmentServer) DeleteEnvironment(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.DeleteHfResource(ctx, req, s.environmentClient, "environment")
 }
 
-func (s *GrpcEnvironmentServer) DeleteCollectionEnvironment(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
+func (s *GrpcEnvironmentServer) DeleteCollectionEnvironment(ctx context.Context, listOptions *generalpb.ListOptions) (*emptypb.Empty, error) {
 	return util.DeleteHfCollection(ctx, listOptions, s.environmentClient, "environments")
 }
 
-func (s *GrpcEnvironmentServer) ListEnvironment(ctx context.Context, listOptions *general.ListOptions) (*environmentProto.ListEnvironmentsResponse, error) {
+func (s *GrpcEnvironmentServer) ListEnvironment(ctx context.Context, listOptions *generalpb.ListOptions) (*environmentpb.ListEnvironmentsResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var enviroments []hfv1.Environment
 	var err error
@@ -244,19 +244,19 @@ func (s *GrpcEnvironmentServer) ListEnvironment(ctx context.Context, listOptions
 	}
 	if err != nil {
 		glog.Error(err)
-		return &environmentProto.ListEnvironmentsResponse{}, err
+		return &environmentpb.ListEnvironmentsResponse{}, err
 	}
 
-	preparedEnvironments := []*environmentProto.Environment{}
+	preparedEnvironments := []*environmentpb.Environment{}
 
 	for _, environment := range enviroments {
 
-		templateMapping := make(map[string]*general.StringMap)
+		templateMapping := make(map[string]*generalpb.StringMap)
 		for templateName, keyValueMap := range environment.Spec.TemplateMapping {
-			templateMapping[templateName] = &general.StringMap{Value: keyValueMap}
+			templateMapping[templateName] = &generalpb.StringMap{Value: keyValueMap}
 		}
 
-		preparedEnvironments = append(preparedEnvironments, &environmentProto.Environment{
+		preparedEnvironments = append(preparedEnvironments, &environmentpb.Environment{
 			Id:                   environment.Name,
 			Uid:                  string(environment.UID),
 			DisplayName:          environment.Spec.DisplayName,
@@ -271,5 +271,5 @@ func (s *GrpcEnvironmentServer) ListEnvironment(ctx context.Context, listOptions
 		})
 	}
 
-	return &environmentProto.ListEnvironmentsResponse{Environments: preparedEnvironments}, nil
+	return &environmentpb.ListEnvironmentsResponse{Environments: preparedEnvironments}, nil
 }

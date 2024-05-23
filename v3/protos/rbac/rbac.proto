@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package rbac;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/rbac";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/rbac;rbacpb";
 
 import "authr/authr.proto";
 import "general/general.proto";

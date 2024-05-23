@@ -17,13 +17,13 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	sessionProto "github.com/hobbyfarm/gargantua/v3/protos/session"
-	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
+	userpb "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	empty "google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/emptypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
@@ -34,15 +34,15 @@ const (
 )
 
 type GrpcUserServer struct {
-	userProto.UnimplementedUserSvcServer
+	userpb.UnimplementedUserSvcServer
 	userClient    hfClientsetv2.UserInterface
 	userIndexer   cache.Indexer
 	userLister    listerv2.UserLister
 	userSynced    cache.InformerSynced
-	sessionClient sessionProto.SessionSvcClient
+	sessionClient sessionpb.SessionSvcClient
 }
 
-func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, sessionClient sessionProto.SessionSvcClient) (*GrpcUserServer, error) {
+func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, sessionClient sessionpb.SessionSvcClient) (*GrpcUserServer, error) {
 	inf := hfInformerFactory.Hobbyfarm().V2().Users().Informer()
 	indexers := map[string]cache.IndexFunc{emailIndex: emailIndexer}
 	err := inf.AddIndexers(indexers)
@@ -67,20 +67,20 @@ func emailIndexer(obj interface{}) ([]string, error) {
 	return []string{user.Spec.Email}, nil
 }
 
-func (u *GrpcUserServer) CreateUser(ctx context.Context, cur *userProto.CreateUserRequest) (*general.ResourceId, error) {
+func (u *GrpcUserServer) CreateUser(ctx context.Context, cur *userpb.CreateUserRequest) (*generalpb.ResourceId, error) {
 	if len(cur.GetEmail()) == 0 || len(cur.GetPassword()) == 0 {
-		return &general.ResourceId{}, hferrors.GrpcError(
+		return &generalpb.ResourceId{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"error creating user, email or password field blank",
 			cur,
 		)
 	}
 
-	_, err := u.GetUserByEmail(context.Background(), &userProto.GetUserByEmailRequest{Email: cur.GetEmail()})
+	_, err := u.GetUserByEmail(context.Background(), &userpb.GetUserByEmailRequest{Email: cur.GetEmail()})
 
 	if err == nil {
 		// the user was found, we should return info
-		return &general.ResourceId{}, hferrors.GrpcError(
+		return &generalpb.ResourceId{}, hferrors.GrpcError(
 			codes.AlreadyExists,
 			"user %s already exists",
 			cur,
@@ -104,7 +104,7 @@ func (u *GrpcUserServer) CreateUser(ctx context.Context, cur *userProto.CreateUs
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(cur.GetPassword()), bcrypt.DefaultCost)
 	if err != nil {
-		return &general.ResourceId{}, hferrors.GrpcError(
+		return &generalpb.ResourceId{}, hferrors.GrpcError(
 			codes.Internal,
 			"error while hashing password for email %s",
 			cur,
@@ -118,25 +118,25 @@ func (u *GrpcUserServer) CreateUser(ctx context.Context, cur *userProto.CreateUs
 	_, err = u.userClient.Create(ctx, &newUser, metav1.CreateOptions{})
 
 	if err != nil {
-		return &general.ResourceId{}, hferrors.GrpcError(
+		return &generalpb.ResourceId{}, hferrors.GrpcError(
 			codes.Internal,
 			"error creating user",
 			cur,
 		)
 	}
 
-	return &general.ResourceId{Id: id}, nil
+	return &generalpb.ResourceId{Id: id}, nil
 }
 
-func (u *GrpcUserServer) GetUserById(ctx context.Context, req *general.GetRequest) (*userProto.User, error) {
+func (u *GrpcUserServer) GetUserById(ctx context.Context, req *generalpb.GetRequest) (*userpb.User, error) {
 	user, err := util.GenericHfGetter(ctx, req, u.userClient, u.userLister.Users(util.GetReleaseNamespace()), "user", u.userSynced())
 	if err != nil {
-		return &userProto.User{}, err
+		return &userpb.User{}, err
 	}
 
 	glog.V(2).Infof("retrieved user %s", user.Name)
 
-	return &userProto.User{
+	return &userpb.User{
 		Id:                  user.Name,
 		Uid:                 string(user.UID),
 		Email:               user.Spec.Email,
@@ -148,7 +148,7 @@ func (u *GrpcUserServer) GetUserById(ctx context.Context, req *general.GetReques
 	}, nil
 }
 
-func (u *GrpcUserServer) ListUser(ctx context.Context, listOptions *general.ListOptions) (*userProto.ListUsersResponse, error) {
+func (u *GrpcUserServer) ListUser(ctx context.Context, listOptions *generalpb.ListOptions) (*userpb.ListUsersResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var users []hfv2.User
 	var err error
@@ -163,12 +163,12 @@ func (u *GrpcUserServer) ListUser(ctx context.Context, listOptions *general.List
 	}
 	if err != nil {
 		glog.Error(err)
-		return &userProto.ListUsersResponse{}, err
+		return &userpb.ListUsersResponse{}, err
 	}
 
-	preparedUsers := []*userProto.User{} // must be declared this way so as to JSON marshal into [] instead of null
+	preparedUsers := []*userpb.User{} // must be declared this way so as to JSON marshal into [] instead of null
 	for _, user := range users {
-		preparedUsers = append(preparedUsers, &userProto.User{
+		preparedUsers = append(preparedUsers, &userpb.User{
 			Id:                  user.Name,
 			Uid:                 string(user.UID),
 			Email:               user.Spec.Email,
@@ -182,13 +182,13 @@ func (u *GrpcUserServer) ListUser(ctx context.Context, listOptions *general.List
 
 	glog.V(2).Infof("listed users")
 
-	return &userProto.ListUsersResponse{Users: preparedUsers}, nil
+	return &userpb.ListUsersResponse{Users: preparedUsers}, nil
 }
 
-func (u *GrpcUserServer) UpdateUser(ctx context.Context, userRequest *userProto.User) (*userProto.User, error) {
+func (u *GrpcUserServer) UpdateUser(ctx context.Context, userRequest *userpb.User) (*userpb.User, error) {
 	id := userRequest.GetId()
 	if id == "" {
-		return &userProto.User{}, hferrors.GrpcError(
+		return &userpb.User{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"no ID passed in",
 			userRequest,
@@ -231,7 +231,7 @@ func (u *GrpcUserServer) UpdateUser(ctx context.Context, userRequest *userProto.
 	})
 
 	if retryErr != nil {
-		return &userProto.User{}, hferrors.GrpcError(
+		return &userpb.User{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			userRequest,
@@ -241,10 +241,10 @@ func (u *GrpcUserServer) UpdateUser(ctx context.Context, userRequest *userProto.
 	return userRequest, nil
 }
 
-func (u *GrpcUserServer) UpdateAccessCodes(ctx context.Context, updateAccessCodesRequest *userProto.UpdateAccessCodesRequest) (*userProto.User, error) {
+func (u *GrpcUserServer) UpdateAccessCodes(ctx context.Context, updateAccessCodesRequest *userpb.UpdateAccessCodesRequest) (*userpb.User, error) {
 	id := updateAccessCodesRequest.GetId()
 	if id == "" {
-		return &userProto.User{}, hferrors.GrpcError(
+		return &userpb.User{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"no ID passed in",
 			updateAccessCodesRequest,
@@ -274,21 +274,21 @@ func (u *GrpcUserServer) UpdateAccessCodes(ctx context.Context, updateAccessCode
 	})
 
 	if retryErr != nil {
-		return &userProto.User{}, hferrors.GrpcError(
+		return &userpb.User{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			updateAccessCodesRequest,
 		)
 	}
 
-	return &userProto.User{}, nil
+	return &userpb.User{}, nil
 }
 
-func (u *GrpcUserServer) SetLastLoginTimestamp(ctx context.Context, userId *general.ResourceId) (*empty.Empty, error) {
+func (u *GrpcUserServer) SetLastLoginTimestamp(ctx context.Context, userId *generalpb.ResourceId) (*emptypb.Empty, error) {
 	id := userId.GetId()
 
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(userId)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(userId)
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -320,17 +320,17 @@ func (u *GrpcUserServer) SetLastLoginTimestamp(ctx context.Context, userId *gene
 		)
 		newErr, wde := newErr.WithDetails(userId)
 		if wde != nil {
-			return &empty.Empty{}, wde
+			return &emptypb.Empty{}, wde
 		}
-		return &empty.Empty{}, newErr.Err()
+		return &emptypb.Empty{}, newErr.Err()
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (u *GrpcUserServer) GetUserByEmail(ctx context.Context, gur *userProto.GetUserByEmailRequest) (*userProto.User, error) {
+func (u *GrpcUserServer) GetUserByEmail(ctx context.Context, gur *userpb.GetUserByEmailRequest) (*userpb.User, error) {
 	if len(gur.GetEmail()) == 0 {
-		return &userProto.User{}, hferrors.GrpcError(
+		return &userpb.User{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"email passed in was empty",
 			gur,
@@ -339,7 +339,7 @@ func (u *GrpcUserServer) GetUserByEmail(ctx context.Context, gur *userProto.GetU
 
 	obj, err := u.userIndexer.ByIndex(emailIndex, gur.GetEmail())
 	if err != nil {
-		return &userProto.User{}, hferrors.GrpcError(
+		return &userpb.User{}, hferrors.GrpcError(
 			codes.Internal,
 			"error while retrieving user by e-mail: %s with error: %v",
 			gur,
@@ -349,7 +349,7 @@ func (u *GrpcUserServer) GetUserByEmail(ctx context.Context, gur *userProto.GetU
 	}
 
 	if len(obj) < 1 {
-		return &userProto.User{}, hferrors.GrpcError(
+		return &userpb.User{}, hferrors.GrpcError(
 			codes.NotFound,
 			"user not found by email: %s",
 			gur,
@@ -360,7 +360,7 @@ func (u *GrpcUserServer) GetUserByEmail(ctx context.Context, gur *userProto.GetU
 	user, ok := obj[0].(*hfv2.User)
 
 	if !ok {
-		return &userProto.User{}, hferrors.GrpcError(
+		return &userpb.User{}, hferrors.GrpcError(
 			codes.Internal,
 			"error while converting user found by email to object: %s",
 			gur,
@@ -368,7 +368,7 @@ func (u *GrpcUserServer) GetUserByEmail(ctx context.Context, gur *userProto.GetU
 		)
 	}
 
-	return &userProto.User{
+	return &userpb.User{
 		Id:          user.Name,
 		Email:       user.Spec.Email,
 		Password:    user.Spec.Password,
@@ -377,26 +377,26 @@ func (u *GrpcUserServer) GetUserByEmail(ctx context.Context, gur *userProto.GetU
 	}, nil
 }
 
-func (u *GrpcUserServer) DeleteUser(ctx context.Context, userId *general.ResourceId) (*empty.Empty, error) {
+func (u *GrpcUserServer) DeleteUser(ctx context.Context, userId *generalpb.ResourceId) (*emptypb.Empty, error) {
 	id := userId.GetId()
 	user, err := util.GenericHfGetter(
-		ctx, &general.GetRequest{Id: id},
+		ctx, &generalpb.GetRequest{Id: id},
 		u.userClient,
 		u.userLister.Users(util.GetReleaseNamespace()),
 		"user",
 		u.userSynced(),
 	)
 	if err != nil {
-		return &empty.Empty{}, err
+		return &emptypb.Empty{}, err
 	}
 
-	sessionList, err := u.sessionClient.ListSession(ctx, &general.ListOptions{
+	sessionList, err := u.sessionClient.ListSession(ctx, &generalpb.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", hflabels.UserLabel, id),
 	})
 
 	if err != nil {
 		glog.Errorf("error retrieving session list for user %s during delete: %s", id, err)
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error retrieving session list for user %s",
 			userId,
@@ -408,7 +408,7 @@ func (u *GrpcUserServer) DeleteUser(ctx context.Context, userId *general.Resourc
 		// there are sessions present but they may be expired. let's check
 		for _, s := range sessionList.Sessions {
 			if !s.Status.Finished {
-				return &empty.Empty{}, hferrors.GrpcError(
+				return &emptypb.Empty{}, hferrors.GrpcError(
 					codes.Internal,
 					"cannot delete user, existing sessions found",
 					userId,
@@ -420,7 +420,7 @@ func (u *GrpcUserServer) DeleteUser(ctx context.Context, userId *general.Resourc
 		// let's delete them for cleanliness' sake
 		if ok, err := u.deleteSessions(ctx, sessionList.Sessions); !ok {
 			glog.Errorf("error deleting old sessions for user %s: %s", id, err)
-			return &empty.Empty{}, hferrors.GrpcError(
+			return &emptypb.Empty{}, hferrors.GrpcError(
 				codes.Internal,
 				"cannot delete user, error removing old sessions",
 				userId,
@@ -434,21 +434,21 @@ func (u *GrpcUserServer) DeleteUser(ctx context.Context, userId *general.Resourc
 	deleteErr := u.userClient.Delete(ctx, user.Name, metav1.DeleteOptions{})
 	if deleteErr != nil {
 		glog.Errorf("error deleting user %s: %s", id, deleteErr)
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error deleting user %s",
 			userId,
 			userId.GetId(),
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (u *GrpcUserServer) deleteSessions(ctx context.Context, sessions []*sessionProto.Session) (bool, error) {
+func (u *GrpcUserServer) deleteSessions(ctx context.Context, sessions []*sessionpb.Session) (bool, error) {
 	for _, s := range sessions {
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			// @TODO: Use gRPC SessionClient here!
-			_, err := u.sessionClient.DeleteSession(ctx, &general.ResourceId{Id: s.Id})
+			_, err := u.sessionClient.DeleteSession(ctx, &generalpb.ResourceId{Id: s.Id})
 			return err
 		})
 

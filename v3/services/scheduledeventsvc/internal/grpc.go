@@ -4,11 +4,10 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	eventProto "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
@@ -17,13 +16,14 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/emptypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 type GrpcScheduledEventServer struct {
-	eventProto.UnimplementedScheduledEventSvcServer
+	scheduledeventpb.UnimplementedScheduledEventSvcServer
 	eventClient hfClientsetv1.ScheduledEventInterface
 	eventLister listersv1.ScheduledEventLister
 	eventSynced cache.InformerSynced
@@ -37,7 +37,7 @@ func NewGrpcScheduledEventServer(hfClientSet hfClientset.Interface, hfInformerFa
 	}
 }
 
-func (s *GrpcScheduledEventServer) CreateScheduledEvent(ctx context.Context, req *eventProto.CreateScheduledEventRequest) (*empty.Empty, error) {
+func (s *GrpcScheduledEventServer) CreateScheduledEvent(ctx context.Context, req *scheduledeventpb.CreateScheduledEventRequest) (*emptypb.Empty, error) {
 	name := req.GetName()
 	description := req.GetDescription()
 	creator := req.GetCreator()
@@ -65,26 +65,26 @@ func (s *GrpcScheduledEventServer) CreateScheduledEvent(ctx context.Context, req
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &empty.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &emptypb.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 
 	if scenariosRaw == "" && coursesRaw == "" {
-		return &empty.Empty{}, hferrors.GrpcError(codes.InvalidArgument, "no courses or scenarios provided", req)
+		return &emptypb.Empty{}, hferrors.GrpcError(codes.InvalidArgument, "no courses or scenarios provided", req)
 	}
 
 	onDemand, err := strconv.ParseBool(onDemandRaw)
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcBadRequestError(req, "on_demand_raw", onDemandRaw)
+		return &emptypb.Empty{}, hferrors.GrpcBadRequestError(req, "on_demand_raw", onDemandRaw)
 	}
 	printable, err := strconv.ParseBool(printableRaw)
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcBadRequestError(req, "printable_raw", printableRaw)
+		return &emptypb.Empty{}, hferrors.GrpcBadRequestError(req, "printable_raw", printableRaw)
 	}
 
 	requiredVms, err := util.GenericUnmarshal[map[string]map[string]int](reqVmsRaw, "required_vms_raw")
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcParsingError(req, "required_vms_raw")
+		return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "required_vms_raw")
 	}
 
 	random := util.RandStringRunes(16)
@@ -116,36 +116,36 @@ func (s *GrpcScheduledEventServer) CreateScheduledEvent(ctx context.Context, req
 	if coursesRaw != "" {
 		courses, err := util.GenericUnmarshal[[]string](coursesRaw, "courses_raw")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "courses_raw")
+			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "courses_raw")
 		}
 		event.Spec.Courses = courses
 	}
 	if scenariosRaw != "" {
 		scenarios, err := util.GenericUnmarshal[[]string](scenariosRaw, "scenarios_raw")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "scenarios_raw")
+			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "scenarios_raw")
 		}
 		event.Spec.Scenarios = scenarios
 	}
 
 	_, err = s.eventClient.Create(ctx, event, metav1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcScheduledEventServer) GetScheduledEvent(ctx context.Context, req *general.GetRequest) (*eventProto.ScheduledEvent, error) {
+func (s *GrpcScheduledEventServer) GetScheduledEvent(ctx context.Context, req *generalpb.GetRequest) (*scheduledeventpb.ScheduledEvent, error) {
 	event, err := util.GenericHfGetter(ctx, req, s.eventClient, s.eventLister.ScheduledEvents(util.GetReleaseNamespace()), "scheduled event", s.eventSynced())
 	if err != nil {
-		return &eventProto.ScheduledEvent{}, err
+		return &scheduledeventpb.ScheduledEvent{}, err
 	}
 
-	status := &eventProto.ScheduledEventStatus{
+	status := &scheduledeventpb.ScheduledEventStatus{
 		Vmsets:      event.Status.VirtualMachineSets,
 		Active:      event.Status.Active,
 		Provisioned: event.Status.Provisioned,
@@ -153,12 +153,12 @@ func (s *GrpcScheduledEventServer) GetScheduledEvent(ctx context.Context, req *g
 		Finished:    event.Status.Finished,
 	}
 
-	requiredVms := make(map[string]*eventProto.VMTemplateCountMap)
+	requiredVms := make(map[string]*scheduledeventpb.VMTemplateCountMap)
 	for environment, vmTemplateCountMap := range event.Spec.RequiredVirtualMachines {
-		requiredVms[environment] = &eventProto.VMTemplateCountMap{VmTemplateCounts: util.ConvertMap[int, uint32](vmTemplateCountMap)}
+		requiredVms[environment] = &scheduledeventpb.VMTemplateCountMap{VmTemplateCounts: util.ConvertMap[int, uint32](vmTemplateCountMap)}
 	}
 
-	return &eventProto.ScheduledEvent{
+	return &scheduledeventpb.ScheduledEvent{
 		Id:                  event.Name,
 		Uid:                 string(event.UID),
 		Name:                event.Spec.Name,
@@ -179,10 +179,10 @@ func (s *GrpcScheduledEventServer) GetScheduledEvent(ctx context.Context, req *g
 	}, nil
 }
 
-func (s *GrpcScheduledEventServer) UpdateScheduledEvent(ctx context.Context, req *eventProto.UpdateScheduledEventRequest) (*empty.Empty, error) {
+func (s *GrpcScheduledEventServer) UpdateScheduledEvent(ctx context.Context, req *scheduledeventpb.UpdateScheduledEventRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 	name := req.GetName()
 	description := req.GetDescription()
@@ -272,20 +272,20 @@ func (s *GrpcScheduledEventServer) UpdateScheduledEvent(ctx context.Context, req
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			req,
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcScheduledEventServer) UpdateScheduledEventStatus(ctx context.Context, req *eventProto.UpdateScheduledEventStatusRequest) (*empty.Empty, error) {
+func (s *GrpcScheduledEventServer) UpdateScheduledEventStatus(ctx context.Context, req *scheduledeventpb.UpdateScheduledEventStatusRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 
 	vmSets := req.GetVmsets()
@@ -340,25 +340,25 @@ func (s *GrpcScheduledEventServer) UpdateScheduledEventStatus(ctx context.Contex
 		return nil
 	})
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update scheduled event status: %v",
 			req,
 			retryErr,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcScheduledEventServer) DeleteScheduledEvent(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (s *GrpcScheduledEventServer) DeleteScheduledEvent(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.DeleteHfResource(ctx, req, s.eventClient, "scheduled event")
 }
 
-func (s *GrpcScheduledEventServer) DeleteCollectionScheduledEvent(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
+func (s *GrpcScheduledEventServer) DeleteCollectionScheduledEvent(ctx context.Context, listOptions *generalpb.ListOptions) (*emptypb.Empty, error) {
 	return util.DeleteHfCollection(ctx, listOptions, s.eventClient, "scheduled event")
 }
 
-func (s *GrpcScheduledEventServer) ListScheduledEvent(ctx context.Context, listOptions *general.ListOptions) (*eventProto.ListScheduledEventsResponse, error) {
+func (s *GrpcScheduledEventServer) ListScheduledEvent(ctx context.Context, listOptions *generalpb.ListOptions) (*scheduledeventpb.ListScheduledEventsResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var events []hfv1.ScheduledEvent
 	var err error
@@ -373,13 +373,13 @@ func (s *GrpcScheduledEventServer) ListScheduledEvent(ctx context.Context, listO
 	}
 	if err != nil {
 		glog.Error(err)
-		return &eventProto.ListScheduledEventsResponse{}, err
+		return &scheduledeventpb.ListScheduledEventsResponse{}, err
 	}
 
-	preparedEvents := []*eventProto.ScheduledEvent{}
+	preparedEvents := []*scheduledeventpb.ScheduledEvent{}
 
 	for _, event := range events {
-		status := &eventProto.ScheduledEventStatus{
+		status := &scheduledeventpb.ScheduledEventStatus{
 			Vmsets:      event.Status.VirtualMachineSets,
 			Active:      event.Status.Active,
 			Provisioned: event.Status.Provisioned,
@@ -387,12 +387,12 @@ func (s *GrpcScheduledEventServer) ListScheduledEvent(ctx context.Context, listO
 			Finished:    event.Status.Finished,
 		}
 
-		requiredVms := make(map[string]*eventProto.VMTemplateCountMap)
+		requiredVms := make(map[string]*scheduledeventpb.VMTemplateCountMap)
 		for environment, vmTemplateCountMap := range event.Spec.RequiredVirtualMachines {
-			requiredVms[environment] = &eventProto.VMTemplateCountMap{VmTemplateCounts: util.ConvertMap[int, uint32](vmTemplateCountMap)}
+			requiredVms[environment] = &scheduledeventpb.VMTemplateCountMap{VmTemplateCounts: util.ConvertMap[int, uint32](vmTemplateCountMap)}
 		}
 
-		preparedEvents = append(preparedEvents, &eventProto.ScheduledEvent{
+		preparedEvents = append(preparedEvents, &scheduledeventpb.ScheduledEvent{
 			Id:                  event.Name,
 			Uid:                 string(event.UID),
 			Name:                event.Spec.Name,
@@ -413,5 +413,5 @@ func (s *GrpcScheduledEventServer) ListScheduledEvent(ctx context.Context, listO
 		})
 	}
 
-	return &eventProto.ListScheduledEventsResponse{Scheduledevents: preparedEvents}, nil
+	return &scheduledeventpb.ListScheduledEventsResponse{Scheduledevents: preparedEvents}, nil
 }

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package environment;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/environment";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/environment;environmentpb";
 
 import "general/general.proto";
 import "google/protobuf/empty.proto";

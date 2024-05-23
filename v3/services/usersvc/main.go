@@ -13,11 +13,11 @@ import (
 	userservice "github.com/hobbyfarm/gargantua/services/usersvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
-	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
-	"github.com/hobbyfarm/gargantua/v3/protos/session"
-	"github.com/hobbyfarm/gargantua/v3/protos/user"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
+	userpb "github.com/hobbyfarm/gargantua/v3/protos/user"
 )
 
 var (
@@ -47,10 +47,10 @@ func main() {
 		defer conn.Close()
 	}
 
-	rbacClient := rbac.NewRbacSvcClient(connections[microservices.Rbac])
-	authnClient := authn.NewAuthNClient(connections[microservices.AuthN])
-	authrClient := authr.NewAuthRClient(connections[microservices.AuthR])
-	sessionClient := session.NewSessionSvcClient(connections[microservices.Session])
+	rbacClient := rbacpb.NewRbacSvcClient(connections[microservices.Rbac])
+	authnClient := authnpb.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authrpb.NewAuthRClient(connections[microservices.AuthR])
+	sessionClient := sessionpb.NewSessionSvcClient(connections[microservices.Session])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert)
 	us, err := userservice.NewGrpcUserServer(hfClient, hfInformerFactory, sessionClient)
@@ -59,7 +59,7 @@ func main() {
 		glog.Fatalf("starting grpc user server failed: %v", err)
 	}
 
-	user.RegisterUserSvcServer(gs, us)
+	userpb.RegisterUserSvcServer(gs, us)
 
 	var wg sync.WaitGroup
 

@@ -20,8 +20,8 @@ import (
 	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -36,8 +36,8 @@ const (
 )
 
 type ScenarioServer struct {
-	authnClient     authn.AuthNClient
-	authrClient     authr.AuthRClient
+	authnClient     authnpb.AuthNClient
+	authrClient     authrpb.AuthRClient
 	hfClientSet     hfClientset.Interface
 	acClient        *accesscode.AccessCodeClient
 	scenarioIndexer cache.Indexer
@@ -66,7 +66,7 @@ type AdminPreparedScenario struct {
 	hfv1.ScenarioSpec
 }
 
-func NewScenarioServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context, courseClient *courseclient.CourseClient) (*ScenarioServer, error) {
+func NewScenarioServer(authnClient authnpb.AuthNClient, authrClient authrpb.AuthRClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context, courseClient *courseclient.CourseClient) (*ScenarioServer, error) {
 	scenario := ScenarioServer{}
 
 	scenario.authnClient = authnClient
@@ -673,7 +673,7 @@ func (s ScenarioServer) CopyFunc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac2.Authorize(r, s.authrClient, impersonatedUserId, []*authr.Permission{
+	authrResponse, err := rbac2.Authorize(r, s.authrClient, impersonatedUserId, []*authrpb.Permission{
 		rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbCreate),
 		rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbGet),
 	}, rbac2.OperatorAND)

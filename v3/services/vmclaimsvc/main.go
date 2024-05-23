@@ -14,15 +14,15 @@ import (
 	"github.com/golang/glog"
 	vmclaimservice "github.com/hobbyfarm/gargantua/services/vmclaimsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
-	accesscodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
-	"github.com/hobbyfarm/gargantua/v3/protos/dbconfig"
-	"github.com/hobbyfarm/gargantua/v3/protos/environment"
-	"github.com/hobbyfarm/gargantua/v3/protos/progress"
-	"github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
-	"github.com/hobbyfarm/gargantua/v3/protos/session"
-	"github.com/hobbyfarm/gargantua/v3/protos/vm"
-	vmclaimProto "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
-	"github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	dbconfigpb "github.com/hobbyfarm/gargantua/v3/protos/dbconfig"
+	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
+	progresspb "github.com/hobbyfarm/gargantua/v3/protos/progress"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
+	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	vmclaimpb "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
+	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 )
 
 var (
@@ -59,21 +59,21 @@ func main() {
 		defer conn.Close()
 	}
 
-	acClient := accesscodeProto.NewAccessCodeSvcClient(connections[microservices.AccessCode])
-	dbcClient := dbconfig.NewDynamicBindConfigSvcClient(connections[microservices.DBConfig])
-	envClient := environment.NewEnvironmentSvcClient(connections[microservices.Environment])
-	eventClient := scheduledevent.NewScheduledEventSvcClient(connections[microservices.ScheduledEvent])
-	progressClient := progress.NewProgressSvcClient(connections[microservices.Progress])
-	sessionClient := session.NewSessionSvcClient(connections[microservices.Session])
-	vmClient := vm.NewVMSvcClient(connections[microservices.VM])
-	vmTemplateClient := vmtemplate.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
+	acClient := accesscodepb.NewAccessCodeSvcClient(connections[microservices.AccessCode])
+	dbcClient := dbconfigpb.NewDynamicBindConfigSvcClient(connections[microservices.DBConfig])
+	envClient := environmentpb.NewEnvironmentSvcClient(connections[microservices.Environment])
+	eventClient := scheduledeventpb.NewScheduledEventSvcClient(connections[microservices.ScheduledEvent])
+	progressClient := progresspb.NewProgressSvcClient(connections[microservices.Progress])
+	sessionClient := sessionpb.NewSessionSvcClient(connections[microservices.Session])
+	vmClient := vmpb.NewVMSvcClient(connections[microservices.VM])
+	vmTemplateClient := vmtemplatepb.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
 
 	vmClaimWorkqueue := workqueue.NewDelayingQueueWithConfig(workqueue.DelayingQueueConfig{Name: "vmclaim-controller"})
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
 	vs := vmclaimservice.NewGrpcVMClaimServer(hfClient, hfInformerFactory, vmClaimWorkqueue)
-	vmclaimProto.RegisterVMClaimSvcServer(gs, vs)
+	vmclaimpb.RegisterVMClaimSvcServer(gs, vs)
 	vmClaimController, err := vmclaimservice.NewVMClaimController(
 		kubeClient,
 		vs,

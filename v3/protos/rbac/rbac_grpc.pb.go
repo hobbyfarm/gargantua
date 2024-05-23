@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: rbac/rbac.proto
 
-package rbac
+package rbacpb
 
 import (
 	context "context"

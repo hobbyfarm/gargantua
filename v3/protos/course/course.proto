@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package course;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/course";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/course;coursepb";
 
 import "general/general.proto";
 import "google/protobuf/empty.proto";

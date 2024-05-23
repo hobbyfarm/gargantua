@@ -12,9 +12,9 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
 	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
-	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 )
@@ -54,7 +54,7 @@ func main() {
 	if err != nil {
 		glog.Fatalf("Failed to start rbac grpc server: %s", err)
 	}
-	rbacProto.RegisterRbacSvcServer(gs, rs)
+	rbacpb.RegisterRbacSvcServer(gs, rs)
 
 	services := []microservices.MicroService{
 		microservices.AuthN,
@@ -65,8 +65,8 @@ func main() {
 		defer conn.Close()
 	}
 
-	authnClient := authn.NewAuthNClient(connections[microservices.AuthN])
-	authrClient := authr.NewAuthRClient(connections[microservices.AuthR])
+	authnClient := authnpb.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authrpb.NewAuthRClient(connections[microservices.AuthR])
 
 	var wg sync.WaitGroup
 

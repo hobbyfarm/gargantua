@@ -6,18 +6,19 @@ import (
 	"encoding/base32"
 	"encoding/json"
 	"fmt"
-	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
-	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"net/http"
 	"strings"
 	"time"
 
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
@@ -27,13 +28,13 @@ const (
 )
 
 type EnvironmentServer struct {
-	authnClient authn.AuthNClient
-	authrClient authr.AuthRClient
+	authnClient authnpb.AuthNClient
+	authrClient authrpb.AuthRClient
 	hfClientSet hfClientset.Interface
 	ctx         context.Context
 }
 
-func NewEnvironmentServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, hfClientset hfClientset.Interface, ctx context.Context) (*EnvironmentServer, error) {
+func NewEnvironmentServer(authnClient authnpb.AuthNClient, authrClient authrpb.AuthRClient, hfClientset hfClientset.Interface, ctx context.Context) (*EnvironmentServer, error) {
 	es := EnvironmentServer{}
 
 	es.hfClientSet = hfClientset
@@ -402,7 +403,7 @@ func (e EnvironmentServer) PostEnvironmentAvailableFunc(w http.ResponseWriter, r
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac2.Authorize(r, e.authrClient, impersonatedUserId, []*authr.Permission{
+	authrResponse, err := rbac2.Authorize(r, e.authrClient, impersonatedUserId, []*authrpb.Permission{
 		rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbList),
 		rbac2.HobbyfarmPermission(rbac2.ResourcePluralVMTemplate, rbac2.VerbList),
 	}, rbac2.OperatorAND)

@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: scenario/scenario.proto
 
-package scenario
+package scenariopb
 
 import (
 	context "context"

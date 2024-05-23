@@ -3,11 +3,10 @@ package scenarioservice
 import (
 	"context"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	scenarioProto "github.com/hobbyfarm/gargantua/v3/protos/scenario"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	scenariopb "github.com/hobbyfarm/gargantua/v3/protos/scenario"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
@@ -17,13 +16,14 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/emptypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 type GrpcScenarioServer struct {
-	scenarioProto.UnimplementedScenarioSvcServer
+	scenariopb.UnimplementedScenarioSvcServer
 	scenarioClient hfClientsetv1.ScenarioInterface
 	scenarioLister listersv1.ScenarioLister
 	scenarioSynced cache.InformerSynced
@@ -37,7 +37,7 @@ func NewGrpcScenarioServer(hfClientSet hfClientset.Interface, hfInformerFactory 
 	}
 }
 
-func (s *GrpcScenarioServer) CreateScenario(ctx context.Context, req *scenarioProto.CreateScenarioRequest) (*empty.Empty, error) {
+func (s *GrpcScenarioServer) CreateScenario(ctx context.Context, req *scenariopb.CreateScenarioRequest) (*emptypb.Empty, error) {
 	name := req.GetName()
 	description := req.GetDescription()
 	rawSteps := req.GetRawSteps()
@@ -55,7 +55,7 @@ func (s *GrpcScenarioServer) CreateScenario(ctx context.Context, req *scenarioPr
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &empty.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &emptypb.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 
@@ -78,14 +78,14 @@ func (s *GrpcScenarioServer) CreateScenario(ctx context.Context, req *scenarioPr
 	if rawSteps != "" {
 		steps, err := util.GenericUnmarshal[[]hfv1.ScenarioStep](rawSteps, "raw_steps")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "raw_steps")
+			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "raw_steps")
 		}
 		scenario.Spec.Steps = steps
 	}
 	if rawCategories != "" {
 		categories, err := util.GenericUnmarshal[[]string](rawCategories, "raw_categories")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "raw_categories")
+			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "raw_categories")
 		}
 		updatedLabels := labels.UpdateCategoryLabels(scenario.ObjectMeta.Labels, []string{}, categories)
 		scenario.ObjectMeta.Labels = updatedLabels
@@ -94,61 +94,61 @@ func (s *GrpcScenarioServer) CreateScenario(ctx context.Context, req *scenarioPr
 	if rawTags != "" {
 		tags, err := util.GenericUnmarshal[[]string](rawTags, "raw_tags")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "raw_tags")
+			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "raw_tags")
 		}
 		scenario.Spec.Tags = tags
 	}
 	if rawVirtualMachines != "" {
 		vms, err := util.GenericUnmarshal[[]map[string]string](rawVirtualMachines, "raw_vms")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "raw_vms")
+			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "raw_vms")
 		}
 		scenario.Spec.VirtualMachines = vms
 	}
 	if rawVmTasks != "" {
 		vmTasks, err := util.GenericUnmarshal[[]hfv1.VirtualMachineTasks](rawSteps, "raw_vm_tasks")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "raw_vm_tasks")
+			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "raw_vm_tasks")
 		}
 		scenario.Spec.Tasks = vmTasks
 	}
 	err := util.VerifyTaskContent(scenario.Spec.Tasks, req)
 	if err != nil {
-		return &empty.Empty{}, err
+		return &emptypb.Empty{}, err
 	}
 
 	_, err = s.scenarioClient.Create(ctx, scenario, metav1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcScenarioServer) GetScenario(ctx context.Context, req *general.GetRequest) (*scenarioProto.Scenario, error) {
+func (s *GrpcScenarioServer) GetScenario(ctx context.Context, req *generalpb.GetRequest) (*scenariopb.Scenario, error) {
 	scenario, err := util.GenericHfGetter(ctx, req, s.scenarioClient, s.scenarioLister.Scenarios(util.GetReleaseNamespace()), "scenario", s.scenarioSynced())
 	if err != nil {
-		return &scenarioProto.Scenario{}, err
+		return &scenariopb.Scenario{}, err
 	}
 
-	scenarioSteps := []*scenarioProto.ScenarioStep{}
+	scenarioSteps := []*scenariopb.ScenarioStep{}
 	for _, step := range scenario.Spec.Steps {
-		scenarioSteps = append(scenarioSteps, &scenarioProto.ScenarioStep{Title: step.Title, Content: step.Content})
+		scenarioSteps = append(scenarioSteps, &scenariopb.ScenarioStep{Title: step.Title, Content: step.Content})
 	}
 
-	vms := []*general.StringMap{}
+	vms := []*generalpb.StringMap{}
 	for _, vm := range scenario.Spec.VirtualMachines {
-		vms = append(vms, &general.StringMap{Value: vm})
+		vms = append(vms, &generalpb.StringMap{Value: vm})
 	}
 
-	vmTasks := []*scenarioProto.VirtualMachineTasks{}
+	vmTasks := []*scenariopb.VirtualMachineTasks{}
 	for _, vmtask := range scenario.Spec.Tasks {
-		tasks := []*scenarioProto.Task{}
+		tasks := []*scenariopb.Task{}
 		for _, task := range vmtask.Tasks {
-			tasks = append(tasks, &scenarioProto.Task{
+			tasks = append(tasks, &scenariopb.Task{
 				Name:                task.Name,
 				Description:         task.Description,
 				Command:             task.Command,
@@ -157,13 +157,13 @@ func (s *GrpcScenarioServer) GetScenario(ctx context.Context, req *general.GetRe
 				ReturnType:          task.ReturnType,
 			})
 		}
-		vmTasks = append(vmTasks, &scenarioProto.VirtualMachineTasks{
+		vmTasks = append(vmTasks, &scenariopb.VirtualMachineTasks{
 			VmId:  vmtask.VMName,
 			Tasks: tasks,
 		})
 	}
 
-	return &scenarioProto.Scenario{
+	return &scenariopb.Scenario{
 		Id:                scenario.Name,
 		Uid:               string(scenario.UID),
 		Name:              scenario.Spec.Name,
@@ -180,10 +180,10 @@ func (s *GrpcScenarioServer) GetScenario(ctx context.Context, req *general.GetRe
 	}, nil
 }
 
-func (s *GrpcScenarioServer) UpdateScenario(ctx context.Context, req *scenarioProto.UpdateScenarioRequest) (*empty.Empty, error) {
+func (s *GrpcScenarioServer) UpdateScenario(ctx context.Context, req *scenariopb.UpdateScenarioRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 	name := req.GetName()
 	description := req.GetDescription()
@@ -270,25 +270,25 @@ func (s *GrpcScenarioServer) UpdateScenario(ctx context.Context, req *scenarioPr
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			req,
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcScenarioServer) DeleteScenario(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (s *GrpcScenarioServer) DeleteScenario(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.DeleteHfResource(ctx, req, s.scenarioClient, "scenario")
 }
 
-func (s *GrpcScenarioServer) DeleteCollectionScenario(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
+func (s *GrpcScenarioServer) DeleteCollectionScenario(ctx context.Context, listOptions *generalpb.ListOptions) (*emptypb.Empty, error) {
 	return util.DeleteHfCollection(ctx, listOptions, s.scenarioClient, "scenarios")
 }
 
-func (s *GrpcScenarioServer) ListScenario(ctx context.Context, listOptions *general.ListOptions) (*scenarioProto.ListScenariosResponse, error) {
+func (s *GrpcScenarioServer) ListScenario(ctx context.Context, listOptions *generalpb.ListOptions) (*scenariopb.ListScenariosResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var scenarios []hfv1.Scenario
 	var err error
@@ -303,28 +303,28 @@ func (s *GrpcScenarioServer) ListScenario(ctx context.Context, listOptions *gene
 	}
 	if err != nil {
 		glog.Error(err)
-		return &scenarioProto.ListScenariosResponse{}, err
+		return &scenariopb.ListScenariosResponse{}, err
 	}
 
-	preparedScenarios := []*scenarioProto.Scenario{}
+	preparedScenarios := []*scenariopb.Scenario{}
 
 	for _, scenario := range scenarios {
 
-		scenarioSteps := []*scenarioProto.ScenarioStep{}
+		scenarioSteps := []*scenariopb.ScenarioStep{}
 		for _, step := range scenario.Spec.Steps {
-			scenarioSteps = append(scenarioSteps, &scenarioProto.ScenarioStep{Title: step.Title, Content: step.Content})
+			scenarioSteps = append(scenarioSteps, &scenariopb.ScenarioStep{Title: step.Title, Content: step.Content})
 		}
 
-		vms := []*general.StringMap{}
+		vms := []*generalpb.StringMap{}
 		for _, vm := range scenario.Spec.VirtualMachines {
-			vms = append(vms, &general.StringMap{Value: vm})
+			vms = append(vms, &generalpb.StringMap{Value: vm})
 		}
 
-		vmTasks := []*scenarioProto.VirtualMachineTasks{}
+		vmTasks := []*scenariopb.VirtualMachineTasks{}
 		for _, vmtask := range scenario.Spec.Tasks {
-			tasks := []*scenarioProto.Task{}
+			tasks := []*scenariopb.Task{}
 			for _, task := range vmtask.Tasks {
-				tasks = append(tasks, &scenarioProto.Task{
+				tasks = append(tasks, &scenariopb.Task{
 					Name:                task.Name,
 					Description:         task.Description,
 					Command:             task.Command,
@@ -333,13 +333,13 @@ func (s *GrpcScenarioServer) ListScenario(ctx context.Context, listOptions *gene
 					ReturnType:          task.ReturnType,
 				})
 			}
-			vmTasks = append(vmTasks, &scenarioProto.VirtualMachineTasks{
+			vmTasks = append(vmTasks, &scenariopb.VirtualMachineTasks{
 				VmId:  vmtask.VMName,
 				Tasks: tasks,
 			})
 		}
 
-		preparedScenarios = append(preparedScenarios, &scenarioProto.Scenario{
+		preparedScenarios = append(preparedScenarios, &scenariopb.Scenario{
 			Id:                scenario.Name,
 			Uid:               string(scenario.UID),
 			Name:              scenario.Spec.Name,
@@ -356,5 +356,5 @@ func (s *GrpcScenarioServer) ListScenario(ctx context.Context, listOptions *gene
 		})
 	}
 
-	return &scenarioProto.ListScenariosResponse{Scenarios: preparedScenarios}, nil
+	return &scenariopb.ListScenariosResponse{Scenarios: preparedScenarios}, nil
 }

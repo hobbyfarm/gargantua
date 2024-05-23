@@ -24,9 +24,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
-	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	userpb "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/sync/semaphore"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,8 +34,8 @@ import (
 )
 
 type ShellProxy struct {
-	authnClient authn.AuthNClient
-	authrClient authr.AuthRClient
+	authnClient authnpb.AuthNClient
+	authrClient authrpb.AuthRClient
 	vmClient    *vmclient.VirtualMachineClient
 	hfClient    hfClientset.Interface
 	kubeClient  kubernetes.Interface
@@ -78,7 +78,7 @@ func init() {
 	SIGWINCH = regexp.MustCompile(`.*\[8;(.*);(.*)t`)
 }
 
-func NewShellProxy(authnClient authn.AuthNClient, authrClient authr.AuthRClient, vmClient *vmclient.VirtualMachineClient, hfClientSet hfClientset.Interface, kubeClient kubernetes.Interface, ctx context.Context) (*ShellProxy, error) {
+func NewShellProxy(authnClient authnpb.AuthNClient, authrClient authrpb.AuthRClient, vmClient *vmclient.VirtualMachineClient, hfClientSet hfClientset.Interface, kubeClient kubernetes.Interface, ctx context.Context) (*ShellProxy, error) {
 	shellProxy := ShellProxy{}
 
 	shellProxy.authnClient = authnClient
@@ -146,16 +146,16 @@ func (sp ShellProxy) checkCookieAndProxy(w http.ResponseWriter, r *http.Request)
 	sp.proxy(w, r, user)
 }
 
-func (sp ShellProxy) proxyAuth(w http.ResponseWriter, r *http.Request, token string) (*userProto.User, error) {
+func (sp ShellProxy) proxyAuth(w http.ResponseWriter, r *http.Request, token string) (*userpb.User, error) {
 	r.Header.Add("Authorization", "Bearer "+token)
 	user, err := rbac2.AuthenticateRequest(r, sp.authnClient)
 	if err != nil {
-		return &userProto.User{}, err
+		return &userpb.User{}, err
 	}
 	return user, nil
 }
 
-func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userProto.User) {
+func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.User) {
 
 	vars := mux.Vars(r)
 	// Check if variable for vm id was passed in
@@ -176,7 +176,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userPro
 	if vm.Spec.UserId != user.GetId() {
 		// check if the user has access to user sessions
 		impersonatedUserId := user.GetId()
-		authrResponse, err := rbac2.Authorize(r, sp.authrClient, impersonatedUserId, []*authr.Permission{
+		authrResponse, err := rbac2.Authorize(r, sp.authrClient, impersonatedUserId, []*authrpb.Permission{
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralUser, rbac2.VerbGet),
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralSession, rbac2.VerbGet),
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralVM, rbac2.VerbGet),
@@ -677,7 +677,7 @@ func CreateNewSession(sshConn *ssh.Client, errorChan chan<- error) (*ssh.Session
 	return sess, nil
 }
 
-func (sp ShellProxy) GetSSHConn(w http.ResponseWriter, r *http.Request, user *userProto.User, vmId string, errorChan chan<- error) (*ssh.Client, error) {
+func (sp ShellProxy) GetSSHConn(w http.ResponseWriter, r *http.Request, user *userpb.User, vmId string, errorChan chan<- error) (*ssh.Client, error) {
 
 	vm, err := sp.vmClient.GetVirtualMachineById(vmId)
 
@@ -692,7 +692,7 @@ func (sp ShellProxy) GetSSHConn(w http.ResponseWriter, r *http.Request, user *us
 		// check if the user has access to access user sessions
 		// TODO: add permission like 'virtualmachine/shell' similar to 'pod/exec'
 		impersonatedUserId := user.GetId()
-		authrResponse, err := rbac2.Authorize(r, sp.authrClient, impersonatedUserId, []*authr.Permission{
+		authrResponse, err := rbac2.Authorize(r, sp.authrClient, impersonatedUserId, []*authrpb.Permission{
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralUser, rbac2.VerbGet),
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralSession, rbac2.VerbGet),
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralVM, rbac2.VerbGet),
@@ -856,7 +856,7 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 		// check if the user has access to access user sessions
 		// TODO: add permission like 'virtualmachine/shell' similar to 'pod/exec'
 		impersonatedUserId := user.GetId()
-		authrResponse, err := rbac2.Authorize(r, sp.authrClient, impersonatedUserId, []*authr.Permission{
+		authrResponse, err := rbac2.Authorize(r, sp.authrClient, impersonatedUserId, []*authrpb.Permission{
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralUser, rbac2.VerbGet),
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralSession, rbac2.VerbGet),
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralVM, rbac2.VerbGet),

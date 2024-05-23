@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: environment/environment.proto
 
-package environment
+package environmentpb
 
 import (
 	context "context"

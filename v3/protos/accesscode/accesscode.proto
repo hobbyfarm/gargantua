@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package accesscode;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/accesscode";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/accesscode;accesscodepb";
 
 import "general/general.proto";
 import "google/protobuf/empty.proto";

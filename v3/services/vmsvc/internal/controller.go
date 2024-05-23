@@ -11,17 +11,17 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	controllers "github.com/hobbyfarm/gargantua/v3/pkg/microservices/controller"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	terraformpb "github.com/hobbyfarm/gargantua/v3/protos/terraform"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/golang/glog"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
-	environmentProto "github.com/hobbyfarm/gargantua/v3/protos/environment"
-	vmProto "github.com/hobbyfarm/gargantua/v3/protos/vm"
-	vmclaimProto "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
-	vmsetProto "github.com/hobbyfarm/gargantua/v3/protos/vmset"
-	vmtemplateProto "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
+	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	vmclaimpb "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
+	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
+	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 	k8sv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -39,23 +39,23 @@ type VMController struct {
 	controllers.Reconciler
 	internalVmServer  *GrpcVMServer
 	configMapClient   corev1.ConfigMapInterface
-	environmentClient environmentProto.EnvironmentSvcClient
+	environmentClient environmentpb.EnvironmentSvcClient
 	secretClient      corev1.SecretInterface
 	terraformClient   terraformpb.TerraformSvcClient
-	vmClaimClient     vmclaimProto.VMClaimSvcClient
-	vmSetClient       vmsetProto.VMSetSvcClient
-	vmTemplateClient  vmtemplateProto.VMTemplateSvcClient
+	vmClaimClient     vmclaimpb.VMClaimSvcClient
+	vmSetClient       vmsetpb.VMSetSvcClient
+	vmTemplateClient  vmtemplatepb.VMTemplateSvcClient
 }
 
 func NewVMController(
 	kubeClient *kubernetes.Clientset,
 	internalVmServer *GrpcVMServer,
 	hfInformerFactory hfInformers.SharedInformerFactory,
-	environmentClient environmentProto.EnvironmentSvcClient,
+	environmentClient environmentpb.EnvironmentSvcClient,
 	terraformClient terraformpb.TerraformSvcClient,
-	vmClaimClient vmclaimProto.VMClaimSvcClient,
-	vmSetClient vmsetProto.VMSetSvcClient,
-	vmTemplateClient vmtemplateProto.VMTemplateSvcClient,
+	vmClaimClient vmclaimpb.VMClaimSvcClient,
+	vmSetClient vmsetpb.VMSetSvcClient,
+	vmTemplateClient vmtemplatepb.VMTemplateSvcClient,
 	ctx context.Context,
 ) (*VMController, error) {
 	kubeClient.CoreV1().ConfigMaps("")
@@ -88,7 +88,7 @@ func NewVMController(
 func (v *VMController) Reconcile(objName string) error {
 	glog.V(8).Infof("reconciling vm %s inside vm controller", objName)
 	// fetch vm
-	vm, err := v.internalVmServer.GetVM(v.Context, &general.GetRequest{Id: objName})
+	vm, err := v.internalVmServer.GetVM(v.Context, &generalpb.GetRequest{Id: objName})
 	if err != nil {
 		if hferrors.IsGrpcNotFound(err) {
 			glog.Infof("vm %s not found on queue.. ignoring", objName)
@@ -102,7 +102,7 @@ func (v *VMController) Reconcile(objName string) error {
 	// trigger reconcile on vmClaims only when associated VM is running
 	// this should avoid triggering unwanted reconciles of VMClaims until the VM's are running
 	if vm.GetVmClaimId() != "" && vm.GetStatus().GetStatus() == string(hfv1.VmStatusRunning) {
-		v.vmClaimClient.AddToWorkqueue(v.Context, &general.ResourceId{Id: vm.GetVmClaimId()})
+		v.vmClaimClient.AddToWorkqueue(v.Context, &generalpb.ResourceId{Id: vm.GetVmClaimId()})
 	}
 	if vm.GetStatus().GetTainted() && vm.GetDeletionTimestamp() == nil {
 		err, requeue := v.deleteVM(vm)
@@ -127,8 +127,8 @@ func (v *VMController) handleRequeue(err error, requeue bool, vmId string) {
 }
 
 // returns an error and a boolean of requeue
-func (v *VMController) deleteVM(vm *vmProto.VM) (error, bool) {
-	_, deleteVMErr := v.internalVmServer.DeleteVM(v.Context, &general.ResourceId{Id: vm.GetId()})
+func (v *VMController) deleteVM(vm *vmpb.VM) (error, bool) {
+	_, deleteVMErr := v.internalVmServer.DeleteVM(v.Context, &generalpb.ResourceId{Id: vm.GetId()})
 	if deleteVMErr != nil {
 		return fmt.Errorf("there was an error while deleting the virtual machine %s", vm.GetId()), true
 	}
@@ -137,18 +137,18 @@ func (v *VMController) deleteVM(vm *vmProto.VM) (error, bool) {
 }
 
 // returns an error and a boolean of requeue
-func (v *VMController) handleDeletion(vm *vmProto.VM) (error, bool) {
+func (v *VMController) handleDeletion(vm *vmpb.VM) (error, bool) {
 	if vm.GetVmSetId() != "" && util.ContainsFinalizer(vm.GetFinalizers(), vmSetFinalizer) {
 		glog.V(4).Infof("requeuing vmset %s to account for tainted vm %s", vm.GetVmSetId(), vm.GetId())
 		updatedVmFinalizers := util.RemoveFinalizer(vm.GetFinalizers(), vmSetFinalizer)
-		_, err := v.internalVmServer.UpdateVM(v.Context, &vmProto.UpdateVMRequest{Id: vm.GetId(), Finalizers: &general.StringArray{
+		_, err := v.internalVmServer.UpdateVM(v.Context, &vmpb.UpdateVMRequest{Id: vm.GetId(), Finalizers: &generalpb.StringArray{
 			Values: updatedVmFinalizers,
 		}})
 		if err != nil {
 			glog.Errorf("error removing vm finalizer on vm %s", vm.GetId())
 			return err, true
 		}
-		v.vmSetClient.AddToWorkqueue(v.Context, &general.ResourceId{Id: vm.GetVmSetId()})
+		v.vmSetClient.AddToWorkqueue(v.Context, &generalpb.ResourceId{Id: vm.GetVmSetId()})
 		// We do not need to manually requeue this vm if it is updated successfully. The controller picks up update events by design.
 		return nil, false
 	}
@@ -157,7 +157,7 @@ func (v *VMController) handleDeletion(vm *vmProto.VM) (error, bool) {
 		return v.updateAndVerifyVMDeletion(vm)
 	}
 
-	_, err := v.terraformClient.DeleteState(v.Context, &general.ResourceId{Id: vm.GetStatus().GetTfstate()})
+	_, err := v.terraformClient.DeleteState(v.Context, &generalpb.ResourceId{Id: vm.GetStatus().GetTfstate()})
 	if hferrors.IsGrpcNotFound(err) {
 		// Our vm has no associated terraform state (anymore). Let's remove its remaining finalizers!
 		return v.updateAndVerifyVMDeletion(vm)
@@ -172,7 +172,7 @@ func (v *VMController) handleDeletion(vm *vmProto.VM) (error, bool) {
 }
 
 // returns an error and a boolean of requeue
-func (v *VMController) updateAndVerifyVMDeletion(vm *vmProto.VM) (error, bool) {
+func (v *VMController) updateAndVerifyVMDeletion(vm *vmpb.VM) (error, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -182,9 +182,9 @@ func (v *VMController) updateAndVerifyVMDeletion(vm *vmProto.VM) (error, bool) {
 	go func() {
 		resultCh <- util.VerifyDeletion(ctx, v.internalVmServer.vmClient, vm.GetId())
 	}()
-	_, err := v.internalVmServer.UpdateVM(v.Context, &vmProto.UpdateVMRequest{
+	_, err := v.internalVmServer.UpdateVM(v.Context, &vmpb.UpdateVMRequest{
 		Id:         vm.GetId(),
-		Finalizers: &general.StringArray{Values: []string{}},
+		Finalizers: &generalpb.StringArray{Values: []string{}},
 	})
 	if err != nil {
 		// Something went wrong while removing the remaining finalizers. Let's requeue and try again.
@@ -204,7 +204,7 @@ func (v *VMController) updateAndVerifyVMDeletion(vm *vmProto.VM) (error, bool) {
 }
 
 // returns an error and a boolean of requeue
-func (v *VMController) handleProvision(vm *vmProto.VM) (error, bool) {
+func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 	// VM shall not be provisioned by internal terraform controller
 	if !vm.GetProvision() {
 		if prov, ok := vm.GetLabels()["hobbyfarm.io/provisioner"]; ok && prov != "" {
@@ -216,12 +216,12 @@ func (v *VMController) handleProvision(vm *vmProto.VM) (error, bool) {
 	}
 	//Status is ReadyForProvisioning AND No Secret provided (Do not provision VM twice, happens due to vm.status being updated after vm.status)
 	if vm.Status.Status == string(hfv1.VmStatusRFP) {
-		vmt, err := v.vmTemplateClient.GetVMTemplate(v.Context, &general.GetRequest{Id: vm.GetVmTemplateId(), LoadFromCache: true})
+		vmt, err := v.vmTemplateClient.GetVMTemplate(v.Context, &generalpb.GetRequest{Id: vm.GetVmTemplateId(), LoadFromCache: true})
 		if err != nil {
 			glog.Errorf("error getting vmt %v", err)
 			return err, true
 		}
-		env, err := v.environmentClient.GetEnvironment(v.Context, &general.GetRequest{Id: vm.GetStatus().GetEnvironmentId(), LoadFromCache: true})
+		env, err := v.environmentClient.GetEnvironment(v.Context, &generalpb.GetRequest{Id: vm.GetStatus().GetEnvironmentId(), LoadFromCache: true})
 		if err != nil {
 			glog.Errorf("error getting env %v", err)
 			return err, true
@@ -332,7 +332,7 @@ func (v *VMController) handleProvision(vm *vmProto.VM) (error, bool) {
 			glog.Errorf("error creating tfs %v", err)
 		}
 
-		_, err = v.internalVmServer.UpdateVMStatus(v.Context, &vmProto.UpdateVMStatusRequest{
+		_, err = v.internalVmServer.UpdateVMStatus(v.Context, &vmpb.UpdateVMStatusRequest{
 			Id:      vm.GetId(),
 			Status:  string(hfv1.VmStatusProvisioned),
 			Tfstate: tfsId.GetId(),
@@ -347,10 +347,10 @@ func (v *VMController) handleProvision(vm *vmProto.VM) (error, bool) {
 		} else {
 			updatedFinalizers = []string{"vm.controllers.hobbyfarm.io"}
 		}
-		_, err = v.internalVmServer.UpdateVM(v.Context, &vmProto.UpdateVMRequest{
+		_, err = v.internalVmServer.UpdateVM(v.Context, &vmpb.UpdateVMRequest{
 			Id:         vm.GetId(),
 			SecretName: keypair.Name,
-			Finalizers: &general.StringArray{Values: updatedFinalizers},
+			Finalizers: &generalpb.StringArray{Values: updatedFinalizers},
 		})
 		if err != nil {
 			return err, true
@@ -375,7 +375,7 @@ func (v *VMController) handleProvision(vm *vmProto.VM) (error, bool) {
 		}
 
 		labelSelectorString := labels.Set{"state": string(vm.GetStatus().GetTfstate())}.AsSelector().String()
-		tfExecsList, err := v.terraformClient.ListExecution(v.Context, &general.ListOptions{
+		tfExecsList, err := v.terraformClient.ListExecution(v.Context, &generalpb.ListOptions{
 			LabelSelector: labelSelectorString,
 		})
 
@@ -420,7 +420,7 @@ func (v *VMController) handleProvision(vm *vmProto.VM) (error, bool) {
 		if err != nil {
 			glog.Error(err)
 		}
-		env, err := v.environmentClient.GetEnvironment(v.Context, &general.GetRequest{
+		env, err := v.environmentClient.GetEnvironment(v.Context, &generalpb.GetRequest{
 			Id:            vm.GetStatus().GetEnvironmentId(),
 			LoadFromCache: true,
 		})
@@ -437,7 +437,7 @@ func (v *VMController) handleProvision(vm *vmProto.VM) (error, bool) {
 			publicIP = translatePrivToPub(env.GetIpTranslationMap(), tfOutput["private_ip"]["value"])
 		}
 
-		_, err = v.internalVmServer.UpdateVMStatus(v.Context, &vmProto.UpdateVMStatusRequest{
+		_, err = v.internalVmServer.UpdateVMStatus(v.Context, &vmpb.UpdateVMStatusRequest{
 			Id:        vm.GetId(),
 			Status:    string(hfv1.VmStatusRunning),
 			PublicIp:  wrapperspb.String(publicIP),

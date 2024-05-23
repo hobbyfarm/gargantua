@@ -3,11 +3,10 @@ package courseservice
 import (
 	"context"
 
-	courseProto "github.com/hobbyfarm/gargantua/v3/protos/course"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
+	coursepb "github.com/hobbyfarm/gargantua/v3/protos/course"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
@@ -16,13 +15,14 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/emptypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 type GrpcCourseServer struct {
-	courseProto.UnimplementedCourseSvcServer
+	coursepb.UnimplementedCourseSvcServer
 	courseClient hfClientsetv1.CourseInterface
 	courseLister listersv1.CourseLister
 	courseSynced cache.InformerSynced
@@ -36,7 +36,7 @@ func NewGrpcCourseServer(hfClientSet hfClientset.Interface, hfInformerFactory hf
 	}
 }
 
-func (c *GrpcCourseServer) CreateCourse(ctx context.Context, req *courseProto.CreateCourseRequest) (*empty.Empty, error) {
+func (c *GrpcCourseServer) CreateCourse(ctx context.Context, req *coursepb.CreateCourseRequest) (*emptypb.Empty, error) {
 	name := req.GetName()
 	description := req.GetDescription()
 	rawScenarios := req.GetRawScenarios()
@@ -53,7 +53,7 @@ func (c *GrpcCourseServer) CreateCourse(ctx context.Context, req *courseProto.Cr
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &empty.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &emptypb.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 
@@ -76,48 +76,48 @@ func (c *GrpcCourseServer) CreateCourse(ctx context.Context, req *courseProto.Cr
 	if rawScenarios != "" {
 		scenarios, err := util.GenericUnmarshal[[]string](rawScenarios, "rawScenarios")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "rawScenarios")
+			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "rawScenarios")
 		}
 		course.Spec.Scenarios = scenarios
 	}
 	if rawCategories != "" {
 		categories, err := util.GenericUnmarshal[[]string](rawCategories, "rawCategories")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "rawCategories")
+			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "rawCategories")
 		}
 		course.Spec.Categories = categories
 	}
 	if rawVirtualMachines != "" {
 		vms, err := util.GenericUnmarshal[[]map[string]string](rawVirtualMachines, "rawVirtualMachines")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "rawVirtualMachines")
+			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "rawVirtualMachines")
 		}
 		course.Spec.VirtualMachines = vms
 	}
 
 	_, err := c.courseClient.Create(ctx, course, metav1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (c *GrpcCourseServer) GetCourse(ctx context.Context, req *general.GetRequest) (*courseProto.Course, error) {
+func (c *GrpcCourseServer) GetCourse(ctx context.Context, req *generalpb.GetRequest) (*coursepb.Course, error) {
 	course, err := util.GenericHfGetter(ctx, req, c.courseClient, c.courseLister.Courses(util.GetReleaseNamespace()), "course", c.courseSynced())
 	if err != nil {
-		return &courseProto.Course{}, err
+		return &coursepb.Course{}, err
 	}
 
-	vms := []*general.StringMap{}
+	vms := []*generalpb.StringMap{}
 	for _, vm := range course.Spec.VirtualMachines {
-		vms = append(vms, &general.StringMap{Value: vm})
+		vms = append(vms, &generalpb.StringMap{Value: vm})
 	}
 
-	return &courseProto.Course{
+	return &coursepb.Course{
 		Id:                course.Name,
 		Uid:               string(course.UID),
 		Name:              course.Spec.Name,
@@ -132,10 +132,10 @@ func (c *GrpcCourseServer) GetCourse(ctx context.Context, req *general.GetReques
 	}, nil
 }
 
-func (s *GrpcCourseServer) UpdateCourse(ctx context.Context, req *courseProto.UpdateCourseRequest) (*empty.Empty, error) {
+func (s *GrpcCourseServer) UpdateCourse(ctx context.Context, req *coursepb.UpdateCourseRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 	name := req.GetName()
 	description := req.GetDescription()
@@ -203,25 +203,25 @@ func (s *GrpcCourseServer) UpdateCourse(ctx context.Context, req *courseProto.Up
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			req,
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcCourseServer) DeleteCourse(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (s *GrpcCourseServer) DeleteCourse(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.DeleteHfResource(ctx, req, s.courseClient, "course")
 }
 
-func (s *GrpcCourseServer) DeleteCollectionCourse(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
+func (s *GrpcCourseServer) DeleteCollectionCourse(ctx context.Context, listOptions *generalpb.ListOptions) (*emptypb.Empty, error) {
 	return util.DeleteHfCollection(ctx, listOptions, s.courseClient, "courses")
 }
 
-func (s *GrpcCourseServer) ListCourse(ctx context.Context, listOptions *general.ListOptions) (*courseProto.ListCoursesResponse, error) {
+func (s *GrpcCourseServer) ListCourse(ctx context.Context, listOptions *generalpb.ListOptions) (*coursepb.ListCoursesResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var courses []hfv1.Course
 	var err error
@@ -236,19 +236,19 @@ func (s *GrpcCourseServer) ListCourse(ctx context.Context, listOptions *general.
 	}
 	if err != nil {
 		glog.Error(err)
-		return &courseProto.ListCoursesResponse{}, err
+		return &coursepb.ListCoursesResponse{}, err
 	}
 
-	preparedCourses := []*courseProto.Course{}
+	preparedCourses := []*coursepb.Course{}
 
 	for _, course := range courses {
 
-		vms := []*general.StringMap{}
+		vms := []*generalpb.StringMap{}
 		for _, vm := range course.Spec.VirtualMachines {
-			vms = append(vms, &general.StringMap{Value: vm})
+			vms = append(vms, &generalpb.StringMap{Value: vm})
 		}
 
-		preparedCourses = append(preparedCourses, &courseProto.Course{
+		preparedCourses = append(preparedCourses, &coursepb.Course{
 			Id:                course.Name,
 			Uid:               string(course.UID),
 			Name:              course.Spec.Name,
@@ -263,5 +263,5 @@ func (s *GrpcCourseServer) ListCourse(ctx context.Context, listOptions *general.
 		})
 	}
 
-	return &courseProto.ListCoursesResponse{Courses: preparedCourses}, nil
+	return &coursepb.ListCoursesResponse{Courses: preparedCourses}, nil
 }

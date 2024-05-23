@@ -8,20 +8,20 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"google.golang.org/grpc/codes"
-	empty "google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/emptypb"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
 
-func (rs *GrpcRbacServer) CreateRole(c context.Context, cr *rbacProto.Role) (*empty.Empty, error) {
+func (rs *GrpcRbacServer) CreateRole(c context.Context, cr *rbacpb.Role) (*emptypb.Empty, error) {
 	role, err := marshalRole(cr)
 	if err != nil {
 		glog.Errorf("invalid role: %v", err)
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"invalid role",
 			cr,
@@ -31,17 +31,17 @@ func (rs *GrpcRbacServer) CreateRole(c context.Context, cr *rbacProto.Role) (*em
 	_, err = rs.roleClient.Create(c, role, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating role in kubernetes: %v", err)
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error creating role",
 			cr,
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) GetRole(c context.Context, gr *general.GetRequest) (*rbacProto.Role, error) {
+func (rs *GrpcRbacServer) GetRole(c context.Context, gr *generalpb.GetRequest) (*rbacpb.Role, error) {
 	role, err := rs.getRole(c, gr)
 	if err != nil {
 		return nil, err
@@ -49,11 +49,11 @@ func (rs *GrpcRbacServer) GetRole(c context.Context, gr *general.GetRequest) (*r
 	return unmarshalRole(role), nil
 }
 
-func (rs *GrpcRbacServer) UpdateRole(c context.Context, ur *rbacProto.Role) (*empty.Empty, error) {
+func (rs *GrpcRbacServer) UpdateRole(c context.Context, ur *rbacpb.Role) (*emptypb.Empty, error) {
 	role, err := marshalRole(ur)
 	if err != nil {
 		glog.Errorf("invalid role: %v", err)
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"invalid role",
 			ur,
@@ -74,25 +74,25 @@ func (rs *GrpcRbacServer) UpdateRole(c context.Context, ur *rbacProto.Role) (*em
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, retryErr
+		return &emptypb.Empty{}, retryErr
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) DeleteRole(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (rs *GrpcRbacServer) DeleteRole(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	// we want to get the role first as this allows us to run it through the various checks before we attempt deletion
 	// most important of which is checking that we have labeled it correctly
 	// but it doesn't hurt to check if it exists before
-	_, err := rs.getRole(ctx, &general.GetRequest{Id: req.GetId()})
+	_, err := rs.getRole(ctx, &generalpb.GetRequest{Id: req.GetId()})
 	if err != nil {
-		return &empty.Empty{}, err
+		return &emptypb.Empty{}, err
 	}
 
 	return util.DeleteHfResource(ctx, req, rs.roleClient, "role")
 }
 
-func (rs *GrpcRbacServer) ListRole(ctx context.Context, listOptions *general.ListOptions) (*rbacProto.Roles, error) {
+func (rs *GrpcRbacServer) ListRole(ctx context.Context, listOptions *generalpb.ListOptions) (*rbacpb.Roles, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var roles []rbacv1.Role
 	var err error
@@ -107,19 +107,19 @@ func (rs *GrpcRbacServer) ListRole(ctx context.Context, listOptions *general.Lis
 	}
 	if err != nil {
 		glog.Error(err)
-		return &rbacProto.Roles{}, err
+		return &rbacpb.Roles{}, err
 	}
 
-	var preparedRoles = make([]*rbacProto.Role, 0)
+	var preparedRoles = make([]*rbacpb.Role, 0)
 	for _, r := range roles {
 		pr := unmarshalRole(&r)
 		preparedRoles = append(preparedRoles, pr)
 	}
 
-	return &rbacProto.Roles{Roles: preparedRoles}, nil
+	return &rbacpb.Roles{Roles: preparedRoles}, nil
 }
 
-func marshalRole(preparedRole *rbacProto.Role) (*rbacv1.Role, error) {
+func marshalRole(preparedRole *rbacpb.Role) (*rbacv1.Role, error) {
 	role := rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      preparedRole.GetName(),
@@ -148,12 +148,12 @@ func marshalRole(preparedRole *rbacProto.Role) (*rbacv1.Role, error) {
 	return &role, nil
 }
 
-func unmarshalRole(role *rbacv1.Role) (preparedRole *rbacProto.Role) {
-	preparedRole = &rbacProto.Role{}
+func unmarshalRole(role *rbacv1.Role) (preparedRole *rbacpb.Role) {
+	preparedRole = &rbacpb.Role{}
 	preparedRole.Name = role.Name
 
 	for _, r := range role.Rules {
-		preparedRole.Rules = append(preparedRole.Rules, &rbacProto.Rule{
+		preparedRole.Rules = append(preparedRole.Rules, &rbacpb.Rule{
 			Resources: r.Resources,
 			Verbs:     r.Verbs,
 			ApiGroups: r.APIGroups,
@@ -163,7 +163,7 @@ func unmarshalRole(role *rbacv1.Role) (preparedRole *rbacProto.Role) {
 	return preparedRole
 }
 
-func (rs *GrpcRbacServer) getRole(ctx context.Context, req *general.GetRequest) (*rbacv1.Role, error) {
+func (rs *GrpcRbacServer) getRole(ctx context.Context, req *generalpb.GetRequest) (*rbacv1.Role, error) {
 	role, err := util.GenericHfGetter(ctx, req, rs.roleClient, rs.roleLister.Roles(util.GetReleaseNamespace()), "role", rs.roleSynced())
 	if err != nil {
 		return &rbacv1.Role{}, err

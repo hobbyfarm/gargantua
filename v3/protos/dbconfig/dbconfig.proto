@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package dbconfig;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/dbconfig";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/dbconfig;dbconfigpb";
 
 import "general/general.proto";
 import "google/protobuf/empty.proto";

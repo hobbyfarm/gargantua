@@ -16,16 +16,16 @@ import (
 
 	"github.com/golang/glog"
 	controllers "github.com/hobbyfarm/gargantua/v3/pkg/microservices/controller"
-	accesscodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
-	dbconfigProto "github.com/hobbyfarm/gargantua/v3/protos/dbconfig"
-	environmentProto "github.com/hobbyfarm/gargantua/v3/protos/environment"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	progressProto "github.com/hobbyfarm/gargantua/v3/protos/progress"
-	scheduledeventProto "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
-	sessionProto "github.com/hobbyfarm/gargantua/v3/protos/session"
-	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
-	vmsetProto "github.com/hobbyfarm/gargantua/v3/protos/vmset"
-	vmtemplateProto "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	dbconfigpb "github.com/hobbyfarm/gargantua/v3/protos/dbconfig"
+	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	progresspb "github.com/hobbyfarm/gargantua/v3/protos/progress"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
+	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
+	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
+	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
+	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/workqueue"
@@ -35,14 +35,14 @@ type ScheduledEventController struct {
 	controllers.RateLimitingWorkqueueController
 	controllers.Reconciler
 	internalScheduledEventServer *GrpcScheduledEventServer
-	accessCodeClient             accesscodeProto.AccessCodeSvcClient
-	sessionClient                sessionProto.SessionSvcClient
-	progressClient               progressProto.ProgressSvcClient
-	environmentClient            environmentProto.EnvironmentSvcClient
-	dbConfigClient               dbconfigProto.DynamicBindConfigSvcClient
-	vmSetClient                  vmsetProto.VMSetSvcClient
-	vmTemplateClient             vmtemplateProto.VMTemplateSvcClient
-	settingClient                settingProto.SettingSvcClient
+	accessCodeClient             accesscodepb.AccessCodeSvcClient
+	sessionClient                sessionpb.SessionSvcClient
+	progressClient               progresspb.ProgressSvcClient
+	environmentClient            environmentpb.EnvironmentSvcClient
+	dbConfigClient               dbconfigpb.DynamicBindConfigSvcClient
+	vmSetClient                  vmsetpb.VMSetSvcClient
+	vmTemplateClient             vmtemplatepb.VMTemplateSvcClient
+	settingClient                settingpb.SettingSvcClient
 }
 
 var baseNameScheduledPrefix string
@@ -65,14 +65,14 @@ func NewScheduledEventController(
 	kubeClient *kubernetes.Clientset,
 	internalScheduledEventServer *GrpcScheduledEventServer,
 	hfInformerFactory hfInformers.SharedInformerFactory,
-	acClient accesscodeProto.AccessCodeSvcClient,
-	dbConfigClient dbconfigProto.DynamicBindConfigSvcClient,
-	environmentClient environmentProto.EnvironmentSvcClient,
-	progressClient progressProto.ProgressSvcClient,
-	sessionClient sessionProto.SessionSvcClient,
-	vmSetClient vmsetProto.VMSetSvcClient,
-	vmTemplateClient vmtemplateProto.VMTemplateSvcClient,
-	settingClient settingProto.SettingSvcClient,
+	acClient accesscodepb.AccessCodeSvcClient,
+	dbConfigClient dbconfigpb.DynamicBindConfigSvcClient,
+	environmentClient environmentpb.EnvironmentSvcClient,
+	progressClient progresspb.ProgressSvcClient,
+	sessionClient sessionpb.SessionSvcClient,
+	vmSetClient vmsetpb.VMSetSvcClient,
+	vmTemplateClient vmtemplatepb.VMTemplateSvcClient,
+	settingClient settingpb.SettingSvcClient,
 	ctx context.Context,
 ) (*ScheduledEventController, error) {
 	scheduledEventInformer := hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer()
@@ -116,7 +116,7 @@ func (sc *ScheduledEventController) Reconcile(objName string) error {
 	return nil
 }
 
-func (sc *ScheduledEventController) completeScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) completeScheduledEvent(se *scheduledeventpb.ScheduledEvent) error {
 	glog.V(6).Infof("ScheduledEvent %s is done, deleting corresponding VMSets and marking as finished", se.GetId())
 	// scheduled event is finished, we need to set the scheduled event to finished and delete the vm's
 
@@ -133,7 +133,7 @@ func (sc *ScheduledEventController) completeScheduledEvent(se *scheduledeventPro
 	}
 
 	// update the scheduled event and set the various flags accordingly (provisioned, ready, finished)
-	_, err = sc.internalScheduledEventServer.UpdateScheduledEventStatus(sc.Context, &scheduledeventProto.UpdateScheduledEventStatusRequest{
+	_, err = sc.internalScheduledEventServer.UpdateScheduledEventStatus(sc.Context, &scheduledeventpb.UpdateScheduledEventStatusRequest{
 		Id:          se.GetId(),
 		Provisioned: wrapperspb.Bool(true),
 		Ready:       wrapperspb.Bool(false),
@@ -147,7 +147,7 @@ func (sc *ScheduledEventController) completeScheduledEvent(se *scheduledeventPro
 	return nil // break (return) here because we're done with this SE.
 }
 
-func (sc *ScheduledEventController) deleteScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) deleteScheduledEvent(se *scheduledeventpb.ScheduledEvent) error {
 	glog.V(6).Infof("ScheduledEvent %s is done and retention time is over, deleting SE finally", se.GetId())
 
 	if !se.GetStatus().GetFinished() {
@@ -160,24 +160,24 @@ func (sc *ScheduledEventController) deleteScheduledEvent(se *scheduledeventProto
 		return err
 	}
 
-	_, err = sc.internalScheduledEventServer.DeleteScheduledEvent(sc.Context, &general.ResourceId{Id: se.GetId()})
+	_, err = sc.internalScheduledEventServer.DeleteScheduledEvent(sc.Context, &generalpb.ResourceId{Id: se.GetId()})
 	if err != nil {
 		return err
 	}
 	return nil // break (return) here because we're done with this SE.
 }
 
-func (sc *ScheduledEventController) deleteVMSetsFromScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) deleteVMSetsFromScheduledEvent(se *scheduledeventpb.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
-	_, err := sc.vmSetClient.DeleteCollectionVMSet(sc.Context, &general.ListOptions{
+	_, err := sc.vmSetClient.DeleteCollectionVMSet(sc.Context, &generalpb.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.Name),
 	})
 	return err
 }
 
-func (sc *ScheduledEventController) deleteProgressFromScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) deleteProgressFromScheduledEvent(se *scheduledeventpb.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
-	_, err := sc.progressClient.DeleteCollectionProgress(sc.Context, &general.ListOptions{
+	_, err := sc.progressClient.DeleteCollectionProgress(sc.Context, &generalpb.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.GetId()),
 	})
 	if err != nil {
@@ -189,15 +189,15 @@ func (sc *ScheduledEventController) deleteProgressFromScheduledEvent(se *schedul
 
 func (sc *ScheduledEventController) deleteAccessCode(seId string) error {
 	// delete the access code for the corresponding ScheduledEvent
-	_, err := sc.accessCodeClient.DeleteCollectionAc(sc.Context, &general.ListOptions{
+	_, err := sc.accessCodeClient.DeleteCollectionAc(sc.Context, &generalpb.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, seId),
 	})
 	return err
 }
 
-func (sc *ScheduledEventController) finishSessionsFromScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) finishSessionsFromScheduledEvent(se *scheduledeventpb.ScheduledEvent) error {
 	// get a list of sessions for the user
-	sessionList, err := sc.sessionClient.ListSession(sc.Context, &general.ListOptions{
+	sessionList, err := sc.sessionClient.ListSession(sc.Context, &generalpb.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", hflabels.AccessCodeLabel, se.GetAccessCode()),
 	})
 
@@ -209,7 +209,7 @@ func (sc *ScheduledEventController) finishSessionsFromScheduledEvent(se *schedul
 	now := time.Now().Format(time.UnixDate)
 
 	for _, session := range sessionList.GetSessions() {
-		_, err = sc.sessionClient.UpdateSessionStatus(sc.Context, &sessionProto.UpdateSessionStatusRequest{
+		_, err = sc.sessionClient.UpdateSessionStatus(sc.Context, &sessionpb.UpdateSessionStatusRequest{
 			Id:             session.GetId(),
 			ExpirationTime: now,
 			Active:         wrapperspb.Bool(false),
@@ -223,7 +223,7 @@ func (sc *ScheduledEventController) finishSessionsFromScheduledEvent(se *schedul
 	return nil
 }
 
-func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventpb.ScheduledEvent) error {
 	glog.V(6).Infof("ScheduledEvent %s is ready to be provisioned", se.Name)
 	// start creating resources related to this
 	vmSets := []string{}
@@ -250,7 +250,7 @@ func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventPr
 			for templateName, count := range vmtMap.GetVmTemplateCounts() {
 				if count > 0 { // only setup vmsets if > 0 VMs are requested, and they aren't ondemand
 					//1. Find existing VMset that match this SE and the current environment
-					existingVMSetsList, err := sc.vmSetClient.ListVMSet(sc.Context, &general.ListOptions{
+					existingVMSetsList, err := sc.vmSetClient.ListVMSet(sc.Context, &generalpb.ListOptions{
 						LabelSelector: fmt.Sprintf("%s=%s,%s=%s,virtualmachinetemplate.hobbyfarm.io/%s=true", hflabels.ScheduledEventLabel, se.GetId(), hflabels.EnvironmentLabel, envId, templateName),
 					})
 
@@ -258,7 +258,7 @@ func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventPr
 						vmsRand := fmt.Sprintf("%s-%08x", baseNameScheduledPrefix, rand.Uint32())
 						vmsId := strings.Join([]string{"se", se.Name, "vms", vmsRand}, "-")
 						vmSets = append(vmSets, vmsId)
-						_, err = sc.vmSetClient.CreateVMSet(sc.Context, &vmsetProto.CreateVMSetRequest{
+						_, err = sc.vmSetClient.CreateVMSet(sc.Context, &vmsetpb.CreateVMSetRequest{
 							Id:                  vmsId,
 							Count:               count,
 							Environment:         envId,
@@ -283,7 +283,7 @@ func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventPr
 						existingVMSet := existingVMSetsList.GetVmsets()[0]
 						vmSets = append(vmSets, existingVMSet.GetId())
 
-						_, err = sc.vmSetClient.UpdateVMSet(sc.Context, &vmsetProto.UpdateVMSetRequest{
+						_, err = sc.vmSetClient.UpdateVMSet(sc.Context, &vmsetpb.UpdateVMSetRequest{
 							Id:             existingVMSet.GetId(),
 							Count:          wrapperspb.UInt32(count),
 							RestrictedBind: wrapperspb.Bool(se.GetRestrictedBind()),
@@ -299,7 +299,7 @@ func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventPr
 		}
 
 		// Delete existing DynamicBindConfigurations
-		_, err := sc.dbConfigClient.DeleteCollectionDynamicBindConfig(sc.Context, &general.ListOptions{
+		_, err := sc.dbConfigClient.DeleteCollectionDynamicBindConfig(sc.Context, &generalpb.ListOptions{
 			LabelSelector: fmt.Sprintf("%s=%s,environment=%s", hflabels.ScheduledEventLabel, se.GetId(), envId),
 		})
 		if err != nil {
@@ -307,7 +307,7 @@ func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventPr
 		}
 
 		// create the dynamic bind configurations
-		_, err = sc.dbConfigClient.CreateDynamicBindConfig(sc.Context, &dbconfigProto.CreateDynamicBindConfigRequest{
+		_, err = sc.dbConfigClient.CreateDynamicBindConfig(sc.Context, &dbconfigpb.CreateDynamicBindConfigRequest{
 			SeName:              se.GetId(),
 			SeUid:               se.GetUid(),
 			EnvName:             envId,
@@ -321,7 +321,7 @@ func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventPr
 	}
 
 	// Delete AccessCode if it exists
-	_, err := sc.accessCodeClient.GetAc(sc.Context, &general.GetRequest{
+	_, err := sc.accessCodeClient.GetAc(sc.Context, &generalpb.GetRequest{
 		Id: se.GetAccessCode(),
 	})
 	if err == nil {
@@ -336,9 +336,9 @@ func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventPr
 		return err
 	}
 
-	_, err = sc.internalScheduledEventServer.UpdateScheduledEventStatus(sc.Context, &scheduledeventProto.UpdateScheduledEventStatusRequest{
+	_, err = sc.internalScheduledEventServer.UpdateScheduledEventStatus(sc.Context, &scheduledeventpb.UpdateScheduledEventStatusRequest{
 		Id: se.GetId(),
-		Vmsets: &scheduledeventProto.VMSetsWrapper{
+		Vmsets: &scheduledeventpb.VMSetsWrapper{
 			Value: vmSets,
 		},
 		Provisioned: wrapperspb.Bool(true),
@@ -353,8 +353,8 @@ func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventPr
 	return nil
 }
 
-func (sc *ScheduledEventController) createAccessCode(se *scheduledeventProto.ScheduledEvent) error {
-	_, err := sc.accessCodeClient.CreateAc(sc.Context, &accesscodeProto.CreateAcRequest{
+func (sc *ScheduledEventController) createAccessCode(se *scheduledeventpb.ScheduledEvent) error {
+	_, err := sc.accessCodeClient.CreateAc(sc.Context, &accesscodepb.CreateAcRequest{
 		AcName:              se.GetAccessCode(),
 		SeName:              se.GetId(),
 		SeUid:               se.GetUid(),
@@ -373,10 +373,10 @@ func (sc *ScheduledEventController) createAccessCode(se *scheduledeventProto.Sch
 	return nil
 }
 
-func (sc *ScheduledEventController) verifyScheduledEvent(se *scheduledeventProto.ScheduledEvent) error {
+func (sc *ScheduledEventController) verifyScheduledEvent(se *scheduledeventpb.ScheduledEvent) error {
 	// check the state of the vmset and mark the sevent as ready if everything is OK
 	glog.V(6).Infof("ScheduledEvent %s is in provisioned status, checking status of VMSet Provisioning", se.Name)
-	vmsList, err := sc.vmSetClient.ListVMSet(sc.Context, &general.ListOptions{
+	vmsList, err := sc.vmSetClient.ListVMSet(sc.Context, &generalpb.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.Name),
 	})
 	if err != nil {
@@ -390,7 +390,7 @@ func (sc *ScheduledEventController) verifyScheduledEvent(se *scheduledeventProto
 	}
 
 	// Validate AccessCode existence and has label set
-	ac, err := sc.accessCodeClient.GetAc(sc.Context, &general.GetRequest{Id: se.GetAccessCode()})
+	ac, err := sc.accessCodeClient.GetAc(sc.Context, &generalpb.GetRequest{Id: se.GetAccessCode()})
 	if err != nil {
 		err = sc.createAccessCode(se)
 
@@ -411,7 +411,7 @@ func (sc *ScheduledEventController) verifyScheduledEvent(se *scheduledeventProto
 		}
 	}
 
-	_, err = sc.internalScheduledEventServer.UpdateScheduledEventStatus(sc.Context, &scheduledeventProto.UpdateScheduledEventStatusRequest{
+	_, err = sc.internalScheduledEventServer.UpdateScheduledEventStatus(sc.Context, &scheduledeventpb.UpdateScheduledEventStatusRequest{
 		Id:    se.GetId(),
 		Ready: wrapperspb.Bool(true),
 	})
@@ -427,7 +427,7 @@ func (sc *ScheduledEventController) reconcileScheduledEvent(seName string) error
 
 	// fetch the scheduled event
 
-	se, err := sc.internalScheduledEventServer.GetScheduledEvent(sc.Context, &general.GetRequest{Id: seName})
+	se, err := sc.internalScheduledEventServer.GetScheduledEvent(sc.Context, &generalpb.GetRequest{Id: seName})
 	if err != nil {
 		return err
 	}
@@ -463,9 +463,9 @@ func (sc *ScheduledEventController) reconcileScheduledEvent(seName string) error
 
 	if endTime.Before(now) && se.Status.Finished {
 		// scheduled event is finished and nothing to do
-		setting, err := sc.settingClient.GetSettingValue(sc.Context, &general.ResourceId{Id: string(settingUtil.ScheduledEventRetentionTime)})
+		setting, err := sc.settingClient.GetSettingValue(sc.Context, &generalpb.ResourceId{Id: string(settingUtil.ScheduledEventRetentionTime)})
 
-		if set, ok := setting.GetValue().(*settingProto.SettingValue_Int64Value); err != nil || !ok || setting == nil {
+		if set, ok := setting.GetValue().(*settingpb.SettingValue_Int64Value); err != nil || !ok || setting == nil {
 			return fmt.Errorf("error retreiving retention Time setting")
 		} else {
 			retentionTime := endTime.Add(time.Hour * time.Duration(set.Int64Value))
@@ -479,9 +479,9 @@ func (sc *ScheduledEventController) reconcileScheduledEvent(seName string) error
 	// The ScheduledEvent is set to OnDemand but still has VMSets
 	if se.GetOnDemand() && len(se.GetStatus().GetVmsets()) > 0 {
 		vmSets := []string{}
-		_, err := sc.internalScheduledEventServer.UpdateScheduledEventStatus(sc.Context, &scheduledeventProto.UpdateScheduledEventStatusRequest{
+		_, err := sc.internalScheduledEventServer.UpdateScheduledEventStatus(sc.Context, &scheduledeventpb.UpdateScheduledEventStatusRequest{
 			Id:     se.GetId(),
-			Vmsets: &scheduledeventProto.VMSetsWrapper{Value: vmSets},
+			Vmsets: &scheduledeventpb.VMSetsWrapper{Value: vmSets},
 		})
 		if err != nil {
 			return err

@@ -8,12 +8,12 @@ import (
 	"github.com/golang/glog"
 	authnservice "github.com/hobbyfarm/gargantua/services/authnsvc/v3/internal"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/accesscode"
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
-	"github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
-	"github.com/hobbyfarm/gargantua/v3/protos/setting"
-	"github.com/hobbyfarm/gargantua/v3/protos/user"
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
+	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
+	userpb "github.com/hobbyfarm/gargantua/v3/protos/user"
 )
 
 var (
@@ -37,15 +37,15 @@ func main() {
 		defer conn.Close()
 	}
 
-	accesscodeClient := accesscode.NewAccessCodeSvcClient(connections[microservices.AccessCode])
-	rbacClient := rbac.NewRbacSvcClient(connections[microservices.Rbac])
-	scheduledEventClient := scheduledevent.NewScheduledEventSvcClient(connections[microservices.ScheduledEvent])
-	settingClient := setting.NewSettingSvcClient(connections[microservices.Setting])
-	userClient := user.NewUserSvcClient(connections[microservices.User])
+	accesscodeClient := accesscodepb.NewAccessCodeSvcClient(connections[microservices.AccessCode])
+	rbacClient := rbacpb.NewRbacSvcClient(connections[microservices.Rbac])
+	scheduledEventClient := scheduledeventpb.NewScheduledEventSvcClient(connections[microservices.ScheduledEvent])
+	settingClient := settingpb.NewSettingSvcClient(connections[microservices.Setting])
+	userClient := userpb.NewUserSvcClient(connections[microservices.User])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 	as := authnservice.NewGrpcAuthNServer(userClient)
-	authn.RegisterAuthNServer(gs, as)
+	authnpb.RegisterAuthNServer(gs, as)
 
 	var wg sync.WaitGroup
 

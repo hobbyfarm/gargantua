@@ -3,11 +3,10 @@ package sessionservice
 import (
 	"context"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	sessionProto "github.com/hobbyfarm/gargantua/v3/protos/session"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
@@ -16,13 +15,14 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/emptypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 type GrpcSessionServer struct {
-	sessionProto.UnimplementedSessionSvcServer
+	sessionpb.UnimplementedSessionSvcServer
 	sessionClient hfClientsetv1.SessionInterface
 	sessionLister listersv1.SessionLister
 	sessionSynced cache.InformerSynced
@@ -36,7 +36,7 @@ func NewGrpcSessionServer(hfClientSet hfClientset.Interface, hfInformerFactory h
 	}
 }
 
-func (s *GrpcSessionServer) CreateSession(ctx context.Context, req *sessionProto.CreateSessionRequest) (*empty.Empty, error) {
+func (s *GrpcSessionServer) CreateSession(ctx context.Context, req *sessionpb.CreateSessionRequest) (*emptypb.Empty, error) {
 	scenario := req.GetScenario()
 	course := req.GetCourse()
 	keepCourseVm := req.GetKeepCourseVm()
@@ -46,7 +46,7 @@ func (s *GrpcSessionServer) CreateSession(ctx context.Context, req *sessionProto
 	labels := req.GetLabels()
 
 	if scenario == "" && course == "" {
-		return &empty.Empty{}, hferrors.GrpcError(codes.InvalidArgument, "no course/scenario id provided", req)
+		return &emptypb.Empty{}, hferrors.GrpcError(codes.InvalidArgument, "no course/scenario id provided", req)
 	}
 
 	requiredStringParams := map[string]string{
@@ -55,7 +55,7 @@ func (s *GrpcSessionServer) CreateSession(ctx context.Context, req *sessionProto
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &empty.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &emptypb.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 
@@ -79,22 +79,22 @@ func (s *GrpcSessionServer) CreateSession(ctx context.Context, req *sessionProto
 
 	_, err := s.sessionClient.Create(ctx, session, metav1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcSessionServer) GetSession(ctx context.Context, req *general.GetRequest) (*sessionProto.Session, error) {
+func (s *GrpcSessionServer) GetSession(ctx context.Context, req *generalpb.GetRequest) (*sessionpb.Session, error) {
 	session, err := util.GenericHfGetter(ctx, req, s.sessionClient, s.sessionLister.Sessions(util.GetReleaseNamespace()), "session", s.sessionSynced())
 	if err != nil {
-		return &sessionProto.Session{}, err
+		return &sessionpb.Session{}, err
 	}
 
-	status := &sessionProto.SessionStatus{
+	status := &sessionpb.SessionStatus{
 		Paused:         session.Status.Paused,
 		PausedTime:     session.Status.PausedTime,
 		Active:         session.Status.Active,
@@ -103,7 +103,7 @@ func (s *GrpcSessionServer) GetSession(ctx context.Context, req *general.GetRequ
 		ExpirationTime: session.Status.ExpirationTime,
 	}
 
-	return &sessionProto.Session{
+	return &sessionpb.Session{
 		Id:           session.Name,
 		Uid:          string(session.UID),
 		Scenario:     session.Spec.ScenarioId,
@@ -117,14 +117,14 @@ func (s *GrpcSessionServer) GetSession(ctx context.Context, req *general.GetRequ
 	}, nil
 }
 
-func (s *GrpcSessionServer) UpdateSession(ctx context.Context, req *sessionProto.UpdateSessionRequest) (*empty.Empty, error) {
+func (s *GrpcSessionServer) UpdateSession(ctx context.Context, req *sessionpb.UpdateSessionRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 	scenario := req.GetScenario()
 	if scenario == "" {
-		return &empty.Empty{}, hferrors.GrpcNotSpecifiedError(req, "scenario")
+		return &emptypb.Empty{}, hferrors.GrpcNotSpecifiedError(req, "scenario")
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -146,20 +146,20 @@ func (s *GrpcSessionServer) UpdateSession(ctx context.Context, req *sessionProto
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			req,
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcSessionServer) UpdateSessionStatus(ctx context.Context, req *sessionProto.UpdateSessionStatusRequest) (*empty.Empty, error) {
+func (s *GrpcSessionServer) UpdateSessionStatus(ctx context.Context, req *sessionpb.UpdateSessionStatusRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 
 	paused := req.GetPaused()
@@ -214,25 +214,25 @@ func (s *GrpcSessionServer) UpdateSessionStatus(ctx context.Context, req *sessio
 		return nil
 	})
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update session status: %v",
 			req,
 			retryErr,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcSessionServer) DeleteSession(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (s *GrpcSessionServer) DeleteSession(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.DeleteHfResource(ctx, req, s.sessionClient, "session")
 }
 
-func (s *GrpcSessionServer) DeleteCollectionSession(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
+func (s *GrpcSessionServer) DeleteCollectionSession(ctx context.Context, listOptions *generalpb.ListOptions) (*emptypb.Empty, error) {
 	return util.DeleteHfCollection(ctx, listOptions, s.sessionClient, "session")
 }
 
-func (s *GrpcSessionServer) ListSession(ctx context.Context, listOptions *general.ListOptions) (*sessionProto.ListSessionsResponse, error) {
+func (s *GrpcSessionServer) ListSession(ctx context.Context, listOptions *generalpb.ListOptions) (*sessionpb.ListSessionsResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var sessions []hfv1.Session
 	var err error
@@ -247,13 +247,13 @@ func (s *GrpcSessionServer) ListSession(ctx context.Context, listOptions *genera
 	}
 	if err != nil {
 		glog.Error(err)
-		return &sessionProto.ListSessionsResponse{}, err
+		return &sessionpb.ListSessionsResponse{}, err
 	}
 
-	preparedSessions := []*sessionProto.Session{}
+	preparedSessions := []*sessionpb.Session{}
 
 	for _, session := range sessions {
-		status := &sessionProto.SessionStatus{
+		status := &sessionpb.SessionStatus{
 			Paused:         session.Status.Paused,
 			PausedTime:     session.Status.PausedTime,
 			Active:         session.Status.Active,
@@ -262,7 +262,7 @@ func (s *GrpcSessionServer) ListSession(ctx context.Context, listOptions *genera
 			ExpirationTime: session.Status.ExpirationTime,
 		}
 
-		preparedSessions = append(preparedSessions, &sessionProto.Session{
+		preparedSessions = append(preparedSessions, &sessionpb.Session{
 			Id:           session.Name,
 			Uid:          string(session.UID),
 			Scenario:     session.Spec.ScenarioId,
@@ -276,5 +276,5 @@ func (s *GrpcSessionServer) ListSession(ctx context.Context, listOptions *genera
 		})
 	}
 
-	return &sessionProto.ListSessionsResponse{Sessions: preparedSessions}, nil
+	return &sessionpb.ListSessionsResponse{Sessions: preparedSessions}, nil
 }

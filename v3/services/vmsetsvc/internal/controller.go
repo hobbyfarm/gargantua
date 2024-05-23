@@ -10,7 +10,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
-	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/golang/glog"
@@ -18,11 +18,11 @@ import (
 
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	controllers "github.com/hobbyfarm/gargantua/v3/pkg/microservices/controller"
-	environmentProto "github.com/hobbyfarm/gargantua/v3/protos/environment"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	vmProto "github.com/hobbyfarm/gargantua/v3/protos/vm"
-	vmSetProto "github.com/hobbyfarm/gargantua/v3/protos/vmset"
-	vmtemplateProto "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
+	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
+	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -34,18 +34,18 @@ type VMSetController struct {
 	controllers.DelayingWorkqueueController
 	controllers.Reconciler
 	internalVmSetServer *GrpcVMSetServer
-	environmentClient   environmentProto.EnvironmentSvcClient
-	vmClient            vmProto.VMSvcClient
-	vmTemplateClient    vmtemplateProto.VMTemplateSvcClient
+	environmentClient   environmentpb.EnvironmentSvcClient
+	vmClient            vmpb.VMSvcClient
+	vmTemplateClient    vmtemplatepb.VMTemplateSvcClient
 }
 
 func NewVMSetController(
 	kubeClient *kubernetes.Clientset,
 	internalVmSetServer *GrpcVMSetServer,
 	hfInformerFactory hfInformers.SharedInformerFactory,
-	environmentClient environmentProto.EnvironmentSvcClient,
-	vmClient vmProto.VMSvcClient,
-	vmTemplateClient vmtemplateProto.VMTemplateSvcClient,
+	environmentClient environmentpb.EnvironmentSvcClient,
+	vmClient vmpb.VMSvcClient,
+	vmTemplateClient vmtemplatepb.VMTemplateSvcClient,
 	ctx context.Context,
 ) (*VMSetController, error) {
 	vmSetInformer := hfInformerFactory.Hobbyfarm().V1().VirtualMachineSets().Informer()
@@ -73,7 +73,7 @@ func NewVMSetController(
 func (v *VMSetController) Reconcile(objName string) error {
 	glog.V(8).Infof("reconciling vmclaim %s inside vm claim controller", objName)
 	// fetch vmClaim
-	vmSet, err := v.internalVmSetServer.GetVMSet(v.Context, &general.GetRequest{Id: objName})
+	vmSet, err := v.internalVmSetServer.GetVMSet(v.Context, &generalpb.GetRequest{Id: objName})
 	if err != nil {
 		if hferrors.IsGrpcNotFound(err) {
 			glog.Infof("vmset %s not found on queue.. ignoring", objName)
@@ -97,11 +97,11 @@ func (v *VMSetController) enqueueVMSet(vmSetId string) {
 	v.GetWorkqueue().Add(vmSetId)
 }
 
-func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmSetProto.VMSet) error {
+func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmsetpb.VMSet) error {
 	vmLabels := labels.Set{
 		"vmset": vmset.GetId(),
 	}
-	currentVMList, err := v.vmClient.ListVM(v.Context, &general.ListOptions{
+	currentVMList, err := v.vmClient.ListVM(v.Context, &generalpb.ListOptions{
 		LabelSelector: vmLabels.AsSelector().String(),
 		LoadFromCache: true,
 	})
@@ -117,7 +117,7 @@ func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmSetProto.VMSet) er
 		// 1. let's check the environment to see if there is available capacity
 		// 2. if available capacity is available let's create new VM's
 		glog.V(4).Infof("vmset %s needs %d vm's but current vm count is %d", vmset.GetId(), vmset.GetCount(), len(currentVMs))
-		env, err := v.environmentClient.GetEnvironment(v.Context, &general.GetRequest{
+		env, err := v.environmentClient.GetEnvironment(v.Context, &generalpb.GetRequest{
 			Id:            vmset.GetEnvironment(),
 			LoadFromCache: true,
 		})
@@ -133,7 +133,7 @@ func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmSetProto.VMSet) er
 			return err
 		}
 
-		vmt, err := v.vmTemplateClient.GetVMTemplate(v.Context, &general.GetRequest{
+		vmt, err := v.vmTemplateClient.GetVMTemplate(v.Context, &generalpb.GetRequest{
 			Id:            vmset.GetVmTemplate(),
 			LoadFromCache: true,
 		})
@@ -146,7 +146,7 @@ func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmSetProto.VMSet) er
 		glog.V(5).Infof("provisioning %d vms", needed)
 		for i := 0; i < needed; i++ {
 			vmName := strings.Join([]string{vmset.GetBaseName(), fmt.Sprintf("%08x", rand.Uint32())}, "-")
-			config := util2.GetVMConfig(env, vmt)
+			config := util.GetVMConfig(env, vmt)
 			sshUser := config["ssh_username"]
 			protocol, exists := config["protocol"]
 			if !exists {
@@ -171,7 +171,7 @@ func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmSetProto.VMSet) er
 				vmLabels["hobbyfarm.io/provisioner"] = provisionMethod
 			}
 
-			_, err := v.vmClient.CreateVM(v.Context, &vmProto.CreateVMRequest{
+			_, err := v.vmClient.CreateVM(v.Context, &vmpb.CreateVMRequest{
 				Id:           vmName,
 				VmTemplateId: vmt.GetId(),
 				SshUsername:  sshUser,
@@ -189,7 +189,7 @@ func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmSetProto.VMSet) er
 				glog.Error(err)
 			}
 
-			_, err = v.vmClient.UpdateVMStatus(v.Context, &vmProto.UpdateVMStatusRequest{
+			_, err = v.vmClient.UpdateVMStatus(v.Context, &vmpb.UpdateVMStatusRequest{
 				Id:            vmName,
 				Status:        string(hfv1.VmStatusRFP),
 				Allocated:     wrapperspb.Bool(false),
@@ -226,7 +226,7 @@ func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmSetProto.VMSet) er
 			}
 
 			if !cur_vm.GetStatus().GetAllocated() && cur_vm.GetDeletionTimestamp() == nil {
-				_, err = v.vmClient.DeleteVM(v.Context, &general.ResourceId{Id: cur_vm.GetId()})
+				_, err = v.vmClient.DeleteVM(v.Context, &generalpb.ResourceId{Id: cur_vm.GetId()})
 				if err != nil {
 					glog.Errorf("error deleting vm %s with error: %v", cur_vm.GetId(), err)
 				} else {
@@ -239,7 +239,7 @@ func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmSetProto.VMSet) er
 		}
 	}
 
-	vmList, err := v.vmClient.ListVM(v.Context, &general.ListOptions{
+	vmList, err := v.vmClient.ListVM(v.Context, &generalpb.ListOptions{
 		LabelSelector: vmLabels.AsSelector().String(),
 		LoadFromCache: true,
 	})
@@ -270,7 +270,7 @@ func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmSetProto.VMSet) er
 }
 
 func (v *VMSetController) updateVMSetCount(vmSetName string, active int, prov int) error {
-	_, err := v.internalVmSetServer.UpdateVMSetStatus(v.Context, &vmSetProto.UpdateVMSetStatusRequest{
+	_, err := v.internalVmSetServer.UpdateVMSetStatus(v.Context, &vmsetpb.UpdateVMSetStatusRequest{
 		Available:   wrapperspb.UInt32(uint32(active)),
 		Provisioned: wrapperspb.UInt32(uint32(prov)),
 	})

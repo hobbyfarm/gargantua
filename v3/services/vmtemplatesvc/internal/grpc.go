@@ -6,11 +6,10 @@ import (
 	"encoding/base32"
 	"strings"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
-	vmTemplateProto "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 
 	"github.com/golang/glog"
-	"github.com/golang/protobuf/ptypes/empty"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfClientsetv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
@@ -19,13 +18,14 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/emptypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 type GrpcVMTemplateServer struct {
-	vmTemplateProto.UnimplementedVMTemplateSvcServer
+	vmtemplatepb.UnimplementedVMTemplateSvcServer
 	vmTemplateClient hfClientsetv1.VirtualMachineTemplateInterface
 	vmTemplateLister listersv1.VirtualMachineTemplateLister
 	vmTemplateSynced cache.InformerSynced
@@ -39,7 +39,7 @@ func NewGrpcVMTemplateServer(hfClientSet hfClientset.Interface, hfInformerFactor
 	}
 }
 
-func (s *GrpcVMTemplateServer) CreateVMTemplate(ctx context.Context, req *vmTemplateProto.CreateVMTemplateRequest) (*empty.Empty, error) {
+func (s *GrpcVMTemplateServer) CreateVMTemplate(ctx context.Context, req *vmtemplatepb.CreateVMTemplateRequest) (*emptypb.Empty, error) {
 	name := req.GetName()
 	image := req.GetImage()
 	configMapRaw := req.GetConfigMapRaw()
@@ -50,7 +50,7 @@ func (s *GrpcVMTemplateServer) CreateVMTemplate(ctx context.Context, req *vmTemp
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &empty.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &emptypb.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 
@@ -71,29 +71,29 @@ func (s *GrpcVMTemplateServer) CreateVMTemplate(ctx context.Context, req *vmTemp
 	if configMapRaw != "" {
 		configMap, err := util.GenericUnmarshal[map[string]string](configMapRaw, "config_map")
 		if err != nil {
-			return &empty.Empty{}, hferrors.GrpcParsingError(req, "config_map")
+			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "config_map")
 		}
 		vmTemplate.Spec.ConfigMap = configMap
 	}
 
 	_, err := s.vmTemplateClient.Create(ctx, vmTemplate, metav1.CreateOptions{})
 	if err != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcVMTemplateServer) GetVMTemplate(ctx context.Context, req *general.GetRequest) (*vmTemplateProto.VMTemplate, error) {
+func (s *GrpcVMTemplateServer) GetVMTemplate(ctx context.Context, req *generalpb.GetRequest) (*vmtemplatepb.VMTemplate, error) {
 	vmTemplate, err := util.GenericHfGetter(ctx, req, s.vmTemplateClient, s.vmTemplateLister.VirtualMachineTemplates(util.GetReleaseNamespace()), "virtual machine template", s.vmTemplateSynced())
 	if err != nil {
-		return &vmTemplateProto.VMTemplate{}, err
+		return &vmtemplatepb.VMTemplate{}, err
 	}
 
-	return &vmTemplateProto.VMTemplate{
+	return &vmtemplatepb.VMTemplate{
 		Id:        vmTemplate.Name,
 		Uid:       string(vmTemplate.UID),
 		Name:      vmTemplate.Spec.Name,
@@ -102,10 +102,10 @@ func (s *GrpcVMTemplateServer) GetVMTemplate(ctx context.Context, req *general.G
 	}, nil
 }
 
-func (s *GrpcVMTemplateServer) UpdateVMTemplate(ctx context.Context, req *vmTemplateProto.UpdateVMTemplateRequest) (*empty.Empty, error) {
+func (s *GrpcVMTemplateServer) UpdateVMTemplate(ctx context.Context, req *vmtemplatepb.UpdateVMTemplateRequest) (*emptypb.Empty, error) {
 	id := req.GetId()
 	if len(id) == 0 {
-		return &empty.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
 	}
 
 	name := req.GetName()
@@ -145,25 +145,25 @@ func (s *GrpcVMTemplateServer) UpdateVMTemplate(ctx context.Context, req *vmTemp
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error attempting to update",
 			req,
 		)
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *GrpcVMTemplateServer) DeleteVMTemplate(ctx context.Context, req *general.ResourceId) (*empty.Empty, error) {
+func (s *GrpcVMTemplateServer) DeleteVMTemplate(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.DeleteHfResource(ctx, req, s.vmTemplateClient, "virtual machine template")
 }
 
-func (s *GrpcVMTemplateServer) DeleteCollectionVMTemplate(ctx context.Context, listOptions *general.ListOptions) (*empty.Empty, error) {
+func (s *GrpcVMTemplateServer) DeleteCollectionVMTemplate(ctx context.Context, listOptions *generalpb.ListOptions) (*emptypb.Empty, error) {
 	return util.DeleteHfCollection(ctx, listOptions, s.vmTemplateClient, "virtual machine templates")
 }
 
-func (s *GrpcVMTemplateServer) ListVMTemplate(ctx context.Context, listOptions *general.ListOptions) (*vmTemplateProto.ListVMTemplatesResponse, error) {
+func (s *GrpcVMTemplateServer) ListVMTemplate(ctx context.Context, listOptions *generalpb.ListOptions) (*vmtemplatepb.ListVMTemplatesResponse, error) {
 	doLoadFromCache := listOptions.GetLoadFromCache()
 	var vmTemplates []hfv1.VirtualMachineTemplate
 	var err error
@@ -178,13 +178,13 @@ func (s *GrpcVMTemplateServer) ListVMTemplate(ctx context.Context, listOptions *
 	}
 	if err != nil {
 		glog.Error(err)
-		return &vmTemplateProto.ListVMTemplatesResponse{}, err
+		return &vmtemplatepb.ListVMTemplatesResponse{}, err
 	}
 
-	preparedVmTemplates := []*vmTemplateProto.VMTemplate{}
+	preparedVmTemplates := []*vmtemplatepb.VMTemplate{}
 
 	for _, vmTemplate := range vmTemplates {
-		preparedVmTemplates = append(preparedVmTemplates, &vmTemplateProto.VMTemplate{
+		preparedVmTemplates = append(preparedVmTemplates, &vmtemplatepb.VMTemplate{
 			Id:        vmTemplate.Name,
 			Uid:       string(vmTemplate.UID),
 			Name:      vmTemplate.Spec.Name,
@@ -193,5 +193,5 @@ func (s *GrpcVMTemplateServer) ListVMTemplate(ctx context.Context, listOptions *
 		})
 	}
 
-	return &vmTemplateProto.ListVMTemplatesResponse{Vmtemplates: preparedVmTemplates}, nil
+	return &vmtemplatepb.ListVMTemplatesResponse{Vmtemplates: preparedVmTemplates}, nil
 }

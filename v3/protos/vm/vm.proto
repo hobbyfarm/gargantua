@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package vm;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/vm";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/vm;vmpb";
 
 import "general/general.proto";
 import "google/protobuf/empty.proto";

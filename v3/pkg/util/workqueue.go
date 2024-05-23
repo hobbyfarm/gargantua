@@ -1,21 +1,21 @@
 package util
 
 import (
-	"github.com/golang/protobuf/ptypes/empty"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
-	"github.com/hobbyfarm/gargantua/v3/protos/general"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"k8s.io/client-go/util/workqueue"
 )
 
-func AddToWorkqueue(workqueue workqueue.Interface, req *general.ResourceId) (*empty.Empty, error) {
+func AddToWorkqueue(workqueue workqueue.Interface, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	if workqueue == nil {
-		return &empty.Empty{}, hferrors.GrpcError(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
 			"error adding item to workqueue: workqueue is nil",
 			req,
 		)
 	}
 	workqueue.Add(req.GetId())
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }

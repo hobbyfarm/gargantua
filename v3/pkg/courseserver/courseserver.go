@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
@@ -11,14 +15,11 @@ import (
 	hfListers "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -31,8 +32,8 @@ const (
 )
 
 type CourseServer struct {
-	authnClient     authn.AuthNClient
-	authrClient     authr.AuthRClient
+	authnClient     authnpb.AuthNClient
+	authrClient     authrpb.AuthRClient
 	hfClientSet     hfClientset.Interface
 	acClient        *accesscode.AccessCodeClient
 	courseIndexer   cache.Indexer
@@ -46,7 +47,7 @@ type PreparedCourse struct {
 	hfv1.CourseSpec
 }
 
-func NewCourseServer(authnClient authn.AuthNClient, authrClient authr.AuthRClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*CourseServer, error) {
+func NewCourseServer(authnClient authnpb.AuthNClient, authrClient authrpb.AuthRClient, acClient *accesscode.AccessCodeClient, hfClientset hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, ctx context.Context) (*CourseServer, error) {
 	course := CourseServer{}
 
 	course.authnClient = authnClient

@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: progress/progress.proto
 
-package progress
+package progresspb
 
 import (
 	context "context"

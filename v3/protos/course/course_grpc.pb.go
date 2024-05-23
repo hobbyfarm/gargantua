@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: course/course.proto
 
-package course
+package coursepb
 
 import (
 	context "context"
