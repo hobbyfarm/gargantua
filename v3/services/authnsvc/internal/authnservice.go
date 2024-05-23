@@ -12,6 +12,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
@@ -21,7 +22,16 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
+
+type PreparedScheduledEvent struct {
+	Id          string `json:"id"`
+	Description string `json:"description"`
+	Name        string `json:"name"`
+	EndDate     string `json:"end_timestamp"`
+}
 
 func (a AuthServer) ChangePasswordFunc(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("Authorization")
@@ -561,4 +571,83 @@ func (a *AuthServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.ReturnHTTPContent(w, r, http.StatusOK, "access_set", encodedAS)
+}
+
+func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("Authorization")
+	user, err := a.internalAuthnServer.AuthN(r.Context(), &authn.AuthNRequest{
+		Token: token,
+	})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list suitable scheduledevents")
+		return
+	}
+
+	// This holds a map of AC -> SE
+	accessCodeScheduledEvent := make(map[string]PreparedScheduledEvent)
+
+	// First we add ScheduledEvents based on OneTimeAccessCodes
+	otacReq, _ := labels.NewRequirement(hflabels.OneTimeAccessCodeLabel, selection.In, user.GetAccessCodes())
+	selector := labels.NewSelector()
+	selector = selector.Add(*otacReq)
+
+	otacList, err := a.acClient.ListOtac(r.Context(), &general.ListOptions{LabelSelector: selector.String()})
+
+	if err == nil {
+		for _, otac := range otacList.GetOtacs() {
+			se, err := a.scheduledEventClient.GetScheduledEvent(r.Context(), &general.GetRequest{Id: otac.Labels[hflabels.ScheduledEventLabel]})
+			if err != nil {
+				continue
+			}
+			endTime := se.GetEndTime()
+
+			// If OTAC specifies a max Duration we need to calculate the EndTime correctly
+			if otac.GetMaxDuration() != "" {
+				otacEndTime, err := time.Parse(time.UnixDate, otac.GetRedeemedTimestamp())
+				if err != nil {
+					continue
+				}
+				otacDurationWithDays, _ := util.GetDurationWithDays(otac.GetMaxDuration())
+				otacDuration, err := time.ParseDuration(otacDurationWithDays)
+				if err != nil {
+					continue
+				}
+				otacEndTime = otacEndTime.Add(otacDuration)
+				endTime = otacEndTime.Format(time.UnixDate)
+			}
+
+			accessCodeScheduledEvent[otac.GetId()] = PreparedScheduledEvent{se.GetId(), se.GetDescription(), se.GetName(), endTime}
+		}
+	}
+
+	acReq, err := labels.NewRequirement(hflabels.AccessCodeLabel, selection.In, user.GetAccessCodes())
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "internal error while retrieving scheduled events")
+		return
+	}
+	selector = labels.NewSelector()
+	selector = selector.Add(*acReq)
+
+	// Afterwards we retreive the normal AccessCodes
+	acList, err := a.acClient.ListAc(r.Context(), &general.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "internal error while retrieving scheduled events")
+		return
+	}
+	accessCodes := acList.GetAccessCodes()
+	//Getting single SEs should be faster than listing all of them and iterating them in O(n^2), in most cases users only have a hand full of accessCodes.
+	for _, ac := range accessCodes {
+		se, err := a.scheduledEventClient.GetScheduledEvent(r.Context(), &general.GetRequest{Id: ac.GetLabels()[hflabels.ScheduledEventLabel]})
+		if err != nil {
+			glog.Error(err)
+			continue
+		}
+		accessCodeScheduledEvent[ac.GetId()] = PreparedScheduledEvent{se.GetId(), se.GetDescription(), se.GetName(), se.GetEndTime()}
+	}
+
+	encodedMap, err := json.Marshal(accessCodeScheduledEvent)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedMap)
 }

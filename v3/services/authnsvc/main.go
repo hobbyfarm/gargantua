@@ -11,6 +11,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/protos/accesscode"
 	"github.com/hobbyfarm/gargantua/v3/protos/authn"
 	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	"github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 	"github.com/hobbyfarm/gargantua/v3/protos/setting"
 	"github.com/hobbyfarm/gargantua/v3/protos/user"
 )
@@ -26,19 +27,21 @@ func init() {
 func main() {
 	services := []microservices.MicroService{
 		microservices.AccessCode,
-		microservices.User,
-		microservices.Setting,
 		microservices.Rbac,
+		microservices.ScheduledEvent,
+		microservices.Setting,
+		microservices.User,
 	}
 	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
 	for _, conn := range connections {
 		defer conn.Close()
 	}
 
-	rbacClient := rbac.NewRbacSvcClient(connections[microservices.Rbac])
 	accesscodeClient := accesscode.NewAccessCodeSvcClient(connections[microservices.AccessCode])
-	userClient := user.NewUserSvcClient(connections[microservices.User])
+	rbacClient := rbac.NewRbacSvcClient(connections[microservices.Rbac])
+	scheduledEventClient := scheduledevent.NewScheduledEventSvcClient(connections[microservices.ScheduledEvent])
 	settingClient := setting.NewSettingSvcClient(connections[microservices.Setting])
+	userClient := user.NewUserSvcClient(connections[microservices.User])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 	as := authnservice.NewGrpcAuthNServer(userClient)
@@ -55,7 +58,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		authServer, err := authnservice.NewAuthServer(accesscodeClient, userClient, settingClient, rbacClient, as)
+		authServer, err := authnservice.NewAuthServer(accesscodeClient, rbacClient, scheduledEventClient, settingClient, userClient, as)
 		if err != nil {
 			glog.Fatal(err)
 		}

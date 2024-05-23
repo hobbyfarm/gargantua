@@ -492,7 +492,6 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 
 	//Append the value of onetime access codes to the list
 	for _, otac := range otacList.Otacs {
-		// @TODO: Query internal ScheduledEvent Service here!
 		se, err := a.eventClient.GetScheduledEvent(ctx, &general.GetRequest{Id: otac.Labels[hflabels.ScheduledEventLabel]})
 		if err != nil {
 			glog.Error(err)
@@ -507,7 +506,7 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 	}
 
 	// Update the label selector
-	otacReq, err = labels.NewRequirement(hflabels.OneTimeAccessCodeLabel, selection.In, ids)
+	acReq, err := labels.NewRequirement(hflabels.AccessCodeLabel, selection.In, ids)
 	if err != nil {
 		return &accessCodeProto.ListAcsResponse{}, hferrors.GrpcError(
 			codes.Internal,
@@ -516,7 +515,7 @@ func (a *GrpcAccessCodeServer) GetAccessCodesWithOTACs(ctx context.Context, code
 		)
 	}
 	selector = labels.NewSelector()
-	selector = selector.Add(*otacReq)
+	selector = selector.Add(*acReq)
 	selectorString = selector.String()
 
 	accessCodes, err := a.ListAc(ctx, &general.ListOptions{LabelSelector: selectorString})

@@ -5,24 +5,34 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/v3/protos/accesscode"
 	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	"github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 	"github.com/hobbyfarm/gargantua/v3/protos/setting"
 	"github.com/hobbyfarm/gargantua/v3/protos/user"
 )
 
 type AuthServer struct {
-	acClient            accesscode.AccessCodeSvcClient
-	userClient          user.UserSvcClient
-	settingClient       setting.SettingSvcClient
-	rbacClient          rbac.RbacSvcClient
-	internalAuthnServer *GrpcAuthnServer
+	acClient             accesscode.AccessCodeSvcClient
+	rbacClient           rbac.RbacSvcClient
+	scheduledEventClient scheduledevent.ScheduledEventSvcClient
+	settingClient        setting.SettingSvcClient
+	userClient           user.UserSvcClient
+	internalAuthnServer  *GrpcAuthnServer
 }
 
-func NewAuthServer(accesscodeClient accesscode.AccessCodeSvcClient, userClient user.UserSvcClient, settingCLient setting.SettingSvcClient, rbacClient rbac.RbacSvcClient, internalAuthnServer *GrpcAuthnServer) (AuthServer, error) {
+func NewAuthServer(
+	accesscodeClient accesscode.AccessCodeSvcClient,
+	rbacClient rbac.RbacSvcClient,
+	scheduledEventClient scheduledevent.ScheduledEventSvcClient,
+	settingClient setting.SettingSvcClient,
+	userClient user.UserSvcClient,
+	internalAuthnServer *GrpcAuthnServer,
+) (AuthServer, error) {
 	a := AuthServer{}
 	a.acClient = accesscodeClient
-	a.userClient = userClient
-	a.settingClient = settingCLient
 	a.rbacClient = rbacClient
+	a.scheduledEventClient = scheduledEventClient
+	a.settingClient = settingClient
+	a.userClient = userClient
 	a.internalAuthnServer = internalAuthnServer
 	return a, nil
 }
@@ -37,5 +47,6 @@ func (a AuthServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/auth/settings", a.UpdateSettingsFunc).Methods("POST")
 	r.HandleFunc("/auth/authenticate", a.LoginFunc).Methods("POST")
 	r.HandleFunc("/auth/access", a.GetAccessSet).Methods("GET")
+	r.HandleFunc("/auth/scheduledevents", a.ListScheduledEventsFunc).Methods("GET")
 	glog.V(2).Infof("set up route")
 }
