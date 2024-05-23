@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/hobbyfarm/gargantua/v3/pkg/accesscode"
-	"github.com/hobbyfarm/gargantua/v3/pkg/authserver"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/v3/pkg/courseclient"
@@ -136,11 +135,6 @@ func main() {
 		glog.Fatal(err)
 	}
 
-	authServer, err := authserver.NewAuthServer(authnClient, hfClient, ctx, acClient)
-	if err != nil {
-		glog.Fatal(err)
-	}
-
 	courseServer, err := courseserver.NewCourseServer(authnClient, authrClient, acClient, hfClient, hfInformerFactory, ctx)
 	if err != nil {
 		glog.Fatal(err)
@@ -220,7 +214,6 @@ func main() {
 		glog.V(2).Infof("Starting as a shell server")
 		shellProxy.SetupRoutes(r)
 	} else {
-		authServer.SetupRoutes(r)
 		sessionServer.SetupRoutes(r)
 		courseServer.SetupRoutes(r)
 		scenarioServer.SetupRoutes(r)
