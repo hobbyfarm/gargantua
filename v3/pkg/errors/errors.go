@@ -1,6 +1,9 @@
 package errors
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/golang/protobuf/proto"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	"google.golang.org/grpc/codes"
@@ -79,6 +82,10 @@ func GrpcNotFoundError[T IdGetterProtoMessage](resourceId T, resourceName string
 func IsGrpcNotFound(err error) bool {
 	return status.Code(err) == codes.NotFound
 }
+func IsGrpcParsingError(err error) bool {
+	statusErr := status.Convert(err)
+	return statusErr.Code() == codes.Internal && strings.HasPrefix(statusErr.Message(), "error parsing")
+}
 
 func GrpcGetError(req *generalpb.GetRequest, resourceName string, err error) error {
 	return GrpcError[*generalpb.GetRequest](
@@ -113,4 +120,18 @@ func GetErrorMessage(err error) string {
 		return err.Error()
 	}
 	return st.Message()
+}
+
+// Generic function to handle different types of details
+func ExtractDetail[T proto.Message](s *status.Status) (T, error) {
+	var zeroValue T
+
+	if len(s.Details()) > 0 {
+		for _, detail := range s.Details() {
+			if details, ok := detail.(T); ok {
+				return details, nil
+			}
+		}
+	}
+	return zeroValue, fmt.Errorf("no details of the expected type found in the error status")
 }
