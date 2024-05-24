@@ -36,7 +36,7 @@ func NewGrpcCourseServer(hfClientSet hfClientset.Interface, hfInformerFactory hf
 	}
 }
 
-func (c *GrpcCourseServer) CreateCourse(ctx context.Context, req *coursepb.CreateCourseRequest) (*emptypb.Empty, error) {
+func (c *GrpcCourseServer) CreateCourse(ctx context.Context, req *coursepb.CreateCourseRequest) (*generalpb.ResourceId, error) {
 	name := req.GetName()
 	description := req.GetDescription()
 	rawScenarios := req.GetRawScenarios()
@@ -53,7 +53,7 @@ func (c *GrpcCourseServer) CreateCourse(ctx context.Context, req *coursepb.Creat
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &emptypb.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &generalpb.ResourceId{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 
@@ -76,34 +76,34 @@ func (c *GrpcCourseServer) CreateCourse(ctx context.Context, req *coursepb.Creat
 	if rawScenarios != "" {
 		scenarios, err := util.GenericUnmarshal[[]string](rawScenarios, "rawScenarios")
 		if err != nil {
-			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "rawScenarios")
+			return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "rawScenarios")
 		}
 		course.Spec.Scenarios = scenarios
 	}
 	if rawCategories != "" {
 		categories, err := util.GenericUnmarshal[[]string](rawCategories, "rawCategories")
 		if err != nil {
-			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "rawCategories")
+			return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "rawCategories")
 		}
 		course.Spec.Categories = categories
 	}
 	if rawVirtualMachines != "" {
 		vms, err := util.GenericUnmarshal[[]map[string]string](rawVirtualMachines, "rawVirtualMachines")
 		if err != nil {
-			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "rawVirtualMachines")
+			return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "rawVirtualMachines")
 		}
 		course.Spec.VirtualMachines = vms
 	}
 
 	_, err := c.courseClient.Create(ctx, course, metav1.CreateOptions{})
 	if err != nil {
-		return &emptypb.Empty{}, hferrors.GrpcError(
+		return &generalpb.ResourceId{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &emptypb.Empty{}, nil
+	return &generalpb.ResourceId{Id: course.Name}, nil
 }
 
 func (c *GrpcCourseServer) GetCourse(ctx context.Context, req *generalpb.GetRequest) (*coursepb.Course, error) {

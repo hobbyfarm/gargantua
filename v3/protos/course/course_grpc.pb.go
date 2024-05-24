@@ -33,7 +33,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CourseSvcClient interface {
-	CreateCourse(ctx context.Context, in *CreateCourseRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CreateCourse(ctx context.Context, in *CreateCourseRequest, opts ...grpc.CallOption) (*general.ResourceId, error)
 	GetCourse(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Course, error)
 	UpdateCourse(ctx context.Context, in *UpdateCourseRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteCourse(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -49,8 +49,8 @@ func NewCourseSvcClient(cc grpc.ClientConnInterface) CourseSvcClient {
 	return &courseSvcClient{cc}
 }
 
-func (c *courseSvcClient) CreateCourse(ctx context.Context, in *CreateCourseRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
+func (c *courseSvcClient) CreateCourse(ctx context.Context, in *CreateCourseRequest, opts ...grpc.CallOption) (*general.ResourceId, error) {
+	out := new(general.ResourceId)
 	err := c.cc.Invoke(ctx, CourseSvc_CreateCourse_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func (c *courseSvcClient) ListCourse(ctx context.Context, in *general.ListOption
 // All implementations must embed UnimplementedCourseSvcServer
 // for forward compatibility
 type CourseSvcServer interface {
-	CreateCourse(context.Context, *CreateCourseRequest) (*emptypb.Empty, error)
+	CreateCourse(context.Context, *CreateCourseRequest) (*general.ResourceId, error)
 	GetCourse(context.Context, *general.GetRequest) (*Course, error)
 	UpdateCourse(context.Context, *UpdateCourseRequest) (*emptypb.Empty, error)
 	DeleteCourse(context.Context, *general.ResourceId) (*emptypb.Empty, error)
@@ -120,7 +120,7 @@ type CourseSvcServer interface {
 type UnimplementedCourseSvcServer struct {
 }
 
-func (UnimplementedCourseSvcServer) CreateCourse(context.Context, *CreateCourseRequest) (*emptypb.Empty, error) {
+func (UnimplementedCourseSvcServer) CreateCourse(context.Context, *CreateCourseRequest) (*general.ResourceId, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateCourse not implemented")
 }
 func (UnimplementedCourseSvcServer) GetCourse(context.Context, *general.GetRequest) (*Course, error) {

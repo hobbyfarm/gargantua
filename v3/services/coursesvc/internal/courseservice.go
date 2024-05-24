@@ -1,0 +1,552 @@
+package courseservice
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	"github.com/golang/glog"
+	"github.com/gorilla/mux"
+	coursepb "github.com/hobbyfarm/gargantua/v3/protos/course"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
+	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
+	"k8s.io/apimachinery/pkg/labels"
+)
+
+const (
+	idIndex        = "courseserver.hobbyfarm.io/id-index"
+	resourcePlural = rbac2.ResourcePluralCourse
+)
+
+type PreparedCourse struct {
+	Id                string              `json:"id"`
+	Name              string              `json:"name"`
+	Description       string              `json:"description"`
+	Scenarios         []string            `json:"scenarios"`
+	Categories        []string            `json:"categories"`
+	VirtualMachines   []map[string]string `json:"virtualmachines"`
+	KeepAliveDuration string              `json:"keepalive_duration"`
+	PauseDuration     string              `json:"pause_duration"`
+	Pauseable         bool                `json:"pauseable"`
+	KeepVM            bool                `json:"keep_vm"`
+}
+
+func convertToPreparedCourse(course *coursepb.Course) PreparedCourse {
+	return PreparedCourse{
+		Id:                course.GetId(),
+		Name:              course.GetName(),
+		Description:       course.GetDescription(),
+		Scenarios:         course.GetScenarios(),
+		Categories:        course.GetCategories(),
+		VirtualMachines:   util.ConvertStringMapSlice(course.GetVms()),
+		KeepAliveDuration: course.GetKeepaliveDuration(),
+		PauseDuration:     course.GetPauseDuration(),
+		Pauseable:         course.GetPausable(),
+		KeepVM:            course.GetKeepVm(),
+	}
+}
+
+func (c CourseServer) getPreparedCourseById(ctx context.Context, id string) (PreparedCourse, error) {
+	// load course from cache
+	course, err := c.internalCourseServer.GetCourse(ctx, &generalpb.GetRequest{Id: id, LoadFromCache: true})
+	if err != nil {
+		return PreparedCourse{}, fmt.Errorf("error while retrieving course %v", err)
+	}
+
+	return convertToPreparedCourse(course), nil
+}
+
+func (c CourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := rbac2.AuthenticateRequest(r, c.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac2.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbList))
+	if err != nil || !authrResponse.Success {
+		glog.Infof("Authr error: %s", err.Error())
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list courses")
+		return
+	}
+
+	tempCoursList, err := c.internalCourseServer.ListCourse(r.Context(), &generalpb.ListOptions{})
+	if err != nil {
+		glog.Errorf("error listing courses: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing courses")
+		return
+	}
+	tempCourses := tempCoursList.GetCourses()
+
+	courses := make([]PreparedCourse, 0, len(tempCourses))
+	for _, c := range tempCourses {
+		courses = append(courses, convertToPreparedCourse(c))
+	}
+
+	encodedCourses, err := json.Marshal(courses)
+	if err != nil {
+		glog.Errorf("error marshalling prepared courses: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing courses")
+		return
+	}
+
+	util.ReturnHTTPContent(w, r, 200, "success", encodedCourses)
+
+	glog.V(4).Infof("listed courses")
+}
+
+func (c CourseServer) GetCourse(w http.ResponseWriter, r *http.Request) {
+	user, err := rbac2.AuthenticateRequest(r, c.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac2.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbGet))
+	if err != nil || !authrResponse.Success {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to courses")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	course, err := c.getPreparedCourseById(r.Context(), vars["course_id"])
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf("error retrieving course: %v", err))
+		return
+	}
+
+	encodedCourse, err := json.Marshal(course)
+	if err != nil {
+		glog.Error(err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error preparing course")
+		return
+	}
+
+	util.ReturnHTTPContent(w, r, 200, "success", encodedCourse)
+}
+
+func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := rbac2.AuthenticateRequest(r, c.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac2.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbCreate))
+	if err != nil || !authrResponse.Success {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create courses")
+		return
+	}
+
+	name := r.PostFormValue("name")
+	if name == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no name passed in")
+		return
+	}
+
+	description := r.PostFormValue("description")
+	if description == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no description passed in")
+		return
+	}
+
+	keepaliveDuration := r.PostFormValue("keepalive_duration")
+	// keepaliveDuration is optional
+
+	scenarios := r.PostFormValue("scenarios")
+	// scenarios are optional
+
+	categories := r.PostFormValue("categories")
+	// categories are optional
+
+	rawVirtualMachines := r.PostFormValue("virtualmachines")
+	// virtualmachines are optional
+
+	pauseableRaw := r.PostFormValue("pauseable")
+	pauseable, err := strconv.ParseBool(pauseableRaw)
+	if err != nil {
+		glog.Errorf("error while parsing bool %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+		return
+	}
+	pauseDuration := r.PostFormValue("pause_duration")
+
+	keepVMRaw := r.PostFormValue("keep_vm")
+	keepVM, err := strconv.ParseBool(keepVMRaw)
+	if err != nil {
+		glog.Errorf("error while parsing bool: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+		return
+	}
+
+	courseId, err := c.internalCourseServer.CreateCourse(r.Context(), &coursepb.CreateCourseRequest{
+		Name:              name,
+		Description:       description,
+		RawScenarios:      scenarios,
+		RawCategories:     categories,
+		RawVms:            rawVirtualMachines,
+		KeepaliveDuration: keepaliveDuration,
+		PauseDuration:     pauseDuration,
+		Pausable:          pauseable,
+		KeepVm:            keepVM,
+	})
+	if err != nil {
+		statusErr := status.Convert(err)
+		if hferrors.IsGrpcParsingError(err) {
+			glog.Errorf("error while parsing: %s", statusErr.Message())
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+		glog.Errorf("error creating course %s", hferrors.GetErrorMessage(err))
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating course")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 201, "created", courseId.GetId())
+	glog.V(4).Infof("Created course %s", courseId.GetId())
+	return
+}
+
+func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := rbac2.AuthenticateRequest(r, c.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac2.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbUpdate))
+	if err != nil || !authrResponse.Success {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update courses")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	id := vars["id"]
+	if id == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no id passed in")
+		return
+	}
+
+	name := r.PostFormValue("name")
+	description := r.PostFormValue("description")
+	scenarios := r.PostFormValue("scenarios")
+	categories := r.PostFormValue("categories")
+	virtualMachinesRaw := r.PostFormValue("virtualmachines")
+	keepaliveDuration := r.PostFormValue("keepalive_duration")
+	pauseDuration := r.PostFormValue("pause_duration")
+	pauseableRaw := r.PostFormValue("pauseable")
+	keepVMRaw := r.PostFormValue("keep_vm")
+
+	var keepaliveWrapper *wrapperspb.StringValue
+	if keepaliveDuration != "" {
+		keepaliveWrapper = wrapperspb.String(keepaliveDuration)
+	}
+
+	var pauseDurationWrapper *wrapperspb.StringValue
+	if pauseDuration != "" {
+		pauseDurationWrapper = wrapperspb.String(pauseDuration)
+	}
+
+	var pauseable bool
+	if pauseableRaw != "" {
+		pauseable, err = strconv.ParseBool(pauseableRaw)
+		if err != nil {
+			glog.Errorf("error while parsing bool: %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	var keepVM bool
+	if keepVMRaw != "" {
+		keepVM, err = strconv.ParseBool(keepVMRaw)
+		if err != nil {
+			glog.Errorf("error while parsing bool: %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	_, err = c.internalCourseServer.UpdateCourse(r.Context(), &coursepb.UpdateCourseRequest{
+		Id:                id,
+		Name:              name,
+		Description:       description,
+		RawScenarios:      scenarios,
+		RawCategories:     categories,
+		RawVms:            virtualMachinesRaw,
+		KeepaliveDuration: keepaliveWrapper,
+		PauseDuration:     pauseDurationWrapper,
+		Pausable:          wrapperspb.Bool(pauseable),
+		KeepVm:            wrapperspb.Bool(keepVM),
+	})
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error attempting to update")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "updated", "")
+	glog.V(4).Infof("Updated course %s", id)
+	return
+}
+
+func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := rbac2.AuthenticateRequest(r, c.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac2.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbDelete))
+	if err != nil || !authrResponse.Success {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to to delete courses")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	id := vars["id"]
+	if id == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no id passed in")
+		return
+	}
+
+	// when can we safely toDelete c course?
+	// 1. when there are no active scheduled events using the course
+	// 2. when there are no sessions using the course
+
+	seList, err := c.scheduledEventClient.ListScheduledEvent(r.Context(), &generalpb.ListOptions{})
+	if err != nil {
+		glog.Errorf("error retrieving scheduledevent list: %s", hferrors.GetErrorMessage(err))
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting course")
+		return
+	}
+
+	seInUse := filterScheduledEvents(id, seList)
+
+	sessList, err := c.sessionClient.ListSession(r.Context(), &generalpb.ListOptions{})
+	if err != nil {
+		glog.Errorf("error retrieving session list: %s", hferrors.GetErrorMessage(err))
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting course")
+		return
+	}
+
+	sessInUse := filterSessions(id, sessList)
+
+	var msg = ""
+	toDelete := true
+
+	if len(seInUse) > 0 {
+		// cannot toDelete, in use. alert the user
+		msg += "In use by scheduled events:"
+		for _, se := range seInUse {
+			msg += " " + se.GetId()
+		}
+		toDelete = false
+	}
+
+	if len(sessInUse) > 0 {
+		msg += "In use by sessions:"
+		for _, sess := range sessInUse {
+			msg += " " + sess.GetId()
+		}
+		toDelete = false
+	}
+
+	if !toDelete {
+		util.ReturnHTTPMessage(w, r, 403, "badrequest", msg)
+		return
+	}
+
+	_, err = c.internalCourseServer.DeleteCourse(r.Context(), &generalpb.ResourceId{Id: id})
+	if err != nil {
+		glog.Errorf("error deleting course: %s", hferrors.GetErrorMessage(err))
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error while deleting course")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 204, "deleted", "deleted successfully")
+	glog.V(4).Infof("deleted course: %s", id)
+}
+
+func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Request) {
+	user, err := rbac2.AuthenticateRequest(r, c.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	vars := mux.Vars(r)
+	accessCode := vars["access_code"]
+
+	if accessCode == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "access_code is missing")
+		return
+	}
+
+	contains := false
+	for _, acc := range user.GetAccessCodes() {
+		if acc == accessCode {
+			contains = true
+			break
+		}
+	}
+
+	if !contains {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list scenarios for this AccessCode")
+		return
+	}
+
+	tmpAccesscode, err := c.acClient.GetAccessCodeWithOTACs(r.Context(), &generalpb.ResourceId{Id: accessCode})
+	if err != nil {
+		glog.Errorf("error retrieving course ids for access code: %s %v", accessCode, err)
+	}
+	courseIds := util.UniqueStringSlice(tmpAccesscode.GetCourses())
+
+	var courses []PreparedCourse
+	for _, courseId := range courseIds {
+		course, err := c.getPreparedCourseById(r.Context(), courseId)
+		if err != nil {
+			glog.Errorf("error retrieving course %s", hferrors.GetErrorMessage(err))
+		} else {
+			course.Scenarios = c.AppendDynamicScenariosByCategories(r.Context(), course.Scenarios, course.Categories)
+			courses = append(courses, course)
+		}
+	}
+
+	encodedCourses, err := json.Marshal(courses)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedCourses)
+}
+
+func (c CourseServer) previewDynamicScenarios(w http.ResponseWriter, r *http.Request) {
+	user, err := rbac2.AuthenticateRequest(r, c.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac2.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(rbac2.ResourcePluralScenario, rbac2.VerbList))
+	if err != nil || !authrResponse.Success {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to preview dynamic scenarios")
+		return
+	}
+
+	categories := r.PostFormValue("categories")
+	categoriesSlice := make([]string, 0)
+	if categories != "" {
+		err = json.Unmarshal([]byte(categories), &categoriesSlice)
+		if err != nil {
+			glog.Errorf("error while unmarshalling categories %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	scenarios := []string{}
+
+	scenarios = c.AppendDynamicScenariosByCategories(r.Context(), scenarios, categoriesSlice)
+
+	encodedScenarios, err := json.Marshal(scenarios)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedScenarios)
+}
+
+func (c CourseServer) AppendDynamicScenariosByCategories(ctx context.Context, scenariosList []string, categories []string) []string {
+	for _, categoryQuery := range categories {
+		categorySelectors := []string{}
+		categoryQueryParts := strings.Split(categoryQuery, "&")
+		for _, categoryQueryPart := range categoryQueryParts {
+			operator := "in"
+			if strings.HasPrefix(categoryQueryPart, "!") {
+				operator = "notin"
+				categoryQueryPart = categoryQueryPart[1:]
+			}
+			categorySelectors = append(categorySelectors, fmt.Sprintf("category-%s %s (true)", categoryQueryPart, operator))
+		}
+		categorySelectorString := strings.Join(categorySelectors, ",")
+
+		selector, err := labels.Parse(categorySelectorString)
+		if err != nil {
+			glog.Errorf("error while parsing label selector %s: %v", categorySelectorString, err)
+			continue
+		}
+
+		scenarios, err := c.scenarioClient.ListScenario(ctx, &generalpb.ListOptions{
+			LabelSelector: selector.String(),
+			LoadFromCache: true,
+		})
+
+		if err != nil {
+			glog.Errorf("error while retrieving scenarios %v", err)
+			continue
+		}
+		for _, scenario := range scenarios.GetScenarios() {
+			scenariosList = append(scenariosList, scenario.GetId())
+		}
+	}
+
+	scenariosList = util.UniqueStringSlice(scenariosList)
+	return scenariosList
+}
+
+// Filter a ScheduledEventList to find SEs that are a) active and b) using the course specified
+func filterScheduledEvents(course string, seList *scheduledeventpb.ListScheduledEventsResponse) []*scheduledeventpb.ScheduledEvent {
+	outList := make([]*scheduledeventpb.ScheduledEvent, 0)
+	for _, se := range seList.GetScheduledevents() {
+		if se.GetStatus().GetFinished() == true {
+			continue
+		}
+
+		for _, c := range se.GetCourses() {
+			if c == course {
+				outList = append(outList, se)
+				break
+			}
+		}
+	}
+
+	return outList
+}
+
+func filterSessions(course string, list *sessionpb.ListSessionsResponse) []*sessionpb.Session {
+	outList := make([]*sessionpb.Session, 0)
+	for _, sess := range list.GetSessions() {
+		if sess.GetCourse() == course {
+			outList = append(outList, sess)
+		}
+	}
+
+	return outList
+}
+
+func idIndexer(obj interface{}) ([]string, error) {
+	course, ok := obj.(*hfv1.Course)
+	if !ok {
+		return []string{}, nil
+	}
+	return []string{course.Name}, nil
+}

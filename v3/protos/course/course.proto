@@ -9,7 +9,7 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/wrappers.proto";
 
 service CourseSvc {
-    rpc CreateCourse (CreateCourseRequest) returns (google.protobuf.Empty);
+    rpc CreateCourse (CreateCourseRequest) returns (general.ResourceId);
     rpc GetCourse (general.GetRequest) returns (Course);
     rpc UpdateCourse (UpdateCourseRequest) returns (google.protobuf.Empty);
     rpc DeleteCourse (general.ResourceId) returns (google.protobuf.Empty);
