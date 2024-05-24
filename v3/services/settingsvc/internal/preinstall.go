@@ -5,13 +5,12 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func Preinstall(ctx context.Context, internalSettingServer *GrpcSettingServer) {
@@ -34,7 +33,7 @@ func installResources(ctx context.Context, internalSettingServer *GrpcSettingSer
 
 	for _, scope := range scopes() {
 		_, err := internalSettingServer.GetScope(ctx, &generalpb.GetRequest{Id: scope.GetName()})
-		if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
+		if hferrors.IsGrpcNotFound(err) {
 			if _, err := internalSettingServer.CreateScope(ctx, scope); err != nil {
 				return err
 			}
@@ -47,7 +46,7 @@ func installResources(ctx context.Context, internalSettingServer *GrpcSettingSer
 
 	for _, setting := range predefinedSettings() {
 		_, err := internalSettingServer.GetSetting(ctx, &generalpb.GetRequest{Id: setting.GetName()})
-		if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
+		if hferrors.IsGrpcNotFound(err) {
 			if _, err := internalSettingServer.CreateSetting(ctx, setting); err != nil {
 				return err
 			}

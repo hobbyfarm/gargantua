@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
@@ -58,16 +59,13 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := u.internalUserServer.GetUserById(r.Context(), &generalpb.GetRequest{Id: id})
 
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			details := s.Details()[0].(*generalpb.ResourceId)
-			if s.Code() == codes.InvalidArgument {
-				util.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
-				return
-			}
-			glog.Errorf("error while retrieving user %s: %s", details.Id, s.Message())
-			util.ReturnHTTPMessage(w, r, 500, "error", "no user found")
+		s := status.Convert(err)
+		details, _ := hferrors.ExtractDetail[*generalpb.GetRequest](s)
+		if s.Code() == codes.InvalidArgument {
+			util.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
+			return
 		}
-		glog.Errorf("error while retrieving user: %s", err)
+		glog.Errorf("error while retrieving user %s: %s", details.Id, s.Message())
 		util.ReturnHTTPMessage(w, r, 500, "error", "no user found")
 	}
 
@@ -174,16 +172,13 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	_, err = u.internalUserServer.UpdateUser(r.Context(), &userpb.User{Id: id, Email: email, Password: password, AccessCodes: acUnmarshaled})
 
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			details := s.Details()[0].(*userpb.User)
-			if s.Code() == codes.InvalidArgument {
-				util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID passed in")
-				return
-			}
-			glog.Errorf("error while updating user %s: %s", details.Id, s.Message())
-			util.ReturnHTTPMessage(w, r, 500, "error", "error attempting to update")
+		s := status.Convert(err)
+		details, _ := hferrors.ExtractDetail[*userpb.User](s)
+		if s.Code() == codes.InvalidArgument {
+			util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID passed in")
+			return
 		}
-		glog.Errorf("error while updating user: %s", err)
+		glog.Errorf("error while updating user %s: %s", details.Id, s.Message())
 		util.ReturnHTTPMessage(w, r, 500, "error", "error attempting to update")
 	}
 
@@ -220,16 +215,13 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	_, err = u.internalUserServer.DeleteUser(r.Context(), &generalpb.ResourceId{Id: id})
 
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			details := s.Details()[0].(*generalpb.ResourceId)
-			if s.Code() == codes.InvalidArgument {
-				util.ReturnHTTPMessage(w, r, 400, "error", "no id passed in")
-				return
-			}
-			glog.Errorf("error deleting user %s: %s", details.Id, s.Message())
-			util.ReturnHTTPMessage(w, r, 500, "error", s.Message())
+		s := status.Convert(err)
+		details, _ := hferrors.ExtractDetail[*generalpb.ResourceId](s)
+		if s.Code() == codes.InvalidArgument {
+			util.ReturnHTTPMessage(w, r, 400, "error", "no id passed in")
+			return
 		}
-		glog.Errorf("error deleting user: %s", err)
+		glog.Errorf("error deleting user %s: %s", details.Id, s.Message())
 		util.ReturnHTTPMessage(w, r, 500, "error", "error deleting user")
 	}
 

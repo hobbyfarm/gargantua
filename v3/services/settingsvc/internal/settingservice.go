@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
@@ -152,12 +154,8 @@ func (s SettingServer) UpdateCollection(w http.ResponseWriter, r *http.Request) 
 func (s SettingServer) update(w http.ResponseWriter, r *http.Request, updatedSetting PreparedSetting) bool {
 	setting, err := s.internalSettingServer.GetSetting(r.Context(), &generalpb.GetRequest{Id: updatedSetting.Name})
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			if s.Code() == codes.NotFound {
-				util.ReturnHTTPMessage(w, r, 404, "error", "setting not found")
-				return false
-			}
-			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error retrieving setting for update")
+		if hferrors.IsGrpcNotFound(err) {
+			util.ReturnHTTPMessage(w, r, 404, "error", "setting not found")
 			return false
 		}
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error retrieving setting for update")
@@ -194,12 +192,9 @@ func (s SettingServer) update(w http.ResponseWriter, r *http.Request, updatedSet
 
 	_, err = s.internalSettingServer.UpdateSetting(r.Context(), setting)
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			if s.Code() == codes.InvalidArgument {
-				util.ReturnHTTPMessage(w, r, 400, "error", s.Message())
-				return false
-			}
-			util.ReturnHTTPMessage(w, r, 500, "internalerror", s.Message())
+		statusErr := status.Convert(err)
+		if statusErr.Code() == codes.InvalidArgument {
+			util.ReturnHTTPMessage(w, r, 400, "error", statusErr.Message())
 			return false
 		}
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error updating setting")

@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
@@ -66,8 +67,8 @@ func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrpb.AuthRRequest) (*a
 			rbacAuthGrant, err := a.rbacClient.Grants(c, &rbacpb.GrantRequest{UserName: iu, Permission: p})
 			if err != nil {
 				if s, ok := status.FromError(err); ok {
-					details := s.Details()[0].(*rbacpb.GrantRequest)
-					glog.Errorf("could not perform auth grant for user %s: %s", details.UserName, s.Message())
+					details, _ := hferrors.ExtractDetail[*rbacpb.GrantRequest](s)
+					glog.Errorf("could not perform auth grant for user %s: %s", details.GetUserName(), s.Message())
 					glog.Infof("auth grant failed for permission with apiGroup=%s, resource=%s and verb=%s",
 						details.GetPermission().GetApiGroup(), details.GetPermission().GetResource(), details.GetPermission().GetVerb())
 					msg := "could not perform auth grant: "
@@ -107,8 +108,8 @@ func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrpb.AuthRRequest) (*a
 			rbacAuthGrant, err := a.rbacClient.Grants(c, &rbacpb.GrantRequest{UserName: iu, Permission: p})
 			if err != nil {
 				if s, ok := status.FromError(err); ok {
-					details := s.Details()[0].(*rbacpb.GrantRequest)
-					glog.Errorf("could not perform auth grant for user %s: %s", details.UserName, s.Message())
+					details, _ := hferrors.ExtractDetail[*rbacpb.GrantRequest](s)
+					glog.Errorf("could not perform auth grant for user %s: %s", details.GetUserName(), s.Message())
 					glog.Infof("auth grant failed for permission with apiGroup=%s, resource=%s and verb=%s",
 						details.GetPermission().GetApiGroup(), details.GetPermission().GetResource(), details.GetPermission().GetVerb())
 					msg := "could not perform auth grant: "

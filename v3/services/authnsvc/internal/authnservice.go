@@ -12,6 +12,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
@@ -433,22 +434,18 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	})
 
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			details := s.Details()[0].(*userpb.CreateUserRequest)
-			if s.Code() == codes.InvalidArgument {
-				glog.Errorf("error creating user, invalid argument for user with email: %s", details.Email)
-				util.ReturnHTTPMessage(w, r, 400, "error", s.Message())
-				return
-			} else if s.Code() == codes.AlreadyExists {
-				glog.Errorf("user with email %s already exists", details.Email)
-				util.ReturnHTTPMessage(w, r, 409, "error", s.Message())
-				return
-			}
-			glog.Errorf("error creating user: %s", s.Message())
-			util.ReturnHTTPMessage(w, r, 500, "error", "error creating user")
+		s := status.Convert(err)
+		details, _ := hferrors.ExtractDetail[*userpb.CreateUserRequest](s)
+		if s.Code() == codes.InvalidArgument {
+			glog.Errorf("error creating user, invalid argument for user with email: %s", details.GetEmail())
+			util.ReturnHTTPMessage(w, r, 400, "error", s.Message())
+			return
+		} else if s.Code() == codes.AlreadyExists {
+			glog.Errorf("user with email %s already exists", details.GetEmail())
+			util.ReturnHTTPMessage(w, r, 409, "error", s.Message())
 			return
 		}
-		glog.Errorf("error creating user: %s", err.Error())
+		glog.Errorf("error creating user: %s", hferrors.GetErrorMessage(err))
 		util.ReturnHTTPMessage(w, r, 500, "error", "error creating user")
 		return
 	}
@@ -461,15 +458,13 @@ func (a AuthServer) RegisterWithAccessCodeFunc(w http.ResponseWriter, r *http.Re
 	})
 
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			details := s.Details()[0].(*generalpb.ResourceId)
-			if s.Code() == codes.InvalidArgument {
-				glog.Error("error retrieving created user, no id passed in")
-			} else {
-				glog.Errorf("error while retrieving created user %s: %s", details.Id, s.Message())
-			}
+		s := status.Convert(err)
+		details, _ := hferrors.ExtractDetail[*generalpb.GetRequest](s)
+		if s.Code() == codes.InvalidArgument {
+			glog.Error("error retrieving created user, no id passed in")
+		} else {
+			glog.Errorf("error while retrieving created user %s: %s", details.GetId(), hferrors.GetErrorMessage(err))
 		}
-		glog.Errorf("error while retrieving created user: %s", err.Error())
 		util.ReturnHTTPMessage(w, r, 500, "error", "error creating user with accesscode")
 	}
 

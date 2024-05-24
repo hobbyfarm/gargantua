@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
@@ -44,12 +45,9 @@ func (s Server) ListRoleBindings(w http.ResponseWriter, r *http.Request) {
 	labelSelector := fmt.Sprintf("%s=%t", hflabels.RBACManagedLabel, true)
 	bindings, err := s.internalRbacServer.ListRolebinding(r.Context(), &generalpb.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			switch s.Code() {
-			case codes.NotFound:
-				util.ReturnHTTPMessage(w, r, http.StatusNotFound, "notfound", s.Message())
-				return
-			}
+		if hferrors.IsGrpcNotFound(err) {
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "notfound", status.Convert(err).Message())
+			return
 		}
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
@@ -89,18 +87,17 @@ func (s Server) GetRoleBinding(w http.ResponseWriter, r *http.Request) {
 
 	preparedRoleBinding, err := s.internalRbacServer.GetRolebinding(r.Context(), &generalpb.GetRequest{Id: rolebindingId})
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			switch s.Code() {
-			case codes.InvalidArgument:
-				util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", s.Message())
-				return
-			case codes.NotFound:
-				util.ReturnHTTPMessage(w, r, http.StatusNotFound, "notfound", s.Message())
-				return
-			case codes.PermissionDenied:
-				util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", s.Message())
-				return
-			}
+		statusErr := status.Convert(err)
+		switch statusErr.Code() {
+		case codes.InvalidArgument:
+			util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", statusErr.Message())
+			return
+		case codes.NotFound:
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "notfound", statusErr.Message())
+			return
+		case codes.PermissionDenied:
+			util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", statusErr.Message())
+			return
 		}
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
@@ -140,11 +137,9 @@ func (s Server) CreateRoleBinding(w http.ResponseWriter, r *http.Request) {
 
 	_, err = s.internalRbacServer.CreateRolebinding(r.Context(), preparedRoleBinding)
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			if s.Code() == codes.InvalidArgument {
-				util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid rolebinding")
-				return
-			}
+		if status.Convert(err).Code() == codes.InvalidArgument {
+			util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid rolebinding")
+			return
 		}
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
@@ -177,11 +172,9 @@ func (s Server) UpdateRoleBinding(w http.ResponseWriter, r *http.Request) {
 
 	_, err = s.internalRbacServer.UpdateRolebinding(r.Context(), preparedRoleBinding)
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			if s.Code() == codes.InvalidArgument {
-				util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid rolebinding")
-				return
-			}
+		if status.Convert(err).Code() == codes.InvalidArgument {
+			util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid rolebinding")
+			return
 		}
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
@@ -209,11 +202,9 @@ func (s Server) DeleteRoleBinding(w http.ResponseWriter, r *http.Request) {
 
 	_, err = s.internalRbacServer.DeleteRolebinding(r.Context(), &generalpb.ResourceId{Id: rolebindingId})
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			if s.Code() == codes.InvalidArgument {
-				util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid rolebinding")
-				return
-			}
+		if status.Convert(err).Code() == codes.InvalidArgument {
+			util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid rolebinding")
+			return
 		}
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
