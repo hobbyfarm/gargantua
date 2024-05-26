@@ -10,4 +10,5 @@ use (
 	./v3/services/rbacsvc
 	./v3/services/settingsvc
 	./v3/services/usersvc
+	./v3/services/scoresvc
 )
