@@ -11,6 +11,8 @@ import (
 
 	progressService "github.com/hobbyfarm/gargantua/services/progresssvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	progresspb "github.com/hobbyfarm/gargantua/v3/protos/progress"
 )
 
@@ -31,10 +33,22 @@ func main() {
 
 	crd.InstallCrds(progressService.ProgressCRDInstaller{}, cfg, "progress")
 
+	services := []microservices.MicroService{
+		microservices.AuthN,
+		microservices.AuthR,
+	}
+	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
+	for _, conn := range connections {
+		defer conn.Close()
+	}
+
+	authnClient := authnpb.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authrpb.NewAuthRClient(connections[microservices.AuthR])
+
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
-	ds := progressService.NewGrpcProgressServer(hfClient, hfInformerFactory)
-	progresspb.RegisterProgressSvcServer(gs, ds)
+	ps := progressService.NewGrpcProgressServer(hfClient, hfInformerFactory)
+	progresspb.RegisterProgressSvcServer(gs, ps)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -42,6 +56,18 @@ func main() {
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		progressServer := progressService.NewProgressServer(
+			authnClient,
+			authrClient,
+			ps,
+		)
+		microservices.StartAPIServer(progressServer)
 	}()
 
 	hfInformerFactory.Start(stopCh)

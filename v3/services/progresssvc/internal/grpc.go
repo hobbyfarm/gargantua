@@ -17,6 +17,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
@@ -100,20 +101,26 @@ func (s *GrpcProgressServer) GetProgress(ctx context.Context, req *generalpb.Get
 		progressSteps = append(progressSteps, progressStep)
 	}
 
+	var creationTimeStamp *timestamppb.Timestamp
+	if !progress.CreationTimestamp.IsZero() {
+		creationTimeStamp = timestamppb.New(progress.CreationTimestamp.Time)
+	}
+
 	return &progresspb.Progress{
-		Id:          progress.Name,
-		Uid:         string(progress.UID),
-		CurrentStep: uint32(progress.Spec.CurrentStep),
-		MaxStep:     uint32(progress.Spec.MaxStep),
-		TotalStep:   uint32(progress.Spec.TotalStep),
-		Scenario:    progress.Spec.Scenario,
-		Course:      progress.Spec.Course,
-		User:        progress.Spec.UserId,
-		Started:     progress.Spec.Started,
-		LastUpdate:  progress.Spec.LastUpdate,
-		Finished:    progress.Spec.Finished,
-		Steps:       progressSteps,
-		Labels:      progress.Labels,
+		Id:                progress.Name,
+		Uid:               string(progress.UID),
+		CurrentStep:       uint32(progress.Spec.CurrentStep),
+		MaxStep:           uint32(progress.Spec.MaxStep),
+		TotalStep:         uint32(progress.Spec.TotalStep),
+		Scenario:          progress.Spec.Scenario,
+		Course:            progress.Spec.Course,
+		User:              progress.Spec.UserId,
+		Started:           progress.Spec.Started,
+		LastUpdate:        progress.Spec.LastUpdate,
+		Finished:          progress.Spec.Finished,
+		Steps:             progressSteps,
+		Labels:            progress.Labels,
+		CreationTimestamp: creationTimeStamp,
 	}, nil
 }
 
@@ -228,20 +235,26 @@ func (s *GrpcProgressServer) ListProgress(ctx context.Context, listOptions *gene
 			progressSteps = append(progressSteps, progressStep)
 		}
 
+		var creationTimeStamp *timestamppb.Timestamp
+		if !progress.CreationTimestamp.IsZero() {
+			creationTimeStamp = timestamppb.New(progress.CreationTimestamp.Time)
+		}
+
 		preparedProgress = append(preparedProgress, &progresspb.Progress{
-			Id:          progress.Name,
-			Uid:         string(progress.UID),
-			CurrentStep: uint32(progress.Spec.CurrentStep),
-			MaxStep:     uint32(progress.Spec.MaxStep),
-			TotalStep:   uint32(progress.Spec.TotalStep),
-			Scenario:    progress.Spec.Scenario,
-			Course:      progress.Spec.Course,
-			User:        progress.Spec.UserId,
-			Started:     progress.Spec.Started,
-			LastUpdate:  progress.Spec.LastUpdate,
-			Finished:    progress.Spec.Finished,
-			Steps:       progressSteps,
-			Labels:      progress.Labels,
+			Id:                progress.Name,
+			Uid:               string(progress.UID),
+			CurrentStep:       uint32(progress.Spec.CurrentStep),
+			MaxStep:           uint32(progress.Spec.MaxStep),
+			TotalStep:         uint32(progress.Spec.TotalStep),
+			Scenario:          progress.Spec.Scenario,
+			Course:            progress.Spec.Course,
+			User:              progress.Spec.UserId,
+			Started:           progress.Spec.Started,
+			LastUpdate:        progress.Spec.LastUpdate,
+			Finished:          progress.Spec.Finished,
+			Steps:             progressSteps,
+			Labels:            progress.Labels,
+			CreationTimestamp: creationTimeStamp,
 		})
 	}
 
