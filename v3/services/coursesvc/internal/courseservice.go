@@ -10,7 +10,7 @@ import (
 
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
-	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -26,7 +26,7 @@ import (
 
 const (
 	idIndex        = "courseserver.hobbyfarm.io/id-index"
-	resourcePlural = rbac2.ResourcePluralCourse
+	resourcePlural = rbac.ResourcePluralCourse
 )
 
 type PreparedCourse struct {
@@ -68,14 +68,14 @@ func (c CourseServer) getPreparedCourseById(ctx context.Context, id string) (Pre
 }
 
 func (c CourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac2.AuthenticateRequest(r, c.authnClient)
+	user, err := rbac.AuthenticateRequest(r, c.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac2.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		glog.Infof("Authr error: %s", err.Error())
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list courses")
@@ -108,14 +108,14 @@ func (c CourseServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) GetCourse(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac2.AuthenticateRequest(r, c.authnClient)
+	user, err := rbac.AuthenticateRequest(r, c.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac2.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbGet))
+	authrResponse, err := rbac.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to courses")
 		return
@@ -140,14 +140,14 @@ func (c CourseServer) GetCourse(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac2.AuthenticateRequest(r, c.authnClient)
+	user, err := rbac.AuthenticateRequest(r, c.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac2.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbCreate))
+	authrResponse, err := rbac.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbCreate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create courses")
 		return
@@ -223,14 +223,14 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac2.AuthenticateRequest(r, c.authnClient)
+	user, err := rbac.AuthenticateRequest(r, c.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac2.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbUpdate))
+	authrResponse, err := rbac.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update courses")
 		return
@@ -308,14 +308,14 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac2.AuthenticateRequest(r, c.authnClient)
+	user, err := rbac.AuthenticateRequest(r, c.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac2.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbDelete))
+	authrResponse, err := rbac.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbDelete))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to to delete courses")
 		return
@@ -388,7 +388,7 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac2.AuthenticateRequest(r, c.authnClient)
+	user, err := rbac.AuthenticateRequest(r, c.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
@@ -440,14 +440,14 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 }
 
 func (c CourseServer) previewDynamicScenarios(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac2.AuthenticateRequest(r, c.authnClient)
+	user, err := rbac.AuthenticateRequest(r, c.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac2.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(rbac2.ResourcePluralScenario, rbac2.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, c.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(rbac.ResourcePluralScenario, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to preview dynamic scenarios")
 		return
