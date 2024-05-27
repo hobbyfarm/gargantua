@@ -40,7 +40,7 @@ func NewGrpcEnvironmentServer(hfClientSet hfClientset.Interface, hfInformerFacto
 	}
 }
 
-func (s *GrpcEnvironmentServer) CreateEnvironment(ctx context.Context, req *environmentpb.CreateEnvironmentRequest) (*emptypb.Empty, error) {
+func (s *GrpcEnvironmentServer) CreateEnvironment(ctx context.Context, req *environmentpb.CreateEnvironmentRequest) (*generalpb.ResourceId, error) {
 	displayName := req.GetDisplayName()
 	dnsSuffix := req.GetDnssuffix() // optional
 	provider := req.GetProvider()
@@ -61,25 +61,25 @@ func (s *GrpcEnvironmentServer) CreateEnvironment(ctx context.Context, req *envi
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &emptypb.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &generalpb.ResourceId{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 
 	templateMapping, err := util.GenericUnmarshal[map[string]map[string]string](templateMappingRaw, "templateMapping")
 	if err != nil {
-		return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "templateMapping")
+		return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "templateMapping")
 	}
 	countCapacity, err := util.GenericUnmarshal[map[string]int](countCapacityRaw, "countCapacity")
 	if err != nil {
-		return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "countCapacity")
+		return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "countCapacity")
 	}
 	environmentSpecifics, err := util.GenericUnmarshal[map[string]string](environmentSpecificsRaw, "environmentSpecifics")
 	if err != nil {
-		return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "environmentSpecifics")
+		return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "environmentSpecifics")
 	}
 	ipTranslationMap, err := util.GenericUnmarshal[map[string]string](ipTranslationMapRaw, "ipTranslationMap")
 	if err != nil {
-		return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "ipTranslationMap")
+		return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "ipTranslationMap")
 	}
 
 	hasher := sha256.New()
@@ -105,13 +105,13 @@ func (s *GrpcEnvironmentServer) CreateEnvironment(ctx context.Context, req *envi
 
 	_, err = s.environmentClient.Create(ctx, environment, metav1.CreateOptions{})
 	if err != nil {
-		return &emptypb.Empty{}, hferrors.GrpcError(
+		return &generalpb.ResourceId{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &emptypb.Empty{}, nil
+	return &generalpb.ResourceId{Id: id}, nil
 }
 
 func (s *GrpcEnvironmentServer) GetEnvironment(ctx context.Context, req *generalpb.GetRequest) (*environmentpb.Environment, error) {

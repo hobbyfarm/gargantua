@@ -33,7 +33,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type EnvironmentSvcClient interface {
-	CreateEnvironment(ctx context.Context, in *CreateEnvironmentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CreateEnvironment(ctx context.Context, in *CreateEnvironmentRequest, opts ...grpc.CallOption) (*general.ResourceId, error)
 	GetEnvironment(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Environment, error)
 	UpdateEnvironment(ctx context.Context, in *UpdateEnvironmentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteEnvironment(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -49,8 +49,8 @@ func NewEnvironmentSvcClient(cc grpc.ClientConnInterface) EnvironmentSvcClient {
 	return &environmentSvcClient{cc}
 }
 
-func (c *environmentSvcClient) CreateEnvironment(ctx context.Context, in *CreateEnvironmentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
+func (c *environmentSvcClient) CreateEnvironment(ctx context.Context, in *CreateEnvironmentRequest, opts ...grpc.CallOption) (*general.ResourceId, error) {
+	out := new(general.ResourceId)
 	err := c.cc.Invoke(ctx, EnvironmentSvc_CreateEnvironment_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func (c *environmentSvcClient) ListEnvironment(ctx context.Context, in *general.
 // All implementations must embed UnimplementedEnvironmentSvcServer
 // for forward compatibility
 type EnvironmentSvcServer interface {
-	CreateEnvironment(context.Context, *CreateEnvironmentRequest) (*emptypb.Empty, error)
+	CreateEnvironment(context.Context, *CreateEnvironmentRequest) (*general.ResourceId, error)
 	GetEnvironment(context.Context, *general.GetRequest) (*Environment, error)
 	UpdateEnvironment(context.Context, *UpdateEnvironmentRequest) (*emptypb.Empty, error)
 	DeleteEnvironment(context.Context, *general.ResourceId) (*emptypb.Empty, error)
@@ -120,7 +120,7 @@ type EnvironmentSvcServer interface {
 type UnimplementedEnvironmentSvcServer struct {
 }
 
-func (UnimplementedEnvironmentSvcServer) CreateEnvironment(context.Context, *CreateEnvironmentRequest) (*emptypb.Empty, error) {
+func (UnimplementedEnvironmentSvcServer) CreateEnvironment(context.Context, *CreateEnvironmentRequest) (*general.ResourceId, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateEnvironment not implemented")
 }
 func (UnimplementedEnvironmentSvcServer) GetEnvironment(context.Context, *general.GetRequest) (*Environment, error) {

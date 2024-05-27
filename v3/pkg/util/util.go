@@ -16,9 +16,11 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
 	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 
@@ -320,16 +322,11 @@ func EnsureVMNotReady(hfClientset hfClientset.Interface, vmLister v1.VirtualMach
 	return nil
 }
 
-// pending rename...
-type Maximus struct {
-	AvailableCount map[string]int `json:"available_count"`
-}
-
 // Range with reserved virtual machine amounts for given time range
 type Range struct {
 	Start     time.Time
 	End       time.Time
-	VMMapping map[string]int
+	VMMapping map[string]uint32
 }
 
 // These functions are used to sort arrays of time.Time
@@ -342,7 +339,7 @@ func sortTime(timeArray []time.Time) {
 	sort.Sort(ByTime(timeArray))
 }
 
-func Max(x, y int) int {
+func MaxUint32(x, y uint32) uint32 {
 	if x < y {
 		return y
 	}
@@ -351,10 +348,10 @@ func Max(x, y int) int {
 
 // Calculates available virtualMachineTemplates for a given period (startString, endString) and environment
 // Returns a map with timestamps and corresponding availability of virtualmachines. Also returns the maximum available count of virtualmachinetemplates over the whole duration.
-func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context) (map[time.Time]map[string]int, map[string]int, error) {
+func VirtualMachinesUsedDuringPeriod(eventClient scheduledeventpb.ScheduledEventSvcClient, environment string, startString string, endString string, ctx context.Context) (map[time.Time]map[string]uint32, map[string]uint32, error) {
 	start, err := time.Parse(time.UnixDate, startString)
 	if err != nil {
-		return map[time.Time]map[string]int{}, map[string]int{}, fmt.Errorf("error parsing start time %v", err)
+		return map[time.Time]map[string]uint32{}, map[string]uint32{}, fmt.Errorf("error parsing start time %v", err)
 	}
 
 	// We only want to calculate for the future. Otherwise old ( even finished ) events will be considered too.
@@ -364,37 +361,41 @@ func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environm
 
 	end, err := time.Parse(time.UnixDate, endString)
 	if err != nil {
-		return map[time.Time]map[string]int{}, map[string]int{}, fmt.Errorf("error parsing end time %v", err)
+		return map[time.Time]map[string]uint32{}, map[string]uint32{}, fmt.Errorf("error parsing end time %v", err)
 	}
 
-	scheduledEvents, err := hfClientset.HobbyfarmV1().ScheduledEvents(GetReleaseNamespace()).List(ctx, metav1.ListOptions{})
+	scheduledEventList, err := eventClient.ListScheduledEvent(ctx, &generalpb.ListOptions{})
 	if err != nil {
-		return map[time.Time]map[string]int{}, map[string]int{}, fmt.Errorf("error retrieving scheduled events %v", err)
+		return map[time.Time]map[string]uint32{}, map[string]uint32{}, fmt.Errorf("error retrieving scheduled events: %s", hferrors.GetErrorMessage(err))
 	}
 
 	var timeRange []Range
-	var changingTimestamps []time.Time                        // All timestamps where number of virtualmachines changes (Begin or End of Scheduled Event)
-	virtualMachineCount := make(map[time.Time]map[string]int) // Count of virtualmachines per VMTemplate for any given timestamp where a change happened
-	maximumVirtualMachineCount := make(map[string]int)        // Maximum VirtualMachine Count per VirtualMachineTemplate over all timestamps
+	var changingTimestamps []time.Time                           // All timestamps where number of virtualmachines changes (Begin or End of Scheduled Event)
+	virtualMachineCount := make(map[time.Time]map[string]uint32) // Count of virtualmachines per VMTemplate for any given timestamp where a change happened
+	maximumVirtualMachineCount := make(map[string]uint32)        // Maximum VirtualMachine Count per VirtualMachineTemplate over all timestamps
 
-	for _, se := range scheduledEvents.Items {
+	for _, se := range scheduledEventList.GetScheduledevents() {
 		// Scheduled Event uses the environment we are checking
-		if vmMapping, ok := se.Spec.RequiredVirtualMachines[environment]; ok {
-			seStart, err := time.Parse(time.UnixDate, se.Spec.StartTime)
+		if vmMapping, ok := se.GetRequiredVms()[environment]; ok {
+			seStart, err := time.Parse(time.UnixDate, se.GetStartTime())
 			if err != nil {
-				return map[time.Time]map[string]int{}, map[string]int{}, fmt.Errorf("error parsing scheduled event start %v", err)
+				return map[time.Time]map[string]uint32{}, map[string]uint32{}, fmt.Errorf("error parsing scheduled event start %v", err)
 			}
-			seEnd, err := time.Parse(time.UnixDate, se.Spec.EndTime)
+			seEnd, err := time.Parse(time.UnixDate, se.GetEndTime())
 			if err != nil {
-				return map[time.Time]map[string]int{}, map[string]int{}, fmt.Errorf("error parsing scheduled event end %v", err)
+				return map[time.Time]map[string]uint32{}, map[string]uint32{}, fmt.Errorf("error parsing scheduled event end %v", err)
 			}
 			// Scheduled Event is withing our timerange. We consider it by adding it to our Ranges
 			if start.Equal(seStart) || end.Equal(seEnd) || (start.Before(seEnd) && end.After(seStart)) {
-				timeRange = append(timeRange, Range{Start: seStart, End: seEnd, VMMapping: vmMapping})
+				timeRange = append(timeRange, Range{
+					Start:     seStart,
+					End:       seEnd,
+					VMMapping: vmMapping.GetVmTemplateCounts(),
+				})
 				changingTimestamps = append(changingTimestamps, seStart)
 				changingTimestamps = append(changingTimestamps, seEnd)
-				virtualMachineCount[seStart] = make(map[string]int)
-				virtualMachineCount[seEnd] = make(map[string]int)
+				virtualMachineCount[seStart] = make(map[string]uint32)
+				virtualMachineCount[seEnd] = make(map[string]uint32)
 				glog.V(4).Infof("Scheduled Event %s was within the time period", se.Name)
 			}
 		}
@@ -423,7 +424,7 @@ func VirtualMachinesUsedDuringPeriod(hfClientset hfClientset.Interface, environm
 				}
 				// Highest VM Capacity over all timestamps
 				if maximumVMCapacity, ok := maximumVirtualMachineCount[vmTemplateName]; ok {
-					maximumVirtualMachineCount[vmTemplateName] = Max(maximumVMCapacity, virtualMachineCount[timestamp][vmTemplateName])
+					maximumVirtualMachineCount[vmTemplateName] = MaxUint32(maximumVMCapacity, virtualMachineCount[timestamp][vmTemplateName])
 				} else {
 					maximumVirtualMachineCount[vmTemplateName] = vmTemplateCount
 				}
@@ -454,34 +455,6 @@ func CountMachinesPerTemplateAndEnvironmentAndScheduledEvent(ctx context.Context
 
 	vmList, err := vmClient.ListVM(ctx, &generalpb.ListOptions{LabelSelector: vmLabels.AsSelector().String(), LoadFromCache: true})
 	return len(vmList.GetVms()), err
-}
-
-func MaxAvailableDuringPeriod(hfClientset hfClientset.Interface, environment string, startString string, endString string, ctx context.Context) (Maximus, error) {
-	_, maximumVirtualMachineCount, err := VirtualMachinesUsedDuringPeriod(hfClientset, environment, startString, endString, ctx)
-
-	if err != nil {
-		return Maximus{}, err
-	}
-
-	environmentFromK8s, err := hfClientset.HobbyfarmV1().Environments(GetReleaseNamespace()).Get(ctx, environment, metav1.GetOptions{})
-	if err != nil {
-		return Maximus{}, fmt.Errorf("error retrieving environment %v", err)
-	}
-
-	max := Maximus{}
-	max.AvailableCount = make(map[string]int)
-	for k, v := range environmentFromK8s.Spec.CountCapacity {
-		max.AvailableCount[k] = v
-	}
-	for vmt, count := range maximumVirtualMachineCount {
-		if vmtCap, ok := environmentFromK8s.Spec.CountCapacity[vmt]; ok {
-			max.AvailableCount[vmt] = vmtCap - count
-		} else {
-			glog.Errorf("Error looking for maximum count capacity of virtual machine template %s", vmt)
-			max.AvailableCount[vmt] = 0
-		}
-	}
-	return max, nil
 }
 
 func GetReleaseNamespace() string {
