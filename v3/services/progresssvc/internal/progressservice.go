@@ -349,6 +349,10 @@ func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// @TODO: Currently we're using the progress k8s client directly.
+	// The grpc service would internally retrieve each progress object again before updating which is less performant.
+	// In the future, we should use the internal gRPC service to abstract the underlying database operations.
+	// This approach ensures that database interactions are not exposed directly, allowing easier interchangeability and improved modularity.
 	progress, err := s.internalProgressServer.progressClient.List(r.Context(), metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", hflabels.SessionLabel, id, hflabels.UserLabel, user.GetId())})
 
