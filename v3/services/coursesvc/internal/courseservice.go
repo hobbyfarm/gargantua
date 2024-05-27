@@ -49,7 +49,7 @@ func convertToPreparedCourse(course *coursepb.Course) PreparedCourse {
 		Description:       course.GetDescription(),
 		Scenarios:         course.GetScenarios(),
 		Categories:        course.GetCategories(),
-		VirtualMachines:   util.ConvertStringMapSlice(course.GetVms()),
+		VirtualMachines:   util.ConvertToStringMapSlice(course.GetVms()),
 		KeepAliveDuration: course.GetKeepaliveDuration(),
 		PauseDuration:     course.GetPauseDuration(),
 		Pauseable:         course.GetPausable(),
