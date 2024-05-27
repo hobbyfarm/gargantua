@@ -27,8 +27,8 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/vmserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/vmsetserver"
 	"github.com/hobbyfarm/gargantua/v3/pkg/vmtemplateserver"
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 
 	"github.com/ebauman/crder"
 	"k8s.io/client-go/informers"
@@ -127,8 +127,8 @@ func main() {
 		defer conn.Close()
 	}
 
-	authnClient := authn.NewAuthNClient(connections[microservices.AuthN])
-	authrClient := authr.NewAuthRClient(connections[microservices.AuthR])
+	authnClient := authnpb.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authrpb.NewAuthRClient(connections[microservices.AuthR])
 
 	acClient, err := accesscode.NewAccessCodeClient(hfClient, ctx)
 	if err != nil {
