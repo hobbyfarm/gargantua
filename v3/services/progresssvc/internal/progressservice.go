@@ -10,8 +10,8 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
-	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
-	util2 "github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -23,7 +23,7 @@ import (
 
 const (
 	idIndex        = "progressserver.hobbyfarm.io/id-index"
-	resourcePlural = rbac2.ResourcePluralProgress
+	resourcePlural = rbac.ResourcePluralProgress
 )
 
 type AdminPreparedProgress struct {
@@ -57,16 +57,16 @@ List Progress by Scheduled Event
 	- id : The scheduled event id
 */
 func (s ProgressServer) ListByScheduledEventFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac2.AuthenticateRequest(r, s.authnClient)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
-		util2.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac2.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
-		util2.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
 	}
 
@@ -75,7 +75,7 @@ func (s ProgressServer) ListByScheduledEventFunc(w http.ResponseWriter, r *http.
 	id := vars["id"]
 
 	if len(id) == 0 {
-		util2.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
+		util.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
 		return
 	}
 
@@ -91,42 +91,42 @@ func (s ProgressServer) ListByScheduledEventFunc(w http.ResponseWriter, r *http.
 }
 
 func (s ProgressServer) ListByRangeFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac2.AuthenticateRequest(r, s.authnClient)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
-		util2.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac2.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
-		util2.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
 	}
 
 	fromString := r.URL.Query().Get("from")
 	if fromString == "" {
-		util2.ReturnHTTPMessage(w, r, 500, "error", "no start of range passed in")
+		util.ReturnHTTPMessage(w, r, 500, "error", "no start of range passed in")
 		return
 	}
 
 	start, err := time.Parse(time.UnixDate, fromString)
 
 	if err != nil {
-		util2.ReturnHTTPMessage(w, r, 500, "error", "error parsing start time")
+		util.ReturnHTTPMessage(w, r, 500, "error", "error parsing start time")
 		return
 	}
 
 	toString := r.URL.Query().Get("to")
 	if toString == "" {
-		util2.ReturnHTTPMessage(w, r, 500, "error", "no end of range passed in")
+		util.ReturnHTTPMessage(w, r, 500, "error", "no end of range passed in")
 		return
 	}
 
 	end, err := time.Parse(time.UnixDate, toString)
 
 	if err != nil {
-		util2.ReturnHTTPMessage(w, r, 500, "error", "error parsing end time")
+		util.ReturnHTTPMessage(w, r, 500, "error", "error parsing end time")
 		return
 	}
 
@@ -139,9 +139,9 @@ func (s ProgressServer) ListByRangeFunc(w http.ResponseWriter, r *http.Request) 
 List Progress for the authenticated user
 */
 func (s ProgressServer) ListForUserFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac2.AuthenticateRequest(r, s.authnClient)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
-		util2.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
 	}
 
@@ -155,16 +155,16 @@ List Progress by User
 	- id : The user id
 */
 func (s ProgressServer) ListByUserFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac2.AuthenticateRequest(r, s.authnClient)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
-		util2.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac2.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
-		util2.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
 	}
 
@@ -173,7 +173,7 @@ func (s ProgressServer) ListByUserFunc(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	if len(id) == 0 {
-		util2.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
+		util.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
 		return
 	}
 
@@ -183,16 +183,16 @@ func (s ProgressServer) ListByUserFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s ProgressServer) CountByScheduledEvent(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac2.AuthenticateRequest(r, s.authnClient)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
-		util2.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
 		return
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac2.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbList))
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbList))
 	if err != nil || !authrResponse.Success {
-		util2.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list progress")
 		return
 	}
 
@@ -201,7 +201,7 @@ func (s ProgressServer) CountByScheduledEvent(w http.ResponseWriter, r *http.Req
 	})
 	if err != nil {
 		glog.Errorf("error while retrieving progress: %s", hferrors.GetErrorMessage(err))
-		util2.ReturnHTTPMessage(w, r, 500, "error", "no progress found")
+		util.ReturnHTTPMessage(w, r, 500, "error", "no progress found")
 		return
 	}
 	countMap := map[string]int{}
@@ -218,7 +218,7 @@ func (s ProgressServer) CountByScheduledEvent(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		glog.Error(err)
 	}
-	util2.ReturnHTTPContent(w, r, 200, "success", encodedMap)
+	util.ReturnHTTPContent(w, r, 200, "success", encodedMap)
 }
 
 func (s ProgressServer) ListByRange(w http.ResponseWriter, r *http.Request, start time.Time, end time.Time, includeFinished bool) {
@@ -233,7 +233,7 @@ func (s ProgressServer) ListByRange(w http.ResponseWriter, r *http.Request, star
 
 	if err != nil {
 		glog.Errorf("error while retrieving progress: %s", hferrors.GetErrorMessage(err))
-		util2.ReturnHTTPMessage(w, r, 500, "error", "no progress found")
+		util.ReturnHTTPMessage(w, r, 500, "error", "no progress found")
 		return
 	}
 
@@ -268,7 +268,7 @@ func (s ProgressServer) ListByRange(w http.ResponseWriter, r *http.Request, star
 	if err != nil {
 		glog.Error(err)
 	}
-	util2.ReturnHTTPContent(w, r, 200, "success", encodedProgress)
+	util.ReturnHTTPContent(w, r, 200, "success", encodedProgress)
 }
 
 func (s ProgressServer) ListByLabel(w http.ResponseWriter, r *http.Request, label string, value string, includeFinished bool) {
@@ -282,7 +282,7 @@ func (s ProgressServer) ListByLabel(w http.ResponseWriter, r *http.Request, labe
 
 	if err != nil {
 		glog.Errorf("error while retrieving progress %s", hferrors.GetErrorMessage(err))
-		util2.ReturnHTTPMessage(w, r, 500, "error", "no progress found")
+		util.ReturnHTTPMessage(w, r, 500, "error", "no progress found")
 		return
 	}
 
@@ -309,7 +309,7 @@ func (s ProgressServer) ListByLabel(w http.ResponseWriter, r *http.Request, labe
 	if err != nil {
 		glog.Error(err)
 	}
-	util2.ReturnHTTPContent(w, r, 200, "success", encodedProgress)
+	util.ReturnHTTPContent(w, r, 200, "success", encodedProgress)
 }
 
 /*
@@ -321,9 +321,9 @@ Update Progress
 func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 
-	user, err := rbac2.AuthenticateRequest(r, s.authnClient)
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {
-		util2.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update progress")
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update progress")
 		return
 	}
 
@@ -332,20 +332,20 @@ func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	if len(id) == 0 {
-		util2.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
+		util.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
 		return
 	}
 
 	stepRaw := r.PostFormValue("step")
 	if stepRaw == "" {
-		util2.ReturnHTTPMessage(w, r, 400, "badrequest", "no step was passed in")
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no step was passed in")
 		return
 	}
 
 	step, err := strconv.Atoi(stepRaw)
 	if err != nil {
 		glog.Errorf("error while converting step %v", err)
-		util2.ReturnHTTPMessage(w, r, 500, "error", "provided step was invalid")
+		util.ReturnHTTPMessage(w, r, 500, "error", "provided step was invalid")
 		return
 	}
 
@@ -358,12 +358,12 @@ func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		glog.Errorf("error while retrieving progress %v", err)
-		util2.ReturnHTTPMessage(w, r, 500, "error", "no active progress for this session found")
+		util.ReturnHTTPMessage(w, r, 500, "error", "no active progress for this session found")
 		return
 	}
 
 	if len(progress.Items) < 1 {
-		util2.ReturnHTTPMessage(w, r, 404, "error", "no active progress for this session found")
+		util.ReturnHTTPMessage(w, r, 404, "error", "no active progress for this session found")
 		return
 	}
 
@@ -388,10 +388,10 @@ func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 
 		if retryErr != nil {
 			glog.Errorf("error updating progress %s: %v", p.Name, err)
-			util2.ReturnHTTPMessage(w, r, 500, "error", "progress could not be updated")
+			util.ReturnHTTPMessage(w, r, 500, "error", "progress could not be updated")
 			return
 		}
 	}
 
-	util2.ReturnHTTPMessage(w, r, 200, "success", "Progress was updated")
+	util.ReturnHTTPMessage(w, r, 200, "success", "Progress was updated")
 }
