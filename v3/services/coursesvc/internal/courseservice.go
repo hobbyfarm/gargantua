@@ -18,8 +18,6 @@ import (
 	coursepb "github.com/hobbyfarm/gargantua/v3/protos/course"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	scenariopb "github.com/hobbyfarm/gargantua/v3/protos/scenario"
-	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
-	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
 )
 
 const (
@@ -342,7 +340,7 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	seInUse := filterScheduledEvents(id, seList)
+	seInUse := util.FilterScheduledEvents(id, seList, util.FilterByCourse)
 
 	sessList, err := c.sessionClient.ListSession(r.Context(), &generalpb.ListOptions{})
 	if err != nil {
@@ -351,7 +349,7 @@ func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessInUse := filterSessions(id, sessList)
+	sessInUse := util.FilterSessions(id, sessList, util.IsSessionOfCourse)
 
 	var msg = ""
 	toDelete := true
@@ -480,36 +478,6 @@ func (c CourseServer) previewDynamicScenarios(w http.ResponseWriter, r *http.Req
 		glog.Error(err)
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedScenarios)
-}
-
-// Filter a ScheduledEventList to find SEs that are a) active and b) using the course specified
-func filterScheduledEvents(course string, seList *scheduledeventpb.ListScheduledEventsResponse) []*scheduledeventpb.ScheduledEvent {
-	outList := make([]*scheduledeventpb.ScheduledEvent, 0)
-	for _, se := range seList.GetScheduledevents() {
-		if se.GetStatus().GetFinished() {
-			continue
-		}
-
-		for _, c := range se.GetCourses() {
-			if c == course {
-				outList = append(outList, se)
-				break
-			}
-		}
-	}
-
-	return outList
-}
-
-func filterSessions(course string, list *sessionpb.ListSessionsResponse) []*sessionpb.Session {
-	outList := make([]*sessionpb.Session, 0)
-	for _, sess := range list.GetSessions() {
-		if sess.GetCourse() == course {
-			outList = append(outList, sess)
-		}
-	}
-
-	return outList
 }
 
 // We need this helper function because util.AppendDynamicScenariosByCategories expects a list function without grpc call options
