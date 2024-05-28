@@ -486,7 +486,7 @@ func (c CourseServer) previewDynamicScenarios(w http.ResponseWriter, r *http.Req
 func filterScheduledEvents(course string, seList *scheduledeventpb.ListScheduledEventsResponse) []*scheduledeventpb.ScheduledEvent {
 	outList := make([]*scheduledeventpb.ScheduledEvent, 0)
 	for _, se := range seList.GetScheduledevents() {
-		if se.GetStatus().GetFinished() == true {
+		if se.GetStatus().GetFinished() {
 			continue
 		}
 
