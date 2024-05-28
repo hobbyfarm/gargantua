@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
-	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
@@ -19,9 +17,9 @@ import (
 	"github.com/gorilla/mux"
 	coursepb "github.com/hobbyfarm/gargantua/v3/protos/course"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	scenariopb "github.com/hobbyfarm/gargantua/v3/protos/scenario"
 	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -427,7 +425,12 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 		if err != nil {
 			glog.Errorf("error retrieving course %s", hferrors.GetErrorMessage(err))
 		} else {
-			course.Scenarios = c.AppendDynamicScenariosByCategories(r.Context(), course.Scenarios, course.Categories)
+			course.Scenarios = util.AppendDynamicScenariosByCategories(
+				r.Context(),
+				course.Scenarios,
+				course.Categories,
+				c.listScenarios,
+			)
 			courses = append(courses, course)
 		}
 	}
@@ -466,51 +469,13 @@ func (c CourseServer) previewDynamicScenarios(w http.ResponseWriter, r *http.Req
 
 	scenarios := []string{}
 
-	scenarios = c.AppendDynamicScenariosByCategories(r.Context(), scenarios, categoriesSlice)
+	scenarios = util.AppendDynamicScenariosByCategories(r.Context(), scenarios, categoriesSlice, c.listScenarios)
 
 	encodedScenarios, err := json.Marshal(scenarios)
 	if err != nil {
 		glog.Error(err)
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedScenarios)
-}
-
-func (c CourseServer) AppendDynamicScenariosByCategories(ctx context.Context, scenariosList []string, categories []string) []string {
-	for _, categoryQuery := range categories {
-		categorySelectors := []string{}
-		categoryQueryParts := strings.Split(categoryQuery, "&")
-		for _, categoryQueryPart := range categoryQueryParts {
-			operator := "in"
-			if strings.HasPrefix(categoryQueryPart, "!") {
-				operator = "notin"
-				categoryQueryPart = categoryQueryPart[1:]
-			}
-			categorySelectors = append(categorySelectors, fmt.Sprintf("category-%s %s (true)", categoryQueryPart, operator))
-		}
-		categorySelectorString := strings.Join(categorySelectors, ",")
-
-		selector, err := labels.Parse(categorySelectorString)
-		if err != nil {
-			glog.Errorf("error while parsing label selector %s: %v", categorySelectorString, err)
-			continue
-		}
-
-		scenarios, err := c.scenarioClient.ListScenario(ctx, &generalpb.ListOptions{
-			LabelSelector: selector.String(),
-			LoadFromCache: true,
-		})
-
-		if err != nil {
-			glog.Errorf("error while retrieving scenarios %v", err)
-			continue
-		}
-		for _, scenario := range scenarios.GetScenarios() {
-			scenariosList = append(scenariosList, scenario.GetId())
-		}
-	}
-
-	scenariosList = util.UniqueStringSlice(scenariosList)
-	return scenariosList
 }
 
 // Filter a ScheduledEventList to find SEs that are a) active and b) using the course specified
@@ -543,10 +508,7 @@ func filterSessions(course string, list *sessionpb.ListSessionsResponse) []*sess
 	return outList
 }
 
-func idIndexer(obj interface{}) ([]string, error) {
-	course, ok := obj.(*hfv1.Course)
-	if !ok {
-		return []string{}, nil
-	}
-	return []string{course.Name}, nil
+// We need this helper function because util.AppendDynamicScenariosByCategories expects a list function without grpc call options
+func (c CourseServer) listScenarios(ctx context.Context, listOptions *generalpb.ListOptions) (*scenariopb.ListScenariosResponse, error) {
+	return c.scenarioClient.ListScenario(ctx, listOptions)
 }

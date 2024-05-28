@@ -20,6 +20,7 @@ import (
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	scenariopb "github.com/hobbyfarm/gargantua/v3/protos/scenario"
 	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
 	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
@@ -531,4 +532,47 @@ func GetDurationWithDays(s string) (string, error) {
 	}
 
 	return s, nil
+}
+
+func AppendDynamicScenariosByCategories(
+	ctx context.Context,
+	scenariosList []string,
+	categories []string,
+	listScenariosFunc func(ctx context.Context, in *generalpb.ListOptions) (*scenariopb.ListScenariosResponse, error),
+) []string {
+	for _, categoryQuery := range categories {
+		categorySelectors := []string{}
+		categoryQueryParts := strings.Split(categoryQuery, "&")
+		for _, categoryQueryPart := range categoryQueryParts {
+			operator := "in"
+			if strings.HasPrefix(categoryQueryPart, "!") {
+				operator = "notin"
+				categoryQueryPart = categoryQueryPart[1:]
+			}
+			categorySelectors = append(categorySelectors, fmt.Sprintf("category-%s %s (true)", categoryQueryPart, operator))
+		}
+		categorySelectorString := strings.Join(categorySelectors, ",")
+
+		selector, err := labels.Parse(categorySelectorString)
+		if err != nil {
+			glog.Errorf("error while parsing label selector %s: %v", categorySelectorString, err)
+			continue
+		}
+
+		scenarios, err := listScenariosFunc(ctx, &generalpb.ListOptions{
+			LabelSelector: selector.String(),
+			LoadFromCache: true,
+		})
+
+		if err != nil {
+			glog.Errorf("error while retrieving scenarios: %s", hferrors.GetErrorMessage(err))
+			continue
+		}
+		for _, scenario := range scenarios.GetScenarios() {
+			scenariosList = append(scenariosList, scenario.GetId())
+		}
+	}
+
+	scenariosList = UniqueStringSlice(scenariosList)
+	return scenariosList
 }
