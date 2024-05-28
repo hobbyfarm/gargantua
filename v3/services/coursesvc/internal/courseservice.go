@@ -59,7 +59,7 @@ func (c CourseServer) getPreparedCourseById(ctx context.Context, id string) (Pre
 	// load course from cache
 	course, err := c.internalCourseServer.GetCourse(ctx, &generalpb.GetRequest{Id: id, LoadFromCache: true})
 	if err != nil {
-		return PreparedCourse{}, fmt.Errorf("error while retrieving course %v", err)
+		return PreparedCourse{}, fmt.Errorf("error while retrieving course %s", hferrors.GetErrorMessage(err))
 	}
 
 	return convertToPreparedCourse(course), nil
@@ -121,7 +121,13 @@ func (c CourseServer) GetCourse(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 
-	course, err := c.getPreparedCourseById(r.Context(), vars["course_id"])
+	courseId := vars["course_id"]
+	if len(courseId) == 0 {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no course id passed in")
+		return
+	}
+
+	course, err := c.getPreparedCourseById(r.Context(), courseId)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf("error retrieving course: %v", err))
 		return
