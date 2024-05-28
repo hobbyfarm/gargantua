@@ -223,7 +223,6 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 
 	util.ReturnHTTPMessage(w, r, 201, "created", courseId.GetId())
 	glog.V(4).Infof("Created course %s", courseId.GetId())
-	return
 }
 
 func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
@@ -308,7 +307,6 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 
 	util.ReturnHTTPMessage(w, r, 200, "updated", "")
 	glog.V(4).Infof("Updated course %s", id)
-	return
 }
 
 func (c CourseServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
