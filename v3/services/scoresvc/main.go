@@ -9,14 +9,6 @@ import (
 	"github.com/golang/glog"
 )
 
-var (
-	serviceConfig *microservices.ServiceConfig
-)
-
-func init() {
-	serviceConfig = microservices.BuildServiceConfig()
-}
-
 func main() {
 	var wg sync.WaitGroup
 

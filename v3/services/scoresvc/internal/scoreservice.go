@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 )
 
 type Score struct {
@@ -23,7 +24,7 @@ func (s ScoreServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 
 	leaderboard, found := s.Cache.Get(language)
 	if !found {
-		http.Error(w, "Leaderboard not found", http.StatusNotFound)
+		glog.Infof("Leaderboard not found: %s", language)
 
 		// If not found return empty leaderboard
 		leaderboard = LanguageLeaderboard{
@@ -39,9 +40,7 @@ func (s ScoreServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(responseData)
+	util.ReturnHTTPContent(w, r, 200, "success", responseData)
 }
 
 func (s ScoreServer) AddScoreFunc(w http.ResponseWriter, r *http.Request) {
@@ -72,4 +71,9 @@ func (s ScoreServer) AddScoreFunc(w http.ResponseWriter, r *http.Request) {
 	s.Cache.Set(language, leaderboard, 0)
 
 	w.WriteHeader(http.StatusCreated)
+}
+
+// Just to see of the service is up and running
+func (s ScoreServer) Healthz(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }
