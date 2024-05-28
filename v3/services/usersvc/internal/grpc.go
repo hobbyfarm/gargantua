@@ -54,12 +54,13 @@ func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfIn
 	}, nil
 }
 
+// Index user by lowercase Email
 func emailIndexer(obj interface{}) ([]string, error) {
 	user, ok := obj.(*hfv2.User)
 	if !ok {
 		return []string{}, nil
 	}
-	return []string{user.Spec.Email}, nil
+	return []string{strings.ToLower(user.Spec.Email)}, nil
 }
 
 func (u *GrpcUserServer) CreateUser(c context.Context, cur *userProto.CreateUserRequest) (*userProto.UserId, error) {
@@ -410,12 +411,14 @@ func (u *GrpcUserServer) GetUserByEmail(c context.Context, gur *userProto.GetUse
 		return &userProto.User{}, newErr.Err()
 	}
 
-	obj, err := u.userIndexer.ByIndex(emailIndex, gur.GetEmail())
+	userMail := strings.ToLower(gur.GetEmail())
+
+	obj, err := u.userIndexer.ByIndex(emailIndex, userMail)
 	if err != nil {
 		newErr := status.Newf(
 			codes.Internal,
 			"error while retrieving user by e-mail: %s with error: %v",
-			gur.GetEmail(),
+			userMail,
 			err,
 		)
 		newErr, wde := newErr.WithDetails(gur)
@@ -429,7 +432,7 @@ func (u *GrpcUserServer) GetUserByEmail(c context.Context, gur *userProto.GetUse
 		newErr := status.Newf(
 			codes.NotFound,
 			"user not found by email: %s",
-			gur.GetEmail(),
+			userMail,
 		)
 		newErr, wde := newErr.WithDetails(gur)
 		if wde != nil {
@@ -444,7 +447,7 @@ func (u *GrpcUserServer) GetUserByEmail(c context.Context, gur *userProto.GetUse
 		newErr := status.Newf(
 			codes.Internal,
 			"error while converting user found by email to object: %s",
-			gur.GetEmail(),
+			userMail,
 		)
 		newErr, wde := newErr.WithDetails(gur)
 		if wde != nil {
