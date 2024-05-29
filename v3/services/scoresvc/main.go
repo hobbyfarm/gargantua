@@ -18,7 +18,7 @@ func main() {
 
 		scoreServer, err := scoreservice.NewScoreServer()
 		if err != nil {
-			glog.Fatalf("Error creating userserver: %v", err)
+			glog.Fatalf("Error creating scoreserver: %v", err)
 		}
 		microservices.StartAPIServer(scoreServer)
 	}()
