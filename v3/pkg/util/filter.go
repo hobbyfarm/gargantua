@@ -5,6 +5,11 @@ import (
 	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
 )
 
+// ScenarioProvider is an interface for any object that can provide scenarios. E. g. ScheduledEvents or Courses.
+type ScenarioProvider interface {
+	GetScenarios() []string
+}
+
 // Implemented by FilterByScenario and FilterByCourse
 type EventFilterfunc func(se *scheduledeventpb.ScheduledEvent, objId string) bool
 
@@ -45,8 +50,8 @@ func FilterSessions(
 }
 
 // Specific filter function for scenarios
-func FilterByScenario(se *scheduledeventpb.ScheduledEvent, scenario string) bool {
-	return containsObjId(se.GetScenarios(), scenario)
+func FilterByScenario[T ScenarioProvider](obj T, scenario string) bool {
+	return containsObjId(obj.GetScenarios(), scenario)
 }
 
 // Specific filter function for courses

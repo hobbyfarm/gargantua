@@ -35,7 +35,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ScenarioSvcClient interface {
 	// Resource oriented functions:
-	CreateScenario(ctx context.Context, in *CreateScenarioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CreateScenario(ctx context.Context, in *CreateScenarioRequest, opts ...grpc.CallOption) (*general.ResourceId, error)
 	GetScenario(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Scenario, error)
 	UpdateScenario(ctx context.Context, in *UpdateScenarioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteScenario(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -53,8 +53,8 @@ func NewScenarioSvcClient(cc grpc.ClientConnInterface) ScenarioSvcClient {
 	return &scenarioSvcClient{cc}
 }
 
-func (c *scenarioSvcClient) CreateScenario(ctx context.Context, in *CreateScenarioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
+func (c *scenarioSvcClient) CreateScenario(ctx context.Context, in *CreateScenarioRequest, opts ...grpc.CallOption) (*general.ResourceId, error) {
+	out := new(general.ResourceId)
 	err := c.cc.Invoke(ctx, ScenarioSvc_CreateScenario_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -121,7 +121,7 @@ func (c *scenarioSvcClient) CopyScenario(ctx context.Context, in *general.Resour
 // for forward compatibility
 type ScenarioSvcServer interface {
 	// Resource oriented functions:
-	CreateScenario(context.Context, *CreateScenarioRequest) (*emptypb.Empty, error)
+	CreateScenario(context.Context, *CreateScenarioRequest) (*general.ResourceId, error)
 	GetScenario(context.Context, *general.GetRequest) (*Scenario, error)
 	UpdateScenario(context.Context, *UpdateScenarioRequest) (*emptypb.Empty, error)
 	DeleteScenario(context.Context, *general.ResourceId) (*emptypb.Empty, error)
@@ -136,7 +136,7 @@ type ScenarioSvcServer interface {
 type UnimplementedScenarioSvcServer struct {
 }
 
-func (UnimplementedScenarioSvcServer) CreateScenario(context.Context, *CreateScenarioRequest) (*emptypb.Empty, error) {
+func (UnimplementedScenarioSvcServer) CreateScenario(context.Context, *CreateScenarioRequest) (*general.ResourceId, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateScenario not implemented")
 }
 func (UnimplementedScenarioSvcServer) GetScenario(context.Context, *general.GetRequest) (*Scenario, error) {

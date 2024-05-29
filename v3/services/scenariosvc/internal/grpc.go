@@ -39,7 +39,7 @@ func NewGrpcScenarioServer(hfClientSet hfClientset.Interface, hfInformerFactory 
 	}
 }
 
-func (s *GrpcScenarioServer) CreateScenario(ctx context.Context, req *scenariopb.CreateScenarioRequest) (*emptypb.Empty, error) {
+func (s *GrpcScenarioServer) CreateScenario(ctx context.Context, req *scenariopb.CreateScenarioRequest) (*generalpb.ResourceId, error) {
 	name := req.GetName()
 	description := req.GetDescription()
 	rawSteps := req.GetRawSteps()
@@ -57,7 +57,7 @@ func (s *GrpcScenarioServer) CreateScenario(ctx context.Context, req *scenariopb
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &emptypb.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &generalpb.ResourceId{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 
@@ -80,14 +80,14 @@ func (s *GrpcScenarioServer) CreateScenario(ctx context.Context, req *scenariopb
 	if rawSteps != "" {
 		steps, err := util.GenericUnmarshal[[]hfv1.ScenarioStep](rawSteps, "raw_steps")
 		if err != nil {
-			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "raw_steps")
+			return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "raw_steps")
 		}
 		scenario.Spec.Steps = steps
 	}
 	if rawCategories != "" {
 		categories, err := util.GenericUnmarshal[[]string](rawCategories, "raw_categories")
 		if err != nil {
-			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "raw_categories")
+			return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "raw_categories")
 		}
 		updatedLabels := labels.UpdateCategoryLabels(scenario.ObjectMeta.Labels, []string{}, categories)
 		scenario.ObjectMeta.Labels = updatedLabels
@@ -96,38 +96,38 @@ func (s *GrpcScenarioServer) CreateScenario(ctx context.Context, req *scenariopb
 	if rawTags != "" {
 		tags, err := util.GenericUnmarshal[[]string](rawTags, "raw_tags")
 		if err != nil {
-			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "raw_tags")
+			return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "raw_tags")
 		}
 		scenario.Spec.Tags = tags
 	}
 	if rawVirtualMachines != "" {
 		vms, err := util.GenericUnmarshal[[]map[string]string](rawVirtualMachines, "raw_vms")
 		if err != nil {
-			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "raw_vms")
+			return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "raw_vms")
 		}
 		scenario.Spec.VirtualMachines = vms
 	}
 	if rawVmTasks != "" {
 		vmTasks, err := util.GenericUnmarshal[[]hfv1.VirtualMachineTasks](rawSteps, "raw_vm_tasks")
 		if err != nil {
-			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "raw_vm_tasks")
+			return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "raw_vm_tasks")
 		}
 		scenario.Spec.Tasks = vmTasks
 	}
 	err := util.VerifyTaskContent(scenario.Spec.Tasks, req)
 	if err != nil {
-		return &emptypb.Empty{}, err
+		return &generalpb.ResourceId{}, err
 	}
 
 	_, err = s.scenarioClient.Create(ctx, scenario, metav1.CreateOptions{})
 	if err != nil {
-		return &emptypb.Empty{}, hferrors.GrpcError(
+		return &generalpb.ResourceId{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &emptypb.Empty{}, nil
+	return &generalpb.ResourceId{Id: id}, nil
 }
 
 func (s *GrpcScenarioServer) GetScenario(ctx context.Context, req *generalpb.GetRequest) (*scenariopb.Scenario, error) {

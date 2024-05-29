@@ -10,7 +10,7 @@ import "google/protobuf/wrappers.proto";
 
 service ScenarioSvc {
     // Resource oriented functions:
-    rpc CreateScenario (CreateScenarioRequest) returns (google.protobuf.Empty);
+    rpc CreateScenario (CreateScenarioRequest) returns (general.ResourceId);
     rpc GetScenario (general.GetRequest) returns (Scenario);
     rpc UpdateScenario (UpdateScenarioRequest) returns (google.protobuf.Empty);
     rpc DeleteScenario (general.ResourceId) returns (google.protobuf.Empty);

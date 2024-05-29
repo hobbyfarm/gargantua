@@ -11,7 +11,13 @@ import (
 
 	scenarioservice "github.com/hobbyfarm/gargantua/services/scenariosvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	coursepb "github.com/hobbyfarm/gargantua/v3/protos/course"
 	scenariopb "github.com/hobbyfarm/gargantua/v3/protos/scenario"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
+	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
 )
 
 var (
@@ -32,6 +38,26 @@ func main() {
 
 	crd.InstallCrds(scenarioservice.ScenarioCRDInstaller{}, cfg, "scenario")
 
+	services := []microservices.MicroService{
+		microservices.AuthN,
+		microservices.AuthR,
+		microservices.AccessCode,
+		microservices.Course,
+		microservices.ScheduledEvent,
+		microservices.Session,
+	}
+	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
+	for _, conn := range connections {
+		defer conn.Close()
+	}
+
+	authnClient := authnpb.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authrpb.NewAuthRClient(connections[microservices.AuthR])
+	acClient := accesscodepb.NewAccessCodeSvcClient(connections[microservices.AccessCode])
+	courseClient := coursepb.NewCourseSvcClient(connections[microservices.Course])
+	scheduledEventClient := scheduledeventpb.NewScheduledEventSvcClient(connections[microservices.ScheduledEvent])
+	sessionClient := sessionpb.NewSessionSvcClient(connections[microservices.Session])
+
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
 	ss := scenarioservice.NewGrpcScenarioServer(hfClient, hfInformerFactory)
@@ -43,6 +69,22 @@ func main() {
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		scenarioServer := scenarioservice.NewScenarioServer(
+			authnClient,
+			authrClient,
+			acClient,
+			courseClient,
+			scheduledEventClient,
+			sessionClient,
+			ss,
+		)
+		microservices.StartAPIServer(scenarioServer)
 	}()
 
 	hfInformerFactory.Start(stopCh)
