@@ -19,6 +19,6 @@ func NewScoreServer() (ScoreServer, error) {
 func (s ScoreServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/score/leaderboard/{language}", s.GetFunc).Methods("GET")
 	r.HandleFunc("/score/add/{language}", s.AddScoreFunc).Methods("POST")
-	r.HandleFunc("/score/health}", s.Healthz).Methods("GET")
+	r.HandleFunc("/score/healthz", s.Healthz).Methods("GET")
 	glog.V(2).Infof("set up routes for Score server")
 }
