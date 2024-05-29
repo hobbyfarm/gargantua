@@ -9,12 +9,15 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/wrappers.proto";
 
 service ScenarioSvc {
+    // Resource oriented functions:
     rpc CreateScenario (CreateScenarioRequest) returns (google.protobuf.Empty);
     rpc GetScenario (general.GetRequest) returns (Scenario);
     rpc UpdateScenario (UpdateScenarioRequest) returns (google.protobuf.Empty);
     rpc DeleteScenario (general.ResourceId) returns (google.protobuf.Empty);
     rpc DeleteCollectionScenario (general.ListOptions) returns (google.protobuf.Empty);
     rpc ListScenario (general.ListOptions) returns (ListScenariosResponse);
+    // Helper functions:
+    rpc CopyScenario (general.ResourceId) returns (google.protobuf.Empty);
 }
 
 message Scenario {

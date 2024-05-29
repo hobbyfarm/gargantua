@@ -2,6 +2,7 @@ package scenarioservice
 
 import (
 	"context"
+	"encoding/base64"
 
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	scenariopb "github.com/hobbyfarm/gargantua/v3/protos/scenario"
@@ -17,6 +18,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
@@ -357,4 +359,52 @@ func (s *GrpcScenarioServer) ListScenario(ctx context.Context, listOptions *gene
 	}
 
 	return &scenariopb.ListScenariosResponse{Scenarios: preparedScenarios}, nil
+}
+
+func (s *GrpcScenarioServer) CopyScenario(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
+	id := req.GetId()
+	if len(id) == 0 {
+		glog.V(2).Info("error no id provided for scenario")
+		return &emptypb.Empty{}, hferrors.GrpcIdNotSpecifiedError(req)
+	}
+	scenario, err := s.scenarioClient.Get(ctx, id, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return &emptypb.Empty{}, hferrors.GrpcNotFoundError(req, "scenario")
+		}
+		return &emptypb.Empty{}, hferrors.GrpcError(
+			codes.Internal,
+			"error while retrieving scenario %s",
+			req,
+			id,
+		)
+	}
+	name, err := base64.StdEncoding.DecodeString(scenario.Spec.Name)
+	if err != nil {
+		glog.Errorf("Error decoding title of scenario %s to copy: %v", scenario.Name, err)
+		return &emptypb.Empty{}, hferrors.GrpcError(
+			codes.Internal,
+			"error while retrieving scenario %s",
+			req,
+			id,
+		)
+	}
+	copyName := string(name) + " - Copy"
+	copyName = base64.StdEncoding.EncodeToString([]byte(copyName))
+	copyId := util.GenerateResourceName("s", copyName, 10)
+
+	scenario.Name = copyId
+	scenario.Spec.Name = copyName
+
+	_, err = s.scenarioClient.Create(ctx, scenario, metav1.CreateOptions{})
+	if err != nil {
+		glog.Errorf("Error attempting to create a copy of scenario %s: %v", id, err)
+		return &emptypb.Empty{}, hferrors.GrpcError(
+			codes.Internal,
+			"error attempting to copy scenario %s",
+			req,
+			id,
+		)
+	}
+	return &emptypb.Empty{}, nil
 }

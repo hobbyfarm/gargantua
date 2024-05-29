@@ -27,18 +27,22 @@ const (
 	ScenarioSvc_DeleteScenario_FullMethodName           = "/scenario.ScenarioSvc/DeleteScenario"
 	ScenarioSvc_DeleteCollectionScenario_FullMethodName = "/scenario.ScenarioSvc/DeleteCollectionScenario"
 	ScenarioSvc_ListScenario_FullMethodName             = "/scenario.ScenarioSvc/ListScenario"
+	ScenarioSvc_CopyScenario_FullMethodName             = "/scenario.ScenarioSvc/CopyScenario"
 )
 
 // ScenarioSvcClient is the client API for ScenarioSvc service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ScenarioSvcClient interface {
+	// Resource oriented functions:
 	CreateScenario(ctx context.Context, in *CreateScenarioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetScenario(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Scenario, error)
 	UpdateScenario(ctx context.Context, in *UpdateScenarioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteScenario(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteCollectionScenario(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListScenario(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*ListScenariosResponse, error)
+	// Helper functions:
+	CopyScenario(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type scenarioSvcClient struct {
@@ -103,16 +107,28 @@ func (c *scenarioSvcClient) ListScenario(ctx context.Context, in *general.ListOp
 	return out, nil
 }
 
+func (c *scenarioSvcClient) CopyScenario(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ScenarioSvc_CopyScenario_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ScenarioSvcServer is the server API for ScenarioSvc service.
 // All implementations must embed UnimplementedScenarioSvcServer
 // for forward compatibility
 type ScenarioSvcServer interface {
+	// Resource oriented functions:
 	CreateScenario(context.Context, *CreateScenarioRequest) (*emptypb.Empty, error)
 	GetScenario(context.Context, *general.GetRequest) (*Scenario, error)
 	UpdateScenario(context.Context, *UpdateScenarioRequest) (*emptypb.Empty, error)
 	DeleteScenario(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	DeleteCollectionScenario(context.Context, *general.ListOptions) (*emptypb.Empty, error)
 	ListScenario(context.Context, *general.ListOptions) (*ListScenariosResponse, error)
+	// Helper functions:
+	CopyScenario(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	mustEmbedUnimplementedScenarioSvcServer()
 }
 
@@ -137,6 +153,9 @@ func (UnimplementedScenarioSvcServer) DeleteCollectionScenario(context.Context, 
 }
 func (UnimplementedScenarioSvcServer) ListScenario(context.Context, *general.ListOptions) (*ListScenariosResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListScenario not implemented")
+}
+func (UnimplementedScenarioSvcServer) CopyScenario(context.Context, *general.ResourceId) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CopyScenario not implemented")
 }
 func (UnimplementedScenarioSvcServer) mustEmbedUnimplementedScenarioSvcServer() {}
 
@@ -259,6 +278,24 @@ func _ScenarioSvc_ListScenario_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ScenarioSvc_CopyScenario_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(general.ResourceId)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ScenarioSvcServer).CopyScenario(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ScenarioSvc_CopyScenario_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ScenarioSvcServer).CopyScenario(ctx, req.(*general.ResourceId))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ScenarioSvc_ServiceDesc is the grpc.ServiceDesc for ScenarioSvc service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -289,6 +326,10 @@ var ScenarioSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListScenario",
 			Handler:    _ScenarioSvc_ListScenario_Handler,
+		},
+		{
+			MethodName: "CopyScenario",
+			Handler:    _ScenarioSvc_CopyScenario_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
