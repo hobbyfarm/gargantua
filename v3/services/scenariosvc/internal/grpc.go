@@ -158,8 +158,8 @@ func (s *GrpcScenarioServer) GetScenario(ctx context.Context, req *generalpb.Get
 			})
 		}
 		vmTasks = append(vmTasks, &scenariopb.VirtualMachineTasks{
-			VmId:  vmtask.VMName,
-			Tasks: tasks,
+			VmName: vmtask.VMName,
+			Tasks:  tasks,
 		})
 	}
 
@@ -334,8 +334,8 @@ func (s *GrpcScenarioServer) ListScenario(ctx context.Context, listOptions *gene
 				})
 			}
 			vmTasks = append(vmTasks, &scenariopb.VirtualMachineTasks{
-				VmId:  vmtask.VMName,
-				Tasks: tasks,
+				VmName: vmtask.VMName,
+				Tasks:  tasks,
 			})
 		}
 
