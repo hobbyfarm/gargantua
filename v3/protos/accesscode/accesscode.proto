@@ -57,6 +57,7 @@ message ListOtacsResponse {
 message CreateOtacRequest {
     string se_name = 1;
     string se_uid = 2;
+    string max_duration = 3;
 }
 
 message CreateAcRequest {

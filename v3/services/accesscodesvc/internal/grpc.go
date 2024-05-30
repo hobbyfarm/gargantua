@@ -305,6 +305,7 @@ func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accesscodepb.
 			cr,
 		)
 	}
+	maxDuration := cr.GetMaxDuration()
 
 	otac := &hfv1.OneTimeAccessCode{
 		ObjectMeta: metav1.ObjectMeta{
@@ -326,6 +327,7 @@ func (a *GrpcAccessCodeServer) CreateOtac(ctx context.Context, cr *accesscodepb.
 		Spec: hfv1.OneTimeAccessCodeSpec{
 			User:              "",
 			RedeemedTimestamp: "",
+			MaxDuration:       maxDuration,
 		},
 	}
 	otac, err := a.otacClient.Create(ctx, otac, metav1.CreateOptions{})
