@@ -155,7 +155,7 @@ func (s *GrpcScheduledEventServer) GetScheduledEvent(ctx context.Context, req *g
 
 	requiredVms := make(map[string]*scheduledeventpb.VMTemplateCountMap)
 	for environment, vmTemplateCountMap := range event.Spec.RequiredVirtualMachines {
-		requiredVms[environment] = &scheduledeventpb.VMTemplateCountMap{VmTemplateCounts: util.ConvertMap[int, uint32](vmTemplateCountMap)}
+		requiredVms[environment] = &scheduledeventpb.VMTemplateCountMap{VmTemplateCounts: util.ConvertIntMap[int, uint32](vmTemplateCountMap)}
 	}
 
 	return &scheduledeventpb.ScheduledEvent{
@@ -389,7 +389,7 @@ func (s *GrpcScheduledEventServer) ListScheduledEvent(ctx context.Context, listO
 
 		requiredVms := make(map[string]*scheduledeventpb.VMTemplateCountMap)
 		for environment, vmTemplateCountMap := range event.Spec.RequiredVirtualMachines {
-			requiredVms[environment] = &scheduledeventpb.VMTemplateCountMap{VmTemplateCounts: util.ConvertMap[int, uint32](vmTemplateCountMap)}
+			requiredVms[environment] = &scheduledeventpb.VMTemplateCountMap{VmTemplateCounts: util.ConvertIntMap[int, uint32](vmTemplateCountMap)}
 		}
 
 		preparedEvents = append(preparedEvents, &scheduledeventpb.ScheduledEvent{
