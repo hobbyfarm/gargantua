@@ -2,6 +2,7 @@ package util
 
 import (
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 )
 
 type IntegerType interface {
@@ -17,20 +18,31 @@ func ConvertMap[T, U IntegerType](input map[string]T) map[string]U {
 	return output
 }
 
+// A helper function that converts nested maps containing a struct with a map field into raw nested maps.
+// E. g., it can convert map[string]*generalpb.StringMap to map[string]map[string]string.
+// To make this work generic, we additionally need to pass a function which retrieves the raw map from our struct value.
+// E. g., GetRawStringMap retrieves the raw map[string]string from *generalpb.StringMap.
+func ConvertMapStruct[K comparable, V any, T any](input map[string]T, getMapFunc func(T) map[K]V) map[string]map[K]V {
+	output := make(map[string]map[K]V, len(input))
+	for key, val := range input {
+		output[key] = getMapFunc(val)
+	}
+	return output
+}
+
+func GetRawStringMap(val *generalpb.StringMap) map[string]string {
+	return val.GetValue()
+}
+
+func GetRawVMTemplateCountMap(val *scheduledeventpb.VMTemplateCountMap) map[string]uint32 {
+	return val.GetVmTemplateCounts()
+}
+
 // A function that converts []*generalpb.StringMap to []map[string]string
 func ConvertToStringMapSlice(stringMapSlice []*generalpb.StringMap) []map[string]string {
 	output := make([]map[string]string, 0, len(stringMapSlice))
 	for _, vm := range stringMapSlice {
 		output = append(output, vm.GetValue())
-	}
-	return output
-}
-
-// A function that converts map[string]*generalpb.StringMap to map[string]map[string]string
-func ConvertToStringMapMap(stringMapMap map[string]*generalpb.StringMap) map[string]map[string]string {
-	output := make(map[string]map[string]string, len(stringMapMap))
-	for key, val := range stringMapMap {
-		output[key] = val.GetValue()
 	}
 	return output
 }

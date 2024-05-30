@@ -85,7 +85,7 @@ func (e EnvironmentServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 		DisplayName:          environment.GetDisplayName(),
 		DNSSuffix:            environment.GetDnssuffix(),
 		Provider:             environment.GetProvider(),
-		TemplateMapping:      util.ConvertToStringMapMap(environment.GetTemplateMapping()),
+		TemplateMapping:      util.ConvertMapStruct(environment.GetTemplateMapping(), util.GetRawStringMap),
 		EnvironmentSpecifics: environment.GetEnvironmentSpecifics(),
 		IPTranslationMap:     environment.GetIpTranslationMap(),
 		WsEndpoint:           environment.GetWsEndpoint(),
@@ -127,7 +127,7 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 
 	for _, e := range environmentList.GetEnvironments() {
 		keys := make(map[string]map[string]string)
-		for k := range util.ConvertToStringMapMap(e.GetTemplateMapping()) {
+		for k := range util.ConvertMapStruct(e.GetTemplateMapping(), util.GetRawStringMap) {
 			keys[k] = map[string]string{} // reset template mapping entries -> @TODO: Figure out why?
 		}
 		preparedEnvironments = append(preparedEnvironments, PreparedListEnvironment{e.GetId(), e.GetDisplayName(), e.GetProvider(), keys})
