@@ -2,6 +2,7 @@ package scoreservice
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	"github.com/skip2/go-qrcode"
 )
 
 const (
@@ -150,19 +152,20 @@ func (s *ScoreServer) ScanFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code = "scan_" + code
-	scanner_cooldown_id := code + "_cooldown"
+	codeCacheId := "scan_" + code
+	scanner_cooldown_id := codeCacheId + "_cooldown"
 
 	// Retrieve existing scan from cache
 	_, expiration, found := s.Cache.GetWithExpiration(scanner_cooldown_id)
 	if !found {
 		s.Cache.Set(scanner_cooldown_id, true, s.GetTimeout())
 
-		_, found := s.Cache.Get(code)
+		_, found := s.Cache.Get(codeCacheId)
 		if !found {
-			s.Cache.Set(code, true, -1)
+			s.Cache.Set(codeCacheId, true, -1)
 			// TODO send code to ms teams
 			// First decode from base64
+			s.SendNotification(code)
 		}
 
 		cooldown := Cooldown{
@@ -201,6 +204,37 @@ func (s *ScoreServer) Healthz(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (s *ScoreServer) HandleGenerateQR(w http.ResponseWriter, r *http.Request) {
+	// Parse input from the query string
+	data := mux.Vars(r)["code"] // Get language from URL parameter
+
+	if data == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	code, err := base64.StdEncoding.DecodeString(data)
+	if err != nil {
+		http.Error(w, "Failed to decode QR code", http.StatusInternalServerError)
+		return
+	}
+
+	// Generate QR Code
+	qrCode, err := qrcode.Encode(string(code), qrcode.Medium, 256)
+	if err != nil {
+		http.Error(w, "Failed to generate QR code", http.StatusInternalServerError)
+		return
+	}
+
+	// Set header to output an image
+	w.Header().Set("Content-Type", "image/png")
+
+	// Write QR Code to response
+	if _, err := w.Write(qrCode); err != nil {
+		http.Error(w, "Failed to write QR code", http.StatusInternalServerError)
+	}
+}
+
 // Just to see of the service is up and running
 func (s *ScoreServer) GetTimeout() time.Duration {
 	timeout, found := os.LookupEnv("COOLDOWN_DURATION")
@@ -219,6 +253,77 @@ func (s *ScoreServer) GetTimeout() time.Duration {
 	}
 
 	return timeoutDuration
+}
+
+func (s *ScoreServer) SendNotification(code string) {
+	teamsWebhookUrl, found := os.LookupEnv("WEBHOOK_URL")
+	if !found {
+		return
+	}
+
+	baseUrl, found := os.LookupEnv("BASE_URL")
+	if !found {
+		return
+	}
+
+	imageUrl := baseUrl + "/score/qrcode/" + code
+
+	decodedCode, err := base64.StdEncoding.DecodeString(code)
+	if err != nil {
+		glog.Infof("Error decoding code:", err)
+		return
+	}
+
+	// Creating the JSON payload for the Teams message
+	message := map[string]interface{}{
+		"@type":    "MessageCard",
+		"@context": "http://schema.org/extensions",
+		"summary":  "New user scanned",
+		"sections": []map[string]interface{}{
+			{
+				"activityTitle": "Scanned: `" + string(decodedCode) + "`",
+				"images": []map[string]interface{}{
+					{
+						"image": imageUrl,
+					},
+				},
+			},
+		},
+	}
+
+	// Marshal the map into a JSON string.
+	jsonData, err := json.Marshal(message)
+	if err != nil {
+		glog.Infof("Error creating JSON payload:", err)
+		return
+	}
+
+	// Create a new HTTP request with the JSON payload
+	req, err := http.NewRequest("POST", teamsWebhookUrl, bytes.NewBuffer(jsonData))
+	if err != nil {
+		glog.Infof("Error creating request:", err)
+		return
+	}
+
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+
+	// Send the request using the default HTTP client
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		glog.Infof("Error sending request to Teams:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Check the HTTP response status
+	if resp.StatusCode != http.StatusOK {
+		glog.Infof("Failed to send message. Status: %d\n", resp.StatusCode)
+		return
+	}
+
+	glog.Infof("Message sent successfully")
 }
 
 // top10Scores returns a LanguageLeaderboard with only the top 10 scores, ranked by score in descending order.
