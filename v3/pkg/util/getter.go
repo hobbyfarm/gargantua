@@ -76,7 +76,7 @@ func GetOwnerReferences[T metav1.Object, G HfClientGet[T], C GenericCacheRetriev
 		tempOwnerRef := &generalpb.OwnerReference{
 			ApiVersion: ownerRef.APIVersion,
 			Kind:       ownerRef.Kind,
-			Name:       ownerRef.Name,
+			Id:         ownerRef.Name,
 			Uid:        string(ownerRef.UID),
 		}
 		if hasManagingController != nil {

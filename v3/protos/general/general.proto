@@ -25,7 +25,7 @@ message ListOptions {
 message OwnerReference {
     string api_version = 1;
     string kind = 2;
-    string name = 3;
+    string id = 3;
     string uid = 4;
     google.protobuf.BoolValue controller = 5;
     google.protobuf.BoolValue block_owner_deletion = 6;
