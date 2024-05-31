@@ -2,10 +2,14 @@ package eventservice
 
 import (
 	"context"
-	"strconv"
+	"fmt"
+	"time"
 
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	dbconfigpb "github.com/hobbyfarm/gargantua/v3/protos/dbconfig"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
+	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
 
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
@@ -14,6 +18,7 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	listersv1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -24,27 +29,39 @@ import (
 
 type GrpcScheduledEventServer struct {
 	scheduledeventpb.UnimplementedScheduledEventSvcServer
-	eventClient hfClientsetv1.ScheduledEventInterface
-	eventLister listersv1.ScheduledEventLister
-	eventSynced cache.InformerSynced
+	eventClient    hfClientsetv1.ScheduledEventInterface
+	eventLister    listersv1.ScheduledEventLister
+	eventSynced    cache.InformerSynced
+	acClient       accesscodepb.AccessCodeSvcClient
+	dbconfigClient dbconfigpb.DynamicBindConfigSvcClient
+	vmSetClient    vmsetpb.VMSetSvcClient
 }
 
-func NewGrpcScheduledEventServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) *GrpcScheduledEventServer {
+func NewGrpcScheduledEventServer(
+	hfClientSet hfClientset.Interface,
+	hfInformerFactory hfInformers.SharedInformerFactory,
+	acClient accesscodepb.AccessCodeSvcClient,
+	dbconfigClient dbconfigpb.DynamicBindConfigSvcClient,
+	vmSetClient vmsetpb.VMSetSvcClient,
+) *GrpcScheduledEventServer {
 	return &GrpcScheduledEventServer{
-		eventClient: hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()),
-		eventLister: hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Lister(),
-		eventSynced: hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer().HasSynced,
+		eventClient:    hfClientSet.HobbyfarmV1().ScheduledEvents(util.GetReleaseNamespace()),
+		eventLister:    hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Lister(),
+		eventSynced:    hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer().HasSynced,
+		acClient:       acClient,
+		dbconfigClient: dbconfigClient,
+		vmSetClient:    vmSetClient,
 	}
 }
 
-func (s *GrpcScheduledEventServer) CreateScheduledEvent(ctx context.Context, req *scheduledeventpb.CreateScheduledEventRequest) (*emptypb.Empty, error) {
+func (s *GrpcScheduledEventServer) CreateScheduledEvent(ctx context.Context, req *scheduledeventpb.CreateScheduledEventRequest) (*generalpb.ResourceId, error) {
 	name := req.GetName()
 	description := req.GetDescription()
 	creator := req.GetCreator()
 	startTime := req.GetStartTime()
 	endTime := req.GetEndTime()
-	onDemandRaw := req.GetOnDemandRaw()
-	printableRaw := req.GetPrintableRaw()
+	onDemand := req.GetOnDemand()
+	printable := req.GetPrintable()
 	restrictedBind := req.GetRestrictedBind()
 	reqVmsRaw := req.GetRequiredVmsRaw()
 	accessCode := req.GetAccessCode()
@@ -58,33 +75,22 @@ func (s *GrpcScheduledEventServer) CreateScheduledEvent(ctx context.Context, req
 		"creator":        creator,
 		"startTime":      startTime,
 		"endTime":        endTime,
-		"onDemandRaw":    onDemandRaw,
-		"printableRaw":   printableRaw,
 		"requiredVmsRaw": reqVmsRaw,
 		"accessCode":     accessCode,
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &emptypb.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &generalpb.ResourceId{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 
 	if scenariosRaw == "" && coursesRaw == "" {
-		return &emptypb.Empty{}, hferrors.GrpcError(codes.InvalidArgument, "no courses or scenarios provided", req)
-	}
-
-	onDemand, err := strconv.ParseBool(onDemandRaw)
-	if err != nil {
-		return &emptypb.Empty{}, hferrors.GrpcBadRequestError(req, "on_demand_raw", onDemandRaw)
-	}
-	printable, err := strconv.ParseBool(printableRaw)
-	if err != nil {
-		return &emptypb.Empty{}, hferrors.GrpcBadRequestError(req, "printable_raw", printableRaw)
+		return &generalpb.ResourceId{}, hferrors.GrpcError(codes.InvalidArgument, "no courses or scenarios provided", req)
 	}
 
 	requiredVms, err := util.GenericUnmarshal[map[string]map[string]int](reqVmsRaw, "required_vms_raw")
 	if err != nil {
-		return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "required_vms_raw")
+		return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "required_vms_raw")
 	}
 
 	random := util.RandStringRunes(16)
@@ -116,27 +122,27 @@ func (s *GrpcScheduledEventServer) CreateScheduledEvent(ctx context.Context, req
 	if coursesRaw != "" {
 		courses, err := util.GenericUnmarshal[[]string](coursesRaw, "courses_raw")
 		if err != nil {
-			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "courses_raw")
+			return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "courses_raw")
 		}
 		event.Spec.Courses = courses
 	}
 	if scenariosRaw != "" {
 		scenarios, err := util.GenericUnmarshal[[]string](scenariosRaw, "scenarios_raw")
 		if err != nil {
-			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "scenarios_raw")
+			return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "scenarios_raw")
 		}
 		event.Spec.Scenarios = scenarios
 	}
 
 	_, err = s.eventClient.Create(ctx, event, metav1.CreateOptions{})
 	if err != nil {
-		return &emptypb.Empty{}, hferrors.GrpcError(
+		return &generalpb.ResourceId{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &emptypb.Empty{}, nil
+	return &generalpb.ResourceId{Id: id}, nil
 }
 
 func (s *GrpcScheduledEventServer) GetScheduledEvent(ctx context.Context, req *generalpb.GetRequest) (*scheduledeventpb.ScheduledEvent, error) {
@@ -188,13 +194,15 @@ func (s *GrpcScheduledEventServer) UpdateScheduledEvent(ctx context.Context, req
 	description := req.GetDescription()
 	startTime := req.GetStartTime()
 	endTime := req.GetEndTime()
-	onDemandRaw := req.GetOnDemandRaw()
-	printableRaw := req.GetPrintableRaw()
+	onDemand := req.GetOnDemand()
+	printable := req.GetPrintable()
 	restrictedBind := req.GetRestrictedBind()
 	reqVmsRaw := req.GetRequiredVmsRaw()
 	accessCode := req.GetAccessCode()
 	scenariosRaw := req.GetScenariosRaw()
 	coursesRaw := req.GetCoursesRaw()
+
+	scheduledEventLabelSelector := fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, id)
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		event, err := s.eventClient.Get(ctx, id, metav1.GetOptions{})
@@ -219,22 +227,26 @@ func (s *GrpcScheduledEventServer) UpdateScheduledEvent(ctx context.Context, req
 		if endTime != "" {
 			event.Spec.EndTime = endTime
 		}
-		if onDemandRaw != "" {
-			onDemand, err := strconv.ParseBool(onDemandRaw)
-			if err != nil {
-				return hferrors.GrpcBadRequestError(req, "on_demand_raw", onDemandRaw)
+		if onDemand != nil {
+			onDemandVal := onDemand.GetValue()
+			if onDemandVal && !event.Spec.OnDemand {
+				// The on demand setting has been removed completely.
+				glog.Errorf("scheduled event %s changed to \"on demand\", deleting corresponding vm sets", id)
+				_, err = s.vmSetClient.DeleteCollectionVMSet(ctx, &generalpb.ListOptions{
+					LabelSelector: scheduledEventLabelSelector,
+				})
+				if err != nil {
+					glog.Errorf("deleting vm sets for scheduled event %s failed: %s", id, hferrors.GetErrorMessage(err))
+					return err
+				}
 			}
-			event.Spec.OnDemand = onDemand
+			event.Spec.OnDemand = onDemand.GetValue()
 		}
-		if printableRaw != "" {
-			printable, err := strconv.ParseBool(printableRaw)
-			if err != nil {
-				return hferrors.GrpcBadRequestError(req, "printable_raw", printableRaw)
-			}
-			event.Spec.Printable = printable
+		if printable != nil {
+			event.Spec.Printable = printable.GetValue()
 		}
 		if restrictedBind != nil {
-			event.Spec.RestrictedBind = restrictedBind.Value
+			event.Spec.RestrictedBind = restrictedBind.GetValue()
 
 			if event.Spec.RestrictedBind {
 				event.Spec.RestrictedBindValue = event.Name
@@ -267,7 +279,48 @@ func (s *GrpcScheduledEventServer) UpdateScheduledEvent(ctx context.Context, req
 			event.Spec.Courses = courses
 		}
 
-		_, updateErr := s.eventClient.Update(ctx, event, metav1.UpdateOptions{})
+		// if our event is already provisioned, we need to undo that and delete the corresponding access code(s) and DBC(s)
+		// our scheduledeventcontroller will then provision our scheduledevent with the updated values
+		if event.Status.Provisioned {
+			now := time.Now()
+
+			beginTime, err := time.Parse(time.UnixDate, event.Spec.StartTime)
+			if err != nil {
+				return err
+			}
+
+			// The SE's begin time has been rescheduled to the future but was already provisioned.
+			if now.Before(beginTime) && event.Status.Active {
+				_, err = s.vmSetClient.DeleteCollectionVMSet(ctx, &generalpb.ListOptions{
+					LabelSelector: scheduledEventLabelSelector,
+				})
+				if err != nil {
+					return err
+				}
+			}
+			glog.V(6).Infof("scheduled event %s is updated, deleting corresponding access code(s) and DBC(s)", id)
+			_, err = s.dbconfigClient.DeleteCollectionDynamicBindConfig(ctx, &generalpb.ListOptions{
+				LabelSelector: scheduledEventLabelSelector,
+			})
+			if err != nil {
+				return err
+			}
+			_, err = s.acClient.DeleteCollectionAc(ctx, &generalpb.ListOptions{
+				LabelSelector: scheduledEventLabelSelector,
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		updatedSe, updateErr := s.eventClient.Update(ctx, event, metav1.UpdateOptions{})
+		if updateErr != nil {
+			return updateErr
+		}
+		updatedSe.Status.Provisioned = false
+		updatedSe.Status.Ready = false
+		updatedSe.Status.Finished = false
+		_, updateErr = s.eventClient.UpdateStatus(ctx, updatedSe, metav1.UpdateOptions{})
 		return updateErr
 	})
 
@@ -335,7 +388,6 @@ func (s *GrpcScheduledEventServer) UpdateScheduledEventStatus(ctx context.Contex
 		if updateErr != nil {
 			return updateErr
 		}
-		// @TODO: verify result like in util.go
 		glog.V(4).Infof("updated result for scheduled event")
 		return nil
 	})

@@ -14,6 +14,8 @@ import (
 	eventservice "github.com/hobbyfarm/gargantua/services/scheduledeventsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	dbconfigpb "github.com/hobbyfarm/gargantua/v3/protos/dbconfig"
 	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
 	progresspb "github.com/hobbyfarm/gargantua/v3/protos/progress"
@@ -44,6 +46,8 @@ func main() {
 	crd.InstallCrds(eventservice.ScheduledEventCRDInstaller{}, cfg, "scheduled event")
 
 	services := []microservices.MicroService{
+		microservices.AuthN,
+		microservices.AuthR,
 		microservices.AccessCode,
 		microservices.DBConfig,
 		microservices.Environment,
@@ -58,6 +62,8 @@ func main() {
 		defer conn.Close()
 	}
 
+	authnClient := authnpb.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authrpb.NewAuthRClient(connections[microservices.AuthR])
 	acClient := accesscodepb.NewAccessCodeSvcClient(connections[microservices.AccessCode])
 	dbcClient := dbconfigpb.NewDynamicBindConfigSvcClient(connections[microservices.DBConfig])
 	envClient := environmentpb.NewEnvironmentSvcClient(connections[microservices.Environment])
@@ -69,7 +75,7 @@ func main() {
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
-	ss := eventservice.NewGrpcScheduledEventServer(hfClient, hfInformerFactory)
+	ss := eventservice.NewGrpcScheduledEventServer(hfClient, hfInformerFactory, acClient, dbcClient, vmSetClient)
 	scheduledeventpb.RegisterScheduledEventSvcServer(gs, ss)
 	seController, err := eventservice.NewScheduledEventController(
 		kubeClient,
@@ -95,6 +101,23 @@ func main() {
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		scheduledEventServer := eventservice.NewScheduledEventServer(
+			authnClient,
+			authrClient,
+			acClient,
+			dbcClient,
+			progressClient,
+			sessionClient,
+			vmSetClient,
+			ss,
+		)
+		microservices.StartAPIServer(scheduledEventServer)
 	}()
 
 	go func() {

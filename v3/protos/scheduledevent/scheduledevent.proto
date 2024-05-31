@@ -9,7 +9,7 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/wrappers.proto";
 
 service ScheduledEventSvc {
-    rpc CreateScheduledEvent (CreateScheduledEventRequest) returns (google.protobuf.Empty);
+    rpc CreateScheduledEvent (CreateScheduledEventRequest) returns (general.ResourceId);
     rpc GetScheduledEvent (general.GetRequest) returns (ScheduledEvent);
     rpc UpdateScheduledEvent (UpdateScheduledEventRequest) returns (google.protobuf.Empty);
     rpc UpdateScheduledEventStatus (UpdateScheduledEventStatusRequest) returns (google.protobuf.Empty);
@@ -44,8 +44,8 @@ message CreateScheduledEventRequest {
     string creator = 3;
     string start_time = 4;
     string end_time = 5;
-    string on_demand_raw = 6;
-    string printable_raw = 7;
+    bool on_demand = 6;
+    bool printable = 7;
     bool restricted_bind = 8;
     // required_vms is mapping environments to their respective VMTemplateCountMap
     string required_vms_raw = 9;
@@ -66,8 +66,8 @@ message UpdateScheduledEventRequest {
     string description = 3;
     string start_time = 4;
     string end_time = 5;
-    string on_demand_raw = 6;
-    string printable_raw = 7;
+    google.protobuf.BoolValue on_demand = 6;
+    google.protobuf.BoolValue printable = 7;
     google.protobuf.BoolValue restricted_bind = 8;
     // required_vms is mapping environments to their respective VMTemplateCountMap
     string required_vms_raw = 9;

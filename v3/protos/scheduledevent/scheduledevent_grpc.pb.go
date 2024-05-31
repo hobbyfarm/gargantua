@@ -34,7 +34,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ScheduledEventSvcClient interface {
-	CreateScheduledEvent(ctx context.Context, in *CreateScheduledEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CreateScheduledEvent(ctx context.Context, in *CreateScheduledEventRequest, opts ...grpc.CallOption) (*general.ResourceId, error)
 	GetScheduledEvent(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*ScheduledEvent, error)
 	UpdateScheduledEvent(ctx context.Context, in *UpdateScheduledEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	UpdateScheduledEventStatus(ctx context.Context, in *UpdateScheduledEventStatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -51,8 +51,8 @@ func NewScheduledEventSvcClient(cc grpc.ClientConnInterface) ScheduledEventSvcCl
 	return &scheduledEventSvcClient{cc}
 }
 
-func (c *scheduledEventSvcClient) CreateScheduledEvent(ctx context.Context, in *CreateScheduledEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
+func (c *scheduledEventSvcClient) CreateScheduledEvent(ctx context.Context, in *CreateScheduledEventRequest, opts ...grpc.CallOption) (*general.ResourceId, error) {
+	out := new(general.ResourceId)
 	err := c.cc.Invoke(ctx, ScheduledEventSvc_CreateScheduledEvent_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func (c *scheduledEventSvcClient) ListScheduledEvent(ctx context.Context, in *ge
 // All implementations must embed UnimplementedScheduledEventSvcServer
 // for forward compatibility
 type ScheduledEventSvcServer interface {
-	CreateScheduledEvent(context.Context, *CreateScheduledEventRequest) (*emptypb.Empty, error)
+	CreateScheduledEvent(context.Context, *CreateScheduledEventRequest) (*general.ResourceId, error)
 	GetScheduledEvent(context.Context, *general.GetRequest) (*ScheduledEvent, error)
 	UpdateScheduledEvent(context.Context, *UpdateScheduledEventRequest) (*emptypb.Empty, error)
 	UpdateScheduledEventStatus(context.Context, *UpdateScheduledEventStatusRequest) (*emptypb.Empty, error)
@@ -132,7 +132,7 @@ type ScheduledEventSvcServer interface {
 type UnimplementedScheduledEventSvcServer struct {
 }
 
-func (UnimplementedScheduledEventSvcServer) CreateScheduledEvent(context.Context, *CreateScheduledEventRequest) (*emptypb.Empty, error) {
+func (UnimplementedScheduledEventSvcServer) CreateScheduledEvent(context.Context, *CreateScheduledEventRequest) (*general.ResourceId, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateScheduledEvent not implemented")
 }
 func (UnimplementedScheduledEventSvcServer) GetScheduledEvent(context.Context, *general.GetRequest) (*ScheduledEvent, error) {
