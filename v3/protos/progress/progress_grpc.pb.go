@@ -33,7 +33,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ProgressSvcClient interface {
-	CreateProgress(ctx context.Context, in *CreateProgressRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CreateProgress(ctx context.Context, in *CreateProgressRequest, opts ...grpc.CallOption) (*general.ResourceId, error)
 	GetProgress(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Progress, error)
 	UpdateProgress(ctx context.Context, in *UpdateProgressRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteProgress(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -49,8 +49,8 @@ func NewProgressSvcClient(cc grpc.ClientConnInterface) ProgressSvcClient {
 	return &progressSvcClient{cc}
 }
 
-func (c *progressSvcClient) CreateProgress(ctx context.Context, in *CreateProgressRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
+func (c *progressSvcClient) CreateProgress(ctx context.Context, in *CreateProgressRequest, opts ...grpc.CallOption) (*general.ResourceId, error) {
+	out := new(general.ResourceId)
 	err := c.cc.Invoke(ctx, ProgressSvc_CreateProgress_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func (c *progressSvcClient) ListProgress(ctx context.Context, in *general.ListOp
 // All implementations must embed UnimplementedProgressSvcServer
 // for forward compatibility
 type ProgressSvcServer interface {
-	CreateProgress(context.Context, *CreateProgressRequest) (*emptypb.Empty, error)
+	CreateProgress(context.Context, *CreateProgressRequest) (*general.ResourceId, error)
 	GetProgress(context.Context, *general.GetRequest) (*Progress, error)
 	UpdateProgress(context.Context, *UpdateProgressRequest) (*emptypb.Empty, error)
 	DeleteProgress(context.Context, *general.ResourceId) (*emptypb.Empty, error)
@@ -120,7 +120,7 @@ type ProgressSvcServer interface {
 type UnimplementedProgressSvcServer struct {
 }
 
-func (UnimplementedProgressSvcServer) CreateProgress(context.Context, *CreateProgressRequest) (*emptypb.Empty, error) {
+func (UnimplementedProgressSvcServer) CreateProgress(context.Context, *CreateProgressRequest) (*general.ResourceId, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateProgress not implemented")
 }
 func (UnimplementedProgressSvcServer) GetProgress(context.Context, *general.GetRequest) (*Progress, error) {

@@ -38,7 +38,7 @@ func NewGrpcProgressServer(hfClientSet hfClientset.Interface, hfInformerFactory 
 	}
 }
 
-func (s *GrpcProgressServer) CreateProgress(ctx context.Context, req *progresspb.CreateProgressRequest) (*emptypb.Empty, error) {
+func (s *GrpcProgressServer) CreateProgress(ctx context.Context, req *progresspb.CreateProgressRequest) (*generalpb.ResourceId, error) {
 	random := util.RandStringRunes(16)
 	now := time.Now()
 	progressId := util.GenerateResourceName("progress", random, 16)
@@ -76,13 +76,13 @@ func (s *GrpcProgressServer) CreateProgress(ctx context.Context, req *progresspb
 
 	_, err := s.progressClient.Create(ctx, progress, metav1.CreateOptions{})
 	if err != nil {
-		return &emptypb.Empty{}, hferrors.GrpcError(
+		return &generalpb.ResourceId{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &emptypb.Empty{}, nil
+	return &generalpb.ResourceId{Id: progressId}, nil
 }
 
 func (s *GrpcProgressServer) GetProgress(ctx context.Context, req *generalpb.GetRequest) (*progresspb.Progress, error) {

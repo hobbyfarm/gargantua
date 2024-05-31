@@ -10,7 +10,7 @@ import "google/protobuf/wrappers.proto";
 import "google/protobuf/timestamp.proto";
 
 service ProgressSvc {
-    rpc CreateProgress (CreateProgressRequest) returns (google.protobuf.Empty);
+    rpc CreateProgress (CreateProgressRequest) returns (general.ResourceId);
     rpc GetProgress (general.GetRequest) returns (Progress);
     rpc UpdateProgress (UpdateProgressRequest) returns (google.protobuf.Empty);
     rpc DeleteProgress (general.ResourceId) returns (google.protobuf.Empty);
