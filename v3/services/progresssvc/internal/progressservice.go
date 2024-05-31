@@ -353,6 +353,7 @@ func (s ProgressServer) Update(w http.ResponseWriter, r *http.Request) {
 	// The grpc service would internally retrieve each progress object again before updating which is less performant.
 	// In the future, we should use the internal gRPC service to abstract the underlying database operations.
 	// This approach ensures that database interactions are not exposed directly, allowing easier interchangeability and improved modularity.
+	// We already implemented an UpdateCollectionProgress function, however, within that function we don't have access to p.Spec.Steps.
 	progress, err := s.internalProgressServer.progressClient.List(r.Context(), metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s,%s=%s,finished=false", hflabels.SessionLabel, id, hflabels.UserLabel, user.GetId())})
 
