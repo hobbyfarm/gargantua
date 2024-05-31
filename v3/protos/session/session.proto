@@ -9,7 +9,7 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/wrappers.proto";
 
 service SessionSvc {
-    rpc CreateSession (CreateSessionRequest) returns (google.protobuf.Empty);
+    rpc CreateSession (CreateSessionRequest) returns (general.ResourceId);
     rpc GetSession (general.GetRequest) returns (Session);
     rpc UpdateSession (UpdateSessionRequest) returns (google.protobuf.Empty);
     rpc UpdateSessionStatus (UpdateSessionStatusRequest) returns (google.protobuf.Empty);

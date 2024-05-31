@@ -36,7 +36,7 @@ func NewGrpcSessionServer(hfClientSet hfClientset.Interface, hfInformerFactory h
 	}
 }
 
-func (s *GrpcSessionServer) CreateSession(ctx context.Context, req *sessionpb.CreateSessionRequest) (*emptypb.Empty, error) {
+func (s *GrpcSessionServer) CreateSession(ctx context.Context, req *sessionpb.CreateSessionRequest) (*generalpb.ResourceId, error) {
 	scenario := req.GetScenario()
 	course := req.GetCourse()
 	keepCourseVm := req.GetKeepCourseVm()
@@ -46,7 +46,7 @@ func (s *GrpcSessionServer) CreateSession(ctx context.Context, req *sessionpb.Cr
 	labels := req.GetLabels()
 
 	if scenario == "" && course == "" {
-		return &emptypb.Empty{}, hferrors.GrpcError(codes.InvalidArgument, "no course/scenario id provided", req)
+		return &generalpb.ResourceId{}, hferrors.GrpcError(codes.InvalidArgument, "no course/scenario id provided", req)
 	}
 
 	requiredStringParams := map[string]string{
@@ -55,7 +55,7 @@ func (s *GrpcSessionServer) CreateSession(ctx context.Context, req *sessionpb.Cr
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &emptypb.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &generalpb.ResourceId{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 
@@ -79,13 +79,13 @@ func (s *GrpcSessionServer) CreateSession(ctx context.Context, req *sessionpb.Cr
 
 	_, err := s.sessionClient.Create(ctx, session, metav1.CreateOptions{})
 	if err != nil {
-		return &emptypb.Empty{}, hferrors.GrpcError(
+		return &generalpb.ResourceId{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &emptypb.Empty{}, nil
+	return &generalpb.ResourceId{Id: id}, nil
 }
 
 func (s *GrpcSessionServer) GetSession(ctx context.Context, req *generalpb.GetRequest) (*sessionpb.Session, error) {

@@ -34,7 +34,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SessionSvcClient interface {
-	CreateSession(ctx context.Context, in *CreateSessionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CreateSession(ctx context.Context, in *CreateSessionRequest, opts ...grpc.CallOption) (*general.ResourceId, error)
 	GetSession(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Session, error)
 	UpdateSession(ctx context.Context, in *UpdateSessionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	UpdateSessionStatus(ctx context.Context, in *UpdateSessionStatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -51,8 +51,8 @@ func NewSessionSvcClient(cc grpc.ClientConnInterface) SessionSvcClient {
 	return &sessionSvcClient{cc}
 }
 
-func (c *sessionSvcClient) CreateSession(ctx context.Context, in *CreateSessionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
+func (c *sessionSvcClient) CreateSession(ctx context.Context, in *CreateSessionRequest, opts ...grpc.CallOption) (*general.ResourceId, error) {
+	out := new(general.ResourceId)
 	err := c.cc.Invoke(ctx, SessionSvc_CreateSession_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func (c *sessionSvcClient) ListSession(ctx context.Context, in *general.ListOpti
 // All implementations must embed UnimplementedSessionSvcServer
 // for forward compatibility
 type SessionSvcServer interface {
-	CreateSession(context.Context, *CreateSessionRequest) (*emptypb.Empty, error)
+	CreateSession(context.Context, *CreateSessionRequest) (*general.ResourceId, error)
 	GetSession(context.Context, *general.GetRequest) (*Session, error)
 	UpdateSession(context.Context, *UpdateSessionRequest) (*emptypb.Empty, error)
 	UpdateSessionStatus(context.Context, *UpdateSessionStatusRequest) (*emptypb.Empty, error)
@@ -132,7 +132,7 @@ type SessionSvcServer interface {
 type UnimplementedSessionSvcServer struct {
 }
 
-func (UnimplementedSessionSvcServer) CreateSession(context.Context, *CreateSessionRequest) (*emptypb.Empty, error) {
+func (UnimplementedSessionSvcServer) CreateSession(context.Context, *CreateSessionRequest) (*general.ResourceId, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateSession not implemented")
 }
 func (UnimplementedSessionSvcServer) GetSession(context.Context, *general.GetRequest) (*Session, error) {
