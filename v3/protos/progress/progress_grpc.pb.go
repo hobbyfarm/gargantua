@@ -24,6 +24,7 @@ const (
 	ProgressSvc_CreateProgress_FullMethodName           = "/progress.ProgressSvc/CreateProgress"
 	ProgressSvc_GetProgress_FullMethodName              = "/progress.ProgressSvc/GetProgress"
 	ProgressSvc_UpdateProgress_FullMethodName           = "/progress.ProgressSvc/UpdateProgress"
+	ProgressSvc_UpdateCollectionProgress_FullMethodName = "/progress.ProgressSvc/UpdateCollectionProgress"
 	ProgressSvc_DeleteProgress_FullMethodName           = "/progress.ProgressSvc/DeleteProgress"
 	ProgressSvc_DeleteCollectionProgress_FullMethodName = "/progress.ProgressSvc/DeleteCollectionProgress"
 	ProgressSvc_ListProgress_FullMethodName             = "/progress.ProgressSvc/ListProgress"
@@ -36,6 +37,7 @@ type ProgressSvcClient interface {
 	CreateProgress(ctx context.Context, in *CreateProgressRequest, opts ...grpc.CallOption) (*general.ResourceId, error)
 	GetProgress(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Progress, error)
 	UpdateProgress(ctx context.Context, in *UpdateProgressRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	UpdateCollectionProgress(ctx context.Context, in *UpdateCollectionProgressRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteProgress(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteCollectionProgress(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListProgress(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*ListProgressesResponse, error)
@@ -76,6 +78,15 @@ func (c *progressSvcClient) UpdateProgress(ctx context.Context, in *UpdateProgre
 	return out, nil
 }
 
+func (c *progressSvcClient) UpdateCollectionProgress(ctx context.Context, in *UpdateCollectionProgressRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ProgressSvc_UpdateCollectionProgress_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *progressSvcClient) DeleteProgress(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, ProgressSvc_DeleteProgress_FullMethodName, in, out, opts...)
@@ -110,6 +121,7 @@ type ProgressSvcServer interface {
 	CreateProgress(context.Context, *CreateProgressRequest) (*general.ResourceId, error)
 	GetProgress(context.Context, *general.GetRequest) (*Progress, error)
 	UpdateProgress(context.Context, *UpdateProgressRequest) (*emptypb.Empty, error)
+	UpdateCollectionProgress(context.Context, *UpdateCollectionProgressRequest) (*emptypb.Empty, error)
 	DeleteProgress(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	DeleteCollectionProgress(context.Context, *general.ListOptions) (*emptypb.Empty, error)
 	ListProgress(context.Context, *general.ListOptions) (*ListProgressesResponse, error)
@@ -128,6 +140,9 @@ func (UnimplementedProgressSvcServer) GetProgress(context.Context, *general.GetR
 }
 func (UnimplementedProgressSvcServer) UpdateProgress(context.Context, *UpdateProgressRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateProgress not implemented")
+}
+func (UnimplementedProgressSvcServer) UpdateCollectionProgress(context.Context, *UpdateCollectionProgressRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateCollectionProgress not implemented")
 }
 func (UnimplementedProgressSvcServer) DeleteProgress(context.Context, *general.ResourceId) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteProgress not implemented")
@@ -205,6 +220,24 @@ func _ProgressSvc_UpdateProgress_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProgressSvc_UpdateCollectionProgress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateCollectionProgressRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProgressSvcServer).UpdateCollectionProgress(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProgressSvc_UpdateCollectionProgress_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProgressSvcServer).UpdateCollectionProgress(ctx, req.(*UpdateCollectionProgressRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ProgressSvc_DeleteProgress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(general.ResourceId)
 	if err := dec(in); err != nil {
@@ -277,6 +310,10 @@ var ProgressSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateProgress",
 			Handler:    _ProgressSvc_UpdateProgress_Handler,
+		},
+		{
+			MethodName: "UpdateCollectionProgress",
+			Handler:    _ProgressSvc_UpdateCollectionProgress_Handler,
 		},
 		{
 			MethodName: "DeleteProgress",

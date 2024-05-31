@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
@@ -148,43 +149,52 @@ func (s *GrpcProgressServer) UpdateProgress(ctx context.Context, req *progresspb
 				req.GetId(),
 			)
 		}
-
-		if currentStep != nil {
-			progress.Spec.CurrentStep = int(currentStep.Value)
-		}
-
-		if maxStep != nil {
-			progress.Spec.MaxStep = int(maxStep.Value)
-		}
-
-		if totalStep != nil {
-			progress.Spec.TotalStep = int(totalStep.Value)
-		}
-
-		if lastUpdate != "" {
-			progress.Spec.LastUpdate = lastUpdate
-		}
-
-		if finished != "" {
-			progress.Spec.Finished = finished
-			progress.Labels["finished"] = finished
-		}
-
-		if len(steps) > 0 {
-			progressSteps := []hfv1.ProgressStep{}
-			for _, step := range steps {
-				progressStep := hfv1.ProgressStep{
-					Step:      int(step.GetStep()),
-					Timestamp: step.GetTimestamp(),
-				}
-				progressSteps = append(progressSteps, progressStep)
-			}
-			progress.Spec.Steps = progressSteps
-		}
-
-		_, updateErr := s.progressClient.Update(ctx, progress, metav1.UpdateOptions{})
-		return updateErr
+		return s.updateProgress(ctx, progress, currentStep, maxStep, totalStep, lastUpdate, finished, steps)
 	})
+
+	if retryErr != nil {
+		return &emptypb.Empty{}, hferrors.GrpcError(
+			codes.Internal,
+			"error attempting to update",
+			req,
+		)
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (s *GrpcProgressServer) UpdateCollectionProgress(ctx context.Context, req *progresspb.UpdateCollectionProgressRequest) (*emptypb.Empty, error) {
+	progressList, err := util.ListByHfClient(ctx, &generalpb.ListOptions{LabelSelector: req.GetLabelselector()}, s.progressClient, "progresses")
+	if err != nil {
+		return &emptypb.Empty{}, hferrors.GrpcError(
+			codes.Internal,
+			"error while listing progress",
+			req,
+		)
+	}
+	progresses := progressList.Items
+	// If a client tries to update on an empty list, we throw a notFound error... this is an invalid operation.
+	if len(progresses) == 0 {
+		return &emptypb.Empty{}, hferrors.GrpcError(
+			codes.NotFound,
+			"error no progress found",
+			req,
+		)
+	}
+
+	currentStep := req.GetCurrentStep()
+	maxStep := req.GetMaxStep()
+	totalStep := req.GetTotalStep()
+	lastUpdate := req.GetLastUpdate()
+	finished := req.GetFinished()
+	steps := req.GetSteps()
+
+	var retryErr error
+	for _, progress := range progresses {
+		retryErr = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			return s.updateProgress(ctx, &progress, currentStep, maxStep, totalStep, lastUpdate, finished, steps)
+		})
+	}
 
 	if retryErr != nil {
 		return &emptypb.Empty{}, hferrors.GrpcError(
@@ -259,4 +269,56 @@ func (s *GrpcProgressServer) ListProgress(ctx context.Context, listOptions *gene
 	}
 
 	return &progresspb.ListProgressesResponse{Progresses: preparedProgress}, nil
+}
+
+func (s *GrpcProgressServer) updateProgress(
+	ctx context.Context,
+	progress *hfv1.Progress,
+	currStep *wrapperspb.UInt32Value,
+	maxStep *wrapperspb.UInt32Value,
+	totalStep *wrapperspb.UInt32Value,
+	lastUpdate string,
+	finished string,
+	steps []*progresspb.ProgressStep,
+) error {
+	if currStep != nil {
+		progress.Spec.CurrentStep = int(currStep.Value)
+	}
+
+	if maxStep != nil {
+		progress.Spec.MaxStep = int(maxStep.Value)
+	}
+
+	// ensure the max visited step is always >= the currently visited step after an update
+	if progress.Spec.CurrentStep > progress.Spec.MaxStep {
+		progress.Spec.MaxStep = progress.Spec.CurrentStep
+	}
+
+	if totalStep != nil {
+		progress.Spec.TotalStep = int(totalStep.Value)
+	}
+
+	if lastUpdate != "" {
+		progress.Spec.LastUpdate = lastUpdate
+	}
+
+	if finished != "" {
+		progress.Spec.Finished = finished
+		progress.Labels["finished"] = finished
+	}
+
+	if len(steps) > 0 {
+		progressSteps := []hfv1.ProgressStep{}
+		for _, step := range steps {
+			progressStep := hfv1.ProgressStep{
+				Step:      int(step.GetStep()),
+				Timestamp: step.GetTimestamp(),
+			}
+			progressSteps = append(progressSteps, progressStep)
+		}
+		progress.Spec.Steps = progressSteps
+	}
+
+	_, updateErr := s.progressClient.Update(ctx, progress, metav1.UpdateOptions{})
+	return updateErr
 }

@@ -13,6 +13,7 @@ service ProgressSvc {
     rpc CreateProgress (CreateProgressRequest) returns (general.ResourceId);
     rpc GetProgress (general.GetRequest) returns (Progress);
     rpc UpdateProgress (UpdateProgressRequest) returns (google.protobuf.Empty);
+    rpc UpdateCollectionProgress (UpdateCollectionProgressRequest) returns (google.protobuf.Empty);
     rpc DeleteProgress (general.ResourceId) returns (google.protobuf.Empty);
     rpc DeleteCollectionProgress (general.ListOptions) returns (google.protobuf.Empty);
     rpc ListProgress (general.ListOptions) returns (ListProgressesResponse);
@@ -52,6 +53,16 @@ message ProgressStep {
 
 message UpdateProgressRequest {
     string id = 1;
+    google.protobuf.UInt32Value current_step = 2;
+    google.protobuf.UInt32Value max_step = 3;
+    google.protobuf.UInt32Value total_step = 4;
+    string last_update = 5;
+    string finished = 6;
+    repeated ProgressStep steps = 7;
+}
+
+message UpdateCollectionProgressRequest {
+    string labelselector = 1;
     google.protobuf.UInt32Value current_step = 2;
     google.protobuf.UInt32Value max_step = 3;
     google.protobuf.UInt32Value total_step = 4;
