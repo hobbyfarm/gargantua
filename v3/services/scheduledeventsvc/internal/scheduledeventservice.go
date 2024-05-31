@@ -101,11 +101,8 @@ func (s ScheduledEventServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		glog.Errorf("error while retrieving scheduledEvent: %s", hferrors.GetErrorMessage(err))
 		if hferrors.IsGrpcNotFound(err) {
-			util.ReturnHTTPMessage(w, r, 404, "not found", fmt.Sprintf(
-				"error while retrieving scheduledEvent: scheduledEvent %s not found",
-				scheduledEventId,
-			),
-			)
+			errMsg := fmt.Sprintf("error while retrieving scheduledEvent: scheduledEvent %s not found", scheduledEventId)
+			util.ReturnHTTPMessage(w, r, 404, "not found", errMsg)
 			return
 		}
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error while retrieving scheduledEvent")
