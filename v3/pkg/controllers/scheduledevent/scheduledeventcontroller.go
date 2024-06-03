@@ -318,6 +318,7 @@ func (s ScheduledEventController) CreateSharedVM(se *hfv1.ScheduledEvent) error 
 				UserId:                   "",
 				Provision:                true,
 				VirtualMachineSetId:      "",
+				VirtualMachineType: 	  hfv1.VirtualMachineTypeShared, //"Shared"
 			},
 		}
 
