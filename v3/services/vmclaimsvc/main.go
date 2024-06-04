@@ -15,6 +15,8 @@ import (
 	vmclaimservice "github.com/hobbyfarm/gargantua/services/vmclaimsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	dbconfigpb "github.com/hobbyfarm/gargantua/v3/protos/dbconfig"
 	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
 	progresspb "github.com/hobbyfarm/gargantua/v3/protos/progress"
@@ -45,6 +47,8 @@ func main() {
 	crd.InstallCrds(vmclaimservice.VMClaimCRDInstaller{}, cfg, "virtual machine claim")
 
 	services := []microservices.MicroService{
+		microservices.AuthN,
+		microservices.AuthR,
 		microservices.AccessCode,
 		microservices.DBConfig,
 		microservices.Environment,
@@ -59,6 +63,8 @@ func main() {
 		defer conn.Close()
 	}
 
+	authnClient := authnpb.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authrpb.NewAuthRClient(connections[microservices.AuthR])
 	acClient := accesscodepb.NewAccessCodeSvcClient(connections[microservices.AccessCode])
 	dbcClient := dbconfigpb.NewDynamicBindConfigSvcClient(connections[microservices.DBConfig])
 	envClient := environmentpb.NewEnvironmentSvcClient(connections[microservices.Environment])
@@ -98,6 +104,18 @@ func main() {
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		vmClaimServer := vmclaimservice.NewVMClaimServer(
+			authnClient,
+			authrClient,
+			vs,
+		)
+		microservices.StartAPIServer(vmClaimServer)
 	}()
 
 	go func() {
