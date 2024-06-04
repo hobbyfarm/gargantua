@@ -13,7 +13,13 @@ import (
 
 	sessionservice "github.com/hobbyfarm/gargantua/services/sessionsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	coursepb "github.com/hobbyfarm/gargantua/v3/protos/course"
 	progresspb "github.com/hobbyfarm/gargantua/v3/protos/progress"
+	scenariopb "github.com/hobbyfarm/gargantua/v3/protos/scenario"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
 	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
 	vmclaimpb "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
@@ -39,7 +45,13 @@ func main() {
 	crd.InstallCrds(sessionservice.SessionCRDInstaller{}, cfg, "session")
 
 	services := []microservices.MicroService{
+		microservices.AuthN,
+		microservices.AuthR,
+		microservices.AccessCode,
+		microservices.Course,
 		microservices.Progress,
+		microservices.Scenario,
+		microservices.ScheduledEvent,
 		microservices.VM,
 		microservices.VMClaim,
 	}
@@ -48,7 +60,13 @@ func main() {
 		defer conn.Close()
 	}
 
+	authnClient := authnpb.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authrpb.NewAuthRClient(connections[microservices.AuthR])
+	acClient := accesscodepb.NewAccessCodeSvcClient(connections[microservices.AccessCode])
+	courseClient := coursepb.NewCourseSvcClient(connections[microservices.Course])
 	progressClient := progresspb.NewProgressSvcClient(connections[microservices.Progress])
+	scenarioClient := scenariopb.NewScenarioSvcClient(connections[microservices.Scenario])
+	scheduledEventClient := scheduledeventpb.NewScheduledEventSvcClient(connections[microservices.ScheduledEvent])
 	vmClient := vmpb.NewVMSvcClient(connections[microservices.VM])
 	vmClaimClient := vmclaimpb.NewVMClaimSvcClient(connections[microservices.VMClaim])
 
@@ -75,6 +93,24 @@ func main() {
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		sessionServer := sessionservice.NewSessionServer(
+			authnClient,
+			authrClient,
+			acClient,
+			courseClient,
+			progressClient,
+			scenarioClient,
+			scheduledEventClient,
+			vmClaimClient,
+			ss,
+		)
+		microservices.StartAPIServer(sessionServer)
 	}()
 
 	go func() {
