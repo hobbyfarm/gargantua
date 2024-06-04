@@ -99,8 +99,8 @@ func (s *GrpcVMClaimServer) GetVMClaim(ctx context.Context, req *generalpb.GetRe
 
 	for key, vm := range vmc.Spec.VirtualMachines {
 		vmClaimVM := &vmclaimpb.VMClaimVM{
-			Template:         vm.Template,
-			VirtualMachineId: vm.VirtualMachineId,
+			Template: vm.Template,
+			VmId:     vm.VirtualMachineId,
 		}
 		vmClaimVMs[key] = vmClaimVM
 	}
@@ -168,7 +168,7 @@ func (s *GrpcVMClaimServer) UpdateVMClaim(ctx context.Context, req *vmclaimpb.Up
 			for key, vm := range vmset {
 				vmClaimVM := hfv1.VirtualMachineClaimVM{
 					Template:         vm.Template,
-					VirtualMachineId: vm.VirtualMachineId,
+					VirtualMachineId: vm.GetVmId(),
 				}
 				vmClaimVMs[key] = vmClaimVM
 			}
@@ -284,8 +284,8 @@ func (s *GrpcVMClaimServer) ListVMClaim(ctx context.Context, listOptions *genera
 		vmClaimVMs := make(map[string]*vmclaimpb.VMClaimVM)
 		for key, vm := range vmc.Spec.VirtualMachines {
 			vmClaimVM := &vmclaimpb.VMClaimVM{
-				Template:         vm.Template,
-				VirtualMachineId: vm.VirtualMachineId,
+				Template: vm.Template,
+				VmId:     vm.VirtualMachineId,
 			}
 			vmClaimVMs[key] = vmClaimVM
 		}

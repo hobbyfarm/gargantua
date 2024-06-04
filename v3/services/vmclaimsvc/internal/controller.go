@@ -282,8 +282,8 @@ func (v *VMClaimController) submitVirtualMachines(vmc *vmclaimpb.VMClaim) (err e
 		}
 		// used to later repopulate the info back //
 		vmMap[vmName] = &vmclaimpb.VMClaimVM{
-			Template:         vmDetails.Template,
-			VirtualMachineId: genName,
+			Template: vmDetails.Template,
+			VmId:     genName,
 		}
 
 		vmt, err := v.vmTemplateClient.GetVMTemplate(v.Context, &generalpb.GetRequest{Id: vmDetails.Template, LoadFromCache: true})
@@ -470,7 +470,7 @@ func (v *VMClaimController) findSuitableEnvironmentForVMTemplate(environments []
 func (v *VMClaimController) checkVMStatus(vmc *vmclaimpb.VMClaim) (ready bool, err error) {
 	ready = true
 	for _, vmTemplate := range vmc.Vms {
-		vm, err := v.vmClient.GetVM(v.Context, &generalpb.GetRequest{Id: vmTemplate.VirtualMachineId})
+		vm, err := v.vmClient.GetVM(v.Context, &generalpb.GetRequest{Id: vmTemplate.GetVmId()})
 		if err != nil {
 			return ready, err
 		}
@@ -516,19 +516,19 @@ func (v *VMClaimController) findVirtualMachines(vmc *vmclaimpb.VMClaim) (err err
 
 	vmMap := make(map[string]*vmclaimpb.VMClaimVM)
 	for name, vmStruct := range vmc.GetVms() {
-		if vmStruct.VirtualMachineId == "" {
+		if vmStruct.GetVmId() == "" {
 			glog.Info("assigning a vm")
 			vmID, err := v.assignNextFreeVM(vmc.GetId(), vmc.GetUserId(), environments, vmStruct.Template, vmc.RestrictedBind, vmc.RestrictedBindValue)
 			if err != nil {
 				// If we run into any issue assigning a VM we need to unassign the previously assigned VMs
 				for _, vm := range vmMap {
-					v.unassignVM(vm.VirtualMachineId)
+					v.unassignVM(vm.GetVmId())
 				}
 				return err
 			}
 			vmMap[name] = &vmclaimpb.VMClaimVM{
-				Template:         vmStruct.Template,
-				VirtualMachineId: vmID,
+				Template: vmStruct.Template,
+				VmId:     vmID,
 			}
 		}
 	}
