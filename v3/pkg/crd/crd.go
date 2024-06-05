@@ -36,10 +36,6 @@ func HobbyfarmCRD(obj interface{}, customize func(c *crder.CRD)) crder.CRD {
 	return *crder.NewCRD(obj, "hobbyfarm.io", customize)
 }
 
-func terraformCRD(obj interface{}, customize func(c *crder.CRD)) crder.CRD {
-	return *crder.NewCRD(obj, "terraformcontroller.cattle.io", customize)
-}
-
 func InstallCrds[T CrdInstaller](crdInstaller T, cfg *rest.Config, resourceName string) {
 	crds := crdInstaller.GenerateCRDs()
 	installCRDsFunc(cfg, resourceName, crds)
