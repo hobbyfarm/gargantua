@@ -14,6 +14,8 @@ import (
 
 	vmsetservice "github.com/hobbyfarm/gargantua/services/vmsetsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
 	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
 	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
@@ -40,6 +42,8 @@ func main() {
 	crd.InstallCrds(vmsetservice.VMSetCRDInstaller{}, cfg, "virtual machine set")
 
 	services := []microservices.MicroService{
+		microservices.AuthN,
+		microservices.AuthR,
 		microservices.Environment,
 		microservices.VM,
 		microservices.VMTemplate,
@@ -49,6 +53,8 @@ func main() {
 		defer conn.Close()
 	}
 
+	authnClient := authnpb.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authrpb.NewAuthRClient(connections[microservices.AuthR])
 	envClient := environmentpb.NewEnvironmentSvcClient(connections[microservices.Environment])
 	vmClient := vmpb.NewVMSvcClient(connections[microservices.VM])
 	vmTemplateClient := vmtemplatepb.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
@@ -73,11 +79,23 @@ func main() {
 	}
 
 	var wg sync.WaitGroup
+	// only add 1 to our wait group since our service should stop (and restart) as soon as one of the go routines terminates
 	wg.Add(1)
 
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		vmSetServer := vmsetservice.NewVMSetServer(
+			authnClient,
+			authrClient,
+			vs,
+		)
+		microservices.StartAPIServer(vmSetServer)
 	}()
 
 	go func() {
