@@ -62,14 +62,14 @@ func main() {
 	userpb.RegisterUserSvcServer(gs, us)
 
 	var wg sync.WaitGroup
-
+	// only add 1 to our wait group since our service should stop (and restart) as soon as one of the go routines terminates
 	wg.Add(1)
+
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
 	}()
 
-	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
