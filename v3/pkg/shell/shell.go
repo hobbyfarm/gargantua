@@ -15,18 +15,20 @@ import (
 	"sync"
 	"time"
 
-	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"github.com/hobbyfarm/gargantua/v3/pkg/vmclient"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
 	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	userpb "github.com/hobbyfarm/gargantua/v3/protos/user"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/sync/semaphore"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,12 +36,11 @@ import (
 )
 
 type ShellProxy struct {
-	authnClient authnpb.AuthNClient
-	authrClient authrpb.AuthRClient
-	vmClient    *vmclient.VirtualMachineClient
-	hfClient    hfClientset.Interface
-	kubeClient  kubernetes.Interface
-	ctx         context.Context
+	authnClient      authnpb.AuthNClient
+	authrClient      authrpb.AuthRClient
+	vmClient         vmpb.VMSvcClient
+	vmTemplateClient vmtemplatepb.VMTemplateSvcClient
+	kubeClient       kubernetes.Interface
 }
 
 type Service struct {
@@ -78,17 +79,20 @@ func init() {
 	SIGWINCH = regexp.MustCompile(`.*\[8;(.*);(.*)t`)
 }
 
-func NewShellProxy(authnClient authnpb.AuthNClient, authrClient authrpb.AuthRClient, vmClient *vmclient.VirtualMachineClient, hfClientSet hfClientset.Interface, kubeClient kubernetes.Interface, ctx context.Context) (*ShellProxy, error) {
-	shellProxy := ShellProxy{}
-
-	shellProxy.authnClient = authnClient
-	shellProxy.authrClient = authrClient
-	shellProxy.vmClient = vmClient
-	shellProxy.hfClient = hfClientSet
-	shellProxy.kubeClient = kubeClient
-	shellProxy.ctx = ctx
-
-	return &shellProxy, nil
+func NewShellProxy(
+	authnClient authnpb.AuthNClient,
+	authrClient authrpb.AuthRClient,
+	vmClient vmpb.VMSvcClient,
+	vmTemplateClient vmtemplatepb.VMTemplateSvcClient,
+	kubeClient kubernetes.Interface,
+) *ShellProxy {
+	return &ShellProxy{
+		authnClient:      authnClient,
+		authrClient:      authrClient,
+		vmClient:         vmClient,
+		vmTemplateClient: vmTemplateClient,
+		kubeClient:       kubeClient,
+	}
 }
 
 func (sp ShellProxy) SetupRoutes(r *mux.Router) {
@@ -123,7 +127,7 @@ func (sp ShellProxy) setAuthCookieAndRedirect(w http.ResponseWriter, r *http.Req
 	cookie := http.Cookie{Name: "jwt", Value: authToken, SameSite: http.SameSiteNoneMode, Secure: true, Path: "/"}
 	http.SetCookie(w, &cookie)
 	url := mux.Vars(r)["rest"]
-	http.Redirect(w, r, "/"+url, 302)
+	http.Redirect(w, r, "/"+url, http.StatusFound)
 
 }
 
@@ -165,7 +169,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 		return
 	}
 	// Get the corresponding VM, if it exists
-	vm, err := sp.vmClient.GetVirtualMachineById(vmId)
+	vm, err := sp.vmClient.GetVM(r.Context(), &generalpb.GetRequest{Id: vmId, LoadFromCache: true})
 
 	if err != nil {
 		glog.Errorf("did not find the right virtual machine ID")
@@ -173,7 +177,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 		return
 	}
 
-	if vm.Spec.UserId != user.GetId() {
+	if vm.GetUser() != user.GetId() {
 		// check if the user has access to user sessions
 		impersonatedUserId := user.GetId()
 		authrResponse, err := rbac2.Authorize(r, sp.authrClient, impersonatedUserId, []*authrpb.Permission{
@@ -189,9 +193,17 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 	}
 
 	// Get the corresponding VMTemplate for the VM
-	vmt, err := sp.hfClient.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.VirtualMachineTemplateId, v1.GetOptions{})
+	vmtId := vm.GetVmTemplateId()
+	vmt, err := sp.vmTemplateClient.GetVMTemplate(r.Context(), &generalpb.GetRequest{Id: vm.GetVmTemplateId()})
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 404, "error", "no vm template found")
+		glog.Errorf("error while retrieving virtual machine template: %s", hferrors.GetErrorMessage(err))
+		if hferrors.IsGrpcNotFound(err) {
+			errMsg := fmt.Sprintf("virtual machine template %s not found", vmtId)
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "not found", errMsg)
+			return
+		}
+		errMsg := fmt.Sprintf("error retrieving virtual machine template %s", vmtId)
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "error", errMsg)
 		return
 	}
 
@@ -204,7 +216,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 	// find the corresponding service
 	service := Service{}
 	hasService := false
-	if servicesMarhaled, ok := vmt.Spec.ConfigMap["webinterfaces"]; ok {
+	if servicesMarhaled, ok := vmt.GetConfigMap()["webinterfaces"]; ok {
 		servicesUnmarshaled := []Service{}
 		err = json.Unmarshal([]byte(servicesMarhaled), &servicesUnmarshaled)
 
@@ -229,7 +241,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 		return
 	}
 
-	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?
+	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(r.Context(), vm.GetSecretName(), v1.GetOptions{}) // idk?
 	if err != nil {
 		glog.Errorf("did not find secret for virtual machine")
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
@@ -244,7 +256,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 		return
 	}
 
-	sshUsername := vm.Spec.SshUsername
+	sshUsername := vm.GetSshUsername()
 	if len(sshUsername) < 1 {
 		sshUsername = defaultSshUsername
 	}
@@ -261,7 +273,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 	// get the host and port
 	host, ok := vm.Annotations["sshEndpoint"]
 	if !ok {
-		host = vm.Status.PublicIP
+		host = vm.GetStatus().GetPublicIp()
 	}
 	port := "22"
 	if sshDev == "true" {
@@ -333,7 +345,7 @@ func (sp ShellProxy) ConnectGuacFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vm, err := sp.vmClient.GetVirtualMachineById(vmId)
+	vm, err := sp.vmClient.GetVM(r.Context(), &generalpb.GetRequest{Id: vmId, LoadFromCache: true})
 
 	if err != nil {
 		glog.Errorf("did not find the right virtual machine ID")
@@ -341,15 +353,15 @@ func (sp ShellProxy) ConnectGuacFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if vm.Spec.UserId != user.GetId() {
+	if vm.GetUser() != user.GetId() {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "you do not have access to shell")
 		return
 	}
 
-	glog.Infof("Going to upgrade guac connection now... %s", vm.Name)
+	glog.Infof("Going to upgrade guac connection now... %s", vmId)
 
 	// ok first get the secret for the vm
-	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?
+	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(r.Context(), vm.GetSecretName(), v1.GetOptions{}) // idk?
 	if err != nil {
 		glog.Errorf("did not find secret for virtual machine")
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
@@ -358,14 +370,14 @@ func (sp ShellProxy) ConnectGuacFunc(w http.ResponseWriter, r *http.Request) {
 
 	password := string(secret.Data["password"])
 
-	username := vm.Spec.SshUsername
+	username := vm.GetSshUsername()
 	if len(username) < 1 {
 		username = defaultSshUsername
 	}
 
 	// get the host and port
-	host := vm.Status.PublicIP
-	protocol := strings.ToLower(vm.Spec.Protocol)
+	host := vm.GetStatus().GetPublicIp()
+	protocol := strings.ToLower(vm.GetProtocol())
 	port := mapProtocolToPort()[protocol]
 
 	optimalHeight := r.URL.Query().Get("height")
@@ -679,8 +691,7 @@ func CreateNewSession(sshConn *ssh.Client, errorChan chan<- error) (*ssh.Session
 
 func (sp ShellProxy) GetSSHConn(w http.ResponseWriter, r *http.Request, user *userpb.User, vmId string, errorChan chan<- error) (*ssh.Client, error) {
 
-	vm, err := sp.vmClient.GetVirtualMachineById(vmId)
-
+	vm, err := sp.vmClient.GetVM(r.Context(), &generalpb.GetRequest{Id: vmId, LoadFromCache: true})
 	if err != nil {
 		glog.Errorf("did not find the right virtual machine ID")
 		if len(errorChan) < cap(errorChan) {
@@ -688,7 +699,7 @@ func (sp ShellProxy) GetSSHConn(w http.ResponseWriter, r *http.Request, user *us
 		}
 		return nil, err
 	}
-	if vm.Spec.UserId != user.GetId() {
+	if vm.GetUser() != user.GetId() {
 		// check if the user has access to access user sessions
 		// TODO: add permission like 'virtualmachine/shell' similar to 'pod/exec'
 		impersonatedUserId := user.GetId()
@@ -705,7 +716,7 @@ func (sp ShellProxy) GetSSHConn(w http.ResponseWriter, r *http.Request, user *us
 	}
 
 	// ok first get the secret for the vm
-	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?
+	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(r.Context(), vm.GetSecretName(), v1.GetOptions{}) // idk?
 	if err != nil {
 		glog.Errorf("did not find secret for virtual machine")
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
@@ -720,7 +731,7 @@ func (sp ShellProxy) GetSSHConn(w http.ResponseWriter, r *http.Request, user *us
 		return nil, err
 	}
 
-	sshUsername := vm.Spec.SshUsername
+	sshUsername := vm.GetSshUsername()
 	if len(sshUsername) < 1 {
 		sshUsername = defaultSshUsername
 	}
@@ -737,7 +748,7 @@ func (sp ShellProxy) GetSSHConn(w http.ResponseWriter, r *http.Request, user *us
 	// get the host and port
 	host, ok := vm.Annotations["sshEndpoint"]
 	if !ok {
-		host = vm.Status.PublicIP
+		host = vm.GetStatus().GetPublicIp()
 	}
 	port := "22"
 	if sshDev == "true" {
@@ -844,7 +855,7 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vm, err := sp.vmClient.GetVirtualMachineById(vmId)
+	vm, err := sp.vmClient.GetVM(r.Context(), &generalpb.GetRequest{Id: vmId, LoadFromCache: true})
 
 	if err != nil {
 		glog.Errorf("did not find the right virtual machine ID")
@@ -852,7 +863,7 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if vm.Spec.UserId != user.GetId() {
+	if vm.GetUser() != user.GetId() {
 		// check if the user has access to access user sessions
 		// TODO: add permission like 'virtualmachine/shell' similar to 'pod/exec'
 		impersonatedUserId := user.GetId()
@@ -868,10 +879,10 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	glog.Infof("Going to upgrade connection now... %s", vm.Name)
+	glog.Infof("Going to upgrade connection now... %s", vmId)
 
 	// ok first get the secret for the vm
-	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?
+	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(r.Context(), vm.GetSecretName(), v1.GetOptions{}) // idk?
 	if err != nil {
 		glog.Errorf("did not find secret for virtual machine")
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
@@ -886,7 +897,7 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sshUsername := vm.Spec.SshUsername
+	sshUsername := vm.GetSshUsername()
 	if len(sshUsername) < 1 {
 		sshUsername = defaultSshUsername
 	}
@@ -903,7 +914,7 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 	// get the host and port
 	host, ok := vm.Annotations["sshEndpoint"]
 	if !ok {
-		host = vm.Status.PublicIP
+		host = vm.GetStatus().GetPublicIp()
 	}
 	port := "22"
 	if sshDev == "true" {
