@@ -33,7 +33,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type VMTemplateSvcClient interface {
-	CreateVMTemplate(ctx context.Context, in *CreateVMTemplateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CreateVMTemplate(ctx context.Context, in *CreateVMTemplateRequest, opts ...grpc.CallOption) (*general.ResourceId, error)
 	GetVMTemplate(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*VMTemplate, error)
 	UpdateVMTemplate(ctx context.Context, in *UpdateVMTemplateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteVMTemplate(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -49,8 +49,8 @@ func NewVMTemplateSvcClient(cc grpc.ClientConnInterface) VMTemplateSvcClient {
 	return &vMTemplateSvcClient{cc}
 }
 
-func (c *vMTemplateSvcClient) CreateVMTemplate(ctx context.Context, in *CreateVMTemplateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
+func (c *vMTemplateSvcClient) CreateVMTemplate(ctx context.Context, in *CreateVMTemplateRequest, opts ...grpc.CallOption) (*general.ResourceId, error) {
+	out := new(general.ResourceId)
 	err := c.cc.Invoke(ctx, VMTemplateSvc_CreateVMTemplate_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func (c *vMTemplateSvcClient) ListVMTemplate(ctx context.Context, in *general.Li
 // All implementations must embed UnimplementedVMTemplateSvcServer
 // for forward compatibility
 type VMTemplateSvcServer interface {
-	CreateVMTemplate(context.Context, *CreateVMTemplateRequest) (*emptypb.Empty, error)
+	CreateVMTemplate(context.Context, *CreateVMTemplateRequest) (*general.ResourceId, error)
 	GetVMTemplate(context.Context, *general.GetRequest) (*VMTemplate, error)
 	UpdateVMTemplate(context.Context, *UpdateVMTemplateRequest) (*emptypb.Empty, error)
 	DeleteVMTemplate(context.Context, *general.ResourceId) (*emptypb.Empty, error)
@@ -120,7 +120,7 @@ type VMTemplateSvcServer interface {
 type UnimplementedVMTemplateSvcServer struct {
 }
 
-func (UnimplementedVMTemplateSvcServer) CreateVMTemplate(context.Context, *CreateVMTemplateRequest) (*emptypb.Empty, error) {
+func (UnimplementedVMTemplateSvcServer) CreateVMTemplate(context.Context, *CreateVMTemplateRequest) (*general.ResourceId, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateVMTemplate not implemented")
 }
 func (UnimplementedVMTemplateSvcServer) GetVMTemplate(context.Context, *general.GetRequest) (*VMTemplate, error) {

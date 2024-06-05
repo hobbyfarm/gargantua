@@ -39,7 +39,7 @@ func NewGrpcVMTemplateServer(hfClientSet hfClientset.Interface, hfInformerFactor
 	}
 }
 
-func (s *GrpcVMTemplateServer) CreateVMTemplate(ctx context.Context, req *vmtemplatepb.CreateVMTemplateRequest) (*emptypb.Empty, error) {
+func (s *GrpcVMTemplateServer) CreateVMTemplate(ctx context.Context, req *vmtemplatepb.CreateVMTemplateRequest) (*generalpb.ResourceId, error) {
 	name := req.GetName()
 	image := req.GetImage()
 	configMapRaw := req.GetConfigMapRaw()
@@ -50,7 +50,7 @@ func (s *GrpcVMTemplateServer) CreateVMTemplate(ctx context.Context, req *vmtemp
 	}
 	for param, value := range requiredStringParams {
 		if value == "" {
-			return &emptypb.Empty{}, hferrors.GrpcNotSpecifiedError(req, param)
+			return &generalpb.ResourceId{}, hferrors.GrpcNotSpecifiedError(req, param)
 		}
 	}
 
@@ -71,20 +71,20 @@ func (s *GrpcVMTemplateServer) CreateVMTemplate(ctx context.Context, req *vmtemp
 	if configMapRaw != "" {
 		configMap, err := util.GenericUnmarshal[map[string]string](configMapRaw, "config_map")
 		if err != nil {
-			return &emptypb.Empty{}, hferrors.GrpcParsingError(req, "config_map")
+			return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "config_map")
 		}
 		vmTemplate.Spec.ConfigMap = configMap
 	}
 
 	_, err := s.vmTemplateClient.Create(ctx, vmTemplate, metav1.CreateOptions{})
 	if err != nil {
-		return &emptypb.Empty{}, hferrors.GrpcError(
+		return &generalpb.ResourceId{}, hferrors.GrpcError(
 			codes.Internal,
 			err.Error(),
 			req,
 		)
 	}
-	return &emptypb.Empty{}, nil
+	return &generalpb.ResourceId{Id: vmTemplate.Name}, nil
 }
 
 func (s *GrpcVMTemplateServer) GetVMTemplate(ctx context.Context, req *generalpb.GetRequest) (*vmtemplatepb.VMTemplate, error) {

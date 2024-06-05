@@ -8,7 +8,7 @@ import "general/general.proto";
 import "google/protobuf/empty.proto";
 
 service VMTemplateSvc {
-    rpc CreateVMTemplate (CreateVMTemplateRequest) returns (google.protobuf.Empty);
+    rpc CreateVMTemplate (CreateVMTemplateRequest) returns (general.ResourceId);
     rpc GetVMTemplate (general.GetRequest) returns (VMTemplate);
     rpc UpdateVMTemplate (UpdateVMTemplateRequest) returns (google.protobuf.Empty);
     rpc DeleteVMTemplate (general.ResourceId) returns (google.protobuf.Empty);
