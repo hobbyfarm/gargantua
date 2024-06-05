@@ -13,6 +13,8 @@ import (
 
 	vmservice "github.com/hobbyfarm/gargantua/services/vmsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
 	terraformpb "github.com/hobbyfarm/gargantua/v3/protos/terraform"
 	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
@@ -41,6 +43,8 @@ func main() {
 	crd.InstallCrds(vmservice.VmCRDInstaller{}, cfg, "virtual machine")
 
 	services := []microservices.MicroService{
+		microservices.AuthN,
+		microservices.AuthR,
 		microservices.Environment,
 		microservices.Terraform,
 		microservices.VMClaim,
@@ -51,6 +55,8 @@ func main() {
 	for _, conn := range connections {
 		defer conn.Close()
 	}
+	authnClient := authnpb.NewAuthNClient(connections[microservices.AuthN])
+	authrClient := authrpb.NewAuthRClient(connections[microservices.AuthR])
 	environmentClient := environmentpb.NewEnvironmentSvcClient(connections[microservices.Environment])
 	terraformClient := terraformpb.NewTerraformSvcClient(connections[microservices.Terraform])
 	vmClaimClient := vmclaimpb.NewVMClaimSvcClient(connections[microservices.VMClaim])
@@ -77,11 +83,24 @@ func main() {
 	}
 
 	var wg sync.WaitGroup
+	// only add 1 to our wait group since our service should stop (and restart) as soon as one of the go routines terminates
 	wg.Add(1)
 
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		vmServer := vmservice.NewVMServer(
+			authnClient,
+			authrClient,
+			vmTemplateClient,
+			vs,
+		)
+		microservices.StartAPIServer(vmServer)
 	}()
 
 	go func() {
