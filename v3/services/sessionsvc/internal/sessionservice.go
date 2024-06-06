@@ -204,9 +204,9 @@ func (sss SessionServer) NewSessionFunc(w http.ResponseWriter, r *http.Request) 
 	lenVms := len(vms)
 	sessionVmClaimSet := make([]string, 0, lenVms)
 	vmClaimRequests := make([]*vmclaimpb.CreateVMClaimRequest, 0, lenVms)
-	for index, vmset := range vms {
+	for _, vmset := range vms {
 		vmClaimId := util.GenerateResourceName(baseName, util.RandStringRunes(10), 10)
-		sessionVmClaimSet[index] = vmClaimId
+		sessionVmClaimSet = append(sessionVmClaimSet, vmClaimId)
 		vmClaimRequests = append(vmClaimRequests, &vmclaimpb.CreateVMClaimRequest{
 			Id:                  vmClaimId,
 			UserName:            user.GetId(),
