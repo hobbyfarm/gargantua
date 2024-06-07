@@ -10,6 +10,7 @@ import (
 
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -26,13 +27,12 @@ import (
 	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
 	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
 	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/workqueue"
 )
 
 type ScheduledEventController struct {
-	controllers.RateLimitingWorkqueueController
+	*controllers.RateLimitingWorkqueueController
 	controllers.Reconciler
 	internalScheduledEventServer *GrpcScheduledEventServer
 	accessCodeClient             accesscodepb.AccessCodeSvcClient
@@ -76,7 +76,7 @@ func NewScheduledEventController(
 	ctx context.Context,
 ) (*ScheduledEventController, error) {
 	scheduledEventInformer := hfInformerFactory.Hobbyfarm().V1().ScheduledEvents().Informer()
-	rateLimitingWorkqueueController := *controllers.NewRateLimitingWorkqueueController(
+	rateLimitingWorkqueueController := controllers.NewRateLimitingWorkqueueController(
 		ctx,
 		scheduledEventInformer,
 		kubeClient,
@@ -98,6 +98,7 @@ func NewScheduledEventController(
 		settingClient:                   settingClient,
 	}
 	scheduledEventController.SetReconciler(scheduledEventController)
+	scheduledEventController.SetWorkScheduler(scheduledEventController)
 
 	return scheduledEventController, nil
 }
@@ -105,7 +106,7 @@ func NewScheduledEventController(
 func (sc *ScheduledEventController) Reconcile(objName string) error {
 	err := sc.reconcileScheduledEvent(objName)
 	if err != nil {
-		if !apierrors.IsNotFound(err) {
+		if !hferrors.IsGrpcNotFound(err) {
 			sc.GetWorkqueue().Add(objName)
 			return err
 		}
@@ -375,9 +376,9 @@ func (sc *ScheduledEventController) createAccessCode(se *scheduledeventpb.Schedu
 
 func (sc *ScheduledEventController) verifyScheduledEvent(se *scheduledeventpb.ScheduledEvent) error {
 	// check the state of the vmset and mark the sevent as ready if everything is OK
-	glog.V(6).Infof("ScheduledEvent %s is in provisioned status, checking status of VMSet Provisioning", se.Name)
+	glog.V(6).Infof("ScheduledEvent %s is in provisioned status, checking status of VMSet Provisioning", se.GetId())
 	vmsList, err := sc.vmSetClient.ListVMSet(sc.Context, &generalpb.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.GetId()),
 	})
 	if err != nil {
 		return err
