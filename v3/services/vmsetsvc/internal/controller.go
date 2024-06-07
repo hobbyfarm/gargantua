@@ -66,6 +66,7 @@ func NewVMSetController(
 		vmTemplateClient:            vmTemplateClient,
 	}
 	vmSetController.SetReconciler(vmSetController)
+	vmSetController.SetWorkScheduler(vmSetController)
 
 	return vmSetController, nil
 }

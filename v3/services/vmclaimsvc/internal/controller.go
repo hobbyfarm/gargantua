@@ -85,6 +85,7 @@ func NewVMClaimController(
 		vmTemplateClient:            vmTemplateClient,
 	}
 	vmClaimController.SetReconciler(vmClaimController)
+	vmClaimController.SetWorkScheduler(vmClaimController)
 
 	return vmClaimController, nil
 }

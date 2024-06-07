@@ -55,6 +55,7 @@ func NewSessionController(
 		vmClaimClient:               vmClaimClient,
 	}
 	sessionController.SetReconciler(sessionController)
+	sessionController.SetWorkScheduler(sessionController)
 
 	return sessionController, nil
 }
