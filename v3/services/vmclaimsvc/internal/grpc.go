@@ -110,7 +110,7 @@ func (s *GrpcVMClaimServer) GetVMClaim(ctx context.Context, req *generalpb.GetRe
 		StaticBindAttempts: uint32(vmc.Status.StaticBindAttempts),
 		Bound:              vmc.Status.Bound,
 		Ready:              vmc.Status.Ready,
-		Tainted:            vmc.Status.Ready,
+		Tainted:            vmc.Status.Tainted,
 	}
 
 	var deletionTimeStamp *timestamppb.Timestamp
@@ -295,7 +295,7 @@ func (s *GrpcVMClaimServer) ListVMClaim(ctx context.Context, listOptions *genera
 			StaticBindAttempts: uint32(vmc.Status.StaticBindAttempts),
 			Bound:              vmc.Status.Bound,
 			Ready:              vmc.Status.Ready,
-			Tainted:            vmc.Status.Ready,
+			Tainted:            vmc.Status.Tainted,
 		}
 
 		var deletionTimeStamp *timestamppb.Timestamp

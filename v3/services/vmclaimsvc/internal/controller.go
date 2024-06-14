@@ -112,6 +112,7 @@ func (v *VMClaimController) Reconcile(objName string) error {
 
 func (v *VMClaimController) updateVMClaimStatus(bound bool, ready bool, vmc *vmclaimpb.VMClaim) error {
 	_, err := v.internalVmClaimServer.UpdateVMClaimStatus(v.Context, &vmclaimpb.UpdateVMClaimStatusRequest{
+		Id:    vmc.GetId(),
 		Bound: wrapperspb.Bool(bound),
 		Ready: wrapperspb.Bool(ready),
 	})
@@ -335,9 +336,8 @@ func (v *VMClaimController) submitVirtualMachines(vmc *vmclaimpb.VMClaim) (err e
 		}
 	}
 
-	vmc.Vms = vmMap
-
 	_, err = v.internalVmClaimServer.UpdateVMClaim(v.Context, &vmclaimpb.UpdateVMClaimRequest{
+		Id:    vmc.GetId(),
 		Vmset: vmMap,
 	})
 	if err != nil {
@@ -364,9 +364,9 @@ func (v *VMClaimController) findEnvironmentsForVM(accessCode string, vmc *vmclai
 	}
 
 	for _, dbc := range dbcList.GetDbConfig() {
-		env, err := v.environmentClient.GetEnvironment(v.Context, &generalpb.GetRequest{Id: dbc.GetId()})
+		env, err := v.environmentClient.GetEnvironment(v.Context, &generalpb.GetRequest{Id: dbc.GetEnvironment()})
 		if err != nil {
-			glog.Errorf("error fetching environment %v", err)
+			glog.Errorf("error fetching environment: %s", hferrors.GetErrorMessage(err))
 			return environments, seName, dbcList.GetDbConfig(), err
 		}
 		environments = append(environments, env)
@@ -497,7 +497,7 @@ func (v *VMClaimController) findScheduledEvent(accessCode string) (schedEvent st
 		return schedEvent, environments, err
 	}
 
-	schedEvent = se.GetName()
+	schedEvent = se.GetId()
 	environments = se.GetRequiredVms()
 	return schedEvent, environments, nil
 }
@@ -534,6 +534,7 @@ func (v *VMClaimController) findVirtualMachines(vmc *vmclaimpb.VMClaim) (err err
 		}
 	}
 	_, err = v.internalVmClaimServer.UpdateVMClaim(v.Context, &vmclaimpb.UpdateVMClaimRequest{
+		Id:    vmc.GetId(),
 		Vmset: vmMap,
 	})
 	if err != nil {
