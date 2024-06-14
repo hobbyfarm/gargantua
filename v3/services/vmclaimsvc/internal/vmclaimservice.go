@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
-	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	vmclaimpb "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
@@ -31,7 +31,7 @@ type PreparedVirtualMachineClaim struct {
 }
 
 func (vmcs VMClaimServer) GetVMClaimFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac2.AuthenticateRequest(r, vmcs.authnClient)
+	user, err := rbac.AuthenticateRequest(r, vmcs.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vmc")
 		return
@@ -60,7 +60,7 @@ func (vmcs VMClaimServer) GetVMClaimFunc(w http.ResponseWriter, r *http.Request)
 
 	if vmc.GetUserId() != user.GetId() {
 		impersonatedUserId := user.GetId()
-		authrResponse, err := rbac2.AuthorizeSimple(r, vmcs.authrClient, impersonatedUserId, rbac2.HobbyfarmPermission(resourcePlural, rbac2.VerbGet))
+		authrResponse, err := rbac.AuthorizeSimple(r, vmcs.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
 		if err != nil || !authrResponse.Success {
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to get vmclaim")
 			return
