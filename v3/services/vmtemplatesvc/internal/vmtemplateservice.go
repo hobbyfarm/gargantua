@@ -74,7 +74,7 @@ func (v VirtualMachineTemplateServer) GetFunc(w http.ResponseWriter, r *http.Req
 	preparedVmt := PreparedVMTemplateWithConfig{
 		PreparedVMTemplate: PreparedVMTemplate{
 			Id:    vmtId,
-			Name:  vmt.GetId(),
+			Name:  vmt.GetName(),
 			Image: vmt.GetImage(),
 		},
 		ConfigMap: vmt.GetConfigMap(),
