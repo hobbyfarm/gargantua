@@ -171,7 +171,7 @@ func (sc *ScheduledEventController) deleteScheduledEvent(se *scheduledeventpb.Sc
 func (sc *ScheduledEventController) deleteVMSetsFromScheduledEvent(se *scheduledeventpb.ScheduledEvent) error {
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
 	_, err := sc.vmSetClient.DeleteCollectionVMSet(sc.Context, &generalpb.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.Name),
+		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.GetId()),
 	})
 	return err
 }
