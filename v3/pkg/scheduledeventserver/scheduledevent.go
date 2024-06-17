@@ -20,6 +20,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/util/retry"
 )
 
@@ -862,8 +864,20 @@ func (s ScheduledEventServer) deleteProgressFromScheduledEvent(se *hfv1.Schedule
 
 func (s ScheduledEventServer) deleteVMSetsFromScheduledEvent(se *hfv1.ScheduledEvent) error {
 	// delete all vmsets corresponding to this scheduled event
-	err := s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util2.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", util2.ScheduledEventLabel, se.Name),
+	req1, err := labels.NewRequirement("shared", selection.NotEquals, []string{"true"})
+    if err != nil {
+			return err
+    }
+    req2, err := labels.NewRequirement(util2.ScheduledEventLabel, selection.Equals, []string{se.Name})
+    if err != nil {
+			return err
+    }
+    selector := labels.NewSelector()
+    selector = selector.Add(*req1).Add(*req2)
+    selectorString := selector.String()
+
+		err = s.hfClientSet.HobbyfarmV1().VirtualMachineSets(util2.GetReleaseNamespace()).DeleteCollection(s.ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: selectorString,
 	})
 	if err != nil {
 		return err
