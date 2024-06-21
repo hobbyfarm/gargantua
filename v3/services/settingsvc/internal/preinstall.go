@@ -5,12 +5,12 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	settingProto "github.com/hobbyfarm/gargantua/v3/protos/setting"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
 )
 
 func Preinstall(ctx context.Context, internalSettingServer *GrpcSettingServer) {
@@ -32,8 +32,8 @@ func installResources(ctx context.Context, internalSettingServer *GrpcSettingSer
 	defer wg.Done()
 
 	for _, scope := range scopes() {
-		_, err := internalSettingServer.GetScope(ctx, &settingProto.Id{Name: scope.GetName()})
-		if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
+		_, err := internalSettingServer.GetScope(ctx, &generalpb.GetRequest{Id: scope.GetName()})
+		if hferrors.IsGrpcNotFound(err) {
 			if _, err := internalSettingServer.CreateScope(ctx, scope); err != nil {
 				return err
 			}
@@ -45,8 +45,8 @@ func installResources(ctx context.Context, internalSettingServer *GrpcSettingSer
 	}
 
 	for _, setting := range predefinedSettings() {
-		_, err := internalSettingServer.GetSetting(ctx, &settingProto.Id{Name: setting.GetName()})
-		if s, ok := status.FromError(err); ok && s.Code() == codes.NotFound {
+		_, err := internalSettingServer.GetSetting(ctx, &generalpb.GetRequest{Id: setting.GetName()})
+		if hferrors.IsGrpcNotFound(err) {
 			if _, err := internalSettingServer.CreateSetting(ctx, setting); err != nil {
 				return err
 			}
@@ -59,8 +59,8 @@ func installResources(ctx context.Context, internalSettingServer *GrpcSettingSer
 	return nil
 }
 
-func scopes() []*settingProto.CreateScopeRequest {
-	return []*settingProto.CreateScopeRequest{
+func scopes() []*settingpb.CreateScopeRequest {
+	return []*settingpb.CreateScopeRequest{
 		{
 			Name:        "public",
 			Namespace:   util.GetReleaseNamespace(),
@@ -84,8 +84,8 @@ func scopes() []*settingProto.CreateScopeRequest {
 	}
 }
 
-func predefinedSettings() []*settingProto.CreateSettingRequest {
-	return []*settingProto.CreateSettingRequest{
+func predefinedSettings() []*settingpb.CreateSettingRequest {
+	return []*settingpb.CreateSettingRequest{
 		{
 			Name:      string(settingUtil.SettingAdminUIMOTD),
 			Namespace: util.GetReleaseNamespace(),
@@ -93,9 +93,9 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				labels.SettingScope: "admin-ui",
 			},
 			Value: "",
-			Property: &settingProto.Property{
-				DataType:    settingProto.DataType_DATA_TYPE_STRING,
-				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+			Property: &settingpb.Property{
+				DataType:    settingpb.DataType_DATA_TYPE_STRING,
+				ValueType:   settingpb.ValueType_VALUE_TYPE_SCALAR,
 				DisplayName: "Admin UI MOTD",
 			},
 		},
@@ -106,9 +106,9 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				labels.SettingScope: "public",
 			},
 			Value: "",
-			Property: &settingProto.Property{
-				DataType:    settingProto.DataType_DATA_TYPE_STRING,
-				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+			Property: &settingpb.Property{
+				DataType:    settingpb.DataType_DATA_TYPE_STRING,
+				ValueType:   settingpb.ValueType_VALUE_TYPE_SCALAR,
 				DisplayName: "User UI MOTD",
 			},
 		},
@@ -119,9 +119,9 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				labels.SettingScope: "public",
 			},
 			Value: "false",
-			Property: &settingProto.Property{
-				DataType:    settingProto.DataType_DATA_TYPE_BOOLEAN,
-				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+			Property: &settingpb.Property{
+				DataType:    settingpb.DataType_DATA_TYPE_BOOLEAN,
+				ValueType:   settingpb.ValueType_VALUE_TYPE_SCALAR,
 				DisplayName: "Registration Disabled",
 			},
 		},
@@ -133,9 +133,9 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				labels.SettingScope: "gargantua",
 			},
 			Value: "24",
-			Property: &settingProto.Property{
-				DataType:    settingProto.DataType_DATA_TYPE_INTEGER,
-				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+			Property: &settingpb.Property{
+				DataType:    settingpb.DataType_DATA_TYPE_INTEGER,
+				ValueType:   settingpb.ValueType_VALUE_TYPE_SCALAR,
 				DisplayName: "ScheduledEvent retention time (h)",
 			},
 		},
@@ -148,9 +148,9 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				labels.SettingWeight: "3",
 			},
 			Value: "false",
-			Property: &settingProto.Property{
-				DataType:    settingProto.DataType_DATA_TYPE_BOOLEAN,
-				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+			Property: &settingpb.Property{
+				DataType:    settingpb.DataType_DATA_TYPE_BOOLEAN,
+				ValueType:   settingpb.ValueType_VALUE_TYPE_SCALAR,
 				DisplayName: "Require Privacy Policy acception",
 			},
 		},
@@ -163,9 +163,9 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				labels.SettingWeight: "2",
 			},
 			Value: "",
-			Property: &settingProto.Property{
-				DataType:    settingProto.DataType_DATA_TYPE_STRING,
-				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+			Property: &settingpb.Property{
+				DataType:    settingpb.DataType_DATA_TYPE_STRING,
+				ValueType:   settingpb.ValueType_VALUE_TYPE_SCALAR,
 				DisplayName: "URL to Privacy Policy Agreement",
 			},
 		},
@@ -178,9 +178,9 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				labels.SettingWeight: "1",
 			},
 			Value: "",
-			Property: &settingProto.Property{
-				DataType:    settingProto.DataType_DATA_TYPE_STRING,
-				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+			Property: &settingpb.Property{
+				DataType:    settingpb.DataType_DATA_TYPE_STRING,
+				ValueType:   settingpb.ValueType_VALUE_TYPE_SCALAR,
 				DisplayName: "Privacy Policy URL Display Name",
 			},
 		},
@@ -193,9 +193,9 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				labels.SettingWeight: "1",
 			},
 			Value: "",
-			Property: &settingProto.Property{
-				DataType:    settingProto.DataType_DATA_TYPE_STRING,
-				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+			Property: &settingpb.Property{
+				DataType:    settingpb.DataType_DATA_TYPE_STRING,
+				ValueType:   settingpb.ValueType_VALUE_TYPE_SCALAR,
 				DisplayName: "URL to Imprint",
 			},
 		},
@@ -208,9 +208,9 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				labels.SettingWeight: "2",
 			},
 			Value: "",
-			Property: &settingProto.Property{
-				DataType:    settingProto.DataType_DATA_TYPE_STRING,
-				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+			Property: &settingpb.Property{
+				DataType:    settingpb.DataType_DATA_TYPE_STRING,
+				ValueType:   settingpb.ValueType_VALUE_TYPE_SCALAR,
 				DisplayName: "Imprint URL Display Name",
 			},
 		},
@@ -222,9 +222,9 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				labels.SettingGroup: "about-modal",
 			},
 			Value: "{\"HobbyFarm Project\":\"https://github.com/hobbyfarm\"}",
-			Property: &settingProto.Property{
-				DataType:    settingProto.DataType_DATA_TYPE_STRING,
-				ValueType:   settingProto.ValueType_VALUE_TYPE_MAP,
+			Property: &settingpb.Property{
+				DataType:    settingpb.DataType_DATA_TYPE_STRING,
+				ValueType:   settingpb.ValueType_VALUE_TYPE_MAP,
 				DisplayName: "About Modal Buttons (Title -> URL)",
 			},
 		},
@@ -235,9 +235,9 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				labels.SettingScope: "gargantua",
 			},
 			Value: "false",
-			Property: &settingProto.Property{
-				DataType:    settingProto.DataType_DATA_TYPE_BOOLEAN,
-				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+			Property: &settingpb.Property{
+				DataType:    settingpb.DataType_DATA_TYPE_BOOLEAN,
+				ValueType:   settingpb.ValueType_VALUE_TYPE_SCALAR,
 				DisplayName: "Strict AccessCode Validation",
 			},
 		},
@@ -248,9 +248,9 @@ func predefinedSettings() []*settingProto.CreateSettingRequest {
 				labels.SettingScope: "gargantua",
 			},
 			Value: "24",
-			Property: &settingProto.Property{
-				DataType:    settingProto.DataType_DATA_TYPE_INTEGER,
-				ValueType:   settingProto.ValueType_VALUE_TYPE_SCALAR,
+			Property: &settingpb.Property{
+				DataType:    settingpb.DataType_DATA_TYPE_INTEGER,
+				ValueType:   settingpb.ValueType_VALUE_TYPE_SCALAR,
 				DisplayName: "User Token Expiration (hours)",
 			},
 		},

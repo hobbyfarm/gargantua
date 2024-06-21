@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package scenario;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/scenario;scenariopb";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+service ScenarioSvc {
+    // Resource oriented functions:
+    rpc CreateScenario (CreateScenarioRequest) returns (general.ResourceId);
+    rpc GetScenario (general.GetRequest) returns (Scenario);
+    rpc UpdateScenario (UpdateScenarioRequest) returns (google.protobuf.Empty);
+    rpc DeleteScenario (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionScenario (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListScenario (general.ListOptions) returns (ListScenariosResponse);
+    // Helper functions:
+    rpc CopyScenario (general.ResourceId) returns (google.protobuf.Empty);
+}
+
+message Scenario {
+    string id = 1;
+    string uid = 2;
+    string name = 3;
+    string description = 4;
+    repeated ScenarioStep steps = 5;
+    repeated string categories = 6;
+    repeated string tags = 7;
+    repeated general.StringMap vms = 8;
+    string keepalive_duration = 9;
+    string pause_duration = 10;
+    bool pausable = 11;
+    repeated VirtualMachineTasks vm_tasks = 12;
+    map<string, string> labels = 13;
+}
+
+message CreateScenarioRequest {
+    string name = 1;
+    string description = 2;
+    string raw_steps = 3;
+    string raw_categories = 4;
+    string raw_tags = 5;
+    string raw_vms = 6;
+    string raw_vm_tasks = 7;
+    string keepalive_duration = 8;
+    string pause_duration = 9;
+    bool pausable = 10;
+}
+
+message ScenarioStep {
+    string title = 1;
+    string content = 2;
+}
+
+message UpdateScenarioRequest {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    string raw_steps = 4;
+    string raw_categories = 5;
+    string raw_tags = 6;
+    string raw_vms = 7;
+    string raw_vm_tasks = 8;
+    google.protobuf.StringValue keepalive_duration = 9;
+    google.protobuf.StringValue pause_duration = 10;
+    google.protobuf.BoolValue pausable = 11;
+}
+
+message ListScenariosResponse {
+    repeated Scenario scenarios = 1;
+}
+
+message VirtualMachineTasks {
+    string vm_name = 1;
+    repeated Task tasks = 2;
+}
+message Task {
+    string name = 1;
+    string description = 2;
+    string command = 3;
+    string expected_output_value = 4;
+    int32 expected_return_code = 5;
+    string return_type = 6;
+}

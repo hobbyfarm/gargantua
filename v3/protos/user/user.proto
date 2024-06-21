@@ -2,20 +2,21 @@ syntax = "proto3";
 
 package user;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/user";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/user;userpb";
 
+import "general/general.proto";
 import "google/protobuf/empty.proto";
 
 // Service definition
 service UserSvc {
-    rpc CreateUser (CreateUserRequest) returns (UserId);
-    rpc GetUserById (UserId) returns (User);
+    rpc CreateUser (CreateUserRequest) returns (general.ResourceId);
+    rpc GetUserById (general.GetRequest) returns (User);
     rpc GetUserByEmail (GetUserByEmailRequest) returns (User);
     rpc UpdateUser (User) returns (User);
-    rpc SetLastLoginTimestamp (UserId) returns (google.protobuf.Empty);
+    rpc SetLastLoginTimestamp (general.ResourceId) returns (google.protobuf.Empty);
     rpc UpdateAccessCodes (UpdateAccessCodesRequest) returns (User);
-    rpc DeleteUser (UserId) returns (google.protobuf.Empty);
-    rpc ListUser (google.protobuf.Empty) returns (ListUsersResponse);
+    rpc DeleteUser (general.ResourceId) returns (google.protobuf.Empty);
+    rpc ListUser (general.ListOptions) returns (ListUsersResponse);
 }
 
 message CreateUserRequest {
@@ -28,22 +29,19 @@ message UpdateAccessCodesRequest {
     repeated string access_codes = 2;
 }
 
-message UserId {
-    string id = 1;
-}
-
 message GetUserByEmailRequest {
     string email = 1;
 }
 
 message User {
     string id = 1;
-    string email = 2;
-    string password = 3;
-    repeated string access_codes = 4;
-    map<string, string> settings = 5;
-    string last_login_timestamp = 6;
-    string registered_timestamp = 7;
+    string uid = 2;
+    string email = 3;
+    string password = 4;
+    repeated string access_codes = 5;
+    map<string, string> settings = 6;
+    string last_login_timestamp = 7;
+    string registered_timestamp = 8;
 }
 
 message ListUsersResponse {
