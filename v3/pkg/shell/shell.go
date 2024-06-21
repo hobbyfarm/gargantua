@@ -1027,16 +1027,29 @@ func (sp ShellProxy) WebsocketTestFunc(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	// Send "OK" message
-	err = conn.WriteMessage(websocket.TextMessage, []byte("OK"))
-	if err != nil {
-		glog.Errorf("error sending message: %s", err)
-		util.ReturnHTTPMessage(w, r, 500, "error", "error sending message")
-		return
-	}
+	for {
+		// Read message from client
+		messageType, message, err := conn.ReadMessage()
+		if err != nil {
+			glog.Errorf("error reading message: %s", err)
+			break
+		}
 
-	glog.Infof("WebSocket test completed successfully")
-	util.ReturnHTTPMessage(w, r, 200, "success", "websocket test successful")
+		glog.Infof("Received message: %s", message)
+
+		// If the message is "ping", respond with "pong"
+		if string(message) == "ping" {
+			err = conn.WriteMessage(messageType, []byte("pong"))
+			if err != nil {
+				glog.Errorf("error writing message: %s", err)
+				break
+			}
+			return
+		} else {
+			glog.Errorf("received faulty test message")
+			return
+		}
+	}
 }
 
 func mapProtocolToPort() map[string]int {
