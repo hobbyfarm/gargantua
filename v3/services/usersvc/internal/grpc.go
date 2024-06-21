@@ -59,12 +59,13 @@ func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfIn
 	}, nil
 }
 
+// Index user by lowercase Email
 func emailIndexer(obj interface{}) ([]string, error) {
 	user, ok := obj.(*hfv2.User)
 	if !ok {
 		return []string{}, nil
 	}
-	return []string{user.Spec.Email}, nil
+	return []string{strings.ToLower(user.Spec.Email)}, nil
 }
 
 func (u *GrpcUserServer) CreateUser(ctx context.Context, cur *userpb.CreateUserRequest) (*generalpb.ResourceId, error) {
@@ -337,7 +338,9 @@ func (u *GrpcUserServer) GetUserByEmail(ctx context.Context, gur *userpb.GetUser
 		)
 	}
 
-	obj, err := u.userIndexer.ByIndex(emailIndex, gur.GetEmail())
+	userMail := strings.ToLower(gur.GetEmail())
+
+	obj, err := u.userIndexer.ByIndex(emailIndex, userMail)
 	if err != nil {
 		return &userpb.User{}, hferrors.GrpcError(
 			codes.Internal,
