@@ -3,9 +3,9 @@ package rbac
 import (
 	"fmt"
 
-	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	authrProto "github.com/hobbyfarm/gargantua/v3/protos/authr"
-	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
@@ -23,7 +23,7 @@ type AccessSet struct {
 	Access map[string]bool `json:"access"`
 }
 
-func Grants(perm *authrProto.Permission, as *rbacProto.AccessSet) bool {
+func Grants(perm *authrpb.Permission, as *rbacpb.AccessSet) bool {
 	// key is /apigroup/resource/verb
 	for _, a := range []string{perm.GetApiGroup(), All} {
 		for _, r := range []string{perm.GetResource(), All} {
@@ -38,8 +38,8 @@ func Grants(perm *authrProto.Permission, as *rbacProto.AccessSet) bool {
 	return false
 }
 
-func (i *Index) GetAccessSet(subj string) (*rbacProto.AccessSet, error) {
-	var as = &rbacProto.AccessSet{
+func (i *Index) GetAccessSet(subj string) (*rbacpb.AccessSet, error) {
+	var as = &rbacpb.AccessSet{
 		Subject: subj,
 		Access:  map[string]bool{},
 	}
@@ -77,7 +77,7 @@ func (i *Index) GetAccessSet(subj string) (*rbacProto.AccessSet, error) {
 	return as, nil
 }
 
-func (i *Index) addToAccessSet(accessSet *rbacProto.AccessSet, namespace string, rules []rbacv1.PolicyRule) {
+func (i *Index) addToAccessSet(accessSet *rbacpb.AccessSet, namespace string, rules []rbacv1.PolicyRule) {
 	// we only care about rules that are global, or apply to our namespace
 	// any others can be discarded
 	// this simplifies the frontend from having to worry about what namespace HF is installed into
@@ -151,13 +151,13 @@ func (i *Index) getRoleBindings(subj string) ([]*rbacv1.RoleBinding, error) {
 	return roleBindings, nil
 }
 
-func (i *Index) getPreparedRoleBindings(subj string) (*rbacProto.RoleBindings, error) {
+func (i *Index) getPreparedRoleBindings(subj string) (*rbacpb.RoleBindings, error) {
 	obj, err := i.roleBindingIndexer.ByIndex(rbIndex+"-"+i.kind, subj)
 	if err != nil {
 		return nil, err
 	}
 
-	var roleBindings []*rbacProto.RoleBinding
+	var roleBindings []*rbacpb.RoleBinding
 
 	for _, v := range obj {
 		rb, ok := v.(*rbacv1.RoleBinding)
@@ -165,16 +165,16 @@ func (i *Index) getPreparedRoleBindings(subj string) (*rbacProto.RoleBindings, e
 			continue // rb is not of type *rbacv1.RoleBinding, don't return it
 		}
 
-		if _, ok := rb.Labels[util.RBACManagedLabel]; !ok {
+		if _, ok := rb.Labels[hflabels.RBACManagedLabel]; !ok {
 			continue // we aren't managing this role, don't return it
 		}
-		tmpRoleBinding := &rbacProto.RoleBinding{
+		tmpRoleBinding := &rbacpb.RoleBinding{
 			Name:     rb.Name,
 			Role:     rb.RoleRef.Name,
-			Subjects: []*rbacProto.Subject{},
+			Subjects: []*rbacpb.Subject{},
 		}
 		for _, s := range rb.Subjects {
-			tmpRoleBinding.Subjects = append(tmpRoleBinding.Subjects, &rbacProto.Subject{
+			tmpRoleBinding.Subjects = append(tmpRoleBinding.Subjects, &rbacpb.Subject{
 				Kind: s.Kind,
 				Name: s.Name,
 			})
@@ -182,7 +182,7 @@ func (i *Index) getPreparedRoleBindings(subj string) (*rbacProto.RoleBindings, e
 		roleBindings = append(roleBindings, tmpRoleBinding)
 	}
 
-	return &rbacProto.RoleBindings{Rolebindings: roleBindings}, nil
+	return &rbacpb.RoleBindings{Rolebindings: roleBindings}, nil
 }
 
 func (i *Index) getClusterRoleBindings(subj string) ([]*rbacv1.ClusterRoleBinding, error) {

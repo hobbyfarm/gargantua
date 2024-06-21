@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package vmclaim;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/vmclaim;vmclaimpb";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/timestamp.proto";
+
+service VMClaimSvc {
+    rpc CreateVMClaim (CreateVMClaimRequest) returns (google.protobuf.Empty);
+    rpc GetVMClaim (general.GetRequest) returns (VMClaim);
+    rpc UpdateVMClaim (UpdateVMClaimRequest) returns (google.protobuf.Empty);
+    rpc UpdateVMClaimStatus (UpdateVMClaimStatusRequest) returns (google.protobuf.Empty);
+    rpc DeleteVMClaim (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionVMClaim (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListVMClaim (general.ListOptions) returns (ListVMClaimsResponse);
+    rpc AddToWorkqueue (general.ResourceId) returns (google.protobuf.Empty);
+}
+
+message VMClaim {
+    string id = 1;
+    string uid = 2;
+    string user_id = 3;
+    bool restricted_bind = 4;
+    string restricted_bind_value = 5;
+    map<string, VMClaimVM> vms = 6;
+    bool dynamic_capable = 7;
+    string base_name = 8;
+    map<string, string> labels = 9;
+    VMClaimStatus status = 10;
+    google.protobuf.Timestamp deletion_timestamp = 11;
+}
+
+message CreateVMClaimRequest {
+    string id = 1;
+    string user_name = 2;
+    map<string, string> vmset = 3;
+    bool restricted_bind = 4;
+    string restricted_bind_value = 5;
+    bool dynamic_capable = 6;
+    map<string, string> labels = 7;
+}
+
+message UpdateVMClaimRequest {
+    string id = 1;
+    map<string, VMClaimVM> vmset = 2;
+    google.protobuf.BoolValue restricted_bind = 3;
+}
+
+message UpdateVMClaimStatusRequest {
+    string id = 1;
+    string bind_mode = 2;
+    google.protobuf.UInt32Value static_bind_attempts = 3;
+    google.protobuf.BoolValue bound = 4;
+    google.protobuf.BoolValue ready = 5;
+    google.protobuf.BoolValue tainted = 6;
+}
+
+message VMClaimStatus {
+    string bind_mode = 1;
+    uint32 static_bind_attempts = 2;
+    bool bound = 3;
+    bool ready = 4;
+    bool tainted = 5;
+}
+
+message VMClaimVM {
+    string template = 1;
+    string vm_id = 2;
+}
+
+message ListVMClaimsResponse {
+    repeated VMClaim vmclaims = 1;
+}

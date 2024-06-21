@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: authn/authn.proto
 
-package authn
+package authnpb
 
 import (
 	context "context"

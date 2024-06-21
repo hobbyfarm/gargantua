@@ -1,36 +1,40 @@
 syntax = "proto3";
 
-package access_code;
+package accesscode;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/accesscode";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/accesscode;accesscodepb";
 
+import "general/general.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
 
 // Service definition
 service AccessCodeSvc {
-    // TODO: Implementation for AccessCodes
+    // Resource oriented RPCs for AccessCodes:
+    rpc CreateAc (CreateAcRequest) returns (google.protobuf.Empty);
+    rpc GetAc (general.GetRequest) returns (AccessCode);
+    rpc UpdateAc (UpdateAccessCodeRequest) returns (google.protobuf.Empty);
+    rpc DeleteAc (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionAc (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListAc (general.ListOptions) returns (ListAcsResponse);
 
-    // rpc CreateAc (CreateAcRequest) returns (AccessCodeId);
-    // rpc GetAc (AccessCodeId) returns (AccessCode);
-    // rpc UpdateAc (AccessCode) returns (google.protobuf.Empty);
-    // rpc DeleteAc (AccessCodeId) returns (google.protobuf.Empty);
-    // rpc DeleteCollectionAc (ListOptions) returns (google.protobuf.Empty);
-    // rpc ListAc (ListOptions) returns (AccessCodes);
-
-    // TODO: Implement missing OTAC RPCs
-
-    // rpc CreateOtac (CreateOtacRequest) returns (OneTimeAccessCodeId);
-    rpc GetOtac (ResourceId) returns (OneTimeAccessCode);
+    // Resource oriented RPCs for OneTimeAccessCodes:
+    rpc CreateOtac (CreateOtacRequest) returns (OneTimeAccessCode);
+    rpc GetOtac (general.GetRequest) returns (OneTimeAccessCode);
     rpc UpdateOtac (OneTimeAccessCode) returns (google.protobuf.Empty);
-    // rpc DeleteOtac (OneTimeAccessCodeId) returns (google.protobuf.Empty);
-    // rpc DeleteCollectionOtac (ListOptions) returns (google.protobuf.Empty);
-    // rpc ListOtac (ListOptions) returns (OneTimeAccessCodes);
+    rpc DeleteOtac (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionOtac (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListOtac (general.ListOptions) returns (ListOtacsResponse);
 
-    rpc ValidateExistence (ResourceId) returns (ResourceValidation);
+    // Helper functions
+    rpc ValidateExistence (general.ResourceId) returns (ResourceValidation);
+    rpc GetAccessCodesWithOTACs (ResourceIds) returns (ListAcsResponse);
+    rpc GetAccessCodeWithOTACs (general.ResourceId) returns (AccessCode);
+    rpc GetAcOwnerReferences (general.GetRequest) returns (general.OwnerReferences);
 }
 
-message ResourceId {
-    string id = 1;
+message ResourceIds {
+    repeated string ids = 1;
 }
 
 message ResourceValidation {
@@ -39,7 +43,66 @@ message ResourceValidation {
 
 message OneTimeAccessCode {
     string id = 1;
-    string user = 2;
-    string redeemed_timestamp = 3;
-    string max_duration = 4;
+    string uid = 2;
+    string user = 3;
+    string redeemed_timestamp = 4;
+    string max_duration = 5;
+    map<string, string> labels = 6;
+}
+
+message ListOtacsResponse {
+    repeated OneTimeAccessCode otacs = 1;
+}
+
+message CreateOtacRequest {
+    string se_name = 1;
+    string se_uid = 2;
+    string max_duration = 3;
+}
+
+message CreateAcRequest {
+    string ac_name = 1;
+    string se_name = 2;
+    string se_uid = 3;
+    string description = 4;
+    repeated string scenarios = 5;
+    repeated string courses = 6;
+    string expiration = 7;
+    bool restricted_bind = 8;
+    string restricted_bind_value = 9;
+    bool printable = 10;
+}
+
+message AccessCode {
+    string id = 1;
+    string uid = 2;
+    string description = 3;
+    repeated string scenarios = 4;
+    repeated string courses = 5;
+    string expiration = 6;
+    bool restricted_bind = 7;
+    string restricted_bind_value = 8;
+    bool printable = 9;
+    map<string, string> labels = 10;
+}
+
+// To determine if a boolean value was provided or not for the restricted_bind and printable field, we need to use a wrapper type.
+// Otherwise we can not tell if the value was provided or the default value (false) was set
+message UpdateAccessCodeRequest {
+    string id = 1;
+    string description = 2;
+    repeated string scenarios = 3;
+    repeated string courses = 4;
+    string expiration = 5;
+    google.protobuf.BoolValue restricted_bind = 6;
+    google.protobuf.BoolValue printable = 7;
+}
+
+message ListAcsResponse {
+    repeated AccessCode access_codes = 1;
+}
+
+message ClosestAcRequest {
+    string user_id = 1;
+    string course_or_scenario_id = 2;
 }

@@ -10,4 +10,16 @@ use (
 	./v3/services/rbacsvc
 	./v3/services/settingsvc
 	./v3/services/usersvc
+	./v3/services/dbconfigsvc
+	./v3/services/vmclaimsvc
+	./v3/services/vmsetsvc
+	./v3/services/progresssvc
+	./v3/services/vmtemplatesvc
+	./v3/services/vmsvc
+	./v3/services/sessionsvc
+	./v3/services/scheduledeventsvc
+	./v3/services/environmentsvc
+	./v3/services/scenariosvc
+	./v3/services/coursesvc
+	./v3/services/terraformsvc
 )
