@@ -12,7 +12,7 @@ docker run --rm \
   -c "apt-get update && apt-get install -y protobuf-compiler && \
   export PATH=\$PATH:/go/bin && \
   go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
-  go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest && \
+  go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0 && \
   find ${PROTO_DIR} -type f -name '*.proto' -exec bash -c ' \
     protoc -I ${PROTO_DIR} \
     --go_out=./protos \

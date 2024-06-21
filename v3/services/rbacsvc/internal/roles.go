@@ -2,16 +2,19 @@ package rbac
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type PreparedRole struct {
@@ -39,14 +42,12 @@ func (s Server) ListRoles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	roles, err := s.internalRbacServer.ListRole(r.Context(), &emptypb.Empty{})
+	labelSelector := fmt.Sprintf("%s=%t", hflabels.RBACManagedLabel, true)
+	roles, err := s.internalRbacServer.ListRole(r.Context(), &generalpb.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			switch s.Code() {
-			case codes.NotFound:
-				util.ReturnHTTPMessage(w, r, http.StatusNotFound, "notfound", s.Message())
-				return
-			}
+		if hferrors.IsGrpcNotFound(err) {
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "notfound", status.Convert(err).Message())
+			return
 		}
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
@@ -84,20 +85,19 @@ func (s Server) GetRole(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	roleId := vars["id"]
 
-	preparedRole, err := s.internalRbacServer.GetRole(r.Context(), &rbacProto.ResourceId{Id: roleId})
+	preparedRole, err := s.internalRbacServer.GetRole(r.Context(), &generalpb.GetRequest{Id: roleId})
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			switch s.Code() {
-			case codes.InvalidArgument:
-				util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", s.Message())
-				return
-			case codes.NotFound:
-				util.ReturnHTTPMessage(w, r, http.StatusNotFound, "notfound", s.Message())
-				return
-			case codes.PermissionDenied:
-				util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", s.Message())
-				return
-			}
+		statusErr := status.Convert(err)
+		switch statusErr.Code() {
+		case codes.InvalidArgument:
+			util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", statusErr.Message())
+			return
+		case codes.NotFound:
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "notfound", statusErr.Message())
+			return
+		case codes.PermissionDenied:
+			util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", statusErr.Message())
+			return
 		}
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
@@ -127,7 +127,7 @@ func (s Server) CreateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var preparedRole *rbacProto.Role
+	var preparedRole *rbacpb.Role
 	err = json.NewDecoder(r.Body).Decode(&preparedRole)
 	if err != nil {
 		glog.Errorf("error decoding json from create role request: %v", err)
@@ -137,11 +137,9 @@ func (s Server) CreateRole(w http.ResponseWriter, r *http.Request) {
 
 	_, err = s.internalRbacServer.CreateRole(r.Context(), preparedRole)
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			if s.Code() == codes.InvalidArgument {
-				util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid role")
-				return
-			}
+		if status.Convert(err).Code() == codes.InvalidArgument {
+			util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid role")
+			return
 		}
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
@@ -164,7 +162,7 @@ func (s Server) UpdateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var preparedRole *rbacProto.Role
+	var preparedRole *rbacpb.Role
 	err = json.NewDecoder(r.Body).Decode(&preparedRole)
 	if err != nil {
 		glog.Errorf("error decoding json from update role request: %v", err)
@@ -174,11 +172,9 @@ func (s Server) UpdateRole(w http.ResponseWriter, r *http.Request) {
 
 	_, err = s.internalRbacServer.UpdateRole(r.Context(), preparedRole)
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			if s.Code() == codes.InvalidArgument {
-				util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid role")
-				return
-			}
+		if status.Convert(err).Code() == codes.InvalidArgument {
+			util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid role")
+			return
 		}
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
@@ -204,13 +200,11 @@ func (s Server) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	roleId := vars["id"]
 
-	_, err = s.internalRbacServer.DeleteRole(r.Context(), &rbacProto.ResourceId{Id: roleId})
+	_, err = s.internalRbacServer.DeleteRole(r.Context(), &generalpb.ResourceId{Id: roleId})
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			if s.Code() == codes.InvalidArgument {
-				util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid role")
-				return
-			}
+		if status.Convert(err).Code() == codes.InvalidArgument {
+			util.ReturnHTTPMessage(w, r, http.StatusBadRequest, "badrequest", "invalid role")
+			return
 		}
 		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "internalerror", "internal error")
 		return
@@ -219,7 +213,7 @@ func (s Server) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPMessage(w, r, http.StatusOK, "deleted", "deleted")
 }
 
-func (s Server) prepareRole(role *rbacProto.Role) (preparedRole PreparedRole) {
+func (s Server) prepareRole(role *rbacpb.Role) (preparedRole PreparedRole) {
 	pr := PreparedRole{
 		Name:  role.GetName(),
 		Rules: []PreparedRule{},

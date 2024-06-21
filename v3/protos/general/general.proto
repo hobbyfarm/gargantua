@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package general;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/general;generalpb";
+
+import "google/protobuf/wrappers.proto";
+
+// messages which are used across multiple services should be defined here
+
+message ResourceId {
+    string id = 1;
+}
+
+message GetRequest {
+    string id = 1;
+    bool load_from_cache = 2;
+}
+
+message ListOptions {
+    string label_selector = 1;
+    bool load_from_cache = 2;
+}
+
+message OwnerReference {
+    string api_version = 1;
+    string kind = 2;
+    string id = 3;
+    string uid = 4;
+    google.protobuf.BoolValue controller = 5;
+    google.protobuf.BoolValue block_owner_deletion = 6;
+}
+
+message OwnerReferences {
+    repeated OwnerReference owner_references = 1;
+}
+
+// Since it is not possible to define an array of maps or a map of maps in protobuf,
+// let's define a wrapper proto message type for string maps
+message StringMap {
+    map<string, string> value = 1;
+}
+
+// A wrapper for string slices in case we need to differ between an empty and unset slice
+message StringArray {
+    repeated string values = 1;
+}

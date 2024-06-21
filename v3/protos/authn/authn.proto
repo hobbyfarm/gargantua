@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package authn;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/authn";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/authn;authnpb";
 
 import "user/user.proto";
 

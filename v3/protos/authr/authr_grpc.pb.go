@@ -4,7 +4,7 @@
 // - protoc             v3.21.12
 // source: authr/authr.proto
 
-package authr
+package authrpb
 
 import (
 	context "context"

@@ -126,7 +126,7 @@ func (c *BaseController) enqueue(obj interface{}) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		glog.V(4).Infof("Error enquing %s: %v", key, err)
+		glog.V(4).Infof("Error enqueueing %s: %v", key, err)
 		return
 	}
 	glog.V(4).Infof("Enqueueing: %s", key)

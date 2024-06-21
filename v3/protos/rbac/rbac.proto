@@ -2,29 +2,29 @@ syntax = "proto3";
 
 package rbac;
 
-option go_package = "github.com/hobbyfarm/gargantua/v3/protos/rbac";
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/rbac;rbacpb";
 
 import "authr/authr.proto";
-import "user/user.proto";
+import "general/general.proto";
 import "google/protobuf/empty.proto";
 
 // Service definition
 service RbacSvc {
     rpc Grants (GrantRequest) returns (authr.AuthRResponse);
-    rpc GetAccessSet (user.UserId) returns (AccessSet);
-    rpc GetHobbyfarmRoleBindings (user.UserId) returns (RoleBindings);
+    rpc GetAccessSet (general.ResourceId) returns (AccessSet);
+    rpc GetHobbyfarmRoleBindings (general.ResourceId) returns (RoleBindings);
     // Resource oriented RPCs for roles:
     rpc CreateRole (Role) returns (google.protobuf.Empty);
-    rpc GetRole (ResourceId) returns (Role);
+    rpc GetRole (general.GetRequest) returns (Role);
     rpc UpdateRole (Role) returns (google.protobuf.Empty);
-    rpc DeleteRole (ResourceId) returns (google.protobuf.Empty);
-    rpc ListRole (google.protobuf.Empty) returns (Roles);
+    rpc DeleteRole (general.ResourceId) returns (google.protobuf.Empty);
+    rpc ListRole (general.ListOptions) returns (Roles);
     // Resource oriented RPCs for rolebindings:
     rpc CreateRolebinding (RoleBinding) returns (google.protobuf.Empty);
-    rpc GetRolebinding (ResourceId) returns (RoleBinding);
+    rpc GetRolebinding (general.GetRequest) returns (RoleBinding);
     rpc UpdateRolebinding (RoleBinding) returns (google.protobuf.Empty);
-    rpc DeleteRolebinding (ResourceId) returns (google.protobuf.Empty);
-    rpc ListRolebinding (google.protobuf.Empty) returns (RoleBindings);
+    rpc DeleteRolebinding (general.ResourceId) returns (google.protobuf.Empty);
+    rpc ListRolebinding (general.ListOptions) returns (RoleBindings);
 }
 
 message GrantRequest {
@@ -50,10 +50,6 @@ message RoleBinding {
 message Subject {
     string kind = 1;
     string name = 2;
-}
-
-message ResourceId {
-    string id = 1;
 }
 
 message Role {

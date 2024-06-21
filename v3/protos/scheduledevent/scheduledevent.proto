@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package scheduledevent;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent;scheduledeventpb";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+service ScheduledEventSvc {
+    rpc CreateScheduledEvent (CreateScheduledEventRequest) returns (general.ResourceId);
+    rpc GetScheduledEvent (general.GetRequest) returns (ScheduledEvent);
+    rpc UpdateScheduledEvent (UpdateScheduledEventRequest) returns (google.protobuf.Empty);
+    rpc UpdateScheduledEventStatus (UpdateScheduledEventStatusRequest) returns (google.protobuf.Empty);
+    rpc DeleteScheduledEvent (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionScheduledEvent (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListScheduledEvent (general.ListOptions) returns (ListScheduledEventsResponse);
+}
+
+message ScheduledEvent {
+    string id = 1;
+    string uid = 2;
+    string name = 3;
+    string description = 4;
+    string creator = 5;
+    string start_time = 6;
+    string end_time = 7;
+    bool on_demand = 8;
+    bool printable = 9;
+    bool restricted_bind = 10;
+    string restricted_bind_value = 11;
+    map<string, VMTemplateCountMap> required_vms = 12;
+    string access_code = 13;
+    repeated string scenarios = 14;
+    repeated string courses = 15;
+    map<string, string> labels = 16;
+    ScheduledEventStatus status = 17;
+}
+
+message CreateScheduledEventRequest {
+    string name = 1; // The displayed scheduled event name, not id!
+    string description = 2;
+    string creator = 3;
+    string start_time = 4;
+    string end_time = 5;
+    bool on_demand = 6;
+    bool printable = 7;
+    bool restricted_bind = 8;
+    // required_vms is mapping environments to their respective VMTemplateCountMap
+    string required_vms_raw = 9;
+    string access_code = 10;
+    string scenarios_raw = 11;
+    string courses_raw = 12;
+    map<string, string> labels = 13;
+}
+
+// This message is mapping vmtemplates to their required count within a scheduled event
+message VMTemplateCountMap {
+    map<string, uint32> vmTemplateCounts = 1;
+}
+
+message UpdateScheduledEventRequest {
+    string id = 1;
+    string name = 2;
+    string description = 3;
+    string start_time = 4;
+    string end_time = 5;
+    google.protobuf.BoolValue on_demand = 6;
+    google.protobuf.BoolValue printable = 7;
+    google.protobuf.BoolValue restricted_bind = 8;
+    // required_vms is mapping environments to their respective VMTemplateCountMap
+    string required_vms_raw = 9;
+    string access_code = 10;
+    string scenarios_raw = 11;
+    string courses_raw = 12;
+}
+
+message UpdateScheduledEventStatusRequest {
+    string id = 1;
+    VMSetsWrapper vmsets = 2;
+    google.protobuf.BoolValue active = 3;
+    google.protobuf.BoolValue provisioned = 4;
+    google.protobuf.BoolValue ready = 5;
+    google.protobuf.BoolValue finished = 6;
+}
+
+message VMSetsWrapper {
+    repeated string value = 1;
+}
+
+message ScheduledEventStatus {
+    repeated string vmsets = 1;
+    bool active = 2;
+    bool provisioned = 3;
+    bool ready = 4;
+    bool finished = 5;
+}
+
+message ListScheduledEventsResponse {
+    repeated ScheduledEvent scheduledevents = 1;
+}
