@@ -7,8 +7,8 @@ import (
 
 	authrservice "github.com/hobbyfarm/gargantua/services/authrsvc/v3/internal"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
-	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 )
 
 var (
@@ -28,10 +28,10 @@ func main() {
 		defer conn.Close()
 	}
 
-	rbacClient := rbac.NewRbacSvcClient(connections[microservices.Rbac])
+	rbacClient := rbacpb.NewRbacSvcClient(connections[microservices.Rbac])
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 	as := authrservice.NewGrpcAuthRServer(rbacClient)
-	authr.RegisterAuthRServer(gs, as)
+	authrpb.RegisterAuthRServer(gs, as)
 
 	var wg sync.WaitGroup
 	wg.Add(1)

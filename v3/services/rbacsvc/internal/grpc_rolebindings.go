@@ -5,51 +5,44 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	empty "google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/emptypb"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 )
 
-func (rs *GrpcRbacServer) CreateRolebinding(c context.Context, cr *rbacProto.RoleBinding) (*empty.Empty, error) {
+func (rs *GrpcRbacServer) CreateRolebinding(c context.Context, cr *rbacpb.RoleBinding) (*emptypb.Empty, error) {
 	rolebinding, err := rs.marshalRolebinding(c, cr)
 	if err != nil {
 		glog.Errorf("invalid rolebinding: %v", err)
-		newErr := status.Newf(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"invalid rolebinding",
+			cr,
 		)
-		newErr, wde := newErr.WithDetails(cr)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
-	_, err = rs.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).Create(c, rolebinding, metav1.CreateOptions{})
+	_, err = rs.roleBindingClient.Create(c, rolebinding, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("error creating rolebinding in kubernetes: %v", err)
-		newErr := status.Newf(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
-			"internal error",
+			"error creating rolebinding",
+			cr,
 		)
-		newErr, wde := newErr.WithDetails(cr)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) GetRolebinding(c context.Context, gr *rbacProto.ResourceId) (*rbacProto.RoleBinding, error) {
+func (rs *GrpcRbacServer) GetRolebinding(c context.Context, gr *generalpb.GetRequest) (*rbacpb.RoleBinding, error) {
 	rolebinding, err := rs.getRolebinding(c, gr)
 	if err != nil {
 		return nil, err
@@ -57,113 +50,87 @@ func (rs *GrpcRbacServer) GetRolebinding(c context.Context, gr *rbacProto.Resour
 	return unmarshalRolebinding(rolebinding), nil
 }
 
-func (rs *GrpcRbacServer) UpdateRolebinding(c context.Context, ur *rbacProto.RoleBinding) (*empty.Empty, error) {
+func (rs *GrpcRbacServer) UpdateRolebinding(c context.Context, ur *rbacpb.RoleBinding) (*emptypb.Empty, error) {
 	inputRolebinding, err := rs.marshalRolebinding(c, ur)
 	if err != nil {
 		glog.Errorf("invalid role: %v", err)
-		newErr := status.Newf(
+		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.InvalidArgument,
 			"invalid role",
+			ur,
 		)
-		newErr, wde := newErr.WithDetails(ur)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
 	}
 
-	k8sRolebinding, err := rs.getRolebinding(c, &rbacProto.ResourceId{Id: ur.GetName()})
+	k8sRolebinding, err := rs.getRolebinding(c, &generalpb.GetRequest{Id: ur.GetName()})
 	if err != nil {
-		return &empty.Empty{}, err
+		return &emptypb.Empty{}, err
 	}
 
 	k8sRolebinding.RoleRef = inputRolebinding.RoleRef
 	k8sRolebinding.Subjects = inputRolebinding.Subjects
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		_, err := rs.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).Update(c, k8sRolebinding, metav1.UpdateOptions{})
+		_, err := rs.roleBindingClient.Update(c, k8sRolebinding, metav1.UpdateOptions{})
 		if err != nil {
 			glog.Errorf("error while updating rolebinding in kubernetes: %v", err)
-			newErr := status.Newf(
+			return hferrors.GrpcError(
 				codes.Internal,
-				"internal error",
+				"error while updating rolebinding",
+				ur,
 			)
-			newErr, wde := newErr.WithDetails(ur)
-			if wde != nil {
-				return wde
-			}
-			return newErr.Err()
 		}
 		return nil
 	})
 
 	if retryErr != nil {
-		return &empty.Empty{}, retryErr
+		return &emptypb.Empty{}, retryErr
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (rs *GrpcRbacServer) DeleteRolebinding(c context.Context, dr *rbacProto.ResourceId) (*empty.Empty, error) {
+func (rs *GrpcRbacServer) DeleteRolebinding(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	// we want to get the rolebinding first as this allows us to run it through the various checks before we attempt deletion
 	// most important of which is checking that we have labeled it correctly
 	// but it doesn't hurt to check if it exists before
-	rolebinding, err := rs.getRolebinding(c, dr)
+	_, err := rs.getRolebinding(ctx, &generalpb.GetRequest{Id: req.GetId()})
 	if err != nil {
-		return &empty.Empty{}, err
+		return &emptypb.Empty{}, err
 	}
 
-	err = rs.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).Delete(c, rolebinding.Name, metav1.DeleteOptions{})
-	if err != nil {
-		glog.Errorf("error deleting rolebinding in kubernetes: %v", err)
-		newErr := status.Newf(
-			codes.Internal,
-			"internal error",
-		)
-		newErr, wde := newErr.WithDetails(dr)
-		if wde != nil {
-			return &empty.Empty{}, wde
-		}
-		return &empty.Empty{}, newErr.Err()
-	}
-	return &empty.Empty{}, nil
+	return util.DeleteHfResource(ctx, req, rs.roleBindingClient, "rolebinding")
 }
 
-func (rs *GrpcRbacServer) ListRolebinding(c context.Context, lr *empty.Empty) (*rbacProto.RoleBindings, error) {
-	listOptions := metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%t", util.RBACManagedLabel, true),
-	}
-
-	rolebindings, err := rs.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).List(c, listOptions)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			glog.Errorf("error: rolebindings not found")
-			newErr := status.Newf(
-				codes.NotFound,
-				"rolebindings not found",
-			)
-			return &rbacProto.RoleBindings{}, newErr.Err()
+func (rs *GrpcRbacServer) ListRolebinding(ctx context.Context, listOptions *generalpb.ListOptions) (*rbacpb.RoleBindings, error) {
+	doLoadFromCache := listOptions.GetLoadFromCache()
+	var rolebindings []rbacv1.RoleBinding
+	var err error
+	if !doLoadFromCache {
+		var rolebindingList *rbacv1.RoleBindingList
+		rolebindingList, err = util.ListByHfClient(ctx, listOptions, rs.roleBindingClient, "rolebindings")
+		if err == nil {
+			rolebindings = rolebindingList.Items
 		}
-		glog.Errorf("error in kubernetes while listing rolebindings %v", err)
-		newErr := status.Newf(
-			codes.Internal,
-			"internal error",
-		)
-		return &rbacProto.RoleBindings{}, newErr.Err()
+	} else {
+		rolebindings, err = util.ListByCache(listOptions, rs.roleBindingLister, "rolebindings", rs.roleBindingSynced())
+	}
+	if err != nil {
+		glog.Error(err)
+		return &rbacpb.RoleBindings{}, err
 	}
 
-	var preparedRolebindings = make([]*rbacProto.RoleBinding, 0)
-	for _, r := range rolebindings.Items {
+	var preparedRolebindings = make([]*rbacpb.RoleBinding, 0)
+	for _, r := range rolebindings {
 		pr := unmarshalRolebinding(&r)
 		preparedRolebindings = append(preparedRolebindings, pr)
 	}
 
-	return &rbacProto.RoleBindings{Rolebindings: preparedRolebindings}, nil
+	return &rbacpb.RoleBindings{Rolebindings: preparedRolebindings}, nil
 }
 
-func (rs *GrpcRbacServer) marshalRolebinding(ctx context.Context, preparedRoleBinding *rbacProto.RoleBinding) (*rbacv1.RoleBinding, error) {
+func (rs *GrpcRbacServer) marshalRolebinding(ctx context.Context, preparedRoleBinding *rbacpb.RoleBinding) (*rbacv1.RoleBinding, error) {
 	// first validation, the role it is referencing has to exist
-	role, err := rs.kubeClientSet.RbacV1().Roles(util.GetReleaseNamespace()).Get(ctx, preparedRoleBinding.GetRole(), metav1.GetOptions{})
+	role, err := rs.roleClient.Get(ctx, preparedRoleBinding.GetRole(), metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("invalid role ref")
 	}
@@ -173,7 +140,7 @@ func (rs *GrpcRbacServer) marshalRolebinding(ctx context.Context, preparedRoleBi
 			Name:      preparedRoleBinding.GetName(),
 			Namespace: util.GetReleaseNamespace(),
 			Labels: map[string]string{
-				util.RBACManagedLabel: "true",
+				hflabels.RBACManagedLabel: "true",
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -207,15 +174,15 @@ func (rs *GrpcRbacServer) marshalRolebinding(ctx context.Context, preparedRoleBi
 	return &rb, nil
 }
 
-func unmarshalRolebinding(roleBinding *rbacv1.RoleBinding) *rbacProto.RoleBinding {
-	prb := &rbacProto.RoleBinding{
+func unmarshalRolebinding(roleBinding *rbacv1.RoleBinding) *rbacpb.RoleBinding {
+	prb := &rbacpb.RoleBinding{
 		Name:     roleBinding.Name,
 		Role:     roleBinding.RoleRef.Name,
-		Subjects: []*rbacProto.Subject{},
+		Subjects: []*rbacpb.Subject{},
 	}
 
 	for _, s := range roleBinding.Subjects {
-		prb.Subjects = append(prb.GetSubjects(), &rbacProto.Subject{
+		prb.Subjects = append(prb.GetSubjects(), &rbacpb.Subject{
 			Kind: s.Kind,
 			Name: s.Name,
 		})
@@ -224,58 +191,20 @@ func unmarshalRolebinding(roleBinding *rbacv1.RoleBinding) *rbacProto.RoleBindin
 	return prb
 }
 
-func (rs *GrpcRbacServer) getRolebinding(c context.Context, gr *rbacProto.ResourceId) (*rbacv1.RoleBinding, error) {
-	if gr.GetId() == "" {
-		glog.Errorf("invalid rolebinding id")
-		newErr := status.Newf(
-			codes.InvalidArgument,
-			"invalid rolebinding id",
-		)
-		newErr, wde := newErr.WithDetails(gr)
-		if wde != nil {
-			return nil, wde
-		}
-		return nil, newErr.Err()
-	}
-
-	rolebinding, err := rs.kubeClientSet.RbacV1().RoleBindings(util.GetReleaseNamespace()).Get(c, gr.GetId(), metav1.GetOptions{})
+func (rs *GrpcRbacServer) getRolebinding(ctx context.Context, req *generalpb.GetRequest) (*rbacv1.RoleBinding, error) {
+	rolebinding, err := util.GenericHfGetter(ctx, req, rs.roleBindingClient, rs.roleBindingLister.RoleBindings(util.GetReleaseNamespace()), "rolebinding", rs.roleBindingSynced())
 	if err != nil {
-		if errors.IsNotFound(err) {
-			glog.Errorf("rolebinding not found")
-			newErr := status.Newf(
-				codes.NotFound,
-				"rolebinding not found",
-			)
-			newErr, wde := newErr.WithDetails(gr)
-			if wde != nil {
-				return nil, wde
-			}
-			return nil, newErr.Err()
-		}
-		glog.Errorf("kubernetes error while getting rolebinding: %v", err)
-		newErr := status.Newf(
-			codes.Internal,
-			"internal server error",
-		)
-		newErr, wde := newErr.WithDetails(gr)
-		if wde != nil {
-			return nil, wde
-		}
-		return nil, newErr.Err()
+		return &rbacv1.RoleBinding{}, err
 	}
 
-	if _, ok := rolebinding.Labels[util.RBACManagedLabel]; !ok {
+	if _, ok := rolebinding.Labels[hflabels.RBACManagedLabel]; !ok {
 		// this isn't a hobbyfarm rolebinding. we don't serve your kind here
 		glog.Error("permission denied: rolebinding not managed by hobbyfarm")
-		newErr := status.Newf(
+		return &rbacv1.RoleBinding{}, hferrors.GrpcError(
 			codes.PermissionDenied,
 			"rolebinding not managed by hobbyfarm",
+			req,
 		)
-		newErr, wde := newErr.WithDetails(gr)
-		if wde != nil {
-			return nil, wde
-		}
-		return nil, newErr.Err()
 	}
 
 	return rolebinding, nil

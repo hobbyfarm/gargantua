@@ -1,15 +1,18 @@
 package main
 
 import (
-	"context"
 	"sync"
+	"time"
 
-	"github.com/ebauman/crder"
+	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
 	"github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+	"github.com/hobbyfarm/gargantua/v3/pkg/signals"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 
-	"github.com/golang/glog"
 	accesscodeservice "github.com/hobbyfarm/gargantua/services/accesscodesvc/v3/internal"
-	accessCodeProto "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 )
 
 var (
@@ -21,20 +24,27 @@ func init() {
 }
 
 func main() {
+	stopCh := signals.SetupSignalHandler()
 	cfg, hfClient, _ := microservices.BuildClusterConfig(serviceConfig)
 
-	crds := accesscodeservice.GenerateAccessCodeCRD()
-	glog.Info("installing/updating access code CRDs")
-	err := crder.InstallUpdateCRDs(cfg, crds...)
-	if err != nil {
-		glog.Fatalf("failed installing/updating access code CRDs: %s", err.Error())
+	namespace := util.GetReleaseNamespace()
+	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
+
+	crd.InstallCrds(accesscodeservice.AccessCodeCRDInstaller{}, cfg, "access code")
+
+	services := []microservices.MicroService{
+		microservices.ScheduledEvent,
 	}
-	glog.Info("finished installing/updating access code CRDs")
+	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
+	for _, conn := range connections {
+		defer conn.Close()
+	}
+
+	eventClient := scheduledeventpb.NewScheduledEventSvcClient(connections[microservices.ScheduledEvent])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
-	ctx := context.Background()
-	as := accesscodeservice.NewGrpcAccessCodeServer(hfClient, ctx)
-	accessCodeProto.RegisterAccessCodeSvcServer(gs, as)
+	as := accesscodeservice.NewGrpcAccessCodeServer(hfClient, hfInformerFactory, eventClient)
+	accesscodepb.RegisterAccessCodeSvcServer(gs, as)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -43,6 +53,8 @@ func main() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
 	}()
+
+	hfInformerFactory.Start(stopCh)
 
 	wg.Wait()
 }

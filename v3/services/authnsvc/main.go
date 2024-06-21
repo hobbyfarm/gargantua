@@ -8,11 +8,12 @@ import (
 	"github.com/golang/glog"
 	authnservice "github.com/hobbyfarm/gargantua/services/authnsvc/v3/internal"
 
-	"github.com/hobbyfarm/gargantua/v3/protos/accesscode"
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/rbac"
-	"github.com/hobbyfarm/gargantua/v3/protos/setting"
-	"github.com/hobbyfarm/gargantua/v3/protos/user"
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
+	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
+	userpb "github.com/hobbyfarm/gargantua/v3/protos/user"
 )
 
 var (
@@ -23,40 +24,41 @@ func init() {
 	serviceConfig = microservices.BuildServiceConfig()
 }
 
-// TODO: Remove rbacClient, hfClientSet etc.
 func main() {
 	services := []microservices.MicroService{
 		microservices.AccessCode,
-		microservices.User,
-		microservices.Setting,
 		microservices.Rbac,
+		microservices.ScheduledEvent,
+		microservices.Setting,
+		microservices.User,
 	}
 	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
 	for _, conn := range connections {
 		defer conn.Close()
 	}
 
-	rbacClient := rbac.NewRbacSvcClient(connections[microservices.Rbac])
-	accesscodeClient := accesscode.NewAccessCodeSvcClient(connections[microservices.AccessCode])
-	userClient := user.NewUserSvcClient(connections[microservices.User])
-	settingClient := setting.NewSettingSvcClient(connections[microservices.Setting])
+	accesscodeClient := accesscodepb.NewAccessCodeSvcClient(connections[microservices.AccessCode])
+	rbacClient := rbacpb.NewRbacSvcClient(connections[microservices.Rbac])
+	scheduledEventClient := scheduledeventpb.NewScheduledEventSvcClient(connections[microservices.ScheduledEvent])
+	settingClient := settingpb.NewSettingSvcClient(connections[microservices.Setting])
+	userClient := userpb.NewUserSvcClient(connections[microservices.User])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 	as := authnservice.NewGrpcAuthNServer(userClient)
-	authn.RegisterAuthNServer(gs, as)
+	authnpb.RegisterAuthNServer(gs, as)
 
 	var wg sync.WaitGroup
-
+	// only add 1 to our wait group since our service should stop (and restart) as soon as one of the go routines terminates
 	wg.Add(1)
+
 	go func() {
 		defer wg.Done()
 		microservices.StartGRPCServer(gs, serviceConfig.EnableReflection)
 	}()
 
-	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		authServer, err := authnservice.NewAuthServer(accesscodeClient, userClient, settingClient, rbacClient, as)
+		authServer, err := authnservice.NewAuthServer(accesscodeClient, rbacClient, scheduledEventClient, settingClient, userClient, as)
 		if err != nil {
 			glog.Fatal(err)
 		}
