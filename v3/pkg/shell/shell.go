@@ -92,6 +92,8 @@ func NewShellProxy(authnClient authn.AuthNClient, authrClient authr.AuthRClient,
 }
 
 func (sp ShellProxy) SetupRoutes(r *mux.Router) {
+	r.HandleFunc("/shell/healthz", sp.HealthzFunc)
+	r.HandleFunc("/shell/websocketTest", sp.WebsocketTestFunc)
 	r.HandleFunc("/shell/{vm_id}/connect", sp.ConnectSSHFunc)
 	r.HandleFunc("/shell/verify", sp.VerifyTasksFuncByVMIdGroupWithSemaphore)
 	r.HandleFunc("/guacShell/{vm_id}/connect", sp.ConnectGuacFunc)
@@ -980,6 +982,50 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 	//sess.Wait()
 	//
 	//defer sess.Close()
+}
+
+/*
+* This function just returns the statuscode 200 to verify the proxy is up and running.
+ */
+func (sp ShellProxy) HealthzFunc(w http.ResponseWriter, r *http.Request) {
+	util.ReturnHTTPMessage(w, r, 200, "ok", "Shell proxy healthy")
+}
+
+/*
+* This function is used by the frontend to verify that websockets work and are not blocked by a firewall.
+ */
+func (sp ShellProxy) WebsocketTestFunc(w http.ResponseWriter, r *http.Request) {
+	glog.Infof("Going to upgrade connection in order to test websockets...")
+
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+
+	// Allow all origins
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
+
+	// upgrade to websocket
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		glog.Errorf("error upgrading: %s", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "error upgrading to websocket")
+		return
+	}
+	defer conn.Close()
+
+	// Send "OK" message
+	err = conn.WriteMessage(websocket.TextMessage, []byte("OK"))
+	if err != nil {
+		glog.Errorf("error sending message: %s", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "error sending message")
+		return
+	}
+
+	glog.Infof("WebSocket test completed successfully")
+	util.ReturnHTTPMessage(w, r, 200, "success", "websocket test successful")
 }
 
 func mapProtocolToPort() map[string]int {
