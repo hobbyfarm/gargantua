@@ -220,7 +220,7 @@ func (s Server) prepareRole(role *rbacpb.Role) (preparedRole PreparedRole) {
 	}
 
 	for _, r := range role.GetRules() {
-		pr.Rules = append(preparedRole.Rules, PreparedRule{
+		pr.Rules = append(pr.Rules, PreparedRule{
 			Resources: r.GetResources(),
 			Verbs:     r.GetVerbs(),
 			APIGroups: r.GetApiGroups(),
