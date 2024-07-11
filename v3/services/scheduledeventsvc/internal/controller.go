@@ -257,7 +257,7 @@ func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventpb
 
 					if err != nil || len(existingVMSetsList.GetVmsets()) == 0 { // create new vmset if no existing one was found
 						vmsRand := fmt.Sprintf("%s-%08x", baseNameScheduledPrefix, rand.Uint32())
-						vmsId := strings.Join([]string{"se", se.Name, "vms", vmsRand}, "-")
+						vmsId := strings.Join([]string{"se", se.Id, "vms", vmsRand}, "-")
 						vmSets = append(vmSets, vmsId)
 						_, err = sc.vmSetClient.CreateVMSet(sc.Context, &vmsetpb.CreateVMSetRequest{
 							Id:                  vmsId,
