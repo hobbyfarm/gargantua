@@ -272,6 +272,7 @@ func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmsetpb.VMSet) error
 
 func (v *VMSetController) updateVMSetCount(vmSetName string, active int, prov int) error {
 	_, err := v.internalVmSetServer.UpdateVMSetStatus(v.Context, &vmsetpb.UpdateVMSetStatusRequest{
+		Id:          vmSetName,
 		Available:   wrapperspb.UInt32(uint32(active)),
 		Provisioned: wrapperspb.UInt32(uint32(prov)),
 	})
