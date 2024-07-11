@@ -431,6 +431,10 @@ func (u *GrpcUserServer) DeleteUser(ctx context.Context, userId *generalpb.Resou
 		}
 	}
 
+	// Delete role bindings that belong to the user
+
+	// TODO
+
 	// at this point we have either delete all old sessions, or there were no sessions  to begin with
 	// so we should be safe to delete the user
 
