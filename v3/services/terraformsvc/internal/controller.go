@@ -179,7 +179,7 @@ func (v *VMController) handleDeletion(vm *vmpb.VM) (error, bool) {
 	} else {
 		// The terraform state was deleted successfully.
 		// We still need to requeue, remove the finalizers and confirm that the vm was deleted successfully
-		return nil, false
+		return nil, true
 	}
 }
 
