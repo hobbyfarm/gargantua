@@ -1,4 +1,4 @@
-package vmservice
+package terraformsvc
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	"time"
 
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
+	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	controllers "github.com/hobbyfarm/gargantua/v3/pkg/microservices/controller"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
@@ -37,22 +39,24 @@ const (
 type VMController struct {
 	controllers.DelayingWorkqueueController
 	controllers.Reconciler
-	internalVmServer  *GrpcVMServer
+	VMClient          vmpb.VMSvcClient
 	configMapClient   corev1.ConfigMapInterface
 	environmentClient environmentpb.EnvironmentSvcClient
 	secretClient      corev1.SecretInterface
-	terraformClient   terraformpb.TerraformSvcClient
+	HFVMClient        v1.VirtualMachineInterface
+	terraformClient   *GrpcTerraformServer
 	vmClaimClient     vmclaimpb.VMClaimSvcClient
 	vmSetClient       vmsetpb.VMSetSvcClient
 	vmTemplateClient  vmtemplatepb.VMTemplateSvcClient
 }
 
 func NewVMController(
+	hfClient *versioned.Clientset,
 	kubeClient *kubernetes.Clientset,
-	internalVmServer *GrpcVMServer,
+	VMClient vmpb.VMSvcClient,
 	hfInformerFactory hfInformers.SharedInformerFactory,
 	environmentClient environmentpb.EnvironmentSvcClient,
-	terraformClient terraformpb.TerraformSvcClient,
+	terraformClient *GrpcTerraformServer,
 	vmClaimClient vmclaimpb.VMClaimSvcClient,
 	vmSetClient vmsetpb.VMSetSvcClient,
 	vmTemplateClient vmtemplatepb.VMTemplateSvcClient,
@@ -71,10 +75,11 @@ func NewVMController(
 
 	vmController := &VMController{
 		DelayingWorkqueueController: delayingWorkqueueController,
-		internalVmServer:            internalVmServer,
+		VMClient:                    VMClient,
 		configMapClient:             kubeClient.CoreV1().ConfigMaps(util.GetReleaseNamespace()),
 		environmentClient:           environmentClient,
 		secretClient:                kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()),
+		HFVMClient:                  hfClient.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()),
 		terraformClient:             terraformClient,
 		vmClaimClient:               vmClaimClient,
 		vmSetClient:                 vmSetClient,
@@ -89,7 +94,7 @@ func NewVMController(
 func (v *VMController) Reconcile(objName string) error {
 	glog.V(8).Infof("reconciling vm %s inside vm controller", objName)
 	// fetch vm
-	vm, err := v.internalVmServer.GetVM(v.Context, &generalpb.GetRequest{Id: objName})
+	vm, err := v.VMClient.GetVM(v.Context, &generalpb.GetRequest{Id: objName})
 	if err != nil {
 		if hferrors.IsGrpcNotFound(err) {
 			glog.Infof("vm %s not found on queue.. ignoring", objName)
@@ -98,6 +103,12 @@ func (v *VMController) Reconcile(objName string) error {
 			glog.Errorf("error while retrieving vm %s from queue with err %v", objName, err)
 			return err
 		}
+	}
+
+	// VM shall not be provisioned by internal terraform controller
+	if prov, ok := vm.GetLabels()["hobbyfarm.io/provisioner"]; ok && prov != "" {
+		glog.V(8).Infof("vm %s ignored by terraform controller due to 3rd party provisioning label", vm.GetId())
+		v.GetWorkqueue().Done(vm.GetId())
 	}
 
 	// trigger reconcile on vmClaims only when associated VM is running
@@ -129,7 +140,7 @@ func (v *VMController) handleRequeue(err error, requeue bool, vmId string) {
 
 // returns an error and a boolean of requeue
 func (v *VMController) deleteVM(vm *vmpb.VM) (error, bool) {
-	_, deleteVMErr := v.internalVmServer.DeleteVM(v.Context, &generalpb.ResourceId{Id: vm.GetId()})
+	_, deleteVMErr := v.VMClient.DeleteVM(v.Context, &generalpb.ResourceId{Id: vm.GetId()})
 	if deleteVMErr != nil {
 		return fmt.Errorf("there was an error while deleting the virtual machine %s", vm.GetId()), true
 	}
@@ -142,7 +153,7 @@ func (v *VMController) handleDeletion(vm *vmpb.VM) (error, bool) {
 	if vm.GetVmSetId() != "" && util.ContainsFinalizer(vm.GetFinalizers(), vmSetFinalizer) {
 		glog.V(4).Infof("requeuing vmset %s to account for tainted vm %s", vm.GetVmSetId(), vm.GetId())
 		updatedVmFinalizers := util.RemoveFinalizer(vm.GetFinalizers(), vmSetFinalizer)
-		_, err := v.internalVmServer.UpdateVM(v.Context, &vmpb.UpdateVMRequest{Id: vm.GetId(), Finalizers: &generalpb.StringArray{
+		_, err := v.VMClient.UpdateVM(v.Context, &vmpb.UpdateVMRequest{Id: vm.GetId(), Finalizers: &generalpb.StringArray{
 			Values: updatedVmFinalizers,
 		}})
 		if err != nil {
@@ -181,9 +192,9 @@ func (v *VMController) updateAndVerifyVMDeletion(vm *vmpb.VM) (error, bool) {
 
 	// start verification of deletion in a separate goroutine
 	go func() {
-		resultCh <- util.VerifyDeletion(ctx, v.internalVmServer.vmClient, vm.GetId())
+		resultCh <- util.VerifyDeletion(ctx, v.HFVMClient, vm.GetId())
 	}()
-	_, err := v.internalVmServer.UpdateVM(v.Context, &vmpb.UpdateVMRequest{
+	_, err := v.VMClient.UpdateVM(v.Context, &vmpb.UpdateVMRequest{
 		Id:         vm.GetId(),
 		Finalizers: &generalpb.StringArray{Values: []string{}},
 	})
@@ -206,15 +217,6 @@ func (v *VMController) updateAndVerifyVMDeletion(vm *vmpb.VM) (error, bool) {
 
 // returns an error and a boolean of requeue
 func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
-	// VM shall not be provisioned by internal terraform controller
-	if !vm.GetProvision() {
-		if prov, ok := vm.GetLabels()["hobbyfarm.io/provisioner"]; ok && prov != "" {
-			glog.V(8).Infof("vm %s ignored by internal provisioner due to 3rd party provisioning label", vm.GetId())
-			v.GetWorkqueue().Done(vm.GetId())
-		}
-		glog.V(8).Infof("vm %s was not a provisioned vm", vm.GetId())
-		return nil, false
-	}
 	//Status is ReadyForProvisioning AND No Secret provided (Do not provision VM twice, happens due to vm.status being updated after vm.status)
 	if vm.Status.Status == string(hfv1.VmStatusRFP) {
 		vmt, err := v.vmTemplateClient.GetVMTemplate(v.Context, &generalpb.GetRequest{Id: vm.GetVmTemplateId(), LoadFromCache: true})
@@ -333,7 +335,7 @@ func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 			glog.Errorf("error creating tfs %v", err)
 		}
 
-		_, err = v.internalVmServer.UpdateVMStatus(v.Context, &vmpb.UpdateVMStatusRequest{
+		_, err = v.VMClient.UpdateVMStatus(v.Context, &vmpb.UpdateVMStatusRequest{
 			Id:      vm.GetId(),
 			Status:  string(hfv1.VmStatusProvisioned),
 			Tfstate: tfsId.GetId(),
@@ -348,7 +350,7 @@ func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 		} else {
 			updatedFinalizers = []string{"vm.controllers.hobbyfarm.io"}
 		}
-		_, err = v.internalVmServer.UpdateVM(v.Context, &vmpb.UpdateVMRequest{
+		_, err = v.VMClient.UpdateVM(v.Context, &vmpb.UpdateVMRequest{
 			Id:         vm.GetId(),
 			SecretName: keypair.Name,
 			Finalizers: &generalpb.StringArray{Values: updatedFinalizers},
@@ -438,7 +440,7 @@ func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 			publicIP = translatePrivToPub(env.GetIpTranslationMap(), tfOutput["private_ip"]["value"])
 		}
 
-		_, err = v.internalVmServer.UpdateVMStatus(v.Context, &vmpb.UpdateVMStatusRequest{
+		_, err = v.VMClient.UpdateVMStatus(v.Context, &vmpb.UpdateVMStatusRequest{
 			Id:        vm.GetId(),
 			Status:    string(hfv1.VmStatusRunning),
 			PublicIp:  wrapperspb.String(publicIP),
