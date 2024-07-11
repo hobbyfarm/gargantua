@@ -256,7 +256,7 @@ func (s *GrpcScenarioServer) UpdateScenario(ctx context.Context, req *scenariopb
 			scenario.Spec.VirtualMachines = vms
 		}
 		if rawVmTasks != "" {
-			vmTasks, err := util.GenericUnmarshal[[]hfv1.VirtualMachineTasks](rawSteps, "raw_vm_tasks")
+			vmTasks, err := util.GenericUnmarshal[[]hfv1.VirtualMachineTasks](rawVmTasks, "raw_vm_tasks")
 			if err != nil {
 				return hferrors.GrpcParsingError(req, "raw_vm_tasks")
 			}
