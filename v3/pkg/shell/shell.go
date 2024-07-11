@@ -4,10 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
-	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
-	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	"github.com/hobbyfarm/gargantua/v3/pkg/vmclient"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -16,26 +12,35 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+
+	rbac2 "github.com/hobbyfarm/gargantua/v3/pkg/rbac"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/hobbyfarm/gargantua/v3/protos/authn"
-	"github.com/hobbyfarm/gargantua/v3/protos/authr"
-	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	userpb "github.com/hobbyfarm/gargantua/v3/protos/user"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/sync/semaphore"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 type ShellProxy struct {
-	authnClient authn.AuthNClient
-	authrClient authr.AuthRClient
-	vmClient    *vmclient.VirtualMachineClient
-	hfClient    hfClientset.Interface
-	kubeClient  kubernetes.Interface
-	ctx         context.Context
+	authnClient      authnpb.AuthNClient
+	authrClient      authrpb.AuthRClient
+	vmClient         vmpb.VMSvcClient
+	vmTemplateClient vmtemplatepb.VMTemplateSvcClient
+	kubeClient       kubernetes.Interface
 }
 
 type Service struct {
@@ -74,21 +79,27 @@ func init() {
 	SIGWINCH = regexp.MustCompile(`.*\[8;(.*);(.*)t`)
 }
 
-func NewShellProxy(authnClient authn.AuthNClient, authrClient authr.AuthRClient, vmClient *vmclient.VirtualMachineClient, hfClientSet hfClientset.Interface, kubeClient kubernetes.Interface, ctx context.Context) (*ShellProxy, error) {
-	shellProxy := ShellProxy{}
-
-	shellProxy.authnClient = authnClient
-	shellProxy.authrClient = authrClient
-	shellProxy.vmClient = vmClient
-	shellProxy.hfClient = hfClientSet
-	shellProxy.kubeClient = kubeClient
-	shellProxy.ctx = ctx
-
-	return &shellProxy, nil
+func NewShellProxy(
+	authnClient authnpb.AuthNClient,
+	authrClient authrpb.AuthRClient,
+	vmClient vmpb.VMSvcClient,
+	vmTemplateClient vmtemplatepb.VMTemplateSvcClient,
+	kubeClient kubernetes.Interface,
+) *ShellProxy {
+	return &ShellProxy{
+		authnClient:      authnClient,
+		authrClient:      authrClient,
+		vmClient:         vmClient,
+		vmTemplateClient: vmTemplateClient,
+		kubeClient:       kubeClient,
+	}
 }
 
 func (sp ShellProxy) SetupRoutes(r *mux.Router) {
+	r.HandleFunc("/shell/healthz", sp.HealthzFunc)
+	r.HandleFunc("/shell/websocketTest", sp.WebsocketTestFunc)
 	r.HandleFunc("/shell/{vm_id}/connect", sp.ConnectSSHFunc)
+	r.HandleFunc("/shell/verify", sp.VerifyTasksFuncByVMIdGroupWithSemaphore)
 	r.HandleFunc("/guacShell/{vm_id}/connect", sp.ConnectGuacFunc)
 	r.HandleFunc("/p/{vm_id}/{port}/{rest:.*}", sp.checkCookieAndProxy)
 	r.HandleFunc("/pa/{token}/{vm_id}/{port}/{rest:.*}", sp.authAndProxyFunc)
@@ -118,7 +129,7 @@ func (sp ShellProxy) setAuthCookieAndRedirect(w http.ResponseWriter, r *http.Req
 	cookie := http.Cookie{Name: "jwt", Value: authToken, SameSite: http.SameSiteNoneMode, Secure: true, Path: "/"}
 	http.SetCookie(w, &cookie)
 	url := mux.Vars(r)["rest"]
-	http.Redirect(w, r, "/"+url, 302)
+	http.Redirect(w, r, "/"+url, http.StatusFound)
 
 }
 
@@ -141,16 +152,16 @@ func (sp ShellProxy) checkCookieAndProxy(w http.ResponseWriter, r *http.Request)
 	sp.proxy(w, r, user)
 }
 
-func (sp ShellProxy) proxyAuth(w http.ResponseWriter, r *http.Request, token string) (*userProto.User, error) {
+func (sp ShellProxy) proxyAuth(w http.ResponseWriter, r *http.Request, token string) (*userpb.User, error) {
 	r.Header.Add("Authorization", "Bearer "+token)
 	user, err := rbac2.AuthenticateRequest(r, sp.authnClient)
 	if err != nil {
-		return &userProto.User{}, err
+		return &userpb.User{}, err
 	}
 	return user, nil
 }
 
-func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userProto.User) {
+func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.User) {
 
 	vars := mux.Vars(r)
 	// Check if variable for vm id was passed in
@@ -160,7 +171,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userPro
 		return
 	}
 	// Get the corresponding VM, if it exists
-	vm, err := sp.vmClient.GetVirtualMachineById(vmId)
+	vm, err := sp.vmClient.GetVM(r.Context(), &generalpb.GetRequest{Id: vmId, LoadFromCache: true})
 
 	if err != nil {
 		glog.Errorf("did not find the right virtual machine ID")
@@ -168,10 +179,10 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userPro
 		return
 	}
 
-	if vm.Spec.UserId != user.GetId() {
+	if vm.GetUser() != user.GetId() {
 		// check if the user has access to user sessions
 		impersonatedUserId := user.GetId()
-		authrResponse, err := rbac2.Authorize(r, sp.authrClient, impersonatedUserId, []*authr.Permission{
+		authrResponse, err := rbac2.Authorize(r, sp.authrClient, impersonatedUserId, []*authrpb.Permission{
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralUser, rbac2.VerbGet),
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralSession, rbac2.VerbGet),
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralVM, rbac2.VerbGet),
@@ -184,9 +195,17 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userPro
 	}
 
 	// Get the corresponding VMTemplate for the VM
-	vmt, err := sp.hfClient.HobbyfarmV1().VirtualMachineTemplates(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.VirtualMachineTemplateId, v1.GetOptions{})
+	vmtId := vm.GetVmTemplateId()
+	vmt, err := sp.vmTemplateClient.GetVMTemplate(r.Context(), &generalpb.GetRequest{Id: vm.GetVmTemplateId()})
 	if err != nil {
-		util.ReturnHTTPMessage(w, r, 404, "error", "no vm template found")
+		glog.Errorf("error while retrieving virtual machine template: %s", hferrors.GetErrorMessage(err))
+		if hferrors.IsGrpcNotFound(err) {
+			errMsg := fmt.Sprintf("virtual machine template %s not found", vmtId)
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "not found", errMsg)
+			return
+		}
+		errMsg := fmt.Sprintf("error retrieving virtual machine template %s", vmtId)
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "error", errMsg)
 		return
 	}
 
@@ -199,7 +218,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userPro
 	// find the corresponding service
 	service := Service{}
 	hasService := false
-	if servicesMarhaled, ok := vmt.Spec.ConfigMap["webinterfaces"]; ok {
+	if servicesMarhaled, ok := vmt.GetConfigMap()["webinterfaces"]; ok {
 		servicesUnmarshaled := []Service{}
 		err = json.Unmarshal([]byte(servicesMarhaled), &servicesUnmarshaled)
 
@@ -224,7 +243,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userPro
 		return
 	}
 
-	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?
+	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(r.Context(), vm.GetSecretName(), v1.GetOptions{}) // idk?
 	if err != nil {
 		glog.Errorf("did not find secret for virtual machine")
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
@@ -239,7 +258,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userPro
 		return
 	}
 
-	sshUsername := vm.Spec.SshUsername
+	sshUsername := vm.GetSshUsername()
 	if len(sshUsername) < 1 {
 		sshUsername = defaultSshUsername
 	}
@@ -256,7 +275,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userPro
 	// get the host and port
 	host, ok := vm.Annotations["sshEndpoint"]
 	if !ok {
-		host = vm.Status.PublicIP
+		host = vm.GetStatus().GetPublicIp()
 	}
 	port := "22"
 	if sshDev == "true" {
@@ -328,7 +347,7 @@ func (sp ShellProxy) ConnectGuacFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vm, err := sp.vmClient.GetVirtualMachineById(vmId)
+	vm, err := sp.vmClient.GetVM(r.Context(), &generalpb.GetRequest{Id: vmId, LoadFromCache: true})
 
 	if err != nil {
 		glog.Errorf("did not find the right virtual machine ID")
@@ -336,15 +355,15 @@ func (sp ShellProxy) ConnectGuacFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if vm.Spec.UserId != user.GetId() {
+	if vm.GetUser() != user.GetId() {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "you do not have access to shell")
 		return
 	}
 
-	glog.Infof("Going to upgrade guac connection now... %s", vm.Name)
+	glog.Infof("Going to upgrade guac connection now... %s", vmId)
 
 	// ok first get the secret for the vm
-	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?
+	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(r.Context(), vm.GetSecretName(), v1.GetOptions{}) // idk?
 	if err != nil {
 		glog.Errorf("did not find secret for virtual machine")
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
@@ -353,14 +372,14 @@ func (sp ShellProxy) ConnectGuacFunc(w http.ResponseWriter, r *http.Request) {
 
 	password := string(secret.Data["password"])
 
-	username := vm.Spec.SshUsername
+	username := vm.GetSshUsername()
 	if len(username) < 1 {
 		username = defaultSshUsername
 	}
 
 	// get the host and port
-	host := vm.Status.PublicIP
-	protocol := strings.ToLower(vm.Spec.Protocol)
+	host := vm.GetStatus().GetPublicIp()
+	protocol := strings.ToLower(vm.GetProtocol())
 	port := mapProtocolToPort()[protocol]
 
 	optimalHeight := r.URL.Query().Get("height")
@@ -489,6 +508,337 @@ func copyResponse(rw http.ResponseWriter, resp *http.Response) error {
 	return err
 }
 
+type VirtualMachineInputTask struct {
+	VMId   string      `json:"vm_id"`
+	VMName string      `json:"vm_name"`
+	Tasks  []hfv1.Task `json:"tasks"`
+}
+
+type VirtualMachineOutputTask struct {
+	VMId        string           `json:"vm_id"`
+	VMName      string           `json:"vm_name"`
+	TaskOutputs []TaskWithOutput `json:"task_outputs"`
+}
+
+type TaskOutputCommand struct {
+	ActualOutputValue string `json:"actual_output_value"`
+	ActualReturnCode  int    `json:"actual_return_code"`
+	Success           bool   `json:"success"`
+}
+
+type TaskWithOutput struct {
+	Task       hfv1.Task         `json:"task"`
+	TaskOutput TaskOutputCommand `json:"task_output"`
+	Error      string            `json:"error"`
+}
+
+func isMatchRegex(text, pattern string) bool {
+	re := regexp.MustCompile(pattern)
+	return re.MatchString(text)
+}
+
+/*
+Function executes a command on a remote server session and checks for success based on the provided task command.
+It returns TaskOutputCommand struct containing the actual output value, return code, and success status, depen of ReturnType.
+*/
+func VMTaskCommandRun(task_cmd *hfv1.Task, sess *ssh.Session) (*TaskOutputCommand, error) {
+	out, err := sess.CombinedOutput(task_cmd.Command)
+	actual_output_value := strings.TrimRight(string(out), "\r\n")
+	actual_return_code := 0
+	if err != nil {
+		switch err.(type) {
+		case *ssh.ExitError:
+			actual_return_code = err.(*ssh.ExitError).ExitStatus()
+			glog.Infof("%v", actual_return_code)
+		default:
+			return nil, err
+		}
+	}
+
+	is_task_success := false
+	switch task_cmd.ReturnType {
+	case "Return_Code_And_Text":
+		is_task_success = task_cmd.ExpectedOutputValue == actual_output_value && task_cmd.ExpectedReturnCode == actual_return_code
+		break
+	case "Return_Code":
+		is_task_success = task_cmd.ExpectedReturnCode == actual_return_code
+		break
+	case "Return_Text":
+		is_task_success = task_cmd.ExpectedOutputValue == actual_output_value
+		break
+	case "Match_Regex":
+		if !isMatchRegex(actual_output_value, task_cmd.ExpectedOutputValue) {
+			actual_output_value = "regex:error"
+		}
+		is_task_success = actual_output_value != "regex:error"
+		break
+	default:
+		actual_output_value = "undefined ReturnType"
+		is_task_success = false
+	}
+
+	task_cmd_res := &TaskOutputCommand{
+		ActualOutputValue: actual_output_value,
+		ActualReturnCode:  actual_return_code,
+		Success:           is_task_success,
+	}
+	return task_cmd_res, nil
+}
+
+/*
+Function retrieves output tasks from a virtual machine by executing multiple commands concurrently on the SSH connection.
+It takes an SSH client connection, a VirtualMachineInputTask representing input tasks for the VM,
+and an error channel to report any errors encountered during execution.
+It returns a VirtualMachineOutputTask containing the output of the executed tasks, along with any errors encountered.
+*/
+func GetVMOutputTask(sshConn *ssh.Client, closure_vm_input_task VirtualMachineInputTask, errorChan chan<- error) (*VirtualMachineOutputTask, error) {
+	// TODO: settings for define max command go routine run in same time in VM
+	const MAX_COMMANDS_GO = 3
+	// Initialize slice to store task outputs
+	commands_resp := make([]TaskWithOutput, 0)
+	// Mutex for synchronizing access to commands_resp slice
+	var commands_mutex = &sync.Mutex{}
+	// WaitGroup to wait for all goroutines in VM to finish
+	var commands_wg sync.WaitGroup
+	// Semaphore for count goroutine run in same time in VM
+	// a context is required for the weighted semaphore pkg.
+	ctx := context.Background()
+	var commands_semaphore = semaphore.NewWeighted(int64(MAX_COMMANDS_GO))
+
+	for _, task_command := range closure_vm_input_task.Tasks {
+		commands_wg.Add(1)
+		if err := commands_semaphore.Acquire(ctx, 1); err != nil {
+			glog.Errorf("did not acquire vm_semafore")
+		}
+		go func(closure_task_command hfv1.Task) {
+			defer commands_wg.Done()
+			defer commands_semaphore.Release(1)
+			vm_task_with_output, _ := GetTaskWithOutput(sshConn, errorChan, closure_task_command)
+			commands_mutex.Lock()
+			commands_resp = append(commands_resp, *vm_task_with_output)
+			commands_mutex.Unlock()
+
+		}(task_command)
+	}
+	commands_wg.Wait()
+	vm_output_task := &VirtualMachineOutputTask{
+		VMId:        closure_vm_input_task.VMId,
+		VMName:      closure_vm_input_task.VMName,
+		TaskOutputs: commands_resp,
+	}
+	return vm_output_task, nil
+}
+
+/*
+Function executes a task command on the SSH connection with number of attempts MAX_TRY_COMMAND_RUN
+to retrieve output when the task command execute with return code 141.
+*/
+func GetTaskWithOutput(sshConn *ssh.Client, errorChan chan<- error, task_command hfv1.Task) (*TaskWithOutput, error) {
+	// TODO: settings for define max try command run in VM if return code 141
+	const MAX_TRY_COMMAND_RUN = 5
+	count_try_command_run := MAX_TRY_COMMAND_RUN
+	var errRun error
+	// try command run again when exit code == 141
+	for count_try_command_run > 0 {
+		task_output, err := GetOutputTask(sshConn, errorChan, task_command)
+		count_try_command_run -= 1
+		if task_output.ActualReturnCode != 141 {
+			vm_task_with_output := &TaskWithOutput{
+				Task:       task_command,
+				TaskOutput: *task_output,
+			}
+			return vm_task_with_output, nil
+		}
+		if count_try_command_run == 0 {
+			glog.Errorf("error try run command: %v", err)
+			vm_task_with_output := &TaskWithOutput{
+				Task:  task_command,
+				Error: "error try run command",
+			}
+			return vm_task_with_output, err
+		}
+		errRun = err
+	}
+	return nil, errRun
+}
+
+func GetOutputTask(sshConn *ssh.Client, errorChan chan<- error, closure_task_command hfv1.Task) (*TaskOutputCommand, error) {
+	sess, err := CreateNewSession(sshConn, errorChan)
+	if err != nil {
+		return nil, err
+	}
+	task_output, err := VMTaskCommandRun(&closure_task_command, sess)
+	if err != nil {
+		glog.Infof("error sending command: %v", err)
+		if len(errorChan) < cap(errorChan) {
+			errorChan <- err
+		}
+		return nil, err
+	}
+	sess.Close()
+	return task_output, nil
+}
+
+func CreateNewSession(sshConn *ssh.Client, errorChan chan<- error) (*ssh.Session, error) {
+	sess, err := sshConn.NewSession()
+	if err != nil {
+		glog.Errorf("did not setup ssh session properly")
+		if len(errorChan) < cap(errorChan) {
+			errorChan <- err
+		}
+		return nil, err
+	}
+	return sess, nil
+}
+
+func (sp ShellProxy) GetSSHConn(w http.ResponseWriter, r *http.Request, user *userpb.User, vmId string, errorChan chan<- error) (*ssh.Client, error) {
+
+	vm, err := sp.vmClient.GetVM(r.Context(), &generalpb.GetRequest{Id: vmId, LoadFromCache: true})
+	if err != nil {
+		glog.Errorf("did not find the right virtual machine ID")
+		if len(errorChan) < cap(errorChan) {
+			errorChan <- err
+		}
+		return nil, err
+	}
+	if vm.GetUser() != user.GetId() {
+		// check if the user has access to access user sessions
+		// TODO: add permission like 'virtualmachine/shell' similar to 'pod/exec'
+		impersonatedUserId := user.GetId()
+		authrResponse, err := rbac2.Authorize(r, sp.authrClient, impersonatedUserId, []*authrpb.Permission{
+			rbac2.HobbyfarmPermission(rbac2.ResourcePluralUser, rbac2.VerbGet),
+			rbac2.HobbyfarmPermission(rbac2.ResourcePluralSession, rbac2.VerbGet),
+			rbac2.HobbyfarmPermission(rbac2.ResourcePluralVM, rbac2.VerbGet),
+		}, rbac2.OperatorAND)
+		if err != nil || !authrResponse.Success {
+			glog.Infof("Error doing authGrantWS %s", err)
+			util.ReturnHTTPMessage(w, r, 403, "forbidden", "access denied to connect to ssh shell session")
+			return nil, err
+		}
+	}
+
+	// ok first get the secret for the vm
+	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(r.Context(), vm.GetSecretName(), v1.GetOptions{}) // idk?
+	if err != nil {
+		glog.Errorf("did not find secret for virtual machine")
+		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
+		return nil, err
+	}
+
+	// parse the private key
+	signer, err := ssh.ParsePrivateKey(secret.Data["private_key"])
+	if err != nil {
+		glog.Errorf("did not correctly parse private key")
+		util.ReturnHTTPMessage(w, r, 500, "error", "unable to parse private key")
+		return nil, err
+	}
+
+	sshUsername := vm.GetSshUsername()
+	if len(sshUsername) < 1 {
+		sshUsername = defaultSshUsername
+	}
+
+	// now use the secret and ssh off to something
+	config := &ssh.ClientConfig{
+		User: sshUsername,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	// get the host and port
+	host, ok := vm.Annotations["sshEndpoint"]
+	if !ok {
+		host = vm.GetStatus().GetPublicIp()
+	}
+	port := "22"
+	if sshDev == "true" {
+		if sshDevHost != "" {
+			host = sshDevHost
+		}
+		if sshDevPort != "" {
+			port = sshDevPort
+		}
+	}
+
+	// dial the instance
+	sshConn, err := ssh.Dial("tcp", host+":"+port, config)
+	if err != nil {
+		glog.Errorf("did not connect ssh successfully: %s", err)
+		if len(errorChan) < cap(errorChan) {
+			errorChan <- err
+		}
+		return nil, err
+	}
+	return sshConn, err
+}
+
+/*
+Function handles the HTTP request to verify tasks for a group of virtual machines using a semaphore for concurrency control.
+It authenticates the request, decodes the incoming JSON payload containing VirtualMachineInputTasks,
+and executes the tasks concurrently on the corresponding virtual machines.
+*/
+func (sp ShellProxy) VerifyTasksFuncByVMIdGroupWithSemaphore(w http.ResponseWriter, r *http.Request) {
+	user, err := rbac2.AuthenticateRequest(r, sp.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
+		return
+	}
+
+	// Decode the incoming JSON payload containing VirtualMachineInputTasks
+	var vm_input_tasks []VirtualMachineInputTask
+	err = json.NewDecoder(r.Body).Decode(&vm_input_tasks)
+	if err != nil {
+		glog.Infof("%s", err)
+	}
+
+	// Create an error channel to report errors encountered during task execution
+	errorChan := make(chan error, 1)
+
+	// Initialize slice to store the output tasks for each virtual machine
+	vm_output_tasks := make([]VirtualMachineOutputTask, 0)
+	// Mutex for synchronizing access to vm_output_tasks slice
+	var vm_mutex = &sync.Mutex{}
+	// WaitGroup to wait for all goroutines of VMs to finish
+	var vm_wg sync.WaitGroup
+
+	for _, vm_input_task := range vm_input_tasks {
+		vm_wg.Add(1)
+		go func(closure_vm_input_task VirtualMachineInputTask) {
+			defer vm_wg.Done()
+
+			sshConn, err := sp.GetSSHConn(w, r, user, closure_vm_input_task.VMId, errorChan)
+			if err != nil {
+				return
+			}
+			vm_output_task, err := GetVMOutputTask(sshConn, closure_vm_input_task, errorChan)
+			if err != nil {
+				return
+			}
+			vm_mutex.Lock()
+			vm_output_tasks = append(vm_output_tasks, *vm_output_task)
+			vm_mutex.Unlock()
+		}(vm_input_task)
+	}
+	vm_wg.Wait()
+
+	// Check for errors in the errorChan
+	select {
+	case err = <-errorChan:
+		// Handle the error (log, return HTTP error response)
+		close(errorChan)
+		glog.Infof("Error in goroutine: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "could send command to vm")
+		return
+	default:
+		// No error in the errorChan
+		glog.Infof("No Error in goroutine: %v", vm_output_tasks)
+		jsonStr, _ := json.Marshal(vm_output_tasks)
+		util.ReturnHTTPContent(w, r, 200, "success", jsonStr)
+	}
+}
+
 /*
 * This is mainly used for SSH Connections to VMs
  */
@@ -507,7 +857,7 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vm, err := sp.vmClient.GetVirtualMachineById(vmId)
+	vm, err := sp.vmClient.GetVM(r.Context(), &generalpb.GetRequest{Id: vmId, LoadFromCache: true})
 
 	if err != nil {
 		glog.Errorf("did not find the right virtual machine ID")
@@ -515,11 +865,11 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if vm.Spec.UserId != user.GetId() {
+	if vm.GetUser() != user.GetId() {
 		// check if the user has access to access user sessions
 		// TODO: add permission like 'virtualmachine/shell' similar to 'pod/exec'
 		impersonatedUserId := user.GetId()
-		authrResponse, err := rbac2.Authorize(r, sp.authrClient, impersonatedUserId, []*authr.Permission{
+		authrResponse, err := rbac2.Authorize(r, sp.authrClient, impersonatedUserId, []*authrpb.Permission{
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralUser, rbac2.VerbGet),
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralSession, rbac2.VerbGet),
 			rbac2.HobbyfarmPermission(rbac2.ResourcePluralVM, rbac2.VerbGet),
@@ -531,10 +881,10 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	glog.Infof("Going to upgrade connection now... %s", vm.Name)
+	glog.Infof("Going to upgrade connection now... %s", vmId)
 
 	// ok first get the secret for the vm
-	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(sp.ctx, vm.Spec.SecretName, v1.GetOptions{}) // idk?
+	secret, err := sp.kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()).Get(r.Context(), vm.GetSecretName(), v1.GetOptions{}) // idk?
 	if err != nil {
 		glog.Errorf("did not find secret for virtual machine")
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to find keypair secret for vm")
@@ -549,7 +899,7 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sshUsername := vm.Spec.SshUsername
+	sshUsername := vm.GetSshUsername()
 	if len(sshUsername) < 1 {
 		sshUsername = defaultSshUsername
 	}
@@ -566,7 +916,7 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 	// get the host and port
 	host, ok := vm.Annotations["sshEndpoint"]
 	if !ok {
-		host = vm.Status.PublicIP
+		host = vm.GetStatus().GetPublicIp()
 	}
 	port := "22"
 	if sshDev == "true" {
@@ -643,6 +993,63 @@ func (sp ShellProxy) ConnectSSHFunc(w http.ResponseWriter, r *http.Request) {
 	//sess.Wait()
 	//
 	//defer sess.Close()
+}
+
+/*
+* This function just returns the statuscode 200 to verify the proxy is up and running.
+ */
+func (sp ShellProxy) HealthzFunc(w http.ResponseWriter, r *http.Request) {
+	util.ReturnHTTPMessage(w, r, 200, "ok", "Shell proxy healthy")
+}
+
+/*
+* This function is used by the frontend to verify that websockets work and are not blocked by a firewall.
+ */
+func (sp ShellProxy) WebsocketTestFunc(w http.ResponseWriter, r *http.Request) {
+	glog.Infof("Going to upgrade connection in order to test websockets...")
+
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+
+	// Allow all origins
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
+
+	// upgrade to websocket
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		glog.Errorf("error upgrading: %s", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "error upgrading to websocket")
+		return
+	}
+	defer conn.Close()
+
+	for {
+		// Read message from client
+		messageType, message, err := conn.ReadMessage()
+		if err != nil {
+			glog.Errorf("error reading message: %s", err)
+			break
+		}
+
+		glog.Infof("Received message: %s", message)
+
+		// If the message is "ping", respond with "pong"
+		if string(message) == "ping" {
+			err = conn.WriteMessage(messageType, []byte("pong"))
+			if err != nil {
+				glog.Errorf("error writing message: %s", err)
+				break
+			}
+			return
+		} else {
+			glog.Errorf("received faulty test message")
+			return
+		}
+	}
 }
 
 func mapProtocolToPort() map[string]int {

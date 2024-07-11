@@ -14,7 +14,7 @@ type RateLimitingWorkqueueController struct {
 	ShardedController
 }
 
-func NewRateLimitingWorkqueueController(ctx context.Context, informer cache.SharedIndexInformer, kubeClient *kubernetes.Clientset, reconcileFunc func(objName string) error, name string, resyncPeriod time.Duration, rateLimiter workqueue.RateLimiter) *RateLimitingWorkqueueController {
+func NewRateLimitingWorkqueueController(ctx context.Context, informer cache.SharedIndexInformer, kubeClient *kubernetes.Clientset, name string, resyncPeriod time.Duration, rateLimiter workqueue.RateLimiter) *RateLimitingWorkqueueController {
 	rlwq := &RateLimitingWorkqueueController{
 		*NewShardedController(ctx, informer, kubeClient, name, resyncPeriod),
 	}
@@ -27,7 +27,7 @@ func NewRateLimitingWorkqueueController(ctx context.Context, informer cache.Shar
 func (rlwq *RateLimitingWorkqueueController) GetRateLimitingWorkqueue() (workqueue.RateLimitingInterface, error) {
 	rateLimitingQueue, ok := rlwq.GetWorkqueue().(workqueue.RateLimitingInterface)
 	if !ok {
-		return nil, fmt.Errorf("Workqueue is not a DelayingQueue")
+		return nil, fmt.Errorf("Workqueue is not a RateLimitingQueue")
 	}
 	return rateLimitingQueue, nil
 }

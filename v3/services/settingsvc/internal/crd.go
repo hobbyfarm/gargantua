@@ -16,14 +16,18 @@ const (
 	namespaceNameLabel = "kubernetes.io/metadata.name"
 )
 
-func GenerateSettingCRD(caBundle string, reference crd.ServiceReference) []crder.CRD {
+// SettingCRDInstaller is a struct that can generate CRDs for settings.
+// It implements the CrdInstallerWithServiceReference interface defined in "github.com/hobbyfarm/gargantua/v3/pkg/microservices"
+type SettingCRDInstaller struct{}
+
+func (si SettingCRDInstaller) GenerateCRDs(caBundle string, reference crd.ServiceReference) []crder.CRD {
 	return []crder.CRD{
-		hobbyfarmCRD(&v1.Scope{}, func(c *crder.CRD) {
+		crd.HobbyfarmCRD(&v1.Scope{}, func(c *crder.CRD) {
 			c.IsNamespaced(true).AddVersion("v1", &v1.Scope{}, func(cv *crder.Version) {
 				cv.WithColumn("DisplayName", ".displayName").IsServed(true).IsStored(true)
 			})
 		}),
-		hobbyfarmCRD(&v1.Setting{}, func(c *crder.CRD) {
+		crd.HobbyfarmCRD(&v1.Setting{}, func(c *crder.CRD) {
 			c.IsNamespaced(true).AddVersion("v1", &v1.Setting{}, func(cv *crder.Version) {
 				cv.
 					WithColumn("DisplayName", ".displayName").
@@ -56,8 +60,4 @@ func GenerateSettingCRD(caBundle string, reference crd.ServiceReference) []crder
 			})
 		}),
 	}
-}
-
-func hobbyfarmCRD(obj interface{}, customize func(c *crder.CRD)) crder.CRD {
-	return *crder.NewCRD(obj, "hobbyfarm.io", customize)
 }

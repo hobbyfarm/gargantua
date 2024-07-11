@@ -6,13 +6,14 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
-	userProto "github.com/hobbyfarm/gargantua/v3/protos/user"
+	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	userpb "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 const (
@@ -55,19 +56,16 @@ func (u UserServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	user, err := u.internalUserServer.GetUserById(r.Context(), &userProto.UserId{Id: id})
+	user, err := u.internalUserServer.GetUserById(r.Context(), &generalpb.GetRequest{Id: id})
 
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			details := s.Details()[0].(*userProto.UserId)
-			if s.Code() == codes.InvalidArgument {
-				util.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
-				return
-			}
-			glog.Errorf("error while retrieving user %s: %s", details.Id, s.Message())
-			util.ReturnHTTPMessage(w, r, 500, "error", "no user found")
+		s := status.Convert(err)
+		details, _ := hferrors.ExtractDetail[*generalpb.GetRequest](s)
+		if s.Code() == codes.InvalidArgument {
+			util.ReturnHTTPMessage(w, r, 500, "error", "no id passed in")
+			return
 		}
-		glog.Errorf("error while retrieving user: %s", err)
+		glog.Errorf("error while retrieving user %s: %s", details.Id, s.Message())
 		util.ReturnHTTPMessage(w, r, 500, "error", "no user found")
 	}
 
@@ -109,7 +107,7 @@ func (u UserServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users, err := u.internalUserServer.ListUser(r.Context(), &emptypb.Empty{})
+	users, err := u.internalUserServer.ListUser(r.Context(), &generalpb.ListOptions{})
 
 	if err != nil {
 		glog.Errorf("error while retrieving users %v", err)
@@ -171,19 +169,16 @@ func (u UserServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err = u.internalUserServer.UpdateUser(r.Context(), &userProto.User{Id: id, Email: email, Password: password, AccessCodes: acUnmarshaled})
+	_, err = u.internalUserServer.UpdateUser(r.Context(), &userpb.User{Id: id, Email: email, Password: password, AccessCodes: acUnmarshaled})
 
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			details := s.Details()[0].(*userProto.User)
-			if s.Code() == codes.InvalidArgument {
-				util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID passed in")
-				return
-			}
-			glog.Errorf("error while updating user %s: %s", details.Id, s.Message())
-			util.ReturnHTTPMessage(w, r, 500, "error", "error attempting to update")
+		s := status.Convert(err)
+		details, _ := hferrors.ExtractDetail[*userpb.User](s)
+		if s.Code() == codes.InvalidArgument {
+			util.ReturnHTTPMessage(w, r, 400, "badrequest", "no ID passed in")
+			return
 		}
-		glog.Errorf("error while updating user: %s", err)
+		glog.Errorf("error while updating user %s: %s", details.Id, s.Message())
 		util.ReturnHTTPMessage(w, r, 500, "error", "error attempting to update")
 	}
 
@@ -217,19 +212,16 @@ func (u UserServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = u.internalUserServer.DeleteUser(r.Context(), &userProto.UserId{Id: id})
+	_, err = u.internalUserServer.DeleteUser(r.Context(), &generalpb.ResourceId{Id: id})
 
 	if err != nil {
-		if s, ok := status.FromError(err); ok {
-			details := s.Details()[0].(*userProto.UserId)
-			if s.Code() == codes.InvalidArgument {
-				util.ReturnHTTPMessage(w, r, 400, "error", "no id passed in")
-				return
-			}
-			glog.Errorf("error deleting user %s: %s", details.Id, s.Message())
-			util.ReturnHTTPMessage(w, r, 500, "error", s.Message())
+		s := status.Convert(err)
+		details, _ := hferrors.ExtractDetail[*generalpb.ResourceId](s)
+		if s.Code() == codes.InvalidArgument {
+			util.ReturnHTTPMessage(w, r, 400, "error", "no id passed in")
+			return
 		}
-		glog.Errorf("error deleting user: %s", err)
+		glog.Errorf("error deleting user %s: %s", details.Id, s.Message())
 		util.ReturnHTTPMessage(w, r, 500, "error", "error deleting user")
 	}
 
@@ -254,7 +246,7 @@ func (u UserServer) ListRoleBindingsForUser(w http.ResponseWriter, r *http.Reque
 
 	user := vars["user"]
 
-	bindings, err := u.rbacClient.GetHobbyfarmRoleBindings(r.Context(), &userProto.UserId{
+	bindings, err := u.rbacClient.GetHobbyfarmRoleBindings(r.Context(), &generalpb.ResourceId{
 		Id: user,
 	})
 
@@ -279,7 +271,7 @@ func (u UserServer) ListRoleBindingsForUser(w http.ResponseWriter, r *http.Reque
 	util.ReturnHTTPContent(w, r, http.StatusOK, "content", data)
 }
 
-func (s UserServer) prepareRoleBinding(roleBinding *rbacProto.RoleBinding) PreparedRoleBinding {
+func (s UserServer) prepareRoleBinding(roleBinding *rbacpb.RoleBinding) PreparedRoleBinding {
 	prb := PreparedRoleBinding{
 		Name:     roleBinding.GetName(),
 		Role:     roleBinding.GetRole(),

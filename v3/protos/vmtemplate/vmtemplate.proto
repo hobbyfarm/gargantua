@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package vmtemplate;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate;vmtemplatepb";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+
+service VMTemplateSvc {
+    rpc CreateVMTemplate (CreateVMTemplateRequest) returns (general.ResourceId);
+    rpc GetVMTemplate (general.GetRequest) returns (VMTemplate);
+    rpc UpdateVMTemplate (UpdateVMTemplateRequest) returns (google.protobuf.Empty);
+    rpc DeleteVMTemplate (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionVMTemplate (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListVMTemplate (general.ListOptions) returns (ListVMTemplatesResponse);
+}
+
+message VMTemplate {
+    string id = 1;
+    string uid = 2;
+    string name = 3;
+    string image = 4;
+    map<string, string> config_map = 5;
+}
+
+message CreateVMTemplateRequest {
+    string name = 1;
+    string image = 2;
+    string config_map_raw = 3;
+}
+
+message UpdateVMTemplateRequest {
+    string id = 1;
+    string name = 2;
+    string image = 3;
+    string config_map_raw = 4;
+}
+
+message ListVMTemplatesResponse {
+    repeated VMTemplate vmtemplates = 1;
+}

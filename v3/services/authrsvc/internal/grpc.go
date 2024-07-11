@@ -5,10 +5,12 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
+	"github.com/hobbyfarm/gargantua/v3/pkg/errors"
+	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
-	authrProto "github.com/hobbyfarm/gargantua/v3/protos/authr"
-	rbacProto "github.com/hobbyfarm/gargantua/v3/protos/rbac"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	v1 "k8s.io/api/authorization/v1"
@@ -23,18 +25,18 @@ const (
 )
 
 type GrpcAuthRServer struct {
-	authrProto.UnimplementedAuthRServer
-	rbacClient rbacProto.RbacSvcClient
+	authrpb.UnimplementedAuthRServer
+	rbacClient rbacpb.RbacSvcClient
 }
 
-func NewGrpcAuthRServer(rbacClient rbacProto.RbacSvcClient) *GrpcAuthRServer {
+func NewGrpcAuthRServer(rbacClient rbacpb.RbacSvcClient) *GrpcAuthRServer {
 	return &GrpcAuthRServer{rbacClient: rbacClient}
 }
 
 // This function authorizes the user by using impersonation as an additional security layer.
 // After impersonation, the user must also authorize himself against the rbac-service.
 // If the authorization fails, this method should always return an AuthRResponse with Success = false AND an error
-func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrProto.AuthRRequest) (*authrProto.AuthRResponse, error) {
+func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrpb.AuthRRequest) (*authrpb.AuthRResponse, error) {
 	glog.Info("Authorizing (gRPC)...")
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -62,11 +64,11 @@ func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrProto.AuthRRequest) 
 				return a.returnResponseFailedAuthrWithError(ar, msg, err)
 			}
 
-			rbacAuthGrant, err := a.rbacClient.Grants(c, &rbacProto.GrantRequest{UserName: iu, Permission: p})
+			rbacAuthGrant, err := a.rbacClient.Grants(c, &rbacpb.GrantRequest{UserName: iu, Permission: p})
 			if err != nil {
 				if s, ok := status.FromError(err); ok {
-					details := s.Details()[0].(*rbacProto.GrantRequest)
-					glog.Errorf("could not perform auth grant for user %s: %s", details.UserName, s.Message())
+					details, _ := hferrors.ExtractDetail[*rbacpb.GrantRequest](s)
+					glog.Errorf("could not perform auth grant for user %s: %s", details.GetUserName(), s.Message())
 					glog.Infof("auth grant failed for permission with apiGroup=%s, resource=%s and verb=%s",
 						details.GetPermission().GetApiGroup(), details.GetPermission().GetResource(), details.GetPermission().GetVerb())
 					msg := "could not perform auth grant: "
@@ -79,14 +81,14 @@ func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrProto.AuthRRequest) 
 			if !result.Status.Allowed || !rbacAuthGrant.Success {
 				// Return the authorization decision.
 				glog.Infof("User %s is not authorized to perform this request", iu)
-				return &authrProto.AuthRResponse{
+				return &authrpb.AuthRResponse{
 					Success: false,
 				}, fmt.Errorf("permission denied")
 			}
 		}
 
 		// if we get here, AND has succeeded
-		return &authrProto.AuthRResponse{
+		return &authrpb.AuthRResponse{
 			Success: true,
 		}, nil
 	} else {
@@ -103,11 +105,11 @@ func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrProto.AuthRRequest) 
 				return a.returnResponseFailedAuthrWithError(ar, msg, err)
 			}
 
-			rbacAuthGrant, err := a.rbacClient.Grants(c, &rbacProto.GrantRequest{UserName: iu, Permission: p})
+			rbacAuthGrant, err := a.rbacClient.Grants(c, &rbacpb.GrantRequest{UserName: iu, Permission: p})
 			if err != nil {
 				if s, ok := status.FromError(err); ok {
-					details := s.Details()[0].(*rbacProto.GrantRequest)
-					glog.Errorf("could not perform auth grant for user %s: %s", details.UserName, s.Message())
+					details, _ := hferrors.ExtractDetail[*rbacpb.GrantRequest](s)
+					glog.Errorf("could not perform auth grant for user %s: %s", details.GetUserName(), s.Message())
 					glog.Infof("auth grant failed for permission with apiGroup=%s, resource=%s and verb=%s",
 						details.GetPermission().GetApiGroup(), details.GetPermission().GetResource(), details.GetPermission().GetVerb())
 					msg := "could not perform auth grant: "
@@ -119,14 +121,14 @@ func (a *GrpcAuthRServer) AuthR(c context.Context, ar *authrProto.AuthRRequest) 
 
 			if result.Status.Allowed && rbacAuthGrant.Success {
 				// Return the authorization decision.
-				return &authrProto.AuthRResponse{
+				return &authrpb.AuthRResponse{
 					Success: true,
 				}, nil
 			}
 		}
 	}
 
-	return &authrProto.AuthRResponse{
+	return &authrpb.AuthRResponse{
 		Success: false,
 	}, fmt.Errorf("permission denied")
 }
@@ -150,20 +152,12 @@ func (a *GrpcAuthRServer) createSubjectAccessReview(userName string, releaseName
 	return sar
 }
 
-func (a *GrpcAuthRServer) returnResponseFailedAuthrWithError(ar *authrProto.AuthRRequest, msg string, err error) (*authrProto.AuthRResponse, error) {
-	newErr := status.Newf(
+func (a *GrpcAuthRServer) returnResponseFailedAuthrWithError(ar *authrpb.AuthRRequest, msg string, err error) (*authrpb.AuthRResponse, error) {
+	return &authrpb.AuthRResponse{}, errors.GrpcError(
 		codes.Internal,
 		"%s %s",
+		ar,
 		msg,
 		err,
 	)
-	newErr, wde := newErr.WithDetails(ar)
-	if wde != nil {
-		return &authrProto.AuthRResponse{
-			Success: false,
-		}, wde
-	}
-	return &authrProto.AuthRResponse{
-		Success: false,
-	}, newErr.Err()
 }

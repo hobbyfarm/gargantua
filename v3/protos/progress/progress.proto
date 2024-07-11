@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package progress;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/progress;progresspb";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/timestamp.proto";
+
+service ProgressSvc {
+    rpc CreateProgress (CreateProgressRequest) returns (general.ResourceId);
+    rpc GetProgress (general.GetRequest) returns (Progress);
+    rpc UpdateProgress (UpdateProgressRequest) returns (google.protobuf.Empty);
+    rpc UpdateCollectionProgress (UpdateCollectionProgressRequest) returns (google.protobuf.Empty);
+    rpc DeleteProgress (general.ResourceId) returns (google.protobuf.Empty);
+    rpc DeleteCollectionProgress (general.ListOptions) returns (google.protobuf.Empty);
+    rpc ListProgress (general.ListOptions) returns (ListProgressesResponse);
+}
+
+message CreateProgressRequest {
+    uint32 current_step = 1;
+    uint32 max_step = 2;
+    uint32 total_step = 3;
+    string scenario = 4;
+    string course = 5;
+    string user = 6;
+    map<string, string> labels = 7;
+}
+
+message Progress {
+    string id = 1;
+    string uid = 2;
+    uint32 current_step = 3;
+    uint32 max_step = 4;
+    uint32 total_step = 5;
+    string scenario = 6;
+    string course = 7;
+    string user = 8;
+    string started = 9;
+    string last_update = 10;
+    string finished = 11;
+    repeated ProgressStep steps = 12;
+    map<string, string> labels = 13;
+    google.protobuf.Timestamp creation_timestamp = 14;
+}
+
+message ProgressStep {
+    uint32 step = 1;
+    string timestamp = 2;
+}
+
+message UpdateProgressRequest {
+    string id = 1;
+    google.protobuf.UInt32Value current_step = 2;
+    google.protobuf.UInt32Value max_step = 3;
+    google.protobuf.UInt32Value total_step = 4;
+    string last_update = 5;
+    string finished = 6;
+    repeated ProgressStep steps = 7;
+}
+
+message UpdateCollectionProgressRequest {
+    string labelselector = 1;
+    google.protobuf.UInt32Value current_step = 2;
+    google.protobuf.UInt32Value max_step = 3;
+    google.protobuf.UInt32Value total_step = 4;
+    string last_update = 5;
+    string finished = 6;
+    repeated ProgressStep steps = 7;
+}
+
+message ListProgressesResponse {
+    repeated Progress progresses = 1;
+}
