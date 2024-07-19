@@ -34,8 +34,9 @@ message ScheduledEvent {
     string access_code = 13;
     repeated string scenarios = 14;
     repeated string courses = 15;
-    map<string, string> labels = 16;
-    ScheduledEventStatus status = 17;
+    repeated SharedVirtualMachine shared_vms = 16;
+    map<string, string> labels = 17;
+    ScheduledEventStatus status = 18;
 }
 
 message CreateScheduledEventRequest {
@@ -99,4 +100,11 @@ message ScheduledEventStatus {
 
 message ListScheduledEventsResponse {
     repeated ScheduledEvent scheduledevents = 1;
+}
+
+message SharedVirtualMachine {
+    string vm_id = 1;
+    string name = 2;
+    string environment = 3;
+    string vm_template = 4;
 }

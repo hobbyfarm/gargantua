@@ -164,6 +164,18 @@ func (s *GrpcScheduledEventServer) GetScheduledEvent(ctx context.Context, req *g
 		requiredVms[environment] = &scheduledeventpb.VMTemplateCountMap{VmTemplateCounts: util.ConvertIntMap[int, uint32](vmTemplateCountMap)}
 	}
 
+	sharedVms := []*scheduledeventpb.SharedVirtualMachine{}
+
+	for _, sharedVm := range event.Spec.SharedVirtualMachines {
+		tmpSharedVm := &scheduledeventpb.SharedVirtualMachine{
+			VmId:        sharedVm.VMId,
+			Name:        sharedVm.Name,
+			Environment: sharedVm.Environment,
+			VmTemplate:  sharedVm.VMTemplate,
+		}
+		sharedVms = append(sharedVms, tmpSharedVm)
+	}
+
 	return &scheduledeventpb.ScheduledEvent{
 		Id:                  event.Name,
 		Uid:                 string(event.UID),
@@ -180,6 +192,7 @@ func (s *GrpcScheduledEventServer) GetScheduledEvent(ctx context.Context, req *g
 		AccessCode:          event.Spec.AccessCode,
 		Scenarios:           event.Spec.Scenarios,
 		Courses:             event.Spec.Courses,
+		SharedVms:           sharedVms,
 		Labels:              event.Labels,
 		Status:              status,
 	}, nil
@@ -444,6 +457,18 @@ func (s *GrpcScheduledEventServer) ListScheduledEvent(ctx context.Context, listO
 			requiredVms[environment] = &scheduledeventpb.VMTemplateCountMap{VmTemplateCounts: util.ConvertIntMap[int, uint32](vmTemplateCountMap)}
 		}
 
+		sharedVms := []*scheduledeventpb.SharedVirtualMachine{}
+
+		for _, sharedVm := range event.Spec.SharedVirtualMachines {
+			tmpSharedVm := &scheduledeventpb.SharedVirtualMachine{
+				VmId:        sharedVm.VMId,
+				Name:        sharedVm.Name,
+				Environment: sharedVm.Environment,
+				VmTemplate:  sharedVm.VMTemplate,
+			}
+			sharedVms = append(sharedVms, tmpSharedVm)
+		}
+
 		preparedEvents = append(preparedEvents, &scheduledeventpb.ScheduledEvent{
 			Id:                  event.Name,
 			Uid:                 string(event.UID),
@@ -460,6 +485,7 @@ func (s *GrpcScheduledEventServer) ListScheduledEvent(ctx context.Context, listO
 			AccessCode:          event.Spec.AccessCode,
 			Scenarios:           event.Spec.Scenarios,
 			Courses:             event.Spec.Courses,
+			SharedVms:           sharedVms,
 			Labels:              event.Labels,
 			Status:              status,
 		})
