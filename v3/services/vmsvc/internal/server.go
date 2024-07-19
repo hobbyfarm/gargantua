@@ -3,6 +3,7 @@ package vmservice
 import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
 	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
 	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
@@ -11,6 +12,7 @@ import (
 type VMServer struct {
 	authnClient      authnpb.AuthNClient
 	authrClient      authrpb.AuthRClient
+	acClient         accesscodepb.AccessCodeSvcClient
 	vmTemplateClient vmtemplatepb.VMTemplateSvcClient
 	internalVMServer *GrpcVMServer
 }
@@ -18,12 +20,14 @@ type VMServer struct {
 func NewVMServer(
 	authnClient authnpb.AuthNClient,
 	authrClient authrpb.AuthRClient,
+	acClient accesscodepb.AccessCodeSvcClient,
 	vmTemplateClient vmtemplatepb.VMTemplateSvcClient,
 	internalVMServer *GrpcVMServer,
 ) VMServer {
 	return VMServer{
 		authnClient:      authnClient,
 		authrClient:      authrClient,
+		acClient:         acClient,
 		vmTemplateClient: vmTemplateClient,
 		internalVMServer: internalVMServer,
 	}
@@ -35,5 +39,6 @@ func (vms VMServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/vm/list", vms.GetAllVMListFunc).Methods("GET")
 	r.HandleFunc("/a/vm/scheduledevent/{se_id}", vms.GetVMListByScheduledEventFunc).Methods("GET")
 	r.HandleFunc("/a/vm/count", vms.CountByScheduledEvent).Methods("GET")
+	r.HandleFunc("/sharedVMs/{access_code}", vms.GetSharedVirtualMachinesFunc).Methods("GET")
 	glog.V(2).Infof("set up routes")
 }

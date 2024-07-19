@@ -11,6 +11,8 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -40,6 +42,7 @@ type PreparedVirtualMachine struct {
 	Hostname                 string `json:"hostname"`          // ideally <hostname>.<enviroment dnssuffix> should be the FQDN to this machine
 	TFState                  string `json:"tfstate,omitempty"` // Terraform state name
 	WsEndpoint               string `json:"ws_endpoint"`
+	IsShared                 bool   `json:"is_shared"`
 }
 
 /*
@@ -254,6 +257,63 @@ func (vms VMServer) GetAllVMListFunc(w http.ResponseWriter, r *http.Request) {
 	vms.GetVMListFunc(w, r, &generalpb.ListOptions{})
 }
 
+func (vms VMServer) GetSharedVirtualMachinesFunc(w http.ResponseWriter, r *http.Request) {
+	// Check if User has access to VMs
+	_, err := rbac.AuthenticateRequest(r, vms.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get shared vms")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	accessCode := vars["access_code"]
+
+	if len(accessCode) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no accessCode id passed in")
+		return
+	}
+
+	accessCodeResource, err := vms.acClient.GetAccessCodeWithOTACs(r.Context(), &generalpb.ResourceId{Id: accessCode})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no accessCode found for given accessCode")
+		return
+	}
+
+	scheduledEventID := accessCodeResource.Labels[hflabels.ScheduledEventLabel]
+	req1, err := labels.NewRequirement("shared", selection.NotEquals, []string{"true"})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "internal error listing virtual machines")
+		return
+	}
+	req2, err := labels.NewRequirement(hflabels.ScheduledEventLabel, selection.Equals, []string{scheduledEventID})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "internal error listing virtual machines")
+		return
+	}
+	selector := labels.NewSelector()
+	selector = selector.Add(*req1).Add(*req2)
+	selectorString := selector.String()
+	sharedVMList, err := vms.internalVMServer.ListVM(r.Context(), &generalpb.ListOptions{LabelSelector: selectorString})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "internal error listing virtual machines")
+		return
+	}
+	sharedVMs := sharedVMList.GetVms()
+	preparedSharedVMs := []PreparedVirtualMachine{}
+
+	for _, sharedVM := range sharedVMs {
+		preparedSharedVMs = append(preparedSharedVMs, getPreparedVM(sharedVM))
+		glog.V(2).Infof("retrieved shared vm %s", sharedVM.GetId())
+	}
+
+	encodedVM, err := json.Marshal(preparedSharedVMs)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedVM)
+}
+
 func getPreparedVM(vm *vmpb.VM) PreparedVirtualMachine {
 	return PreparedVirtualMachine{
 		Id:                       vm.GetId(),
@@ -274,5 +334,6 @@ func getPreparedVM(vm *vmpb.VM) PreparedVirtualMachine {
 		Hostname:                 vm.GetStatus().GetHostname(),
 		TFState:                  vm.GetStatus().GetTfstate(),
 		WsEndpoint:               vm.GetStatus().GetWsEndpoint(),
+		IsShared:                 vm.GetVmType() == vmpb.VirtualMachineType_SHARED,
 	}
 }
