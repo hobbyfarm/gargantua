@@ -13,6 +13,7 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/golang/glog"
@@ -25,6 +26,7 @@ import (
 	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
 	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
 	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
 	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 	"k8s.io/client-go/kubernetes"
@@ -40,6 +42,7 @@ type ScheduledEventController struct {
 	progressClient               progresspb.ProgressSvcClient
 	environmentClient            environmentpb.EnvironmentSvcClient
 	dbConfigClient               dbconfigpb.DynamicBindConfigSvcClient
+	vmClient                     vmpb.VMSvcClient
 	vmSetClient                  vmsetpb.VMSetSvcClient
 	vmTemplateClient             vmtemplatepb.VMTemplateSvcClient
 	settingClient                settingpb.SettingSvcClient
@@ -70,6 +73,7 @@ func NewScheduledEventController(
 	environmentClient environmentpb.EnvironmentSvcClient,
 	progressClient progresspb.ProgressSvcClient,
 	sessionClient sessionpb.SessionSvcClient,
+	vmClient vmpb.VMSvcClient,
 	vmSetClient vmsetpb.VMSetSvcClient,
 	vmTemplateClient vmtemplatepb.VMTemplateSvcClient,
 	settingClient settingpb.SettingSvcClient,
@@ -93,6 +97,7 @@ func NewScheduledEventController(
 		environmentClient:               environmentClient,
 		progressClient:                  progressClient,
 		sessionClient:                   sessionClient,
+		vmClient:                        vmClient,
 		vmSetClient:                     vmSetClient,
 		vmTemplateClient:                vmTemplateClient,
 		settingClient:                   settingClient,
@@ -433,6 +438,12 @@ func (sc *ScheduledEventController) reconcileScheduledEvent(seName string) error
 		return err
 	}
 
+	//create shared VM for ScheduledEvent
+	err_vm := sc.createSharedVM(se)
+	if err_vm != nil {
+		return err_vm
+	}
+
 	now := time.Now()
 
 	beginTime, err := time.Parse(time.UnixDate, se.GetStartTime())
@@ -491,6 +502,87 @@ func (sc *ScheduledEventController) reconcileScheduledEvent(seName string) error
 		return err
 	}
 
+	return nil
+}
+
+func (sc *ScheduledEventController) createSharedVM(se *scheduledeventpb.ScheduledEvent) error {
+	for i := 0; i < len(se.GetSharedVms()); i++ {
+		sharedVM := se.GetSharedVms()[i]
+		// if sharedVM are provision (have VMId) continue, if new(empty VMId) create VM
+		if sharedVM.GetVmId() != "" {
+			continue
+		}
+		env, err := sc.environmentClient.GetEnvironment(sc.Context, &generalpb.GetRequest{
+			Id: sharedVM.GetEnvironment(),
+		})
+		if err != nil {
+			if hferrors.IsGrpcNotFound(err) {
+				glog.Errorf("environment invalid")
+			}
+			return err
+		}
+
+		vmt, err := sc.vmTemplateClient.GetVMTemplate(sc.Context, &generalpb.GetRequest{
+			Id: sharedVM.GetVmTemplate(),
+		})
+		if err != nil {
+			return fmt.Errorf("error while retrieving virtual machine template %s %v", sharedVM.GetVmTemplate(), err)
+		}
+
+		vmLabels := map[string]string{
+			"dynamic":                       "false",
+			"shared":                        "true",
+			hflabels.EnvironmentLabel:       sharedVM.GetEnvironment(),
+			"bound":                         "true",
+			hflabels.VirtualMachineTemplate: sharedVM.GetVmTemplate(),
+			hflabels.ScheduledEventLabel:    se.GetId(),
+		}
+
+		config := util.GetVMConfig(env, vmt)
+
+		sshUser := config["ssh_username"]
+		protocol, exists := config["protocol"]
+		if !exists {
+			protocol = "ssh"
+		}
+
+		var provision bool
+		provision = true
+		if provisionMethod, ok := env.GetAnnotations()["hobbyfarm.io/provisioner"]; ok && provisionMethod != "" {
+			vmLabels["hobbyfarm.io/provisioner"] = provisionMethod
+			provision = false
+		}
+
+		vmId := fmt.Sprintf("shared-%s-%08x", se.Name, rand.Uint32())
+
+		_, err = sc.vmClient.CreateVM(sc.Context, &vmpb.CreateVMRequest{
+			Id:                vmId,
+			VmTemplateId:      sharedVM.GetVmTemplate(),
+			SshUsername:       sshUser,
+			Protocol:          protocol,
+			Provision:         provision,
+			VmType:            vmpb.VirtualMachineType_SHARED,
+			ScheduledEventId:  se.GetId(),
+			ScheduledEventUid: se.GetUid(),
+			Labels:            vmLabels,
+		})
+		glog.V(4).Infof("Created shared VM %s ", vmId)
+
+		_, err = sc.vmClient.UpdateVMStatus(sc.Context, &vmpb.UpdateVMStatusRequest{
+			Id:            vmId,
+			Status:        string(hfv1.VmStatusRFP),
+			Allocated:     wrapperspb.Bool(true),
+			Tainted:       wrapperspb.Bool(false),
+			PublicIp:      wrapperspb.String(""),
+			PrivateIp:     wrapperspb.String(""),
+			Hostname:      wrapperspb.String(""),
+			EnvironmentId: env.GetId(),
+			WsEndpoint:    env.GetWsEndpoint(),
+		})
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
