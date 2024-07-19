@@ -50,9 +50,11 @@ message CreateVMRequest {
     bool provision = 9;
     string vm_set_id = 10;
     string vm_set_uid = 11;
-    VirtualMachineType vm_type = 12;
-    map<string, string> labels = 13;
-    repeated string finalizers = 14;
+    string scheduled_event_id = 12;
+    string scheduled_event_uid = 13;
+    VirtualMachineType vm_type = 14;
+    map<string, string> labels = 15;
+    repeated string finalizers = 16;
 }
 
 message UpdateVMRequest {

@@ -55,19 +55,27 @@ func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmpb.CreateVMRequest) 
 	vmSetId := req.GetVmSetId()
 	vmSetUid := req.GetVmSetUid()
 	vmType := util.ConvertToStringEnum(req.GetVmType(), vmpb.VirtualMachineType_name, hfv1.VirtualMachineTypeUser)
+	seId := req.GetScheduledEventId()
+	seUid := req.GetScheduledEventUid()
 	labels := req.GetLabels()
 	finalizers := req.GetFinalizers()
 
 	vmSetOwner := vmSetId != "" && vmSetUid != ""
 	vmClaimOwner := vmClaimId != "" && vmClaimUid != ""
-	// either vmClaimId AND vmClaimUid or vmSetId AND vmSetUid need to be provided for the owner reference
-	// if that's not the case, return an error
-	if !vmSetOwner && !vmClaimOwner {
+	scheduledEventOwner := vmType == hfv1.VirtualMachineTypeShared && seId != "" && seUid != ""
+
+	// For for VMs of type "USER" either vmClaimId AND vmClaimUid or vmSetId AND vmSetUid must be provided for the owner reference
+	// For for VMs of type "Shared" seId AND seUid must be provided for the owner reference
+	// If this is not the case, return an error
+	if !scheduledEventOwner && !vmSetOwner && !vmClaimOwner {
 		return &emptypb.Empty{}, hferrors.GrpcError(codes.InvalidArgument, "no ID and UID for owner reference provided", req)
 	}
 
-	// vm set takes precedence over vm claim
-	if vmSetOwner {
+	if scheduledEventOwner { // if scheduledEventOwner is true our vm is a Shared VM
+		ownerReferenceId = seId
+		ownerReferenceUid = types.UID(seUid)
+		ownerReferenceKind = "ScheduledEvent"
+	} else if vmSetOwner { // vm set takes precedence over vm claim
 		ownerReferenceId = vmSetId
 		ownerReferenceUid = types.UID(vmSetUid)
 		ownerReferenceKind = "VirtualMachineSet"
