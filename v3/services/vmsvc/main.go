@@ -38,6 +38,7 @@ func main() {
 	services := []microservices.MicroService{
 		microservices.AuthN,
 		microservices.AuthR,
+		microservices.VMTemplate,
 	}
 	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
 	for _, conn := range connections {
