@@ -48,8 +48,8 @@ type VirtualMachineSpec struct {
 type VirtualMachineType string
 
 const (
-	VirtualMachineTypeUser   VirtualMachineType = "User"
-	VirtualMachineTypeShared VirtualMachineType = "Shared"
+	VirtualMachineTypeUser   VirtualMachineType = "USER"
+	VirtualMachineTypeShared VirtualMachineType = "SHARED"
 )
 
 type VirtualMachineStatus struct {
