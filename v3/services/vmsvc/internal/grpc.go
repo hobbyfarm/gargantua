@@ -54,6 +54,7 @@ func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmpb.CreateVMRequest) 
 	provision := req.GetProvision()
 	vmSetId := req.GetVmSetId()
 	vmSetUid := req.GetVmSetUid()
+	vmType := util.ConvertToStringEnum(req.GetVmType(), vmpb.VirtualMachineType_name, hfv1.VirtualMachineTypeUser)
 	labels := req.GetLabels()
 	finalizers := req.GetFinalizers()
 
@@ -109,6 +110,7 @@ func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmpb.CreateVMRequest) 
 			UserId:                   user,
 			Provision:                provision,
 			VirtualMachineSetId:      vmSetId,
+			VirtualMachineType:       vmType,
 		},
 	}
 
@@ -161,6 +163,7 @@ func (s *GrpcVMServer) GetVM(ctx context.Context, req *generalpb.GetRequest) (*v
 		User:              vm.Spec.UserId,
 		Provision:         vm.Spec.Provision,
 		VmSetId:           vm.Spec.VirtualMachineSetId,
+		VmType:            util.ConvertToPBEnum(vm.Spec.VirtualMachineType, vmpb.VirtualMachineType_value, vmpb.VirtualMachineType_USER),
 		Labels:            vm.Labels,
 		Finalizers:        vm.Finalizers,
 		Status:            status,
@@ -368,6 +371,7 @@ func (s *GrpcVMServer) ListVM(ctx context.Context, listOptions *generalpb.ListOp
 			User:              vm.Spec.UserId,
 			Provision:         vm.Spec.Provision,
 			VmSetId:           vm.Spec.VirtualMachineSetId,
+			VmType:            util.ConvertToPBEnum(vm.Spec.VirtualMachineType, vmpb.VirtualMachineType_value, vmpb.VirtualMachineType_USER),
 			Labels:            vm.Labels,
 			Finalizers:        vm.Finalizers,
 			Status:            status,

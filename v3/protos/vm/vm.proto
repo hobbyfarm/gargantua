@@ -30,11 +30,12 @@ message VM {
     string user = 8;
     bool provision = 9;
     string vm_set_id = 10;
-    map<string, string> labels = 11;
-    repeated string finalizers = 12;
-    VMStatus status = 13;
-    map<string, string> annotations = 14;
-    google.protobuf.Timestamp deletion_timestamp = 15;
+    VirtualMachineType vm_type = 11;
+    map<string, string> labels = 12;
+    repeated string finalizers = 13;
+    VMStatus status = 14;
+    map<string, string> annotations = 15;
+    google.protobuf.Timestamp deletion_timestamp = 16;
 }
 
 message CreateVMRequest {
@@ -49,8 +50,9 @@ message CreateVMRequest {
     bool provision = 9;
     string vm_set_id = 10;
     string vm_set_uid = 11;
-    map<string, string> labels = 12;
-    repeated string finalizers = 13;
+    VirtualMachineType vm_type = 12;
+    map<string, string> labels = 13;
+    repeated string finalizers = 14;
 }
 
 message UpdateVMRequest {
@@ -89,4 +91,9 @@ message VMStatus {
 
 message ListVMsResponse {
     repeated VM vms = 1;
+}
+
+enum VirtualMachineType {
+    USER = 0; // Default value
+    SHARED = 1;
 }
