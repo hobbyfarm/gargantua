@@ -32,16 +32,25 @@ type VirtualMachineList struct {
 	Items           []VirtualMachine `json:"items"`
 }
 
+// Todo isSharedVM Enum?
 type VirtualMachineSpec struct {
-	VirtualMachineTemplateId string `json:"vm_template_id"`
-	SshUsername              string `json:"ssh_username"`
-	Protocol                 string `json:"protocol"`
-	SecretName               string `json:"secret_name"` // this refers to the secret name for the keypair
-	VirtualMachineClaimId    string `json:"vm_claim_id"`
-	UserId                   string `json:"user"`
-	Provision                bool   `json:"provision"`
-	VirtualMachineSetId      string `json:"vm_set_id"`
+	VirtualMachineTemplateId string             `json:"vm_template_id"`
+	SshUsername              string             `json:"ssh_username"`
+	Protocol                 string             `json:"protocol"`
+	SecretName               string             `json:"secret_name"` // this refers to the secret name for the keypair
+	VirtualMachineClaimId    string             `json:"vm_claim_id"`
+	UserId                   string             `json:"user"`
+	Provision                bool               `json:"provision"`
+	VirtualMachineSetId      string             `json:"vm_set_id"`
+	VirtualMachineType       VirtualMachineType `json:"vm_type"`
 }
+
+type VirtualMachineType string
+
+const (
+	VirtualMachineTypeUser   VirtualMachineType = "User"
+	VirtualMachineTypeShared VirtualMachineType = "Shared"
+)
 
 type VirtualMachineStatus struct {
 	Status        VmStatus `json:"status"` // default is nothing, but could be one of the following: readyforprovisioning, provisioning, running, terminating
@@ -269,15 +278,15 @@ type ScenarioList struct {
 }
 
 type ScenarioSpec struct {
-	Name              string              `json:"name"`
-	Description       string              `json:"description"`
-	Steps             []ScenarioStep      `json:"steps"`
-	Categories        []string            `json:"categories"`
-	Tags              []string            `json:"tags"`
-	VirtualMachines   []map[string]string `json:"virtualmachines"`
-	KeepAliveDuration string              `json:"keepalive_duration"`
-	PauseDuration     string              `json:"pause_duration"`
-	Pauseable         bool                `json:"pauseable"`
+	Name              string                `json:"name"`
+	Description       string                `json:"description"`
+	Steps             []ScenarioStep        `json:"steps"`
+	Categories        []string              `json:"categories"`
+	Tags              []string              `json:"tags"`
+	VirtualMachines   []map[string]string   `json:"virtualmachines"`
+	KeepAliveDuration string                `json:"keepalive_duration"`
+	PauseDuration     string                `json:"pause_duration"`
+	Pauseable         bool                  `json:"pauseable"`
 	Tasks             []VirtualMachineTasks `json:"vm_tasks"`
 }
 
@@ -296,7 +305,7 @@ type Task struct {
 	Command             string `json:"command"`
 	ExpectedOutputValue string `json:"expected_output_value"`
 	ExpectedReturnCode  int    `json:"expected_return_code"`
-	ReturnType 			string `json:"return_type"`
+	ReturnType          string `json:"return_type"`
 }
 
 // +genclient
@@ -488,6 +497,7 @@ type ScheduledEventSpec struct {
 	Printable               bool                      `json:"printable"`
 	Scenarios               []string                  `json:"scenarios"`
 	Courses                 []string                  `json:"courses"`
+	SharedVirtualMachines   []SharedVirtualMachine    `json:"shared_vms"`
 }
 
 type ScheduledEventStatus struct {
@@ -496,6 +506,13 @@ type ScheduledEventStatus struct {
 	Provisioned        bool     `json:"provisioned"`
 	Ready              bool     `json:"ready"`
 	Finished           bool     `json:"finished"`
+}
+
+type SharedVirtualMachine struct {
+	VMId        string `json:"vmId"`
+	Name        string `json:"name"`
+	Environment string `json:"environment"`
+	VMTemplate  string `json:"vmTemplate"`
 }
 
 // +genclient
