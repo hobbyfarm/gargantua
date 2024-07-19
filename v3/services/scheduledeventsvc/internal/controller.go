@@ -29,6 +29,8 @@ import (
 	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
 	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
 	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -231,6 +233,22 @@ func (sc *ScheduledEventController) finishSessionsFromScheduledEvent(se *schedul
 
 func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventpb.ScheduledEvent) error {
 	glog.V(6).Infof("ScheduledEvent %s is ready to be provisioned", se.Name)
+
+	// Let's first create or update the shared VMs related to this scheduled event
+
+	// first taint shared vms which are not necessary anymore
+	// doing this first prevents iterating over freshly created vms
+	err := sc.taintSharedVMs(se)
+	if err != nil {
+		return err
+	}
+
+	//create shared VM for ScheduledEvent
+	err = sc.createSharedVMs(se)
+	if err != nil {
+		return err
+	}
+
 	// start creating resources related to this
 	vmSets := []string{}
 
@@ -327,7 +345,7 @@ func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventpb
 	}
 
 	// Delete AccessCode if it exists
-	_, err := sc.accessCodeClient.GetAc(sc.Context, &generalpb.GetRequest{
+	_, err = sc.accessCodeClient.GetAc(sc.Context, &generalpb.GetRequest{
 		Id: se.GetAccessCode(),
 	})
 	if err == nil {
@@ -438,12 +456,6 @@ func (sc *ScheduledEventController) reconcileScheduledEvent(seName string) error
 		return err
 	}
 
-	//create shared VM for ScheduledEvent
-	err_vm := sc.createSharedVM(se)
-	if err_vm != nil {
-		return err_vm
-	}
-
 	now := time.Now()
 
 	beginTime, err := time.Parse(time.UnixDate, se.GetStartTime())
@@ -505,7 +517,50 @@ func (sc *ScheduledEventController) reconcileScheduledEvent(seName string) error
 	return nil
 }
 
-func (sc *ScheduledEventController) createSharedVM(se *scheduledeventpb.ScheduledEvent) error {
+func (sc *ScheduledEventController) taintSharedVMs(se *scheduledeventpb.ScheduledEvent) error {
+	req1, err := labels.NewRequirement("shared", selection.NotEquals, []string{"true"})
+	if err != nil {
+		return err
+	}
+	req2, err := labels.NewRequirement(hflabels.ScheduledEventLabel, selection.Equals, []string{se.GetId()})
+	if err != nil {
+		return err
+	}
+	selector := labels.NewSelector()
+	selector = selector.Add(*req1).Add(*req2)
+	selectorString := selector.String()
+	existingSharedVMList, err := sc.vmClient.ListVM(sc.Context, &generalpb.ListOptions{LabelSelector: selectorString})
+	if err != nil {
+		return err
+	}
+	existingSharedVMs := existingSharedVMList.GetVms()
+	requiredSharedVMs := se.GetSharedVms()
+
+	for _, existingSharedVM := range existingSharedVMs {
+		taintVm := true
+		currentVmId := existingSharedVM.GetId()
+		for _, requiredSharedVM := range requiredSharedVMs {
+			if currentVmId == requiredSharedVM.GetVmId() {
+				taintVm = false
+				break
+			}
+		}
+		if taintVm {
+			glog.V(5).Infof("tainting VM %s", currentVmId)
+			_, err := sc.vmClient.UpdateVMStatus(sc.Context, &vmpb.UpdateVMStatusRequest{
+				Id:      currentVmId,
+				Tainted: wrapperspb.Bool(true),
+			})
+			if err != nil {
+				glog.Errorf("failed to taint vm %s", currentVmId)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (sc *ScheduledEventController) createSharedVMs(se *scheduledeventpb.ScheduledEvent) error {
 	for i := 0; i < len(se.GetSharedVms()); i++ {
 		sharedVM := se.GetSharedVms()[i]
 		// if sharedVM are provision (have VMId) continue, if new(empty VMId) create VM
@@ -566,6 +621,9 @@ func (sc *ScheduledEventController) createSharedVM(se *scheduledeventpb.Schedule
 			ScheduledEventUid: se.GetUid(),
 			Labels:            vmLabels,
 		})
+		if err != nil {
+			return err
+		}
 		glog.V(4).Infof("Created shared VM %s ", vmId)
 
 		_, err = sc.vmClient.UpdateVMStatus(sc.Context, &vmpb.UpdateVMStatusRequest{
