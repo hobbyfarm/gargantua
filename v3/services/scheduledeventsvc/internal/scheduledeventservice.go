@@ -233,6 +233,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no scenarios or courses passed in")
 		return
 	}
+	sharedVmsRaw := r.PostFormValue("shared_vms")
 
 	// restrictedBind := strings.ToLower(restrictionDisabledRaw) == "false" || restrictionDisabled == ""
 	restrictionDisabled := false
@@ -260,6 +261,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		AccessCode:     accessCode,
 		ScenariosRaw:   scenariosRaw,
 		CoursesRaw:     coursesRaw,
+		SharedVmsRaw:   sharedVmsRaw,
 	})
 
 	if err != nil {
@@ -318,6 +320,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 	accessCode := r.PostFormValue("access_code")
 	scenariosRaw := r.PostFormValue("scenarios")
 	coursesRaw := r.PostFormValue("courses")
+	sharedVmsRaw := r.PostFormValue("shared_vms")
 	onDemandRaw := r.PostFormValue("on_demand")
 	restrictionDisabledRaw := r.PostFormValue("disable_restriction")
 	printableRaw := r.PostFormValue("printable")
@@ -362,6 +365,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 		AccessCode:     accessCode,
 		ScenariosRaw:   scenariosRaw,
 		CoursesRaw:     coursesRaw,
+		SharedVmsRaw:   sharedVmsRaw,
 	})
 
 	if err != nil {
