@@ -173,17 +173,18 @@ func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmsetpb.VMSet) error
 			}
 
 			_, err := v.vmClient.CreateVM(v.Context, &vmpb.CreateVMRequest{
-				Id:           vmName,
-				VmTemplateId: vmt.GetId(),
-				SshUsername:  sshUser,
-				Protocol:     protocol,
-				SecretName:   "",
-				User:         "",
-				Provision:    provision,
-				VmSetId:      vmset.GetId(),
-				VmSetUid:     vmset.GetUid(),
-				Labels:       vmLabels,
-				Finalizers:   []string{vmSetFinalizer},
+				Id:            vmName,
+				EnvironmentId: env.GetId(),
+				VmTemplateId:  vmt.GetId(),
+				SshUsername:   sshUser,
+				Protocol:      protocol,
+				SecretName:    "",
+				User:          "",
+				Provision:     provision,
+				VmSetId:       vmset.GetId(),
+				VmSetUid:      vmset.GetUid(),
+				Labels:        vmLabels,
+				Finalizers:    []string{vmSetFinalizer},
 			})
 
 			if err != nil {

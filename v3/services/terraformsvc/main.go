@@ -18,7 +18,6 @@ import (
 	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
 	vmclaimpb "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
 	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
-	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 )
 
 var (
@@ -55,7 +54,6 @@ func main() {
 	vmClaimClient := vmclaimpb.NewVMClaimSvcClient(connections[microservices.VMClaim])
 	vmClient := vmpb.NewVMSvcClient(connections[microservices.VM])
 	vmSetClient := vmsetpb.NewVMSetSvcClient(connections[microservices.VMSet])
-	vmTemplateClient := vmtemplatepb.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 	ts := terraformservice.NewGrpcTerraformServer(hfClient, hfInformerFactory)
@@ -70,7 +68,6 @@ func main() {
 		ts,
 		vmClaimClient,
 		vmSetClient,
-		vmTemplateClient,
 		ctx,
 	)
 
