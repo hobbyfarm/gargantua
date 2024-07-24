@@ -263,7 +263,7 @@ func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 		r := fmt.Sprintf("%08x", rand.Uint32())
 		cm := &k8sv1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:            strings.Join([]string{vm.GetId() + "-cm", r}, "-"),
+				Name:            strings.Join([]string{vm.GetId(), "cm", r}, "-"),
 				OwnerReferences: vmOwnerReference,
 			},
 			Data: config,
@@ -277,7 +277,7 @@ func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 
 		keypair := &k8sv1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:            strings.Join([]string{vm.GetId() + "-secret", r}, "-"),
+				Name:            strings.Join([]string{vm.GetId(), "secret", r}, "-"),
 				OwnerReferences: vmOwnerReference,
 			},
 			Data: map[string][]byte{

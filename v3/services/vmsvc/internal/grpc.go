@@ -228,9 +228,9 @@ func (s *GrpcVMServer) GetVMConfig(ctx context.Context, req *vmpb.GetVMConfigReq
 	config := util.GetVMConfig(env, vmt)
 
 	for k, v := range config {
-		if req.WithSecrets.GetValue() && strings.HasPrefix(v, "secret:") {
+		if req.WithSecrets.GetValue() && strings.HasPrefix(v, "inject_secret:") {
 			// it was requested that secret handles will be replaced
-			// secret:<name>:<field> will be replaced with the corresponding value of the linked secret.
+			// inject_secret:<name>:<field> will be replaced with the corresponding value of the linked secret.
 			parts := strings.Split(v, ":")
 			if len(parts) < 3 {
 				continue
@@ -245,9 +245,9 @@ func (s *GrpcVMServer) GetVMConfig(ctx context.Context, req *vmpb.GetVMConfigReq
 			}
 
 			config[k] = string(secret.Data[secretField])
-		} else if strings.HasPrefix(v, "configmap:") {
+		} else if strings.HasPrefix(v, "inject_configmap:") {
 			// replace configmap values
-			// configmap:<name>:<field> will be replaced with the corresponding value of the linked secret.
+			// inject_configmap:<name>:<field> will be replaced with the corresponding value of the linked secret.
 			parts := strings.Split(v, ":")
 			if len(parts) < 3 {
 				continue
@@ -262,6 +262,38 @@ func (s *GrpcVMServer) GetVMConfig(ctx context.Context, req *vmpb.GetVMConfigReq
 			}
 
 			config[k] = string(cm.Data[configMapField])
+		}
+	}
+
+	// inherits all data from secrets into the VM config that are stored inside inherit_secrets
+	v, exists := config["inherit_secrets"]
+	if req.WithSecrets.GetValue() && exists {
+		inheritSecrets := strings.Split(v, ",")
+		for _, secretName := range inheritSecrets {
+			secret, err := s.secretClient.Get(ctx, secretName, metav1.GetOptions{})
+			if err != nil {
+				glog.Error(err)
+				continue
+			}
+			for i, data := range secret.Data {
+				config[i] = string(data)
+			}
+		}
+	}
+
+	// inherits all data from CMs into the VM config that are stored inside inherit_configmaps
+	v, exists = config["inherit_configmaps"]
+	if exists {
+		inheritSecrets := strings.Split(v, ",")
+		for _, cmName := range inheritSecrets {
+			secret, err := s.configMapClient.Get(ctx, cmName, metav1.GetOptions{})
+			if err != nil {
+				glog.Error(err)
+				continue
+			}
+			for i, data := range secret.Data {
+				config[i] = string(data)
+			}
 		}
 	}
 
