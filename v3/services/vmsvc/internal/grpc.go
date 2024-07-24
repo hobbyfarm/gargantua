@@ -2,6 +2,7 @@ package vmservice
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -219,12 +220,6 @@ func (s *GrpcVMServer) GetVMConfig(ctx context.Context, req *vmpb.GetVMConfigReq
 		return &vmpb.VMConfig{}, err
 	}
 
-	_, exists := env.GetTemplateMapping()[vmt.GetId()]
-	if !exists {
-		glog.Errorf("error pulling environment template info %v", err)
-		return &vmpb.VMConfig{}, fmt.Errorf("error during RFP: environment %s does not support vmt %s", env.GetId(), vmt.GetId())
-	}
-
 	config := util.GetVMConfig(env, vmt)
 
 	for k, v := range config {
@@ -244,7 +239,19 @@ func (s *GrpcVMServer) GetVMConfig(ctx context.Context, req *vmpb.GetVMConfigReq
 				continue
 			}
 
-			config[k] = string(secret.Data[secretField])
+			if len(secret.Data[secretField]) > 0 {
+				s, err := base64.StdEncoding.DecodeString(string(secret.Data[secretField]))
+				if err != nil {
+					glog.Error(err)
+					continue
+				}
+				config[k] = string(s)
+			}
+
+			if len(secret.StringData[secretField]) > 0 {
+				config[k] = secret.StringData[secretField]
+			}
+
 		} else if strings.HasPrefix(v, "inject_configmap:") {
 			// replace configmap values
 			// inject_configmap:<name>:<field> will be replaced with the corresponding value of the linked secret.
@@ -261,7 +268,7 @@ func (s *GrpcVMServer) GetVMConfig(ctx context.Context, req *vmpb.GetVMConfigReq
 				continue
 			}
 
-			config[k] = string(cm.Data[configMapField])
+			config[k] = cm.Data[configMapField]
 		}
 	}
 
@@ -276,7 +283,16 @@ func (s *GrpcVMServer) GetVMConfig(ctx context.Context, req *vmpb.GetVMConfigReq
 				continue
 			}
 			for i, data := range secret.Data {
-				config[i] = string(data)
+				s, err := base64.StdEncoding.DecodeString(string(data))
+				if err != nil {
+					glog.Error(err)
+					continue
+				}
+				config[i] = string(s)
+			}
+
+			for i, data := range secret.StringData {
+				config[i] = data
 			}
 		}
 	}
@@ -292,7 +308,7 @@ func (s *GrpcVMServer) GetVMConfig(ctx context.Context, req *vmpb.GetVMConfigReq
 				continue
 			}
 			for i, data := range secret.Data {
-				config[i] = string(data)
+				config[i] = data
 			}
 		}
 	}

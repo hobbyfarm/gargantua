@@ -329,9 +329,9 @@ func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 
 		var updatedFinalizers []string
 		if vm.GetFinalizers() != nil {
-			updatedFinalizers = append(vm.GetFinalizers(), "vm.controllers.hobbyfarm.io")
+			updatedFinalizers = append(vm.GetFinalizers(), "terraform.controllers.hobbyfarm.io")
 		} else {
-			updatedFinalizers = []string{"vm.controllers.hobbyfarm.io"}
+			updatedFinalizers = []string{"terraform.controllers.hobbyfarm.io"}
 		}
 		_, err = v.VMClient.UpdateVM(v.Context, &vmpb.UpdateVMRequest{
 			Id:         vm.GetId(),
