@@ -18,12 +18,14 @@ import (
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	rbacpb "github.com/hobbyfarm/gargantua/v3/protos/rbac"
 	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
 	userpb "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
@@ -40,9 +42,10 @@ type GrpcUserServer struct {
 	userLister    listerv2.UserLister
 	userSynced    cache.InformerSynced
 	sessionClient sessionpb.SessionSvcClient
+	rbacClient    rbacpb.RbacSvcClient
 }
 
-func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, sessionClient sessionpb.SessionSvcClient) (*GrpcUserServer, error) {
+func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, sessionClient sessionpb.SessionSvcClient, rbacClient rbacpb.RbacSvcClient) (*GrpcUserServer, error) {
 	inf := hfInformerFactory.Hobbyfarm().V2().Users().Informer()
 	indexers := map[string]cache.IndexFunc{emailIndex: emailIndexer}
 	err := inf.AddIndexers(indexers)
@@ -56,6 +59,7 @@ func NewGrpcUserServer(hfClientSet hfClientset.Interface, hfInformerFactory hfIn
 		userLister:    hfInformerFactory.Hobbyfarm().V2().Users().Lister(),
 		userSynced:    inf.HasSynced,
 		sessionClient: sessionClient,
+		rbacClient:    rbacClient,
 	}, nil
 }
 
@@ -408,32 +412,56 @@ func (u *GrpcUserServer) DeleteUser(ctx context.Context, userId *generalpb.Resou
 	}
 
 	if len(sessionList.Sessions) > 0 {
-		// there are sessions present but they may be expired. let's check
 		for _, s := range sessionList.Sessions {
-			if !s.Status.Finished {
+			now := time.Now().Format(time.UnixDate)
+
+			// This will set the expiration time to now, leading to the session being cleaned up
+			_, err = u.sessionClient.UpdateSessionStatus(ctx, &sessionpb.UpdateSessionStatusRequest{
+				Id:             s.GetId(),
+				Active:         wrapperspb.Bool(false),
+				ExpirationTime: now,
+			})
+
+			if err != nil {
+				glog.Errorf("error marking session as expired: %s", hferrors.GetErrorMessage(err))
 				return &emptypb.Empty{}, hferrors.GrpcError(
 					codes.Internal,
-					"cannot delete user, existing sessions found",
+					"error marking session as finished for user %s",
 					userId,
+					userId.GetId(),
 				)
 			}
-		}
-
-		// getting here means there are sessions present but they are not active
-		// let's delete them for cleanliness' sake
-		if ok, err := u.deleteSessions(ctx, sessionList.Sessions); !ok {
-			glog.Errorf("error deleting old sessions for user %s: %s", id, err)
-			return &emptypb.Empty{}, hferrors.GrpcError(
-				codes.Internal,
-				"cannot delete user, error removing old sessions",
-				userId,
-			)
 		}
 	}
 
 	// Delete role bindings that belong to the user
+	bindings, err := u.rbacClient.GetHobbyfarmRoleBindings(ctx, &generalpb.ResourceId{
+		Id: user.Name,
+	})
 
-	// TODO
+	if err != nil {
+		glog.Errorf("error getting hobbyfarm rolebindings for user %s: %v", user.Name, err)
+		return &emptypb.Empty{}, hferrors.GrpcError(
+			codes.Internal,
+			"error getting rolebindings list for user %s",
+			userId,
+			userId.GetId(),
+		)
+	}
+	for _, rb := range bindings.GetRolebindings() {
+		_, err = u.rbacClient.DeleteRolebinding(ctx, &generalpb.ResourceId{
+			Id: rb.Name,
+		})
+		if err != nil {
+			glog.Errorf("error deleting rolebindings %s for user %s: %v", rb.Name, user.Name, err)
+			return &emptypb.Empty{}, hferrors.GrpcError(
+				codes.Internal,
+				"error deleting rolebinding for user %s",
+				userId,
+				userId.GetId(),
+			)
+		}
+	}
 
 	// at this point we have either delete all old sessions, or there were no sessions  to begin with
 	// so we should be safe to delete the user
@@ -449,20 +477,4 @@ func (u *GrpcUserServer) DeleteUser(ctx context.Context, userId *generalpb.Resou
 		)
 	}
 	return &emptypb.Empty{}, nil
-}
-
-func (u *GrpcUserServer) deleteSessions(ctx context.Context, sessions []*sessionpb.Session) (bool, error) {
-	for _, s := range sessions {
-		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-			// @TODO: Use gRPC SessionClient here!
-			_, err := u.sessionClient.DeleteSession(ctx, &generalpb.ResourceId{Id: s.Id})
-			return err
-		})
-
-		if retryErr != nil {
-			return false, retryErr
-		}
-	}
-
-	return true, nil
 }
