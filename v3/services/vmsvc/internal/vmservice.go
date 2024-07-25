@@ -11,6 +11,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -161,6 +162,45 @@ func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPContent(w, r, 200, "success", encodedVM)
 
 	glog.V(2).Infof("retrieved vm %s", vm.GetId())
+}
+
+func (vms VMServer) GetVMConfigFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := rbac.AuthenticateRequest(r, vms.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, vms.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
+	if err != nil || !authrResponse.Success {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to list virtualmachines")
+		return
+	}
+
+	vars := mux.Vars(r)
+	vmId := vars["vm_id"]
+
+	config, err := vms.internalVMServer.GetVMConfig(r.Context(), &vmpb.GetVMConfigRequest{Id: vmId, WithSecrets: &wrapperspb.BoolValue{Value: false}})
+	if err != nil {
+		glog.Errorf("error retrieving virtual machine config %s from cache: %s", vmId, hferrors.GetErrorMessage(err))
+		if hferrors.IsGrpcNotFound(err) {
+			errMsg := fmt.Sprintf("vm %s not found", vmId)
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "not found", errMsg)
+			return
+		}
+		errMsg := fmt.Sprintf("error retrieving vm %s", vmId)
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "error", errMsg)
+		return
+	}
+
+	encodedVM, err := json.Marshal(config)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedVM)
+
+	glog.V(2).Infof("retrieved config for vm %s", vmId)
 }
 
 func (vms VMServer) GetVMListFunc(w http.ResponseWriter, r *http.Request, listOptions *generalpb.ListOptions) {

@@ -76,7 +76,7 @@ func (s *GrpcTerraformServer) CreateState(ctx context.Context, req *terraformpb.
 	}
 
 	random := fmt.Sprintf("%08x", rand.Uint32())
-	id := strings.Join([]string{vmId + "-tfs", random}, "-")
+	id := strings.Join([]string{vmId, "tfs", random}, "-")
 
 	tfs := &tfv1.State{
 		ObjectMeta: metav1.ObjectMeta{

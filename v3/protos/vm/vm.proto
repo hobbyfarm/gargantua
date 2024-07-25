@@ -12,6 +12,7 @@ import "google/protobuf/timestamp.proto";
 service VMSvc {
     rpc CreateVM (CreateVMRequest) returns (google.protobuf.Empty);
     rpc GetVM (general.GetRequest) returns (VM);
+    rpc GetVMConfig (GetVMConfigRequest) returns (VMConfig);
     rpc UpdateVM (UpdateVMRequest) returns (google.protobuf.Empty);
     rpc UpdateVMStatus (UpdateVMStatusRequest) returns (google.protobuf.Empty);
     rpc DeleteVM (general.ResourceId) returns (google.protobuf.Empty);
@@ -37,20 +38,30 @@ message VM {
     google.protobuf.Timestamp deletion_timestamp = 15;
 }
 
+message VMConfig {
+    map<string, string> config = 1;
+}
+
+message GetVMConfigRequest {
+    string id = 1;
+    google.protobuf.BoolValue withSecrets = 2;
+}
+
 message CreateVMRequest {
     string id = 1;
-    string vm_template_id = 2;
-    string ssh_username = 3;
-    string protocol = 4;
-    string secret_name = 5;
-    string vm_claim_id = 6;
-    string vm_claim_uid = 7;
-    string user = 8;
-    bool provision = 9;
-    string vm_set_id = 10;
-    string vm_set_uid = 11;
-    map<string, string> labels = 12;
-    repeated string finalizers = 13;
+    string environment_id = 2;
+    string vm_template_id = 3;
+    string ssh_username = 4;
+    string protocol = 5;
+    string secret_name = 6;
+    string vm_claim_id = 7;
+    string vm_claim_uid = 8;
+    string user = 9;
+    bool provision = 10;
+    string vm_set_id = 11;
+    string vm_set_uid = 12;
+    map<string, string> labels = 13;
+    repeated string finalizers = 14;
 }
 
 message UpdateVMRequest {
