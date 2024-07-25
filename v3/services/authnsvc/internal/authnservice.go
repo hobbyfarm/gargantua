@@ -568,6 +568,23 @@ func (a *AuthServer) GetAccessSet(w http.ResponseWriter, r *http.Request) {
 	util.ReturnHTTPContent(w, r, http.StatusOK, "access_set", encodedAS)
 }
 
+func (a AuthServer) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("Authorization")
+	user, err := a.internalAuthnServer.AuthN(r.Context(), &authnpb.AuthNRequest{
+		Token: token,
+	})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, http.StatusUnauthorized, "unauthorized", "unauthorized")
+		return
+	}
+
+	_, err = a.userClient.DeleteUser(r.Context(), &generalpb.ResourceId{Id: user.GetId()})
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "error", "Error during account deletion")
+	}
+}
+
 func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Request) {
 	token := r.Header.Get("Authorization")
 	user, err := a.internalAuthnServer.AuthN(r.Context(), &authnpb.AuthNRequest{

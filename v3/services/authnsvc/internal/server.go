@@ -47,6 +47,7 @@ func (a AuthServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/auth/settings", a.UpdateSettingsFunc).Methods("POST")
 	r.HandleFunc("/auth/authenticate", a.LoginFunc).Methods("POST")
 	r.HandleFunc("/auth/access", a.GetAccessSet).Methods("GET")
+	r.HandleFunc("/auth/delete", a.DeleteUser).Methods("GET")
 	r.HandleFunc("/auth/scheduledevents", a.ListScheduledEventsFunc).Methods("GET")
 	glog.V(2).Infof("set up route")
 }
