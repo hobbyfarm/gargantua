@@ -1,0 +1,15 @@
+apiVersion: hobbyfarm.io/v1
+kind: User
+metadata:
+  name: admin
+spec:
+  id: admin
+  email: admin
+  password: $2a$10$33fQs0G.lHQdDAsdoECgA.8iYvNtyJ2XC2AmvR5x6ZkzxSuKXyfFm
+  access_codes:
+    - training
+  settings:
+    ctr_enabled: "true"
+    ctxAccessCode: example-access-code
+    terminal_fontSize: "16"
+    terminal_theme: Solarized_Dark_Higher_Contrast
