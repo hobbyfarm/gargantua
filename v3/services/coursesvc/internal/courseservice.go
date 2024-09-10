@@ -339,7 +339,7 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 
 	var isLearnPathStrict bool
 	if isLearnPathStrictRaw != "" {
-		isLearnPath, err = strconv.ParseBool(isLearnPathStrictRaw)
+		isLearnPathStrict, err = strconv.ParseBool(isLearnPathStrictRaw)
 		if err != nil {
 			glog.Errorf("error while parsing bool: %v", err)
 			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
@@ -349,7 +349,7 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 
 	var inCatalog bool
 	if inCatalogRaw != "" {
-		isLearnPath, err = strconv.ParseBool(inCatalogRaw)
+		inCatalog, err = strconv.ParseBool(inCatalogRaw)
 		if err != nil {
 			glog.Errorf("error while parsing bool: %v", err)
 			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
