@@ -525,6 +525,46 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 	util.ReturnHTTPContent(w, r, 200, "success", encodedCourses)
 }
 
+func (c CourseServer) ListCourseCatalog(w http.ResponseWriter, r *http.Request) {
+	_, err := rbac.AuthenticateRequest(r, c.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	tempCoursList, err := c.internalCourseServer.ListCourse(r.Context(), &generalpb.ListOptions{})
+	if err != nil {
+		glog.Errorf("error listing courses: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing courses")
+		return
+	}
+	tempCourses := tempCoursList.GetCourses()
+
+	courses := make([]PreparedCourse, 0, len(tempCourses))
+	for _, course := range tempCourses {
+		if course.InCatalog {
+			course.Scenarios = util.AppendDynamicScenariosByCategories(
+				r.Context(),
+				course.Scenarios,
+				course.Categories,
+				c.listScenarios,
+			)
+			courses = append(courses, convertToPreparedCourse(course))
+		}
+	}
+
+	encodedCourses, err := json.Marshal(courses)
+	if err != nil {
+		glog.Errorf("error marshalling prepared courses: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing courses")
+		return
+	}
+
+	util.ReturnHTTPContent(w, r, 200, "success", encodedCourses)
+
+	glog.V(4).Infof("listed courses")
+}
+
 func (c CourseServer) previewDynamicScenarios(w http.ResponseWriter, r *http.Request) {
 	user, err := rbac.AuthenticateRequest(r, c.authnClient)
 	if err != nil {
