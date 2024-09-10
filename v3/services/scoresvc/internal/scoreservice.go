@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"sort"
@@ -256,13 +257,16 @@ func (s *ScoreServer) GetTimeout() time.Duration {
 }
 
 func (s *ScoreServer) SendNotification(code string) {
+	glog.Infof("Trying to send notification for ", code)
 	teamsWebhookUrl, found := os.LookupEnv("WEBHOOK_URL")
 	if !found {
+		glog.Infof("WEBHOOK_URL not found")
 		return
 	}
 
 	baseUrl, found := os.LookupEnv("BASE_URL")
 	if !found {
+		glog.Infof("BASE_URL not found")
 		return
 	}
 
@@ -276,15 +280,22 @@ func (s *ScoreServer) SendNotification(code string) {
 
 	// Creating the JSON payload for the Teams message
 	message := map[string]interface{}{
-		"@type":    "MessageCard",
-		"@context": "http://schema.org/extensions",
-		"summary":  "New user scanned",
-		"sections": []map[string]interface{}{
+		"type": "message",
+		"attachments": []map[string]interface{}{
 			{
-				"activityTitle": "Scanned: `" + string(decodedCode) + "`",
-				"images": []map[string]interface{}{
-					{
-						"image": imageUrl,
+				"contentType": "application/vnd.microsoft.card.adaptive",
+				"content": map[string]interface{}{
+					"$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+					"type":    "AdaptiveCard",
+					"version": "1.2",
+					"body": []map[string]string{
+						{
+							"type": "TextBlock",
+							"text": "Scanned: " + string(decodedCode),
+						}, {
+							"type": "Image",
+							"url":  imageUrl,
+						},
 					},
 				},
 			},
@@ -294,14 +305,14 @@ func (s *ScoreServer) SendNotification(code string) {
 	// Marshal the map into a JSON string.
 	jsonData, err := json.Marshal(message)
 	if err != nil {
-		glog.Infof("Error creating JSON payload:", err)
+		glog.Errorf("Error creating JSON payload:", err)
 		return
 	}
 
 	// Create a new HTTP request with the JSON payload
 	req, err := http.NewRequest("POST", teamsWebhookUrl, bytes.NewBuffer(jsonData))
 	if err != nil {
-		glog.Infof("Error creating request:", err)
+		glog.Errorf("Error creating request:", err)
 		return
 	}
 
@@ -312,14 +323,17 @@ func (s *ScoreServer) SendNotification(code string) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		glog.Infof("Error sending request to Teams:", err)
+		glog.Errorf("Error sending request to Teams:", err)
 		return
 	}
 	defer resp.Body.Close()
 
-	// Check the HTTP response status
-	if resp.StatusCode != http.StatusOK {
-		glog.Infof("Failed to send message. Status: %d\n", resp.StatusCode)
+	// Check the HTTP response status, 202 = Accepted
+	if resp.StatusCode != 202 {
+		glog.Errorf("Failed to send message. Status: %d\n", resp.StatusCode)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyString := string(bodyBytes)
+		glog.Errorf("message: %d\n", bodyString)
 		return
 	}
 
