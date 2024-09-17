@@ -81,7 +81,8 @@ func (vms VMServer) getWebinterfaces(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the VM belongs to the User or User has RBAC-Rights to access VMs
-	if vm.GetUser() != impersonatedUserId {
+	// if this is a shared VM we should check if the user can accses the SE it belongs to
+	if vm.GetUser() != impersonatedUserId && vm.GetVmType() == vmpb.VirtualMachineType_USER {
 		authrResponse, err := rbac.AuthorizeSimple(r, vms.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
 		if err != nil || !authrResponse.Success {
 			glog.Errorf("user forbidden from accessing vm id %s", vm.GetId())

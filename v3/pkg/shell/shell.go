@@ -179,7 +179,8 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 		return
 	}
 
-	if vm.GetUser() != user.GetId() {
+	// TODO, if this is a shared VM we should check if the user has access to the Event this Shared VM belongs too.
+	if vm.GetUser() != user.GetId() && vm.GetVmType() == vmpb.VirtualMachineType_USER {
 		// check if the user has access to user sessions
 		impersonatedUserId := user.GetId()
 		authrResponse, err := rbac2.Authorize(r, sp.authrClient, impersonatedUserId, []*authrpb.Permission{
