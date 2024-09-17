@@ -139,6 +139,10 @@ func (s *GrpcScheduledEventServer) CreateScheduledEvent(ctx context.Context, req
 		if err != nil {
 			return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "shared_vms_raw")
 		}
+		err = util.VerifySharedVirtualMachineContent(sharedVms, req)
+		if err != nil {
+			return &generalpb.ResourceId{}, err
+		}
 		event.Spec.SharedVirtualMachines = sharedVms
 	}
 
@@ -304,6 +308,10 @@ func (s *GrpcScheduledEventServer) UpdateScheduledEvent(ctx context.Context, req
 			sharedVms, err := util.GenericUnmarshal[[]hfv1.SharedVirtualMachine](sharedVmsRaw, "shared_vms_raw")
 			if err != nil {
 				return hferrors.GrpcParsingError(req, "shared_vms_raw")
+			}
+			err = util.VerifySharedVirtualMachineContent(sharedVms, req)
+			if err != nil {
+				return err
 			}
 			event.Spec.SharedVirtualMachines = sharedVms
 		}
