@@ -2,6 +2,7 @@ package shell
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -317,6 +318,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 	proxy.Transport = &http.Transport{
 		Dial:                sshConn.Dial,
 		TLSHandshakeTimeout: 10 * time.Second,
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 	}
 	//r.RequestURI = ""
 	r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
