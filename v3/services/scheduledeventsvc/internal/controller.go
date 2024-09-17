@@ -563,7 +563,7 @@ func (sc *ScheduledEventController) taintSharedVMs(se *scheduledeventpb.Schedule
 func (sc *ScheduledEventController) createSharedVMs(se *scheduledeventpb.ScheduledEvent) error {
 	for i := 0; i < len(se.GetSharedVms()); i++ {
 		sharedVM := se.GetSharedVms()[i]
-		// if sharedVM are provision (have VMId) continue, if new(empty VMId) create VM
+		// if sharedVM is provisioned (VMId is set) continue, if new sharedVM (empty VMId) we create the VM
 		if sharedVM.GetVmId() != "" {
 			continue
 		}

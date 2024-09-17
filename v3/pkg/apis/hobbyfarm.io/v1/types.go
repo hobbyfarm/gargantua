@@ -32,7 +32,6 @@ type VirtualMachineList struct {
 	Items           []VirtualMachine `json:"items"`
 }
 
-// Todo isSharedVM Enum?
 type VirtualMachineSpec struct {
 	VirtualMachineTemplateId string             `json:"vm_template_id"`
 	SshUsername              string             `json:"ssh_username"`

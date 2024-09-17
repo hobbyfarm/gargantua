@@ -182,6 +182,7 @@ func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmsetpb.VMSet) error
 				Provision:    provision,
 				VmSetId:      vmset.GetId(),
 				VmSetUid:     vmset.GetUid(),
+				VmType:       vmpb.VirtualMachineType_USER,
 				Labels:       vmLabels,
 				Finalizers:   []string{vmSetFinalizer},
 			})
