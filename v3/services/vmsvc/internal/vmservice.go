@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
@@ -24,25 +25,25 @@ const (
 )
 
 type PreparedVirtualMachine struct {
-	Id                       string `json:"id"`
-	VirtualMachineTemplateId string `json:"vm_template_id"`
-	SshUsername              string `json:"ssh_username"`
-	Protocol                 string `json:"protocol"`
-	SecretName               string `json:"secret_name"` // this refers to the secret name for the keypair
-	VirtualMachineClaimId    string `json:"vm_claim_id"`
-	UserId                   string `json:"user"`
-	Provision                bool   `json:"provision"`
-	VirtualMachineSetId      string `json:"vm_set_id"`
-	Status                   string `json:"status"` // default is nothing, but could be one of the following: readyforprovisioning, provisioning, running, terminating
-	Allocated                bool   `json:"allocated"`
-	Tainted                  bool   `json:"tainted"`
-	PublicIP                 string `json:"public_ip"`
-	PrivateIP                string `json:"private_ip"`
-	EnvironmentId            string `json:"environment_id"`
-	Hostname                 string `json:"hostname"`          // ideally <hostname>.<enviroment dnssuffix> should be the FQDN to this machine
-	TFState                  string `json:"tfstate,omitempty"` // Terraform state name
-	WsEndpoint               string `json:"ws_endpoint"`
-	IsShared                 bool   `json:"is_shared"`
+	Id                       string                  `json:"id"`
+	VirtualMachineTemplateId string                  `json:"vm_template_id"`
+	SshUsername              string                  `json:"ssh_username"`
+	Protocol                 string                  `json:"protocol"`
+	SecretName               string                  `json:"secret_name"` // this refers to the secret name for the keypair
+	VirtualMachineClaimId    string                  `json:"vm_claim_id"`
+	UserId                   string                  `json:"user"`
+	Provision                bool                    `json:"provision"`
+	VirtualMachineSetId      string                  `json:"vm_set_id"`
+	Status                   string                  `json:"status"` // default is nothing, but could be one of the following: readyforprovisioning, provisioning, running, terminating
+	Allocated                bool                    `json:"allocated"`
+	Tainted                  bool                    `json:"tainted"`
+	PublicIP                 string                  `json:"public_ip"`
+	PrivateIP                string                  `json:"private_ip"`
+	EnvironmentId            string                  `json:"environment_id"`
+	Hostname                 string                  `json:"hostname"`          // ideally <hostname>.<enviroment dnssuffix> should be the FQDN to this machine
+	TFState                  string                  `json:"tfstate,omitempty"` // Terraform state name
+	WsEndpoint               string                  `json:"ws_endpoint"`
+	VirtualMachineType       hfv1.VirtualMachineType `json:"vm_type"`
 }
 
 /*
@@ -258,7 +259,7 @@ func (vms VMServer) GetAllVMListFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (vms VMServer) GetSharedVirtualMachinesFunc(w http.ResponseWriter, r *http.Request) {
-	// Check if User has access to VMs
+	// TODO Check if User has access to VMs
 	_, err := rbac.AuthenticateRequest(r, vms.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get shared vms")
@@ -334,6 +335,6 @@ func getPreparedVM(vm *vmpb.VM) PreparedVirtualMachine {
 		Hostname:                 vm.GetStatus().GetHostname(),
 		TFState:                  vm.GetStatus().GetTfstate(),
 		WsEndpoint:               vm.GetStatus().GetWsEndpoint(),
-		IsShared:                 vm.GetVmType() == vmpb.VirtualMachineType_SHARED,
+		VirtualMachineType:       util.ConvertToStringEnum(vm.GetVmType(), vmpb.VirtualMachineType_name, hfv1.VirtualMachineTypeUser),
 	}
 }

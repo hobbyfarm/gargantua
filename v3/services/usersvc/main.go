@@ -53,7 +53,7 @@ func main() {
 	sessionClient := sessionpb.NewSessionSvcClient(connections[microservices.Session])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert)
-	us, err := userservice.NewGrpcUserServer(hfClient, hfInformerFactory, sessionClient)
+	us, err := userservice.NewGrpcUserServer(hfClient, hfInformerFactory, sessionClient, rbacClient)
 
 	if err != nil {
 		glog.Fatalf("starting grpc user server failed: %v", err)
