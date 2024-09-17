@@ -10,6 +10,7 @@ use (
 	./v3/services/rbacsvc
 	./v3/services/settingsvc
 	./v3/services/usersvc
+	./v3/services/scoresvc
 	./v3/services/dbconfigsvc
 	./v3/services/vmclaimsvc
 	./v3/services/vmsetsvc
