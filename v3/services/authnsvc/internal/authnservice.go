@@ -18,6 +18,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
+	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
 	userpb "github.com/hobbyfarm/gargantua/v3/protos/user"
 	"golang.org/x/crypto/bcrypt"
@@ -28,10 +29,11 @@ import (
 )
 
 type PreparedScheduledEvent struct {
-	Id          string `json:"id"`
-	Description string `json:"description"`
-	Name        string `json:"name"`
-	EndDate     string `json:"end_timestamp"`
+	Id                            string                                   `json:"id"`
+	Description                   string                                   `json:"description"`
+	Name                          string                                   `json:"name"`
+	EndDate                       string                                   `json:"end_timestamp"`
+	PreparedSharedVirtualMachines []*scheduledeventpb.SharedVirtualMachine `json:"shared_vms"`
 }
 
 func (a AuthServer) ChangePasswordFunc(w http.ResponseWriter, r *http.Request) {
@@ -611,7 +613,7 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 				endTime = otacEndTime.Format(time.UnixDate)
 			}
 
-			accessCodeScheduledEvent[otac.GetId()] = PreparedScheduledEvent{se.GetId(), se.GetDescription(), se.GetName(), endTime}
+			accessCodeScheduledEvent[otac.GetId()] = PreparedScheduledEvent{se.GetId(), se.GetDescription(), se.GetName(), endTime, se.GetSharedVms()}
 		}
 	}
 
@@ -637,7 +639,7 @@ func (a AuthServer) ListScheduledEventsFunc(w http.ResponseWriter, r *http.Reque
 			glog.Error(err)
 			continue
 		}
-		accessCodeScheduledEvent[ac.GetId()] = PreparedScheduledEvent{se.GetId(), se.GetDescription(), se.GetName(), se.GetEndTime()}
+		accessCodeScheduledEvent[ac.GetId()] = PreparedScheduledEvent{se.GetId(), se.GetDescription(), se.GetName(), se.GetEndTime(), se.GetSharedVms()}
 	}
 
 	encodedMap, err := json.Marshal(accessCodeScheduledEvent)
