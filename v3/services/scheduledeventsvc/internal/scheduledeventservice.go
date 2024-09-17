@@ -248,6 +248,13 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	sharedVms, err := util.GenericUnmarshal[[]*scheduledeventpb.SharedVirtualMachine](sharedVmsRaw, "shared_vms_raw")
+	if err != nil {
+		glog.Errorf("error creating scheduled event: failed to unmarshal shared vms")
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scheduled event")
+		return
+	}
+
 	eventId, err := s.internalScheduledEventServer.CreateScheduledEvent(r.Context(), &scheduledeventpb.CreateScheduledEventRequest{
 		Name:           name,
 		Description:    description,
@@ -261,7 +268,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		AccessCode:     accessCode,
 		ScenariosRaw:   scenariosRaw,
 		CoursesRaw:     coursesRaw,
-		SharedVmsRaw:   sharedVmsRaw,
+		SharedVms:      &scheduledeventpb.SharedVirtualMachineWrapper{Value: sharedVms},
 	})
 
 	if err != nil {
@@ -352,6 +359,13 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 		restrictedBindWrapper = wrapperspb.Bool(restrictedBind)
 	}
 
+	sharedVms, err := util.GenericUnmarshal[[]*scheduledeventpb.SharedVirtualMachine](sharedVmsRaw, "shared_vms_raw")
+	if err != nil {
+		glog.Errorf("error updating scheduled event: failed to unmarshal shared vms")
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error updating scheduled event")
+		return
+	}
+
 	_, err = s.internalScheduledEventServer.UpdateScheduledEvent(r.Context(), &scheduledeventpb.UpdateScheduledEventRequest{
 		Id:             id,
 		Name:           name,
@@ -365,7 +379,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 		AccessCode:     accessCode,
 		ScenariosRaw:   scenariosRaw,
 		CoursesRaw:     coursesRaw,
-		SharedVmsRaw:   sharedVmsRaw,
+		SharedVms:      &scheduledeventpb.SharedVirtualMachineWrapper{Value: sharedVms},
 	})
 
 	if err != nil {
