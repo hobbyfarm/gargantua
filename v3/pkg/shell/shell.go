@@ -48,6 +48,7 @@ type Service struct {
 	HasWebinterface     bool   `json:"hasWebinterface"`
 	Port                int    `json:"port"`
 	Path                string `json:"path"`
+	Protocol            string `json:"protocol"`
 	HasOwnTab           bool   `json:"hasOwnTab"`
 	NoRewriteRootPath   bool   `json:"noRewriteRootPath"`
 	RewriteHostHeader   bool   `json:"rewriteHostHeader"`
@@ -229,6 +230,9 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 				if strconv.Itoa(s.Port) == targetPort {
 					service = s
 					hasService = true
+					if s.Protocol == "" {
+						service.Protocol = "http"
+					}
 					break
 				}
 			}
@@ -236,7 +240,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 	}
 
 	// Build URL and Proxy to forward the Request to
-	target := "http://127.0.0.1:" + targetPort
+	target := service.Protocol + "://127.0.0.1:" + targetPort
 	remote, err := url.Parse(target)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to parse URL for Localhost")
