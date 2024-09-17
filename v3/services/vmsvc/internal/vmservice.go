@@ -282,7 +282,7 @@ func (vms VMServer) GetSharedVirtualMachinesFunc(w http.ResponseWriter, r *http.
 	}
 
 	scheduledEventID := accessCodeResource.Labels[hflabels.ScheduledEventLabel]
-	req1, err := labels.NewRequirement("shared", selection.NotEquals, []string{"true"})
+	req1, err := labels.NewRequirement("shared", selection.Equals, []string{"true"})
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "internal error listing virtual machines")
 		return

@@ -39,6 +39,6 @@ func (vms VMServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/vm/list", vms.GetAllVMListFunc).Methods("GET")
 	r.HandleFunc("/a/vm/scheduledevent/{se_id}", vms.GetVMListByScheduledEventFunc).Methods("GET")
 	r.HandleFunc("/a/vm/count", vms.CountByScheduledEvent).Methods("GET")
-	r.HandleFunc("/sharedVMs/{access_code}", vms.GetSharedVirtualMachinesFunc).Methods("GET")
+	r.HandleFunc("/vm/shared/{access_code}", vms.GetSharedVirtualMachinesFunc).Methods("GET")
 	glog.V(2).Infof("set up routes")
 }
