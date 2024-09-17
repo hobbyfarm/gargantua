@@ -67,7 +67,7 @@ func (s *GrpcScheduledEventServer) CreateScheduledEvent(ctx context.Context, req
 	accessCode := req.GetAccessCode()
 	scenariosRaw := req.GetScenariosRaw()
 	coursesRaw := req.GetCoursesRaw()
-	sharedVmsRaw := req.GetSharedVmsRaw()
+	sharedVmsWrapper := req.GetSharedVms()
 	labels := req.GetLabels()
 
 	requiredStringParams := map[string]string{
@@ -134,10 +134,16 @@ func (s *GrpcScheduledEventServer) CreateScheduledEvent(ctx context.Context, req
 		}
 		event.Spec.Scenarios = scenarios
 	}
-	if sharedVmsRaw != "" {
-		sharedVms, err := util.GenericUnmarshal[[]hfv1.SharedVirtualMachine](sharedVmsRaw, "shared_vms_raw")
-		if err != nil {
-			return &generalpb.ResourceId{}, hferrors.GrpcParsingError(req, "shared_vms_raw")
+	if sharedVmsWrapper != nil {
+		tmpSharedVms := sharedVmsWrapper.GetValue()
+		sharedVms := make([]hfv1.SharedVirtualMachine, 0, len(tmpSharedVms))
+		for _, sharedVm := range tmpSharedVms {
+			sharedVms = append(sharedVms, hfv1.SharedVirtualMachine{
+				VMId:        sharedVm.VmId,
+				Name:        sharedVm.Name,
+				Environment: sharedVm.Environment,
+				VMTemplate:  sharedVm.VmTemplate,
+			})
 		}
 		err = util.VerifySharedVirtualMachineContent(sharedVms, req)
 		if err != nil {
@@ -226,7 +232,7 @@ func (s *GrpcScheduledEventServer) UpdateScheduledEvent(ctx context.Context, req
 	accessCode := req.GetAccessCode()
 	scenariosRaw := req.GetScenariosRaw()
 	coursesRaw := req.GetCoursesRaw()
-	sharedVmsRaw := req.GetSharedVmsRaw()
+	sharedVmsWrapper := req.GetSharedVms()
 
 	scheduledEventLabelSelector := fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, id)
 
@@ -304,10 +310,16 @@ func (s *GrpcScheduledEventServer) UpdateScheduledEvent(ctx context.Context, req
 			}
 			event.Spec.Courses = courses
 		}
-		if sharedVmsRaw != "" {
-			sharedVms, err := util.GenericUnmarshal[[]hfv1.SharedVirtualMachine](sharedVmsRaw, "shared_vms_raw")
-			if err != nil {
-				return hferrors.GrpcParsingError(req, "shared_vms_raw")
+		if sharedVmsWrapper != nil {
+			tmpSharedVms := sharedVmsWrapper.GetValue()
+			sharedVms := make([]hfv1.SharedVirtualMachine, 0, len(tmpSharedVms))
+			for _, sharedVm := range tmpSharedVms {
+				sharedVms = append(sharedVms, hfv1.SharedVirtualMachine{
+					VMId:        sharedVm.VmId,
+					Name:        sharedVm.Name,
+					Environment: sharedVm.Environment,
+					VMTemplate:  sharedVm.VmTemplate,
+				})
 			}
 			err = util.VerifySharedVirtualMachineContent(sharedVms, req)
 			if err != nil {

@@ -561,8 +561,10 @@ func (sc *ScheduledEventController) taintSharedVMs(se *scheduledeventpb.Schedule
 }
 
 func (sc *ScheduledEventController) createSharedVMs(se *scheduledeventpb.ScheduledEvent) error {
-	for i := 0; i < len(se.GetSharedVms()); i++ {
-		sharedVM := se.GetSharedVms()[i]
+	issuedVmId := false
+	sharedVms := se.GetSharedVms()
+	for i := 0; i < len(sharedVms); i++ {
+		sharedVM := sharedVms[i]
 		// if sharedVM is provisioned (VMId is set) continue, if new sharedVM (empty VMId) we create the VM
 		if sharedVM.GetVmId() != "" {
 			continue
@@ -640,8 +642,20 @@ func (sc *ScheduledEventController) createSharedVMs(se *scheduledeventpb.Schedul
 		if err != nil {
 			return err
 		}
+		sharedVM.VmId = vmId
+		issuedVmId = true
 	}
-	return nil
+
+	// If we didn't issue new vm ids to our shared VMs, we do not need to update the scheduled event
+	if !issuedVmId {
+		return nil
+	}
+
+	_, err := sc.internalScheduledEventServer.UpdateScheduledEvent(sc.Context, &scheduledeventpb.UpdateScheduledEventRequest{
+		Id:        se.GetId(),
+		SharedVms: &scheduledeventpb.SharedVirtualMachineWrapper{Value: sharedVms},
+	})
+	return err // returns nil if no error occurs
 }
 
 // @TODO: Integrate this function if it should be used or remove it if not.

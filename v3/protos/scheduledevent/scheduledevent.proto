@@ -53,7 +53,7 @@ message CreateScheduledEventRequest {
     string access_code = 10;
     string scenarios_raw = 11;
     string courses_raw = 12;
-    string shared_vms_raw = 13;
+    SharedVirtualMachineWrapper shared_vms = 13;
     map<string, string> labels = 14;
 }
 
@@ -76,7 +76,7 @@ message UpdateScheduledEventRequest {
     string access_code = 10;
     string scenarios_raw = 11;
     string courses_raw = 12;
-    string shared_vms_raw = 13;
+    SharedVirtualMachineWrapper shared_vms = 13;
 }
 
 message UpdateScheduledEventStatusRequest {
@@ -109,4 +109,8 @@ message SharedVirtualMachine {
     string name = 2;
     string environment = 3;
     string vm_template = 4;
+}
+
+message SharedVirtualMachineWrapper {
+    repeated SharedVirtualMachine value = 1;
 }
