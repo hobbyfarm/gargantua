@@ -518,7 +518,7 @@ func (sc *ScheduledEventController) reconcileScheduledEvent(seName string) error
 }
 
 func (sc *ScheduledEventController) taintSharedVMs(se *scheduledeventpb.ScheduledEvent) error {
-	req1, err := labels.NewRequirement("shared", selection.NotEquals, []string{"true"})
+	req1, err := labels.NewRequirement("shared", selection.Equals, []string{"true"})
 	if err != nil {
 		return err
 	}
