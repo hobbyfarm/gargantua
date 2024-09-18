@@ -45,15 +45,16 @@ type ShellProxy struct {
 }
 
 type Service struct {
-	Name                string `json:"name"`
-	HasWebinterface     bool   `json:"hasWebinterface"`
-	Port                int    `json:"port"`
-	Path                string `json:"path"`
-	Protocol            string `json:"protocol"`
-	HasOwnTab           bool   `json:"hasOwnTab"`
-	NoRewriteRootPath   bool   `json:"noRewriteRootPath"`
-	RewriteHostHeader   bool   `json:"rewriteHostHeader"`
-	RewriteOriginHeader bool   `json:"rewriteOriginHeader"`
+	Name                       string `json:"name"`
+	HasWebinterface            bool   `json:"hasWebinterface"`
+	Port                       int    `json:"port"`
+	Path                       string `json:"path"`
+	Protocol                   string `json:"protocol"`
+	HasOwnTab                  bool   `json:"hasOwnTab"`
+	NoRewriteRootPath          bool   `json:"noRewriteRootPath"`
+	RewriteHostHeader          bool   `json:"rewriteHostHeader"`
+	RewriteOriginHeader        bool   `json:"rewriteOriginHeader"`
+	DisableAuthorizationHeader bool   `json:disableAuthorizationHeader`
 }
 
 var sshDev = ""
@@ -313,6 +314,10 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 				r.Out.Header.Set("Origin", target)
 			}
 
+			if hasService && service.DisableAuthorizationHeader {
+				// Remove Authorization header if present
+				r.Out.Header.Del("Authorization")
+			}
 		},
 	}
 	proxy.Transport = &http.Transport{
