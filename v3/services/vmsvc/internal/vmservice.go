@@ -85,7 +85,7 @@ func (vms VMServer) getWebinterfaces(w http.ResponseWriter, r *http.Request) {
 	if vm.GetUser() != impersonatedUserId && vm.GetVmType() == vmpb.VirtualMachineType_USER {
 		authrResponse, err := rbac.AuthorizeSimple(r, vms.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
 		if err != nil || !authrResponse.Success {
-			glog.Errorf("user forbidden from accessing vm id %s", vm.GetId())
+			glog.Errorf("user forbidden from accessing vm id %s of type %s", vm.GetId(), vm.GetVmType().String())
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
 			return
 		}
