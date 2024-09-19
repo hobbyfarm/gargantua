@@ -54,7 +54,7 @@ type Service struct {
 	NoRewriteRootPath          bool   `json:"noRewriteRootPath"`
 	RewriteHostHeader          bool   `json:"rewriteHostHeader"`
 	RewriteOriginHeader        bool   `json:"rewriteOriginHeader"`
-	DisableAuthorizationHeader bool   `json:disableAuthorizationHeader`
+	DisableAuthorizationHeader bool   `json:"disableAuthorizationHeader"`
 }
 
 var sshDev = ""
