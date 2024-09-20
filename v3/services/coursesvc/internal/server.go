@@ -41,6 +41,7 @@ func NewCourseServer(
 }
 
 func (c CourseServer) SetupRoutes(r *mux.Router) {
+	r.HandleFunc("/course/list/catalog", c.ListCourseCatalog).Methods("GET")
 	r.HandleFunc("/course/list/{access_code}", c.ListCoursesForAccesscode).Methods("GET")
 	r.HandleFunc("/course/{course_id}", c.GetCourse).Methods("GET")
 	r.HandleFunc("/a/course/list", c.ListFunc).Methods("GET")
