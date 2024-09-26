@@ -134,7 +134,29 @@ func (sc *ScheduledEventController) completeScheduledEvent(se *scheduledeventpb.
 		return err
 	}
 
+	err = sc.deleteSharedVMsFromScheduledEvent(se)
+
+	if err != nil {
+		return err
+	}
+
 	err = sc.finishSessionsFromScheduledEvent(se)
+
+	if err != nil {
+		return err
+	}
+
+	// Reset VirtualMachine IDs inside the Event to avoid that shared VMs are not starting when the SE is reactivated
+	sharedVms := se.SharedVms
+	for i, v := range sharedVms {
+		sharedVms[i] = &scheduledeventpb.SharedVirtualMachine{Name: v.Name, Environment: v.Environment, VmTemplate: v.VmTemplate}
+	}
+
+	// update the scheduled event and override the shared VMs
+	_, err = sc.internalScheduledEventServer.UpdateScheduledEvent(sc.Context, &scheduledeventpb.UpdateScheduledEventRequest{
+		Id:        se.GetId(),
+		SharedVms: &scheduledeventpb.SharedVirtualMachineWrapper{Value: sharedVms},
+	})
 
 	if err != nil {
 		return err
@@ -179,6 +201,14 @@ func (sc *ScheduledEventController) deleteVMSetsFromScheduledEvent(se *scheduled
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
 	_, err := sc.vmSetClient.DeleteCollectionVMSet(sc.Context, &generalpb.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.GetId()),
+	})
+	return err
+}
+
+func (sc *ScheduledEventController) deleteSharedVMsFromScheduledEvent(se *scheduledeventpb.ScheduledEvent) error {
+	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
+	_, err := sc.vmClient.DeleteCollectionVM(sc.Context, &generalpb.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s,shared=true", hflabels.ScheduledEventLabel, se.GetId()),
 	})
 	return err
 }
