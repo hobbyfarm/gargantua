@@ -23,7 +23,6 @@ import (
 	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
 	vmclaimpb "github.com/hobbyfarm/gargantua/v3/protos/vmclaim"
 	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
-	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 	k8sv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -47,7 +46,6 @@ type VMController struct {
 	terraformClient   *GrpcTerraformServer
 	vmClaimClient     vmclaimpb.VMClaimSvcClient
 	vmSetClient       vmsetpb.VMSetSvcClient
-	vmTemplateClient  vmtemplatepb.VMTemplateSvcClient
 }
 
 func NewVMController(
@@ -59,7 +57,6 @@ func NewVMController(
 	terraformClient *GrpcTerraformServer,
 	vmClaimClient vmclaimpb.VMClaimSvcClient,
 	vmSetClient vmsetpb.VMSetSvcClient,
-	vmTemplateClient vmtemplatepb.VMTemplateSvcClient,
 	ctx context.Context,
 ) (*VMController, error) {
 	kubeClient.CoreV1().ConfigMaps("")
@@ -83,7 +80,6 @@ func NewVMController(
 		terraformClient:             terraformClient,
 		vmClaimClient:               vmClaimClient,
 		vmSetClient:                 vmSetClient,
-		vmTemplateClient:            vmTemplateClient,
 	}
 	vmController.SetReconciler(vmController)
 	vmController.SetWorkScheduler(vmController)
@@ -219,48 +215,35 @@ func (v *VMController) updateAndVerifyVMDeletion(vm *vmpb.VM) (error, bool) {
 func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 	//Status is ReadyForProvisioning AND No Secret provided (Do not provision VM twice, happens due to vm.status being updated after vm.status)
 	if vm.Status.Status == string(hfv1.VmStatusRFP) {
-		vmt, err := v.vmTemplateClient.GetVMTemplate(v.Context, &generalpb.GetRequest{Id: vm.GetVmTemplateId(), LoadFromCache: true})
-		if err != nil {
-			glog.Errorf("error getting vmt %v", err)
-			return err, true
-		}
-		env, err := v.environmentClient.GetEnvironment(v.Context, &generalpb.GetRequest{Id: vm.GetStatus().GetEnvironmentId(), LoadFromCache: true})
-		if err != nil {
-			glog.Errorf("error getting env %v", err)
-			return err, true
-		}
-
-		_, exists := env.GetTemplateMapping()[vmt.GetId()]
-		if !exists {
-			glog.Errorf("error pulling environment template info %v", err)
-			// @TODO: Why do we requeue here??? This will fail for each iteration as long as the environment is not updated...
-			return fmt.Errorf("Error during RFP: environment %s does not support vmt %s.", env.GetId(), vmt.GetId()), true
-		}
-
 		// let's provision the vm
 		pubKey, privKey, err := util.GenKeyPair()
 		if err != nil {
 			glog.Errorf("error generating keypair %v", err)
 			return err, true
 		}
-		config := util.GetVMConfig(env, vmt)
+		vmConfig, err := v.VMClient.GetVMConfig(v.Context, &vmpb.GetVMConfigRequest{Id: vm.Id, WithSecrets: &wrapperspb.BoolValue{Value: true}})
+		if err != nil {
+			glog.Errorf("error getting VM config %v", err)
+			return err, true
+		}
+		config := vmConfig.Config
 
 		config["name"] = vm.GetId()
 		config["public_key"] = pubKey
 
 		image, exists := config["image"]
 		if !exists || image == "" {
-			return fmt.Errorf("image does not exist or is empty in vm config for vmt %s", vmt.GetId()), true
+			return fmt.Errorf("image does not exist or is empty in vm config %s", vm.GetId()), true
 		}
 
 		moduleName, exists := config["module"]
 		if !exists || moduleName == "" {
-			return fmt.Errorf("module name does not exist or is empty in vm config for vmt %s", vmt.GetId()), true
+			return fmt.Errorf("module name does not exist or is empty in vm config %s", vm.GetId()), true
 		}
 
 		executorImage, exists := config["executor_image"]
 		if !exists || executorImage == "" {
-			return fmt.Errorf("executorimage does not exist or is empty in vm config for vmt %s", vmt.GetId()), true
+			return fmt.Errorf("executorimage does not exist or is empty in vm config %s", vm.GetId()), true
 		}
 
 		password, exists := config["password"]
@@ -287,7 +270,7 @@ func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 		r := fmt.Sprintf("%08x", rand.Uint32())
 		cm := &k8sv1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:            strings.Join([]string{vm.GetId() + "-cm", r}, "-"),
+				Name:            strings.Join([]string{vm.GetId(), "cm", r}, "-"),
 				OwnerReferences: vmOwnerReference,
 			},
 			Data: config,
@@ -301,7 +284,7 @@ func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 
 		keypair := &k8sv1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:            strings.Join([]string{vm.GetId() + "-secret", r}, "-"),
+				Name:            strings.Join([]string{vm.GetId(), "secret", r}, "-"),
 				OwnerReferences: vmOwnerReference,
 			},
 			Data: map[string][]byte{
@@ -353,9 +336,9 @@ func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 
 		var updatedFinalizers []string
 		if vm.GetFinalizers() != nil {
-			updatedFinalizers = append(vm.GetFinalizers(), "vm.controllers.hobbyfarm.io")
+			updatedFinalizers = append(vm.GetFinalizers(), "terraform.controllers.hobbyfarm.io")
 		} else {
-			updatedFinalizers = []string{"vm.controllers.hobbyfarm.io"}
+			updatedFinalizers = []string{"terraform.controllers.hobbyfarm.io"}
 		}
 		_, err = v.VMClient.UpdateVM(v.Context, &vmpb.UpdateVMRequest{
 			Id:         vm.GetId(),

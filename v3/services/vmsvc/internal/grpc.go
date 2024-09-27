@@ -2,9 +2,14 @@ package vmservice
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
+	"strings"
 
+	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 
 	"github.com/golang/glog"
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
@@ -19,22 +24,32 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/retry"
 )
 
 type GrpcVMServer struct {
 	vmpb.UnimplementedVMSvcServer
-	vmClient hfClientsetv1.VirtualMachineInterface
-	vmLister listersv1.VirtualMachineLister
-	vmSynced cache.InformerSynced
+	secretClient      v1.SecretInterface
+	configMapClient   v1.ConfigMapInterface
+	vmClient          hfClientsetv1.VirtualMachineInterface
+	vmLister          listersv1.VirtualMachineLister
+	vmSynced          cache.InformerSynced
+	environmentClient environmentpb.EnvironmentSvcClient
+	vmTemplateClient  vmtemplatepb.VMTemplateSvcClient
 }
 
-func NewGrpcVMServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory) *GrpcVMServer {
+func NewGrpcVMServer(hfClientSet hfClientset.Interface, hfInformerFactory hfInformers.SharedInformerFactory, kubeClient *kubernetes.Clientset, environmentClient environmentpb.EnvironmentSvcClient, vmTemplateClient vmtemplatepb.VMTemplateSvcClient) *GrpcVMServer {
 	return &GrpcVMServer{
-		vmClient: hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()),
-		vmLister: hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Lister(),
-		vmSynced: hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced,
+		secretClient:      kubeClient.CoreV1().Secrets(util.GetReleaseNamespace()),
+		configMapClient:   kubeClient.CoreV1().ConfigMaps(util.GetReleaseNamespace()),
+		vmClient:          hfClientSet.HobbyfarmV1().VirtualMachines(util.GetReleaseNamespace()),
+		vmLister:          hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Lister(),
+		vmSynced:          hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer().HasSynced,
+		environmentClient: environmentClient,
+		vmTemplateClient:  vmTemplateClient,
 	}
 }
 
@@ -44,6 +59,7 @@ func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmpb.CreateVMRequest) 
 	var ownerReferenceKind string
 
 	id := req.GetId()
+	environmentId := req.GetEnvironmentId()
 	vmTemplateId := req.GetVmTemplateId()
 	sshUserName := req.GetSshUsername()
 	protocol := req.GetProtocol()
@@ -87,6 +103,18 @@ func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmpb.CreateVMRequest) 
 		}
 	}
 
+	env, err := s.environmentClient.GetEnvironment(ctx, &generalpb.GetRequest{Id: environmentId, LoadFromCache: true})
+	if err != nil {
+		glog.Errorf("error getting env %v", err)
+		return &emptypb.Empty{}, err
+	}
+
+	_, exists := env.GetTemplateMapping()[vmTemplateId]
+	if !exists {
+		glog.Errorf("error pulling environment template info %v", err)
+		return &emptypb.Empty{}, fmt.Errorf("error during creation: environment %s does not support vmt %s", env.GetId(), vmTemplateId)
+	}
+
 	vm := &hfv1.VirtualMachine{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: id,
@@ -116,7 +144,7 @@ func (s *GrpcVMServer) CreateVM(ctx context.Context, req *vmpb.CreateVMRequest) 
 		vm.Spec.SshUsername = sshUserName
 	}
 
-	_, err := s.vmClient.Create(ctx, vm, metav1.CreateOptions{})
+	_, err = s.vmClient.Create(ctx, vm, metav1.CreateOptions{})
 	if err != nil {
 		return &emptypb.Empty{}, hferrors.GrpcError(
 			codes.Internal,
@@ -167,6 +195,125 @@ func (s *GrpcVMServer) GetVM(ctx context.Context, req *generalpb.GetRequest) (*v
 		Annotations:       vm.Annotations,
 		DeletionTimestamp: deletionTimeStamp,
 	}, nil
+}
+
+func (s *GrpcVMServer) GetVMConfig(ctx context.Context, req *vmpb.GetVMConfigRequest) (*vmpb.VMConfig, error) {
+	vm, err := s.GetVM(ctx, &generalpb.GetRequest{Id: req.GetId()})
+	if err != nil {
+		glog.Error(err)
+		return nil, hferrors.GrpcError(
+			codes.Internal,
+			"error while retrieving virtual machine %s",
+			req,
+			req.GetId(),
+		)
+	}
+
+	vmt, err := s.vmTemplateClient.GetVMTemplate(ctx, &generalpb.GetRequest{Id: vm.GetVmTemplateId(), LoadFromCache: true})
+	if err != nil {
+		glog.Errorf("error getting vmt %v", err)
+		return &vmpb.VMConfig{}, err
+	}
+	env, err := s.environmentClient.GetEnvironment(ctx, &generalpb.GetRequest{Id: vm.GetStatus().GetEnvironmentId(), LoadFromCache: true})
+	if err != nil {
+		glog.Errorf("error getting env %v", err)
+		return &vmpb.VMConfig{}, err
+	}
+
+	config := util.GetVMConfig(env, vmt)
+
+	for k, v := range config {
+		if req.WithSecrets.GetValue() && strings.HasPrefix(v, "inject_secret:") {
+			// it was requested that secret handles will be replaced
+			// inject_secret:<name>:<field> will be replaced with the corresponding value of the linked secret.
+			parts := strings.Split(v, ":")
+			if len(parts) < 3 {
+				continue
+			}
+			secretName := parts[1]
+			secretField := parts[2]
+
+			secret, err := s.secretClient.Get(ctx, secretName, metav1.GetOptions{})
+			if err != nil {
+				glog.Error(err)
+				continue
+			}
+
+			if len(secret.Data[secretField]) > 0 {
+				s, err := base64.StdEncoding.DecodeString(string(secret.Data[secretField]))
+				if err != nil {
+					glog.Error(err)
+					continue
+				}
+				config[k] = string(s)
+			}
+
+			if len(secret.StringData[secretField]) > 0 {
+				config[k] = secret.StringData[secretField]
+			}
+
+		} else if strings.HasPrefix(v, "inject_configmap:") {
+			// replace configmap values
+			// inject_configmap:<name>:<field> will be replaced with the corresponding value of the linked secret.
+			parts := strings.Split(v, ":")
+			if len(parts) < 3 {
+				continue
+			}
+			configMapName := parts[1]
+			configMapField := parts[2]
+
+			cm, err := s.configMapClient.Get(ctx, configMapName, metav1.GetOptions{})
+			if err != nil {
+				glog.Error(err)
+				continue
+			}
+
+			config[k] = cm.Data[configMapField]
+		}
+	}
+
+	// inherits all data from secrets into the VM config that are stored inside inherit_secrets
+	v, exists := config["inherit_secrets"]
+	if req.WithSecrets.GetValue() && exists {
+		inheritSecrets := strings.Split(v, ",")
+		for _, secretName := range inheritSecrets {
+			secret, err := s.secretClient.Get(ctx, secretName, metav1.GetOptions{})
+			if err != nil {
+				glog.Error(err)
+				continue
+			}
+			for i, data := range secret.Data {
+				s, err := base64.StdEncoding.DecodeString(string(data))
+				if err != nil {
+					glog.Error(err)
+					continue
+				}
+				config[i] = string(s)
+			}
+
+			for i, data := range secret.StringData {
+				config[i] = data
+			}
+		}
+	}
+
+	// inherits all data from CMs into the VM config that are stored inside inherit_configmaps
+	v, exists = config["inherit_configmaps"]
+	if exists {
+		inheritSecrets := strings.Split(v, ",")
+		for _, cmName := range inheritSecrets {
+			secret, err := s.configMapClient.Get(ctx, cmName, metav1.GetOptions{})
+			if err != nil {
+				glog.Error(err)
+				continue
+			}
+			for i, data := range secret.Data {
+				config[i] = data
+			}
+		}
+	}
+
+	return &vmpb.VMConfig{Config: config}, nil
 }
 
 func (s *GrpcVMServer) UpdateVM(ctx context.Context, req *vmpb.UpdateVMRequest) (*emptypb.Empty, error) {

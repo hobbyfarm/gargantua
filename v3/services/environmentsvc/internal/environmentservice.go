@@ -128,7 +128,7 @@ func (e EnvironmentServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	for _, e := range environmentList.GetEnvironments() {
 		keys := make(map[string]map[string]string)
 		for k := range util.ConvertMapStruct(e.GetTemplateMapping(), util.GetRawStringMap) {
-			keys[k] = map[string]string{} // reset template mapping entries -> @TODO: Figure out why?
+			keys[k] = map[string]string{} // reset template mapping entries to avoid leaking configuration but keep the ability to see what VMTs are allowed on this environment
 		}
 		preparedEnvironments = append(preparedEnvironments, PreparedListEnvironment{e.GetId(), e.GetDisplayName(), e.GetProvider(), keys})
 	}
