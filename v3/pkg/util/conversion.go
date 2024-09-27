@@ -55,3 +55,20 @@ func ConvertToStringMapStructMap(in map[string]map[string]string) map[string]*ge
 	}
 	return output
 }
+
+// This function converts a string or underlying string type to a protobuf enum
+func ConvertToPBEnum[T ~string, PB ~int32](val T, pbmap map[string]int32, dftVal PB) PB {
+	v, ok := pbmap[string(val)]
+	if !ok {
+		return dftVal
+	}
+	return PB(v)
+}
+
+func ConvertToStringEnum[PB ~int32, T ~string](pbval PB, pbmap map[int32]string, dftStr T) T {
+	v, ok := pbmap[int32(pbval)]
+	if !ok {
+		return dftStr
+	}
+	return T(v)
+}

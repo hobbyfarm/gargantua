@@ -22,6 +22,7 @@ import (
 	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
 	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
 	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
 	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 )
@@ -53,6 +54,7 @@ func main() {
 		microservices.Environment,
 		microservices.Progress,
 		microservices.Session,
+		microservices.VM,
 		microservices.VMSet,
 		microservices.VMTemplate,
 		microservices.Setting,
@@ -69,6 +71,7 @@ func main() {
 	envClient := environmentpb.NewEnvironmentSvcClient(connections[microservices.Environment])
 	progressClient := progresspb.NewProgressSvcClient(connections[microservices.Progress])
 	sessionClient := sessionpb.NewSessionSvcClient(connections[microservices.Session])
+	vmClient := vmpb.NewVMSvcClient(connections[microservices.VM])
 	vmSetClient := vmsetpb.NewVMSetSvcClient(connections[microservices.VMSet])
 	vmTemplateClient := vmtemplatepb.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
 	settingClient := settingpb.NewSettingSvcClient(connections[microservices.Setting])
@@ -86,6 +89,7 @@ func main() {
 		envClient,
 		progressClient,
 		sessionClient,
+		vmClient,
 		vmSetClient,
 		vmTemplateClient,
 		settingClient,

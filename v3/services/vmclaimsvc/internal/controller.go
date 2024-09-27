@@ -271,6 +271,7 @@ func (v *VMClaimController) submitVirtualMachines(vmc *vmclaimpb.VMClaim) (err e
 			VmClaimUid:   vmc.GetUid(),
 			User:         vmc.GetUserId(),
 			Provision:    true,
+			VmType:       vmpb.VirtualMachineType_USER,
 			Labels: map[string]string{
 				"dynamic":                       "true",
 				"vmc":                           vmc.GetId(),
