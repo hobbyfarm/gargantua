@@ -51,6 +51,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ScheduledEventList{},
 		&DynamicBindConfiguration{},
 		&DynamicBindConfigurationList{},
+		&PasswordResetToken{},
+		&PasswordResetTokenList{},
 		&Progress{},
 		&ProgressList{},
 		&Setting{},
