@@ -28,20 +28,21 @@ const (
 )
 
 type PreparedScheduledEvent struct {
-	Id                      string                       `json:"id"`
-	Creator                 string                       `json:"creator"`
-	Name                    string                       `json:"event_name"`
-	Description             string                       `json:"description"`
-	StartTime               string                       `json:"start_time"`
-	EndTime                 string                       `json:"end_time"`
-	OnDemand                bool                         `json:"on_demand"`    // whether or not to provision VMs on-demand
-	RequiredVirtualMachines map[string]map[string]uint32 `json:"required_vms"` // map of environment to a map of strings it should be environment: vm template: count
-	AccessCode              string                       `json:"access_code"`
-	RestrictedBind          bool                         `json:"restricted_bind"` // if restricted_bind is true, we need to make the scenario sessions when they get created only bind to vmsets that are created by this scheduledevent
-	RestrictedBindValue     string                       `json:"restricted_bind_value"`
-	Printable               bool                         `json:"printable"`
-	Scenarios               []string                     `json:"scenarios"`
-	Courses                 []string                     `json:"courses"`
+	Id                      string                                   `json:"id"`
+	Creator                 string                                   `json:"creator"`
+	Name                    string                                   `json:"event_name"`
+	Description             string                                   `json:"description"`
+	StartTime               string                                   `json:"start_time"`
+	EndTime                 string                                   `json:"end_time"`
+	OnDemand                bool                                     `json:"on_demand"`    // whether or not to provision VMs on-demand
+	RequiredVirtualMachines map[string]map[string]uint32             `json:"required_vms"` // map of environment to a map of strings it should be environment: vm template: count
+	AccessCode              string                                   `json:"access_code"`
+	RestrictedBind          bool                                     `json:"restricted_bind"` // if restricted_bind is true, we need to make the scenario sessions when they get created only bind to vmsets that are created by this scheduledevent
+	RestrictedBindValue     string                                   `json:"restricted_bind_value"`
+	Printable               bool                                     `json:"printable"`
+	Scenarios               []string                                 `json:"scenarios"`
+	Courses                 []string                                 `json:"courses"`
+	SharedVirtualMachine    []*scheduledeventpb.SharedVirtualMachine `json:"shared_vms"`
 	*scheduledeventpb.ScheduledEventStatus
 }
 
@@ -69,6 +70,7 @@ func (s ScheduledEventServer) getPreparedScheduledEvent(scheduledEvent *schedule
 		Scenarios:               scheduledEvent.GetScenarios(),
 		Courses:                 scheduledEvent.GetCourses(),
 		ScheduledEventStatus:    scheduledEvent.GetStatus(),
+		SharedVirtualMachine:    scheduledEvent.GetSharedVms(),
 	}
 
 }
@@ -233,6 +235,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no scenarios or courses passed in")
 		return
 	}
+	sharedVmsRaw := r.PostFormValue("shared_vms")
 
 	// restrictedBind := strings.ToLower(restrictionDisabledRaw) == "false" || restrictionDisabled == ""
 	restrictionDisabled := false
@@ -245,6 +248,13 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		} else {
 			restrictionDisabled = true
 		}
+	}
+
+	sharedVms, err := util.GenericUnmarshal[[]*scheduledeventpb.SharedVirtualMachine](sharedVmsRaw, "shared_vms_raw")
+	if err != nil {
+		glog.Errorf("error creating scheduled event: failed to unmarshal shared vms")
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating scheduled event")
+		return
 	}
 
 	eventId, err := s.internalScheduledEventServer.CreateScheduledEvent(r.Context(), &scheduledeventpb.CreateScheduledEventRequest{
@@ -260,6 +270,7 @@ func (s ScheduledEventServer) CreateFunc(w http.ResponseWriter, r *http.Request)
 		AccessCode:     accessCode,
 		ScenariosRaw:   scenariosRaw,
 		CoursesRaw:     coursesRaw,
+		SharedVms:      &scheduledeventpb.SharedVirtualMachineWrapper{Value: sharedVms},
 	})
 
 	if err != nil {
@@ -318,6 +329,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 	accessCode := r.PostFormValue("access_code")
 	scenariosRaw := r.PostFormValue("scenarios")
 	coursesRaw := r.PostFormValue("courses")
+	sharedVmsRaw := r.PostFormValue("shared_vms")
 	onDemandRaw := r.PostFormValue("on_demand")
 	restrictionDisabledRaw := r.PostFormValue("disable_restriction")
 	printableRaw := r.PostFormValue("printable")
@@ -349,6 +361,13 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 		restrictedBindWrapper = wrapperspb.Bool(restrictedBind)
 	}
 
+	sharedVms, err := util.GenericUnmarshal[[]*scheduledeventpb.SharedVirtualMachine](sharedVmsRaw, "shared_vms_raw")
+	if err != nil {
+		glog.Errorf("error updating scheduled event: failed to unmarshal shared vms")
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error updating scheduled event")
+		return
+	}
+
 	_, err = s.internalScheduledEventServer.UpdateScheduledEvent(r.Context(), &scheduledeventpb.UpdateScheduledEventRequest{
 		Id:             id,
 		Name:           name,
@@ -362,6 +381,7 @@ func (s ScheduledEventServer) UpdateFunc(w http.ResponseWriter, r *http.Request)
 		AccessCode:     accessCode,
 		ScenariosRaw:   scenariosRaw,
 		CoursesRaw:     coursesRaw,
+		SharedVms:      &scheduledeventpb.SharedVirtualMachineWrapper{Value: sharedVms},
 	})
 
 	if err != nil {

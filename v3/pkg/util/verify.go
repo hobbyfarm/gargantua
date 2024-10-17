@@ -82,3 +82,24 @@ func VerifyTaskContent(vm_tasks []hfv1.VirtualMachineTasks, request proto.Messag
 	}
 	return nil
 }
+
+func VerifySharedVirtualMachineContent(virtual_machines []hfv1.SharedVirtualMachine, request proto.Message) error {
+	//Verify that name, description and command are not empty
+	for _, virtual_machine := range virtual_machines {
+		if virtual_machine.Name == "" {
+			glog.Errorf("error: Name (of virtual_machines) is not specified")
+			return hferrors.GrpcError(codes.InvalidArgument, "name for virtual_machines property is not specified", request)
+		}
+
+		if virtual_machine.Environment == "" {
+			glog.Errorf("error: Environment (of virtual_machine %s) is not specified", virtual_machine.Name)
+			return hferrors.GrpcError(codes.InvalidArgument, "name for virtual_machines property is not specified for "+virtual_machine.Name, request)
+		}
+
+		if virtual_machine.VMTemplate == "" {
+			glog.Errorf("error VMTemplate (of virtual_machine %s) is not specified", virtual_machine.Name)
+			return hferrors.GrpcError(codes.InvalidArgument, "name for virtual_machines property is not specified for "+virtual_machine.Name, request)
+		}
+	}
+	return nil
+}
