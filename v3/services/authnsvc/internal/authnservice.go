@@ -356,9 +356,15 @@ func (a AuthServer) UpdateSettings(user *userpb.User, newSettings map[string]str
 		return fmt.Errorf("bad parameters passed, %s", user.GetId())
 	}
 
+	settings := user.Settings
+
+	for i, setting := range newSettings {
+		settings[i] = setting
+	}
+
 	user = &userpb.User{
 		Id:       user.GetId(),
-		Settings: newSettings,
+		Settings: settings,
 	}
 
 	_, err := a.userClient.UpdateUser(ctx, user)
