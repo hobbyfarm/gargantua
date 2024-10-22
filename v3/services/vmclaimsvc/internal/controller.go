@@ -263,14 +263,15 @@ func (v *VMClaimController) submitVirtualMachines(vmc *vmclaimpb.VMClaim) (err e
 		environment := environmentMap[vmName].Environment
 		dbc := environmentMap[vmName].DynamicBindConfiguration
 		vm := &vmpb.CreateVMRequest{
-			Id:           genName,
-			VmTemplateId: vmDetails.Template,
-			Protocol:     "ssh",
-			SecretName:   "",
-			VmClaimId:    vmc.GetId(),
-			VmClaimUid:   vmc.GetUid(),
-			User:         vmc.GetUserId(),
-			Provision:    true,
+			Id:            genName,
+			EnvironmentId: environment.Id,
+			VmTemplateId:  vmDetails.Template,
+			Protocol:      "ssh",
+			SecretName:    "",
+			VmClaimId:     vmc.GetId(),
+			VmClaimUid:    vmc.GetUid(),
+			User:          vmc.GetUserId(),
+			Provision:     true,
 			Labels: map[string]string{
 				"dynamic":                       "true",
 				"vmc":                           vmc.GetId(),

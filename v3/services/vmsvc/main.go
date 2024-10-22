@@ -13,6 +13,7 @@ import (
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
 	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
+	environmentpb "github.com/hobbyfarm/gargantua/v3/protos/environment"
 	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
 	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
 )
@@ -28,7 +29,7 @@ func init() {
 func main() {
 	stopCh := signals.SetupSignalHandler()
 
-	cfg, hfClient, _ := microservices.BuildClusterConfig(serviceConfig)
+	cfg, hfClient, kubeClient := microservices.BuildClusterConfig(serviceConfig)
 
 	namespace := util.GetReleaseNamespace()
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
@@ -39,6 +40,7 @@ func main() {
 		microservices.AuthN,
 		microservices.AuthR,
 		microservices.VMTemplate,
+		microservices.Environment,
 	}
 	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
 	for _, conn := range connections {
@@ -47,10 +49,11 @@ func main() {
 	authnClient := authnpb.NewAuthNClient(connections[microservices.AuthN])
 	authrClient := authrpb.NewAuthRClient(connections[microservices.AuthR])
 	vmTemplateClient := vmtemplatepb.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
+	envClient := environmentpb.NewEnvironmentSvcClient(connections[microservices.Environment])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
-	vs := vmservice.NewGrpcVMServer(hfClient, hfInformerFactory)
+	vs := vmservice.NewGrpcVMServer(hfClient, hfInformerFactory, kubeClient, envClient, vmTemplateClient)
 	vmpb.RegisterVMSvcServer(gs, vs)
 
 	var wg sync.WaitGroup

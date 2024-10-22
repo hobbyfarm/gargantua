@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 const (
 	VMSvc_CreateVM_FullMethodName           = "/vm.VMSvc/CreateVM"
 	VMSvc_GetVM_FullMethodName              = "/vm.VMSvc/GetVM"
+	VMSvc_GetVMConfig_FullMethodName        = "/vm.VMSvc/GetVMConfig"
 	VMSvc_UpdateVM_FullMethodName           = "/vm.VMSvc/UpdateVM"
 	VMSvc_UpdateVMStatus_FullMethodName     = "/vm.VMSvc/UpdateVMStatus"
 	VMSvc_DeleteVM_FullMethodName           = "/vm.VMSvc/DeleteVM"
@@ -36,6 +37,7 @@ const (
 type VMSvcClient interface {
 	CreateVM(ctx context.Context, in *CreateVMRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetVM(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*VM, error)
+	GetVMConfig(ctx context.Context, in *GetVMConfigRequest, opts ...grpc.CallOption) (*VMConfig, error)
 	UpdateVM(ctx context.Context, in *UpdateVMRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	UpdateVMStatus(ctx context.Context, in *UpdateVMStatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteVM(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -63,6 +65,15 @@ func (c *vMSvcClient) CreateVM(ctx context.Context, in *CreateVMRequest, opts ..
 func (c *vMSvcClient) GetVM(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*VM, error) {
 	out := new(VM)
 	err := c.cc.Invoke(ctx, VMSvc_GetVM_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *vMSvcClient) GetVMConfig(ctx context.Context, in *GetVMConfigRequest, opts ...grpc.CallOption) (*VMConfig, error) {
+	out := new(VMConfig)
+	err := c.cc.Invoke(ctx, VMSvc_GetVMConfig_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +131,7 @@ func (c *vMSvcClient) ListVM(ctx context.Context, in *general.ListOptions, opts 
 type VMSvcServer interface {
 	CreateVM(context.Context, *CreateVMRequest) (*emptypb.Empty, error)
 	GetVM(context.Context, *general.GetRequest) (*VM, error)
+	GetVMConfig(context.Context, *GetVMConfigRequest) (*VMConfig, error)
 	UpdateVM(context.Context, *UpdateVMRequest) (*emptypb.Empty, error)
 	UpdateVMStatus(context.Context, *UpdateVMStatusRequest) (*emptypb.Empty, error)
 	DeleteVM(context.Context, *general.ResourceId) (*emptypb.Empty, error)
@@ -137,6 +149,9 @@ func (UnimplementedVMSvcServer) CreateVM(context.Context, *CreateVMRequest) (*em
 }
 func (UnimplementedVMSvcServer) GetVM(context.Context, *general.GetRequest) (*VM, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVM not implemented")
+}
+func (UnimplementedVMSvcServer) GetVMConfig(context.Context, *GetVMConfigRequest) (*VMConfig, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVMConfig not implemented")
 }
 func (UnimplementedVMSvcServer) UpdateVM(context.Context, *UpdateVMRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateVM not implemented")
@@ -198,6 +213,24 @@ func _VMSvc_GetVM_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(VMSvcServer).GetVM(ctx, req.(*general.GetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _VMSvc_GetVMConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetVMConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VMSvcServer).GetVMConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: VMSvc_GetVMConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VMSvcServer).GetVMConfig(ctx, req.(*GetVMConfigRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -306,6 +339,10 @@ var VMSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetVM",
 			Handler:    _VMSvc_GetVM_Handler,
+		},
+		{
+			MethodName: "GetVMConfig",
+			Handler:    _VMSvc_GetVMConfig_Handler,
 		},
 		{
 			MethodName: "UpdateVM",
