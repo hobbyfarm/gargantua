@@ -46,6 +46,10 @@ func (c *GrpcCourseServer) CreateCourse(ctx context.Context, req *coursepb.Creat
 	pauseDuration := req.GetPauseDuration()
 	pausable := req.GetPausable()
 	keepVm := req.GetKeepVm()
+	isLearnpath := req.GetIsLearnpath()
+	isLearnPathStrict := req.GetIsLearnpathStrict()
+	inCatalog := req.GetInCatalog()
+	headerImagePath := req.GetHeaderImagePath()
 
 	requiredStringParams := map[string]string{
 		"name":        name,
@@ -70,6 +74,10 @@ func (c *GrpcCourseServer) CreateCourse(ctx context.Context, req *coursepb.Creat
 			PauseDuration:     pauseDuration,
 			Pauseable:         pausable,
 			KeepVM:            keepVm,
+			IsLearnpath:       isLearnpath,
+			IsLearnPathStrict: isLearnPathStrict,
+			DisplayInCatalog:  inCatalog,
+			HeaderImagePath:   headerImagePath,
 		},
 	}
 
@@ -129,6 +137,10 @@ func (c *GrpcCourseServer) GetCourse(ctx context.Context, req *generalpb.GetRequ
 		PauseDuration:     course.Spec.PauseDuration,
 		Pausable:          course.Spec.Pauseable,
 		KeepVm:            course.Spec.KeepVM,
+		IsLearnpath:       course.Spec.IsLearnpath,
+		IsLearnpathStrict: course.Spec.IsLearnPathStrict,
+		InCatalog:         course.Spec.DisplayInCatalog,
+		HeaderImagePath:   course.Spec.HeaderImagePath,
 	}, nil
 }
 
@@ -146,6 +158,10 @@ func (s *GrpcCourseServer) UpdateCourse(ctx context.Context, req *coursepb.Updat
 	pauseDuration := req.GetPauseDuration()
 	pausable := req.GetPausable()
 	keepVm := req.GetKeepVm()
+	isLearnpath := req.GetIsLearnpath()
+	isLearnPathStrict := req.GetIsLearnpathStrict()
+	inCatalog := req.GetInCatalog()
+	headerImagePath := req.GetHeaderImagePath()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		course, err := s.courseClient.Get(ctx, id, metav1.GetOptions{})
@@ -176,6 +192,23 @@ func (s *GrpcCourseServer) UpdateCourse(ctx context.Context, req *coursepb.Updat
 		if keepVm != nil {
 			course.Spec.KeepVM = keepVm.GetValue()
 		}
+
+		if isLearnpath != nil {
+			course.Spec.IsLearnpath = isLearnpath.GetValue()
+		}
+
+		if isLearnPathStrict != nil {
+			course.Spec.IsLearnPathStrict = isLearnPathStrict.GetValue()
+		}
+
+		if inCatalog != nil {
+			course.Spec.DisplayInCatalog = inCatalog.GetValue()
+		}
+
+		if headerImagePath != nil {
+			course.Spec.HeaderImagePath = headerImagePath.GetValue()
+		}
+
 		if rawScenarios != "" {
 			scenarios, err := util.GenericUnmarshal[[]string](rawScenarios, "rawScenarios")
 			if err != nil {
@@ -260,6 +293,10 @@ func (s *GrpcCourseServer) ListCourse(ctx context.Context, listOptions *generalp
 			PauseDuration:     course.Spec.PauseDuration,
 			Pausable:          course.Spec.Pauseable,
 			KeepVm:            course.Spec.KeepVM,
+			IsLearnpath:       course.Spec.IsLearnpath,
+			IsLearnpathStrict: course.Spec.IsLearnPathStrict,
+			InCatalog:         course.Spec.DisplayInCatalog,
+			HeaderImagePath:   course.Spec.HeaderImagePath,
 		})
 	}
 

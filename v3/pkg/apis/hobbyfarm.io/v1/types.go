@@ -248,6 +248,10 @@ type CourseSpec struct {
 	PauseDuration     string              `json:"pause_duration"`
 	Pauseable         bool                `json:"pauseable"`
 	KeepVM            bool                `json:"keep_vm"`
+	IsLearnpath       bool                `json:"is_learnpath"`
+	IsLearnPathStrict bool                `json:"is_learnpath_strict"`
+	DisplayInCatalog  bool                `json:"in_catalog"`
+	HeaderImagePath   string              `json:"header_image_path"`
 }
 
 // +genclient
@@ -269,15 +273,15 @@ type ScenarioList struct {
 }
 
 type ScenarioSpec struct {
-	Name              string              `json:"name"`
-	Description       string              `json:"description"`
-	Steps             []ScenarioStep      `json:"steps"`
-	Categories        []string            `json:"categories"`
-	Tags              []string            `json:"tags"`
-	VirtualMachines   []map[string]string `json:"virtualmachines"`
-	KeepAliveDuration string              `json:"keepalive_duration"`
-	PauseDuration     string              `json:"pause_duration"`
-	Pauseable         bool                `json:"pauseable"`
+	Name              string                `json:"name"`
+	Description       string                `json:"description"`
+	Steps             []ScenarioStep        `json:"steps"`
+	Categories        []string              `json:"categories"`
+	Tags              []string              `json:"tags"`
+	VirtualMachines   []map[string]string   `json:"virtualmachines"`
+	KeepAliveDuration string                `json:"keepalive_duration"`
+	PauseDuration     string                `json:"pause_duration"`
+	Pauseable         bool                  `json:"pauseable"`
 	Tasks             []VirtualMachineTasks `json:"vm_tasks"`
 }
 
@@ -296,7 +300,7 @@ type Task struct {
 	Command             string `json:"command"`
 	ExpectedOutputValue string `json:"expected_output_value"`
 	ExpectedReturnCode  int    `json:"expected_return_code"`
-	ReturnType 			string `json:"return_type"`
+	ReturnType          string `json:"return_type"`
 }
 
 // +genclient
