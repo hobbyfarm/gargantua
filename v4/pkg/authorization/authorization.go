@@ -4,10 +4,10 @@ import (
 	"context"
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
 	"github.com/hobbyfarm/mink/pkg/strategy"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/storage"
+	"regexp"
 )
 
 var _ authorizer.Authorizer = (*Authorizer)(nil)
@@ -15,20 +15,26 @@ var _ authorizer.Authorizer = (*Authorizer)(nil)
 type Authorizer struct {
 	roleBindingLister strategy.Lister
 	roleGetter        strategy.Getter
-	unprotectedPaths  sets.Set[string]
+	unprotectedPaths  []string
 }
 
 func NewAuthorizer(roleBindingLister strategy.Lister, roleGetter strategy.Getter, unprotectedPaths ...string) Authorizer {
 	return Authorizer{
 		roleBindingLister: roleBindingLister,
 		roleGetter:        roleGetter,
-		unprotectedPaths:  sets.New(unprotectedPaths...),
+		unprotectedPaths:  unprotectedPaths,
 	}
 }
 
 func (az Authorizer) Authorize(ctx context.Context, a authorizer.Attributes) (authorized authorizer.Decision, reason string, err error) {
-	// is this an unprotected path?
-	if az.unprotectedPaths.Has(a.GetPath()) {
+	// regex match against unprotected paths
+	for _, v := range az.unprotectedPaths {
+		if ok, err := regexp.MatchString(v, a.GetPath()); ok && err == nil {
+			return authorizer.DecisionAllow, "", nil
+		}
+	}
+
+	if az.CheckSuperuser(a.GetUser()) {
 		return authorizer.DecisionAllow, "", nil
 	}
 
@@ -72,4 +78,14 @@ func (az Authorizer) GetBindings(ctx context.Context, u user.Info) (result []v4a
 	}
 
 	return
+}
+
+func (az Authorizer) CheckSuperuser(u user.Info) bool {
+	for _, group := range u.GetGroups() {
+		if group == user.SystemPrivilegedGroup {
+			return true
+		}
+	}
+
+	return false
 }

@@ -64,7 +64,7 @@ type CourseSpec struct {
 	// A user may un-pause at any time.
 	//
 	// The format of this field is an integer followed by an 'h' or 'm' designation for hours or minutes,
-	// respectively. MUST be parseabl by time.ParseDuration()
+	// respectively. MUST be parseable by time.ParseDuration()
 	// Examples include "15m", "5h", "48h", or "120m"
 	PauseDuration string `json:"pauseDuration,omitempty"`
 

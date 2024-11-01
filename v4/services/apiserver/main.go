@@ -19,6 +19,7 @@ var (
 	namespace      string
 )
 
+// TODO - These flags have been converted to Viper using v4/config, check there and replace here as necessary
 func init() {
 	rootCmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig file, uses in-cluster if not set")
 	rootCmd.Flags().StringVar(&kubecontext, "context", "default", "kube context")

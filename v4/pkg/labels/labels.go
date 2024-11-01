@@ -6,3 +6,9 @@ const (
 	ScheduledEventCompleteLabel = "hobbyfarm.io/scheduled-event-complete"
 	UsernameLabel               = "hobbyfarm.io/username"
 )
+
+// auth-related
+
+const (
+	LdapPrincipalLabel = "auth.hobbyfarm.io/ldap-principal"
+)

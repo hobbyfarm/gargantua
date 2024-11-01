@@ -1,7 +1,8 @@
 package server
 
 import (
-	"github.com/hobbyfarm/gargantua/v4/pkg/authentication/providers/basic"
+	"github.com/hobbyfarm/gargantua/v4/pkg/authentication"
+	"github.com/hobbyfarm/gargantua/v4/pkg/authentication/token"
 	"github.com/hobbyfarm/gargantua/v4/pkg/authorization"
 	"github.com/hobbyfarm/gargantua/v4/pkg/openapi/hobbyfarm_io"
 	"github.com/hobbyfarm/gargantua/v4/pkg/scheme"
@@ -10,21 +11,19 @@ import (
 	"github.com/hobbyfarm/mink/pkg/serializer"
 	"github.com/hobbyfarm/mink/pkg/server"
 	"github.com/hobbyfarm/mink/pkg/strategy"
+	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apiserver/pkg/registry/rest"
 	apiserver "k8s.io/apiserver/pkg/server"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-type dispatcher struct {
-}
 
 // NewKubernetesServer creates a new hobbyfarm-api server backed by a remote Kubernetes cluster.
 // client is a k8s client with watch capabilities.
 // forceStorageNamespace is the namespace in the remote k8s cluster in which all resources are stored.
 // It is necessary to pass a namespace so that the server can force objects into the proper namespace
 // and not leak resource upon querying.
-func NewKubernetesServer(client client.WithWatch, forceStorageNamespace string) (*server.Server, error) {
-	v4alpha1Storage := kubernetes.V4Alpha1Storages(client, forceStorageNamespace)
+func NewKubernetesServer(kclient client.WithWatch, forceStorageNamespace string) (*server.Server, error) {
+	v4alpha1Storage := kubernetes.V4Alpha1Storages(kclient, forceStorageNamespace)
 
 	v4alpha1ApiGroups, err := V4Alpha1APIGroups(v4alpha1Storage)
 	if err != nil {
@@ -36,11 +35,10 @@ func NewKubernetesServer(client client.WithWatch, forceStorageNamespace string) 
 		return nil, err
 	}
 
-	basicAuthProvider := basic.NewBasicAuthProvider(v4alpha1Storage["users"],
-		v4alpha1Storage["secrets"], v4alpha1Storage["settings"])
+	authenticator := token.NewGenericGeneratorValidator(kclient)
 
 	authorizer := authorization.NewAuthorizer(v4alpha1Storage["rolebindings"],
-		v4alpha1Storage["roles"], "/login")
+		v4alpha1Storage["roles"], "/auth/.*/login")
 
 	if err != nil {
 		return nil, err
@@ -60,7 +58,7 @@ func NewKubernetesServer(client client.WithWatch, forceStorageNamespace string) 
 		RemoteKubeConfigFileOptional: true,
 		IgnoreStartFailure:           false,
 		Middleware:                   nil,
-		Authenticator:                basicAuthProvider,
+		Authenticator:                authenticator,
 		Authorization:                authorizer,
 		OpenAPIConfig:                hobbyfarm_io.GetOpenAPIDefinitions,
 		APIGroups:                    storage,
@@ -71,8 +69,21 @@ func NewKubernetesServer(client client.WithWatch, forceStorageNamespace string) 
 	if err != nil {
 		return nil, err
 	}
-	
-	svr.GenericAPIServer.Handler.NonGoRestfulMux.Handle("/login", basicAuthProvider.HandleLogin())
+
+	// TODO - A cache can be setup here by passing options to client.Options
+	// May want to investigate that if auth becomes bound by the API
+	authClient, err := client.New(svr.GenericAPIServer.LoopbackClientConfig, client.Options{
+		Scheme: scheme.Scheme,
+	})
+	if err != nil {
+		return nil, err
+	}
+	authentication.RegisterHandlers(authClient, svr.GenericAPIServer.Handler.NonGoRestfulMux)
+
+	svr.GenericAPIServer.Version = &version.Info{
+		Major: "4",
+		Minor: "0.0-dev",
+	}
 
 	return svr, nil
 }

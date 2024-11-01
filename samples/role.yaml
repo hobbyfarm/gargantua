@@ -1,0 +1,12 @@
+apiVersion: hobbyfarm.io/v4alpha1
+kind: Role
+metadata:
+  name: anonymous-getall
+  namespace: hobbyfarm
+rules:
+  - apiGroups:
+      - '*'
+    resources:
+      - '*'
+    verbs:
+      - '*'
