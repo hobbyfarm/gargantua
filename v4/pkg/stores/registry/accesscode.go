@@ -13,9 +13,13 @@ import (
 type accessCodeValidator struct {
 }
 
+func NewAccessCodeStatusStorage(scheme *runtime.Scheme, storage strategy.StatusUpdater) rest.Storage {
+	return stores.NewStatus(scheme, storage)
+}
+
 func NewAccessCodeStorage(accessCodeStrategy strategy.CompleteStrategy) (rest.Storage, error) {
 	acv := &accessCodeValidator{}
-	
+
 	return stores.NewBuilder(accessCodeStrategy.Scheme(), &v4alpha1.AccessCode{}).
 		WithCompleteCRUD(accessCodeStrategy).
 		WithValidateCreate(acv).

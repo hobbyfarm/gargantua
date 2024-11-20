@@ -13,6 +13,10 @@ import (
 type machineClaimValidator struct {
 }
 
+func NewMachineClaimStatusStorage(scheme *runtime.Scheme, storage strategy.StatusUpdater) rest.Storage {
+	return stores.NewStatus(scheme, storage)
+}
+
 func NewMachineClaimStorage(machineClaimStrategy strategy.CompleteStrategy) (rest.Storage, error) {
 	mcv := &machineClaimValidator{}
 

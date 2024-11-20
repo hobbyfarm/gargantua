@@ -14,6 +14,10 @@ import (
 
 type scenarioStepValidator struct{}
 
+func NewScenarioStepStatusStorage(scheme *runtime.Scheme, storage strategy.StatusUpdater) rest.Storage {
+	return stores.NewStatus(scheme, storage)
+}
+
 func NewScenarioStepStorage(scenarioStepStrategy strategy.CompleteStrategy) (rest.Storage, error) {
 	var ssv = scenarioStepValidator{}
 

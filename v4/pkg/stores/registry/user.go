@@ -13,6 +13,10 @@ import (
 type userValidator struct {
 }
 
+func NewUserStatusStorage(scheme *runtime.Scheme, storage strategy.StatusUpdater) rest.Storage {
+	return stores.NewStatus(scheme, storage)
+}
+
 func NewUserStorage(userStrategy strategy.CompleteStrategy) (rest.Storage, error) {
 	var uv = userValidator{}
 

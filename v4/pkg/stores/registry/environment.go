@@ -19,6 +19,10 @@ type environmentValidator struct {
 	scheduledEventLister strategy.Lister
 }
 
+func NewEnvironmentStatusStorage(scheme *runtime.Scheme, updater strategy.StatusUpdater) rest.Storage {
+	return stores.NewStatus(scheme, updater)
+}
+
 func NewEnvironmentStorage(
 	environmentStrategy strategy.CompleteStrategy,
 	providerGetter strategy.Getter,

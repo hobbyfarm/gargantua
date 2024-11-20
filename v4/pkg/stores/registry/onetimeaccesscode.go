@@ -12,6 +12,10 @@ import (
 
 type otacValidator struct{}
 
+func NewOneTimeAccessCodeStatusStorage(scheme *runtime.Scheme, storage strategy.StatusUpdater) rest.Storage {
+	return stores.NewStatus(scheme, storage)
+}
+
 func NewOneTimeAccessCodeStorage(otacStrategy strategy.CompleteStrategy) (rest.Storage, error) {
 	var ov = otacValidator{}
 
