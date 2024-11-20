@@ -22,5 +22,6 @@ kubeconfig
 ko
 
 # local certs
-apiserver.local.config
+apiserver.local.config/
 hf-apiserver/
+samples/
