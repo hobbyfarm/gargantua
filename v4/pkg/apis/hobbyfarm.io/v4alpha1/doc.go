@@ -5,4 +5,4 @@
 package v4alpha1
 
 const Version = "v4alpha1"
-const Group = "hobbyfarm.io"
+const APIGroup = "hobbyfarm.io"

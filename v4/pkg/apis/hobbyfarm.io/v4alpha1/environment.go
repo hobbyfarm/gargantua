@@ -89,7 +89,7 @@ type EnvironmentSpec struct {
 type EnvironmentStatus struct {
 	// Conditions is an array of generic conditions that may crop up on this Environment.
 	// There are NO guarantees made about the conditions that exist in this slice.
-	Conditions []genericcondition2.GenericCondition
+	Conditions []genericcondition2.GenericCondition `json:"conditions,omitempty"`
 }
 
 func (c Environment) NamespaceScoped() bool {

@@ -7,13 +7,17 @@ import (
 )
 
 var (
-	SchemeGroupVersion = schema.GroupVersion{Group: Group, Version: Version}
+	SchemeGroupVersion = schema.GroupVersion{Group: APIGroup, Version: Version}
 	SchemeBuilder      = runtime.NewSchemeBuilder(addKnownTypes)
 	AddToScheme        = SchemeBuilder.AddToScheme
 )
 
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
+		&Group{},
+		&GroupList{},
+		&LdapConfig{},
+		&LdapConfigList{},
 		&Provider{},
 		&ProviderList{},
 		&MachineTemplate{},

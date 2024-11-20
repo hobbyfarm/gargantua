@@ -24,12 +24,12 @@ type UserList struct {
 }
 
 type UserSpec struct {
-	// Principals holds a slice of all the identifiers for a user from various
+	// Principals holds a map of all the identifiers for a user from various
 	// authentication sources. For example, a local auth value would be of the form
-	// local://[user obj name], e.g. local://u-uijkks349d
-	// Other auth sources will have their own forms. LDAP may have a form such as
-	// ldap://CN=john.doe,OU=Users,DC=example,DC=com or something else like that.
-	Principals []string `json:"principals"`
+	// key = local, val = local://u-jdfk4
+	// or for ldap,
+	// key = ldap, val = ldap://dc01.it.example.org/cn=user01,ou=users,dc=it,dc=example,dc=org
+	Principals map[string]string `json:"principals"`
 
 	// DisplayName holds the display name of the user for use in e.g. UIs.
 	// In the case of local auth, this field is likely set by the creator of the
@@ -61,6 +61,9 @@ type LocalAuthDetails struct {
 type UserStatus struct {
 	// LastLoginTimestamp is the timestamp of when the user last logged in.
 	LastLoginTimestamp metav1.Time `json:"lastLoginTimestamp"`
+
+	// GroupMemberships contains a list of all HF groups of which this user is a member.
+	GroupMemberships []string `json:"groupMemberships"`
 }
 
 func (c User) NamespaceScoped() bool {

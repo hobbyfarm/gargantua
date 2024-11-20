@@ -1,14 +1,36 @@
 package v4alpha1
 
 import (
+	"github.com/hobbyfarm/gargantua/v4/pkg/genericcondition"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	ConditionBindSuccessful = "BindSuccessful"
+)
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// LdapConfig stores the configuration for LDAP authentication to a specific LDAP instance.
 type LdapConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	LdapHost string `json:"ldapHost"`
+	Spec   LdapConfigSpec   `json:"spec"`
+	Status LdapConfigStatus `json:"status,omitempty"`
+}
+
+type LdapSearchScope string
+
+const (
+	LdapSearchScopeBaseObject  LdapSearchScope = "BaseObject"
+	LdapSearchScopeSingleLevel LdapSearchScope = "SingleLevel"
+	LdapSearchScopeSubtree     LdapSearchScope = "Subtree"
+)
+
+type LdapConfigSpec struct {
+	ServerDisplayName string `json:"serverDisplayName"`
+	LdapHost          string `json:"ldapHost"`
 
 	BindUsername       string `json:"bindUsername"`
 	BindPasswordSecret string `json:"bindPasswordSecret"`
@@ -23,18 +45,16 @@ type LdapConfig struct {
 
 	DisplayNameField string `json:"displayNameField"`
 
-	GroupObjectClas string `json:"groupObjectClass"`
+	GroupObjectClass string `json:"groupObjectClass"`
 
 	GroupLookupField string `json:"groupLookupField"`
 }
 
-type LdapSearchScope string
+type LdapConfigStatus struct {
+	Conditions map[string]genericcondition.GenericCondition `json:"conditions"`
+}
 
-const (
-	LdapSearchScopeBaseObject  LdapSearchScope = "BaseObject"
-	LdapSearchScopeSingleLevel LdapSearchScope = "SingleLevel"
-	LdapSearchScopeSubtree     LdapSearchScope = "Subtree"
-)
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type LdapConfigList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -54,4 +74,8 @@ func (l LdapSearchScope) ConvertToLdapScope() int {
 	}
 
 	return 1
+}
+
+func (lc LdapConfig) NamespaceScoped() bool {
+	return false
 }
