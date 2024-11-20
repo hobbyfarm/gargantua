@@ -32,6 +32,8 @@ func V4Alpha1Storages(client client.WithWatch, namespace string) map[string]stra
 	serviceAccountRemote := remote.NewNamespaceScopedRemote(&v4alpha1.ServiceAccount{}, client, namespace)
 	roleRemote := remote.NewNamespaceScopedRemote(&v4alpha1.Role{}, client, namespace)
 	roleBindingRemote := remote.NewNamespaceScopedRemote(&v4alpha1.RoleBinding{}, client, namespace)
+	ldapConfigRemote := remote.NewNamespaceScopedRemote(&v4alpha1.LdapConfig{}, client, namespace)
+	groupRemote := remote.NewNamespaceScopedRemote(&v4alpha1.Group{}, client, namespace)
 
 	configMapTranslator := translators.ConfigMapTranslator{Namespace: namespace}
 	configMapRemote := translation.NewSimpleTranslationStrategy(
@@ -67,5 +69,7 @@ func V4Alpha1Storages(client client.WithWatch, namespace string) map[string]stra
 		"secrets":            secretRemote,
 		"roles":              roleRemote,
 		"rolebindings":       roleBindingRemote,
+		"ldapconfigs":        ldapConfigRemote,
+		"groups":             groupRemote,
 	}
 }
