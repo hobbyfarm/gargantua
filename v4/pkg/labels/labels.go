@@ -10,5 +10,7 @@ const (
 // auth-related
 
 const (
-	LdapPrincipalLabel = "auth.hobbyfarm.io/ldap-principal"
+	LdapPrincipalKey  = "auth.hobbyfarm.io/ldap-principal"
+	LocalPrincipalKey = "auth.hobbyfarm.io/local-principal"
+	LocalUsernameKey  = "auth.hobbyfarm.io/local-username"
 )
