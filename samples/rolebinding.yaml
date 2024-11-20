@@ -1,8 +1,0 @@
-apiVersion: hobbyfarm.io/v4alpha1
-kind: RoleBinding
-metadata:
-  name: anonymous
-  namespace: hobbyfarm
-role: anonymous-getall
-users:
-  - 'system:anonymous'
