@@ -20,3 +20,7 @@ artifacts/testing
 
 kubeconfig
 ko
+
+# local certs
+apiserver.local.config
+hf-apiserver/
