@@ -3,6 +3,7 @@ package authorization
 import (
 	"context"
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
+	user2 "github.com/hobbyfarm/gargantua/v4/pkg/authentication/user"
 	"github.com/hobbyfarm/mink/pkg/strategy"
 	"k8s.io/apiserver/pkg/authentication/user"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
@@ -83,6 +84,10 @@ func (az Authorizer) GetBindings(ctx context.Context, u user.Info) (result []v4a
 func (az Authorizer) CheckSuperuser(u user.Info) bool {
 	for _, group := range u.GetGroups() {
 		if group == user.SystemPrivilegedGroup {
+			return true
+		}
+
+		if group == user2.SuperuserGroup {
 			return true
 		}
 	}
