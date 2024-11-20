@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 	"log"
+	"log/slog"
+	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -17,6 +19,7 @@ var (
 	kubecontext    string
 	skipcrdinstall bool
 	namespace      string
+	caCert         string
 )
 
 // TODO - These flags have been converted to Viper using v4/config, check there and replace here as necessary
@@ -25,6 +28,7 @@ func init() {
 	rootCmd.Flags().StringVar(&kubecontext, "context", "default", "kube context")
 	rootCmd.Flags().BoolVar(&skipcrdinstall, "skip-crd-installation", false, "skip installation of CRDs into remote cluster")
 	rootCmd.Flags().StringVar(&namespace, "namespace", "hobbyfarm", "namespace in which to store objects in remote cluster")
+	rootCmd.Flags().StringVar(&caCert, "ca-certificate", "", "path to CA certificate")
 }
 
 var rootCmd = &cobra.Command{
@@ -46,6 +50,9 @@ func app(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("could not build client: %v", err.Error())
 	}
 
+	th := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})
+	slog.SetDefault(slog.New(th))
+
 	if !skipcrdinstall {
 		crds := crd.GenerateCRDs()
 		if err := crder.InstallUpdateCRDs(cfg, crds...); err != nil {
@@ -53,7 +60,13 @@ func app(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	server, err := server2.NewKubernetesServer(kClient, namespace)
+	kcc := server2.KubernetesServerConfig{
+		Client:                kClient,
+		ForceStorageNamespace: namespace,
+		CACertBundle:          caCert,
+	}
+
+	server, err := server2.NewKubernetesServer(cmd.Context(), &kcc)
 	if err != nil {
 		return fmt.Errorf("could not build server: %v", err.Error())
 	}
