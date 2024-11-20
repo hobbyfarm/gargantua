@@ -7,8 +7,10 @@ import (
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
 	"github.com/hobbyfarm/gargantua/v4/pkg/authentication/user"
 	"github.com/hobbyfarm/gargantua/v4/pkg/config"
+	"github.com/hobbyfarm/gargantua/v4/pkg/names"
 	"github.com/spf13/viper"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"log/slog"
 	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
@@ -17,14 +19,22 @@ import (
 
 const defaultSigningSecret = "WLJLv1PXjqExQzjRd8OEMT8x3P4MK6LN"
 
+var defaultExpirationTime = time.Now().Add(12 * time.Hour)
+
+type HasDisplayName interface {
+	DisplayName() string
+}
+
 type GenericGeneratorValidator struct {
 	signingSecret string
+	kclient       client.Client
 }
 
 type Claims struct {
 	jwt.StandardClaims
-	Principal   string `json:"principal"`
-	DisplayName string `json:"displayName"`
+	Groups      []string `json:"groups"`
+	Principal   string   `json:"principal"`
+	DisplayName string   `json:"displayName"`
 }
 
 func NewGenericGeneratorValidator(kclient client.Client) GenericGeneratorValidator {
@@ -35,20 +45,22 @@ func NewGenericGeneratorValidator(kclient client.Client) GenericGeneratorValidat
 
 	return GenericGeneratorValidator{
 		signingSecret: signingSecret,
+		kclient:       kclient,
 	}
 }
 
-func (gv GenericGeneratorValidator) GenerateToken(user *user.User, expiration time.Time) (string, error) {
+func (gv GenericGeneratorValidator) GenerateToken(user *user.User, principal string) (string, error) {
 	claims := Claims{
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: expiration.Unix(),
+			ExpiresAt: gv.getExpirationTime().Unix(),
 			IssuedAt:  time.Now().Unix(),
 			Issuer:    "hobbyfarm",
 			NotBefore: time.Now().Unix(),
 			Subject:   user.Name,
 		},
-		Principal:   "local://" + user.Name,
-		DisplayName: user.Name,
+		Principal:   principal,
+		DisplayName: user.DisplayName,
+		Groups:      user.Groups,
 	}
 
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -93,6 +105,30 @@ func (gv GenericGeneratorValidator) AuthenticateRequest(req *http.Request) (*aut
 	} else {
 		return nil, false, fmt.Errorf("invalid token")
 	}
+}
+
+func (gv GenericGeneratorValidator) getExpirationTime() *time.Time {
+	var timeout = defaultExpirationTime
+
+	set := &v4alpha1.Setting{}
+	if err := gv.kclient.Get(context.TODO(), client.ObjectKey{
+		Name: names.UserTokenExpirationSetting,
+	}, set); err != nil {
+		slog.Error("error looking up setting "+names.UserTokenExpirationSetting+", using "+
+			"default expiration time", "error", err.Error())
+		return &timeout
+	}
+
+	anySet, err := set.FromJSON(set.Value)
+	if err != nil {
+		slog.Error("error parsing "+names.UserTokenExpirationSetting+" from json, "+
+			"returning default expiration time", "error", err.Error())
+		return &timeout
+	}
+
+	intSet := anySet.(int)
+	timeout = time.Now().Add(time.Duration(intSet) * time.Second)
+	return &timeout
 }
 
 func FromAuthHeader(req *http.Request) (string, error) {

@@ -1,103 +1,94 @@
 package authentication
 
 import (
+	"context"
+	mux2 "github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
-	"github.com/hobbyfarm/gargantua/v4/pkg/authentication/providers"
+	"github.com/hobbyfarm/gargantua/v4/pkg/authentication/authenticators/token"
+	"github.com/hobbyfarm/gargantua/v4/pkg/authentication/group"
 	"github.com/hobbyfarm/gargantua/v4/pkg/authentication/providers/ldap"
 	"github.com/hobbyfarm/gargantua/v4/pkg/authentication/providers/local"
-	"github.com/hobbyfarm/gargantua/v4/pkg/authentication/token"
-	"github.com/hobbyfarm/gargantua/v4/pkg/statuswriter"
-	"github.com/hobbyfarm/mink/pkg/openapi"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/http"
+	"github.com/hobbyfarm/gargantua/v4/pkg/gvkr"
+	"github.com/hobbyfarm/gargantua/v4/pkg/scheme"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	kmux "k8s.io/apiserver/pkg/server/mux"
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"time"
 )
 
-type Server struct {
-	credentialedProviders map[string]providers.CredentialedProvider
-	callbackProviders     map[string]providers.CallbackProvider
-	kclient               client.Client
-	token.TokenGeneratorValidator
+type HasIndexers interface {
+	Indexers() map[string]client.IndexerFunc
 }
 
-func RegisterHandlers(kclient client.Client, mux openapi.CanHandle) {
+func SetupAuthentication(ctx context.Context, cfg *rest.Config, mux *kmux.PathRecorderMux) ([]cache.Cache, error) {
+	kclient, err := client.New(cfg, client.Options{
+		Scheme: scheme.Scheme,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	genericTokenGV := token.NewGenericGeneratorValidator(kclient)
 
-	basicProvider := local.NewProvider(kclient)
-	ldapProvider := ldap.NewProvider(kclient)
+	authRouter := mux2.NewRouter().PathPrefix("/auth/").Subrouter()
+	mux.HandlePrefix("/auth/", authRouter)
 
-	s := &Server{
-		credentialedProviders: map[string]providers.CredentialedProvider{
-			"local": basicProvider,
-			"ldap":  ldapProvider,
-		},
-		TokenGeneratorValidator: genericTokenGV,
-		kclient:                 kclient,
+	userCache, err := setupUserCache(ctx, cfg)
+	if err != nil {
+		return nil, err
 	}
 
-	s.RegisterAuthenticators(mux)
+	local.New(kclient, userCache, genericTokenGV, authRouter.PathPrefix("/local/").Subrouter())
+	ldap.New(kclient, userCache, genericTokenGV, authRouter.PathPrefix("/ldap/").Subrouter())
+
+	return []cache.Cache{userCache}, nil
 }
 
-func (s *Server) RegisterAuthenticators(mux openapi.CanHandle) {
-	for k, v := range s.credentialedProviders {
-		if clPv, ok := v.(providers.CredentialedProvider); ok {
-			mux.Handle("/auth/"+k+"/login", s.handleCredentialedLogin(clPv))
-		}
+func setupUserCache(ctx context.Context, cfg *rest.Config) (cache.Cache, error) {
+	userGroupCache, err := cache.New(cfg, cache.Options{
+		Scheme: scheme.Scheme,
+		Mapper: buildMapper(),
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	for k, v := range s.callbackProviders {
-		if cv, ok := v.(providers.CallbackProvider); ok {
-			mux.Handle("/auth"+k+"/callback", cv.HandleCallback())
-		}
+	indexers := []map[string]client.IndexerFunc{
+		ldap.Indexers(),
+		local.Indexers(),
 	}
-}
 
-func (s *Server) handleCredentialedLogin(handler providers.CredentialedProvider) http.HandlerFunc {
-	return func(writer http.ResponseWriter, req *http.Request) {
-		creds, err := providers.ParseCredentials(req)
-		if err != nil {
-			statuswriter.WriteError(errors.NewBadRequest("invalid credentials"), writer)
-			return
-		}
-
-		user, lErr := handler.HandleLogin(req.Context(), creds)
-		if lErr != nil {
-			statuswriter.WriteError(lErr, writer)
-			return
-		}
-
-		// get expiration
-		// if we get here, everything is good, user can be authenticated
-		// so, now we need to issue them a token
-		// how long should that token be valid for? Usually its 12 hours but let's check settings
-		set := &v4alpha1.Setting{}
-		err = s.kclient.Get(req.Context(), client.ObjectKey{Name: "user-token-expiration"}, set)
-
-		var timeout = time.Now().Add(12 * time.Hour)
-		if err == nil {
-			anySet, err := set.FromJSON(set.Value)
-			if err == nil {
-				// err would be non-nil if empty
-				intSet := anySet.(int)
-				timeout = time.Now().Add(time.Duration(intSet) * time.Hour)
+	for _, v := range indexers {
+		for k, vv := range v {
+			if err := userGroupCache.IndexField(ctx, &v4alpha1.User{}, k, vv); err != nil {
+				return nil, err
 			}
 		}
-
-		// gen token for user
-		tok, err := s.GenerateToken(user, timeout)
-		if err != nil {
-			statuswriter.WriteError(errors.NewInternalError(err), writer)
-			return
-		}
-
-		statuswriter.WriteStatus(&metav1.Status{
-			Status:  metav1.StatusSuccess,
-			Message: tok,
-			Reason:  "login successful",
-			Details: nil,
-			Code:    http.StatusOK,
-		}, writer)
 	}
+
+	if err := userGroupCache.IndexField(ctx, &v4alpha1.Group{}, "group-user-members", group.GroupUserMemberIndexer); err != nil {
+		return nil, err
+	}
+
+	if err := userGroupCache.IndexField(ctx, &v4alpha1.Group{}, "group-provider-members-ldap", group.GroupProviderIndexer("ldap")); err != nil {
+		return nil, err
+	}
+
+	return userGroupCache, nil
+}
+
+func buildMapper() meta.RESTMapper {
+	rm := meta.NewDefaultRESTMapper([]schema.GroupVersion{
+		{Group: v4alpha1.APIGroup, Version: v4alpha1.Version},
+	})
+
+	gvk, gvrSingular, gvrPlural := gvkr.GVKR(v4alpha1.APIGroup, v4alpha1.Version, "User", "users")
+	rm.AddSpecific(gvk, gvrSingular, gvrPlural, meta.RESTScopeRoot)
+
+	gvk, gvrSingular, gvrPlural = gvkr.GVKR(v4alpha1.APIGroup, v4alpha1.Version, "Group", "groups")
+	rm.AddSpecific(gvk, gvrSingular, gvrPlural, meta.RESTScopeRoot)
+
+	return rm
 }

@@ -1,37 +1,16 @@
 package providers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/hobbyfarm/gargantua/v4/pkg/authentication/user"
 	"io"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"net/http"
 )
 
-type CallbackProvider interface {
-	LoginHandler
-	CallbackHandler
-}
-
-type CredentialedProvider interface {
-	CredentialedLoginHandler
-}
+const Unauthorized = "unauthorized"
 
 type TokenValidator func(token string) (*user.User, error)
-
-type CredentialedLoginHandler interface {
-	HandleLogin(ctx context.Context, creds *Credentials) (*user.User, *errors.StatusError)
-}
-
-type LoginHandler interface {
-	HandleLogin() http.HandlerFunc
-}
-
-type CallbackHandler interface {
-	HandleCallback() http.HandlerFunc
-}
 
 type Credentials struct {
 	Username string `json:"username"`
