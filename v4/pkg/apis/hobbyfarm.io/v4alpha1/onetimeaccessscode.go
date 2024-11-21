@@ -64,6 +64,45 @@ type OneTimeAccessCodeStatus struct {
 	User string `json:"user"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type OneTimeAccessCodeSet struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   OneTimeAccessCodeSetSpec `json:"spec"`
+	Status OneTimeAccessCodeStatus  `json:"status"`
+}
+
+type OneTimeAccessCodeSetSpec struct {
+	// Count is the intended number of OTACs to be created for this set
+	Count int `json:"count"`
+
+	// Template is the spec of the OTACs that will be created. It dictates
+	// characteristics of the OTACs such as access to resources, expiration times, etc.
+	Template OneTimeAccessCodeSpec `json:"template"`
+}
+
+type OneTimeAccessCodeSetStatus struct {
+	// Created tracks how many OTAC objects have been created from this set
+	Created int `json:"created"`
+
+	// Redeemed tracks how many of the OTACs have been redeemed
+	Redeemed int `json:"redeemed"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type OneTimeAccessCodeSetList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []OneTimeAccessCodeSet `json:"items"`
+}
+
 func (c OneTimeAccessCode) NamespaceScoped() bool {
+	return false
+}
+
+func (c OneTimeAccessCodeSet) NamespaceScoped() bool {
 	return false
 }

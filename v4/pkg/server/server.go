@@ -272,44 +272,56 @@ func V4Alpha1APIGroups(storages map[string]strategy.CompleteStrategy) (map[strin
 		return nil, err
 	}
 
+	otacSetStorage, err := registry.NewOneTimeAccessCodeSetStorage(storages["onetimeaccesscodesets"])
+	if err != nil {
+		return nil, err
+	}
+
+	otacSetStatusStorage, err := registry.NewOneTimeAccessCodeSetStatusStorage(storages["onetimeaccesscodesets"].Scheme(), storages["onetimeaccesscodesets"])
+	if err != nil {
+		return nil, err
+	}
+
 	stores := map[string]rest.Storage{
-		"providers":                 providerStorage,
-		"machinetemplates":          machineTemplateStorage,
-		"environments":              environmentStorage,
-		"environments/status":       environmentStatusStorage,
-		"machinesets":               machineSetStorage,
-		"machinesets/status":        machineSetStatusStorage,
-		"machines":                  machineStorage,
-		"machines/status":           machineStatusStorage,
-		"machineclaims":             machineClaimStorage,
-		"machineclaims/status":      machineClaimStatusStorage,
-		"scheduledevents":           scheduledEventStorage,
-		"scheduledevents/status":    scheduledEventStatusStorage,
-		"accesscodes":               accessCodeStorage,
-		"accesscodes/status":        accessCodeStatusStorage,
-		"sessions":                  sessionStorage,
-		"sessions/status":           sessionStatusStorage,
-		"courses":                   courseStorage,
-		"onetimeaccesscodes":        otacStorage,
-		"onetimeaccesscodes/status": otacStatusStorage,
-		"predefinedservices":        predefinedServiceStorage,
-		"progresses":                progressStorage,
-		"progresses/status":         progressStatusStorage,
-		"scenarios":                 scenarioStorage,
-		"scenariosteps":             scenarioStepStorage,
-		"scenariosteps/status":      scenarioStepStatusStorage,
-		"scopes":                    scopeStorage,
-		"settings":                  settingStorage,
-		"users":                     userStorage,
-		"users/status":              userStatusStorage,
-		"serviceaccounts":           serviceAccountStorage,
-		"secrets":                   secretStorage,
-		"configmaps":                configMapStorage,
-		"roles":                     roleStorage,
-		"rolebindings":              roleBindingStorage,
-		"ldapconfigs":               ldapConfigStorage,
-		"ldapconfigs/status":        ldapConfigStatusStorage,
-		"groups":                    groupStorage,
+		"providers":                    providerStorage,
+		"machinetemplates":             machineTemplateStorage,
+		"environments":                 environmentStorage,
+		"environments/status":          environmentStatusStorage,
+		"machinesets":                  machineSetStorage,
+		"machinesets/status":           machineSetStatusStorage,
+		"machines":                     machineStorage,
+		"machines/status":              machineStatusStorage,
+		"machineclaims":                machineClaimStorage,
+		"machineclaims/status":         machineClaimStatusStorage,
+		"scheduledevents":              scheduledEventStorage,
+		"scheduledevents/status":       scheduledEventStatusStorage,
+		"accesscodes":                  accessCodeStorage,
+		"accesscodes/status":           accessCodeStatusStorage,
+		"sessions":                     sessionStorage,
+		"sessions/status":              sessionStatusStorage,
+		"courses":                      courseStorage,
+		"onetimeaccesscodes":           otacStorage,
+		"onetimeaccesscodes/status":    otacStatusStorage,
+		"predefinedservices":           predefinedServiceStorage,
+		"progresses":                   progressStorage,
+		"progresses/status":            progressStatusStorage,
+		"scenarios":                    scenarioStorage,
+		"scenariosteps":                scenarioStepStorage,
+		"scenariosteps/status":         scenarioStepStatusStorage,
+		"scopes":                       scopeStorage,
+		"settings":                     settingStorage,
+		"users":                        userStorage,
+		"users/status":                 userStatusStorage,
+		"serviceaccounts":              serviceAccountStorage,
+		"secrets":                      secretStorage,
+		"configmaps":                   configMapStorage,
+		"roles":                        roleStorage,
+		"rolebindings":                 roleBindingStorage,
+		"ldapconfigs":                  ldapConfigStorage,
+		"ldapconfigs/status":           ldapConfigStatusStorage,
+		"groups":                       groupStorage,
+		"onetimeaccesscodesets":        otacSetStorage,
+		"onetimeaccesscodesets/status": otacSetStatusStorage,
 	}
 
 	return stores, nil

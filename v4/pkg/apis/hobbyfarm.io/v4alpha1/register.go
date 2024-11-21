@@ -14,6 +14,8 @@ var (
 
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
+		&OneTimeAccessCodeSet{},
+		&OneTimeAccessCodeSetList{},
 		&Group{},
 		&GroupList{},
 		&LdapConfig{},

@@ -7,6 +7,13 @@ import (
 
 func GenerateCRDs() []crder.CRD {
 	return []crder.CRD{
+		hobbyfarmCRD(&v4alpha1.OneTimeAccessCodeSet{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v4alpha1", &v4alpha1.OneTimeAccessCodeSet{}, func(cv *crder.Version) {
+					cv.WithStatus()
+				})
+		}),
 		hobbyfarmCRD(&v4alpha1.Group{}, func(c *crder.CRD) {
 			c.
 				IsNamespaced(true).

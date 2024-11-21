@@ -74,6 +74,10 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.NonNamespaced":                  schema_pkg_apis_hobbyfarmio_v4alpha1_NonNamespaced(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCode":              schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCode(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeList":          schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSet":           schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeSet(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSetList":       schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeSetList(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSetSpec":       schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeSetSpec(ref),
+		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSetStatus":     schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeSetStatus(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSpec":          schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeSpec(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeStatus":        schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeStatus(ref),
 		"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.PredefinedService":              schema_pkg_apis_hobbyfarmio_v4alpha1_PredefinedService(ref),
@@ -2687,38 +2691,249 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeList(ref common.Refer
 	}
 }
 
+func schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeSet(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+						},
+					},
+					"spec": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSetSpec"),
+						},
+					},
+					"status": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeStatus"),
+						},
+					},
+				},
+				Required: []string{"spec", "status"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSetSpec", "github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeSetList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"kind": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"apiVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+						},
+					},
+					"items": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSet"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"items"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSet", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeSetSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"count": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Count is the intended number of OTACs to be created for this set",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"template": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Template is the spec of the OTACs that will be created. It dictates characteristics of the OTACs such as access to resources, expiration times, etc.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSpec"),
+						},
+					},
+				},
+				Required: []string{"count", "template"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSpec"},
+	}
+}
+
+func schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeSetStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"created": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Created tracks how many OTAC objects have been created from this set",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"redeemed": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Redeemed tracks how many of the OTACs have been redeemed",
+							Default:     0,
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+				Required: []string{"created", "redeemed"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
 				Properties: map[string]spec.Schema{
+					"scenarios": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Scenarios is a list of the names of scenarios to which this AccessCode shall grant access.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"courses": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Courses is a list of the names of Courses to which this AccessCode shall grant access.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"scheduledEvents": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ScheduledEvents is a list of the names of ScheduledEvents to which this AccessCode shall grant access.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"machineSets": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MachineSets is a list of the names of MachineSets to which this AccessCode shall grant access.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 					"notBefore": {
 						SchemaProps: spec.SchemaProps{
-							Description: "NotBefore is the timestamp before which a OneTimeAccessCode is invalid.",
+							Description: "NotBefore is a timestamp that defines the point in time after which an AccessCode may be used. If defined, the AccessCode may not be used before this timestamp. If nil, an AccessCode is considered valid immediately after creation - provided NotAfter has not passed if set.",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
 					"notAfter": {
 						SchemaProps: spec.SchemaProps{
-							Description: "NotAfter is the timestamp after which a OneTimeAccessCode is invalid.",
+							Description: "NotAfter is a timestamp that defines the point in time after which an AccessCode may NOT be used. If defined, the AccessCode may not be used after this timestamp. If nil, an AccessCode is considered valid forever - provided NotBefore has passed if set.",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
-					"user": {
+					"accessDuration": {
 						SchemaProps: spec.SchemaProps{
-							Description: "User is the object name of the user for whom the OneTimeAccessCode is intended.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
+							Description: "AccessDuration defines how long the code will remain active *after redemption*. In other words, from the moment a user redeems an OTAC, this field determines for how long they shall have access to the resources described in this resource (courses, events, etc.).",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
 				},
-				Required: []string{"notBefore", "notAfter", "user"},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"k8s.io/apimachinery/pkg/apis/meta/v1.Duration", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -2734,7 +2949,22 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeStatus(ref common.Ref
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
+					"accessExpires": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Expires is the timestamp marking when the OneTimeAccessCode shall stop providing access to resources. This value is status.redeemed + spec.accessDuration.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
+					"user": {
+						SchemaProps: spec.SchemaProps{
+							Description: "User is the object name of the User who has consumed this OTAC.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
+				Required: []string{"user"},
 			},
 		},
 		Dependencies: []string{

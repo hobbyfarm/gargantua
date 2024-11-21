@@ -34,6 +34,7 @@ func V4Alpha1Storages(client client.WithWatch, namespace string) map[string]stra
 	roleBindingRemote := remote.NewNamespaceScopedRemote(&v4alpha1.RoleBinding{}, client, namespace)
 	ldapConfigRemote := remote.NewNamespaceScopedRemote(&v4alpha1.LdapConfig{}, client, namespace)
 	groupRemote := remote.NewNamespaceScopedRemote(&v4alpha1.Group{}, client, namespace)
+	otacSetRemote := remote.NewNamespaceScopedRemote(&v4alpha1.OneTimeAccessCodeSet{}, client, namespace)
 
 	configMapTranslator := translators.ConfigMapTranslator{Namespace: namespace}
 	configMapRemote := translation.NewSimpleTranslationStrategy(
@@ -46,30 +47,31 @@ func V4Alpha1Storages(client client.WithWatch, namespace string) map[string]stra
 		remote.NewNamespaceScopedRemote(&v1.Secret{}, client, namespace))
 
 	return map[string]strategy.CompleteStrategy{
-		"providers":          providerRemote,
-		"machinetemplates":   machineTemplateRemote,
-		"environments":       environmentRemote,
-		"machinesets":        machineSetRemote,
-		"machines":           machineRemote,
-		"machineclaims":      machineClaimRemote,
-		"scheduledevents":    scheduledEventRemote,
-		"accesscodes":        accessCodeRemote,
-		"sessions":           sessionRemote,
-		"courses":            courseRemote,
-		"onetimeaccesscodes": otacRemote,
-		"predefinedservices": predefinedServiceRemote,
-		"progresses":         progressRemote,
-		"scenarios":          scenarioRemote,
-		"scenariosteps":      scenarioStepRemote,
-		"scopes":             scopeRemote,
-		"settings":           settingRemote,
-		"users":              userRemote,
-		"serviceaccounts":    serviceAccountRemote,
-		"configmaps":         configMapRemote,
-		"secrets":            secretRemote,
-		"roles":              roleRemote,
-		"rolebindings":       roleBindingRemote,
-		"ldapconfigs":        ldapConfigRemote,
-		"groups":             groupRemote,
+		"providers":             providerRemote,
+		"machinetemplates":      machineTemplateRemote,
+		"environments":          environmentRemote,
+		"machinesets":           machineSetRemote,
+		"machines":              machineRemote,
+		"machineclaims":         machineClaimRemote,
+		"scheduledevents":       scheduledEventRemote,
+		"accesscodes":           accessCodeRemote,
+		"sessions":              sessionRemote,
+		"courses":               courseRemote,
+		"onetimeaccesscodes":    otacRemote,
+		"predefinedservices":    predefinedServiceRemote,
+		"progresses":            progressRemote,
+		"scenarios":             scenarioRemote,
+		"scenariosteps":         scenarioStepRemote,
+		"scopes":                scopeRemote,
+		"settings":              settingRemote,
+		"users":                 userRemote,
+		"serviceaccounts":       serviceAccountRemote,
+		"configmaps":            configMapRemote,
+		"secrets":               secretRemote,
+		"roles":                 roleRemote,
+		"rolebindings":          roleBindingRemote,
+		"ldapconfigs":           ldapConfigRemote,
+		"groups":                groupRemote,
+		"onetimeaccesscodesets": otacSetRemote,
 	}
 }
