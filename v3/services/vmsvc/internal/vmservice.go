@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"net/http"
 
+	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -22,24 +25,25 @@ const (
 )
 
 type PreparedVirtualMachine struct {
-	Id                       string `json:"id"`
-	VirtualMachineTemplateId string `json:"vm_template_id"`
-	SshUsername              string `json:"ssh_username"`
-	Protocol                 string `json:"protocol"`
-	SecretName               string `json:"secret_name"` // this refers to the secret name for the keypair
-	VirtualMachineClaimId    string `json:"vm_claim_id"`
-	UserId                   string `json:"user"`
-	Provision                bool   `json:"provision"`
-	VirtualMachineSetId      string `json:"vm_set_id"`
-	Status                   string `json:"status"` // default is nothing, but could be one of the following: readyforprovisioning, provisioning, running, terminating
-	Allocated                bool   `json:"allocated"`
-	Tainted                  bool   `json:"tainted"`
-	PublicIP                 string `json:"public_ip"`
-	PrivateIP                string `json:"private_ip"`
-	EnvironmentId            string `json:"environment_id"`
-	Hostname                 string `json:"hostname"`          // ideally <hostname>.<enviroment dnssuffix> should be the FQDN to this machine
-	TFState                  string `json:"tfstate,omitempty"` // Terraform state name
-	WsEndpoint               string `json:"ws_endpoint"`
+	Id                       string                  `json:"id"`
+	VirtualMachineTemplateId string                  `json:"vm_template_id"`
+	SshUsername              string                  `json:"ssh_username"`
+	Protocol                 string                  `json:"protocol"`
+	SecretName               string                  `json:"secret_name"` // this refers to the secret name for the keypair
+	VirtualMachineClaimId    string                  `json:"vm_claim_id"`
+	UserId                   string                  `json:"user"`
+	Provision                bool                    `json:"provision"`
+	VirtualMachineSetId      string                  `json:"vm_set_id"`
+	Status                   string                  `json:"status"` // default is nothing, but could be one of the following: readyforprovisioning, provisioning, running, terminating
+	Allocated                bool                    `json:"allocated"`
+	Tainted                  bool                    `json:"tainted"`
+	PublicIP                 string                  `json:"public_ip"`
+	PrivateIP                string                  `json:"private_ip"`
+	EnvironmentId            string                  `json:"environment_id"`
+	Hostname                 string                  `json:"hostname"`          // ideally <hostname>.<enviroment dnssuffix> should be the FQDN to this machine
+	TFState                  string                  `json:"tfstate,omitempty"` // Terraform state name
+	WsEndpoint               string                  `json:"ws_endpoint"`
+	VirtualMachineType       hfv1.VirtualMachineType `json:"vm_type"`
 }
 
 /*
@@ -77,10 +81,11 @@ func (vms VMServer) getWebinterfaces(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the VM belongs to the User or User has RBAC-Rights to access VMs
-	if vm.GetUser() != impersonatedUserId {
+	// if this is a shared VM we should check if the user can accses the SE it belongs to
+	if vm.GetUser() != impersonatedUserId && vm.GetVmType() == vmpb.VirtualMachineType_USER {
 		authrResponse, err := rbac.AuthorizeSimple(r, vms.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbGet))
 		if err != nil || !authrResponse.Success {
-			glog.Errorf("user forbidden from accessing vm id %s", vm.GetId())
+			glog.Errorf("user forbidden from accessing vm id %s of type %s", vm.GetId(), vm.GetVmType().String())
 			util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
 			return
 		}
@@ -254,6 +259,63 @@ func (vms VMServer) GetAllVMListFunc(w http.ResponseWriter, r *http.Request) {
 	vms.GetVMListFunc(w, r, &generalpb.ListOptions{})
 }
 
+func (vms VMServer) GetSharedVirtualMachinesFunc(w http.ResponseWriter, r *http.Request) {
+	// TODO Check if User has access to VMs
+	_, err := rbac.AuthenticateRequest(r, vms.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get shared vms")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	accessCode := vars["access_code"]
+
+	if len(accessCode) == 0 {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no accessCode id passed in")
+		return
+	}
+
+	accessCodeResource, err := vms.acClient.GetAccessCodeWithOTACs(r.Context(), &generalpb.ResourceId{Id: accessCode})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "no accessCode found for given accessCode")
+		return
+	}
+
+	scheduledEventID := accessCodeResource.Labels[hflabels.ScheduledEventLabel]
+	req1, err := labels.NewRequirement("shared", selection.Equals, []string{"true"})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "internal error listing virtual machines")
+		return
+	}
+	req2, err := labels.NewRequirement(hflabels.ScheduledEventLabel, selection.Equals, []string{scheduledEventID})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "internal error listing virtual machines")
+		return
+	}
+	selector := labels.NewSelector()
+	selector = selector.Add(*req1).Add(*req2)
+	selectorString := selector.String()
+	sharedVMList, err := vms.internalVMServer.ListVM(r.Context(), &generalpb.ListOptions{LabelSelector: selectorString})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 500, "error", "internal error listing virtual machines")
+		return
+	}
+	sharedVMs := sharedVMList.GetVms()
+	preparedSharedVMs := []PreparedVirtualMachine{}
+
+	for _, sharedVM := range sharedVMs {
+		preparedSharedVMs = append(preparedSharedVMs, getPreparedVM(sharedVM))
+		glog.V(2).Infof("retrieved shared vm %s", sharedVM.GetId())
+	}
+
+	encodedVM, err := json.Marshal(preparedSharedVMs)
+	if err != nil {
+		glog.Error(err)
+	}
+	util.ReturnHTTPContent(w, r, 200, "success", encodedVM)
+}
+
 func getPreparedVM(vm *vmpb.VM) PreparedVirtualMachine {
 	return PreparedVirtualMachine{
 		Id:                       vm.GetId(),
@@ -274,5 +336,6 @@ func getPreparedVM(vm *vmpb.VM) PreparedVirtualMachine {
 		Hostname:                 vm.GetStatus().GetHostname(),
 		TFState:                  vm.GetStatus().GetTfstate(),
 		WsEndpoint:               vm.GetStatus().GetWsEndpoint(),
+		VirtualMachineType:       util.ConvertToStringEnum(vm.GetVmType(), vmpb.VirtualMachineType_name, hfv1.VirtualMachineTypeUser),
 	}
 }
