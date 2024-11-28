@@ -48,6 +48,10 @@ func (c *FakeHobbyfarmV1) OneTimeAccessCodes(namespace string) v1.OneTimeAccessC
 	return &FakeOneTimeAccessCodes{c, namespace}
 }
 
+func (c *FakeHobbyfarmV1) PasswordResetTokens(namespace string) v1.PasswordResetTokenInterface {
+	return &FakePasswordResetTokens{c, namespace}
+}
+
 func (c *FakeHobbyfarmV1) PredefinedServices(namespace string) v1.PredefinedServiceInterface {
 	return &FakePredefinedServices{c, namespace}
 }
