@@ -1,6 +1,13 @@
 package v4alpha1
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	"github.com/hobbyfarm/gargantua/v4/pkg/genericcondition"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	DesiredOTACAmount = "DesiredOTACAmount"
+)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -70,8 +77,8 @@ type OneTimeAccessCodeSet struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   OneTimeAccessCodeSetSpec `json:"spec"`
-	Status OneTimeAccessCodeStatus  `json:"status"`
+	Spec   OneTimeAccessCodeSetSpec   `json:"spec"`
+	Status OneTimeAccessCodeSetStatus `json:"status"`
 }
 
 type OneTimeAccessCodeSetSpec struct {
@@ -89,6 +96,9 @@ type OneTimeAccessCodeSetStatus struct {
 
 	// Redeemed tracks how many of the OTACs have been redeemed
 	Redeemed int `json:"redeemed"`
+
+	// Conditions contains a slice of conditions that apply to this OTAC set
+	Conditions []genericcondition.GenericCondition `json:"conditions"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

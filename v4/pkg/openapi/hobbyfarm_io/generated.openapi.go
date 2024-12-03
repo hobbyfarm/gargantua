@@ -2726,7 +2726,7 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeSet(ref common.Refere
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeStatus"),
+							Ref:     ref("github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSetStatus"),
 						},
 					},
 				},
@@ -2734,7 +2734,7 @@ func schema_pkg_apis_hobbyfarmio_v4alpha1_OneTimeAccessCodeSet(ref common.Refere
 			},
 		},
 		Dependencies: []string{
-			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSetSpec", "github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSetSpec", "github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1.OneTimeAccessCodeSetStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
