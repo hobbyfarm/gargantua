@@ -389,14 +389,23 @@ func (s *GrpcScenarioServer) CopyScenario(ctx context.Context, req *generalpb.Re
 			id,
 		)
 	}
+
 	copyName := string(name) + " - Copy"
 	copyName = base64.StdEncoding.EncodeToString([]byte(copyName))
 	copyId := util.GenerateResourceName("s", copyName, 10)
 
-	scenario.Name = copyId
-	scenario.Spec.Name = copyName
+	copyScenario := &hfv1.Scenario{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        copyId,
+			Labels:      scenario.Labels,
+			Annotations: scenario.Annotations,
+		},
+		Spec: scenario.Spec,
+	}
 
-	_, err = s.scenarioClient.Create(ctx, scenario, metav1.CreateOptions{})
+	copyScenario.Spec.Name = copyName
+
+	_, err = s.scenarioClient.Create(ctx, copyScenario, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("Error attempting to create a copy of scenario %s: %v", id, err)
 		return &emptypb.Empty{}, hferrors.GrpcError(
