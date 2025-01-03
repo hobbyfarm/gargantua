@@ -1,8 +1,11 @@
 package v1
 
 import (
+	"fmt"
 	"github.com/hobbyfarm/gargantua/v3/pkg/property"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"math"
+	"time"
 )
 
 type VmStatus string
@@ -269,15 +272,15 @@ type ScenarioList struct {
 }
 
 type ScenarioSpec struct {
-	Name              string              `json:"name"`
-	Description       string              `json:"description"`
-	Steps             []ScenarioStep      `json:"steps"`
-	Categories        []string            `json:"categories"`
-	Tags              []string            `json:"tags"`
-	VirtualMachines   []map[string]string `json:"virtualmachines"`
-	KeepAliveDuration string              `json:"keepalive_duration"`
-	PauseDuration     string              `json:"pause_duration"`
-	Pauseable         bool                `json:"pauseable"`
+	Name              string                `json:"name"`
+	Description       string                `json:"description"`
+	Steps             []ScenarioStep        `json:"steps"`
+	Categories        []string              `json:"categories"`
+	Tags              []string              `json:"tags"`
+	VirtualMachines   []map[string]string   `json:"virtualmachines"`
+	KeepAliveDuration string                `json:"keepalive_duration"`
+	PauseDuration     string                `json:"pause_duration"`
+	Pauseable         bool                  `json:"pauseable"`
 	Tasks             []VirtualMachineTasks `json:"vm_tasks"`
 }
 
@@ -296,7 +299,7 @@ type Task struct {
 	Command             string `json:"command"`
 	ExpectedOutputValue string `json:"expected_output_value"`
 	ExpectedReturnCode  int    `json:"expected_return_code"`
-	ReturnType 			string `json:"return_type"`
+	ReturnType          string `json:"return_type"`
 }
 
 // +genclient
@@ -569,4 +572,85 @@ type ScopeList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Scope `json:"items"`
+}
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type Cost struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              CostSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type CostList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Cost `json:"items"`
+}
+
+type CostSpec struct {
+	CostGroup string         `json:"cost_group"`
+	Resources []CostResource `json:"resources"`
+}
+
+type CostResource struct {
+	Id                    string   `json:"id"`   // id of the resource
+	Kind                  string   `json:"kind"` // name like VirtualMachine
+	BasePrice             uint64   `json:"base_price"`
+	TimeUnit              TimeUnit `json:"time_unit"`
+	CreationUnixTimestamp int64    `json:"creation_unix_timestamp"`           // unix timestamp in seconds
+	DeletionUnixTimestamp int64    `json:"deletion_unix_timestamp,omitempty"` // unix timestamp in seconds
+}
+
+type TimeUnit string
+
+const (
+	TimeUnitSeconds TimeUnit = "seconds"
+	TimeUnitMinutes TimeUnit = "minutes"
+	TimeUnitHours   TimeUnit = "hours"
+)
+
+func ParseTimeUnit(s string) (TimeUnit, error) {
+	switch s {
+	case "seconds", "second", "sec", "s":
+		return TimeUnitSeconds, nil
+	case "minutes", "minute", "min", "m":
+		return TimeUnitMinutes, nil
+	case "hours", "hour", "h":
+		return TimeUnitHours, nil
+	default:
+		return TimeUnitSeconds, fmt.Errorf("%s is not a valid time unit", s)
+	}
+}
+
+func (cr *CostResource) CalcCost(duration time.Duration) uint64 {
+	var durationInTimeUnit uint64
+
+	switch cr.TimeUnit {
+	case TimeUnitSeconds:
+		durationInTimeUnit = uint64(math.Ceil(duration.Seconds()))
+	case TimeUnitMinutes:
+		durationInTimeUnit = uint64(math.Ceil(duration.Minutes()))
+	case TimeUnitHours:
+		durationInTimeUnit = uint64(math.Ceil(duration.Hours()))
+	default:
+		durationInTimeUnit = 0
+	}
+
+	return durationInTimeUnit * cr.BasePrice
+}
+
+func (cr *CostResource) Duration(defaultDeletion time.Time) time.Duration {
+	creation := time.Unix(cr.CreationUnixTimestamp, 0)
+
+	deletion := defaultDeletion
+	if cr.DeletionUnixTimestamp != 0 {
+		deletion = time.Unix(cr.DeletionUnixTimestamp, 0)
+	}
+
+	return deletion.Sub(creation)
 }

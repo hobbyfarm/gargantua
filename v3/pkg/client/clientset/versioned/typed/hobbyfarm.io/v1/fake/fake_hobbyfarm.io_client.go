@@ -32,6 +32,10 @@ func (c *FakeHobbyfarmV1) AccessCodes(namespace string) v1.AccessCodeInterface {
 	return &FakeAccessCodes{c, namespace}
 }
 
+func (c *FakeHobbyfarmV1) Costs(namespace string) v1.CostInterface {
+	return &FakeCosts{c, namespace}
+}
+
 func (c *FakeHobbyfarmV1) Courses(namespace string) v1.CourseInterface {
 	return &FakeCourses{c, namespace}
 }
