@@ -1,11 +1,8 @@
 package v1
 
 import (
-	"fmt"
 	"github.com/hobbyfarm/gargantua/v3/pkg/property"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"math"
-	"time"
 )
 
 type VmStatus string
@@ -598,59 +595,10 @@ type CostSpec struct {
 }
 
 type CostResource struct {
-	Id                    string   `json:"id"`   // id of the resource
-	Kind                  string   `json:"kind"` // name like VirtualMachine
-	BasePrice             uint64   `json:"base_price"`
-	TimeUnit              TimeUnit `json:"time_unit"`
-	CreationUnixTimestamp int64    `json:"creation_unix_timestamp"`           // unix timestamp in seconds
-	DeletionUnixTimestamp int64    `json:"deletion_unix_timestamp,omitempty"` // unix timestamp in seconds
-}
-
-type TimeUnit string
-
-const (
-	TimeUnitSeconds TimeUnit = "seconds"
-	TimeUnitMinutes TimeUnit = "minutes"
-	TimeUnitHours   TimeUnit = "hours"
-)
-
-func ParseTimeUnit(s string) (TimeUnit, error) {
-	switch s {
-	case "seconds", "second", "sec", "s":
-		return TimeUnitSeconds, nil
-	case "minutes", "minute", "min", "m":
-		return TimeUnitMinutes, nil
-	case "hours", "hour", "h":
-		return TimeUnitHours, nil
-	default:
-		return TimeUnitSeconds, fmt.Errorf("%s is not a valid time unit", s)
-	}
-}
-
-func (cr *CostResource) CalcCost(duration time.Duration) uint64 {
-	var durationInTimeUnit uint64
-
-	switch cr.TimeUnit {
-	case TimeUnitSeconds:
-		durationInTimeUnit = uint64(math.Ceil(duration.Seconds()))
-	case TimeUnitMinutes:
-		durationInTimeUnit = uint64(math.Ceil(duration.Minutes()))
-	case TimeUnitHours:
-		durationInTimeUnit = uint64(math.Ceil(duration.Hours()))
-	default:
-		durationInTimeUnit = 0
-	}
-
-	return durationInTimeUnit * cr.BasePrice
-}
-
-func (cr *CostResource) Duration(defaultDeletion time.Time) time.Duration {
-	creation := time.Unix(cr.CreationUnixTimestamp, 0)
-
-	deletion := defaultDeletion
-	if cr.DeletionUnixTimestamp != 0 {
-		deletion = time.Unix(cr.DeletionUnixTimestamp, 0)
-	}
-
-	return deletion.Sub(creation)
+	Id                    string `json:"id"`   // id of the resource
+	Kind                  string `json:"kind"` // name like VirtualMachine
+	BasePrice             uint64 `json:"base_price"`
+	TimeUnit              string `json:"time_unit"`                         // one of [seconds, minutes, hours]
+	CreationUnixTimestamp int64  `json:"creation_unix_timestamp"`           // unix timestamp in seconds
+	DeletionUnixTimestamp int64  `json:"deletion_unix_timestamp,omitempty"` // unix timestamp in seconds
 }

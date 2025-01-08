@@ -68,7 +68,7 @@ func (gcs *GrpcCostServer) createCost(ctx context.Context, req *costpb.CreateOrU
 				Id:                    req.GetId(),
 				Kind:                  req.GetKind(),
 				BasePrice:             req.GetBasePrice(),
-				TimeUnit:              hfv1.TimeUnit(req.GetTimeUnit()),
+				TimeUnit:              req.GetTimeUnit(),
 				CreationUnixTimestamp: req.GetCreationUnixTimestamp(),
 				DeletionUnixTimestamp: req.GetDeletionUnixTimestamp(),
 			}},
@@ -93,7 +93,7 @@ outer:
 		resource := &existing.Spec.Resources[i]
 		if resource.Kind == req.Kind && resource.Id == req.Id {
 			resource.BasePrice = req.GetBasePrice()
-			resource.TimeUnit = hfv1.TimeUnit(req.GetTimeUnit())
+			resource.TimeUnit = req.GetTimeUnit()
 			resource.CreationUnixTimestamp = req.GetCreationUnixTimestamp()
 			resource.DeletionUnixTimestamp = req.GetDeletionUnixTimestamp()
 			found = true
@@ -107,7 +107,7 @@ outer:
 			Id:                    req.Id,
 			Kind:                  req.GetKind(),
 			BasePrice:             req.GetBasePrice(),
-			TimeUnit:              hfv1.TimeUnit(req.GetTimeUnit()),
+			TimeUnit:              req.GetTimeUnit(),
 			CreationUnixTimestamp: req.GetCreationUnixTimestamp(),
 			DeletionUnixTimestamp: req.GetDeletionUnixTimestamp(),
 		})
@@ -125,54 +125,13 @@ outer:
 	return &generalpb.ResourceId{Id: resp.Name}, nil
 }
 
-func groupByKind(resources []hfv1.CostResource) map[string][]hfv1.CostResource {
-	grouped := make(map[string][]hfv1.CostResource)
-
-	for _, resource := range resources {
-		grouped[resource.Kind] = append(grouped[resource.Kind], resource)
-	}
-	return grouped
-}
-
 func (gcs *GrpcCostServer) GetCostHistory(ctx context.Context, req *generalpb.GetRequest) (*costpb.Cost, error) {
 	cost, err := util.GenericHfGetter(ctx, req, gcs.costClient, gcs.costLister.Costs(util.GetReleaseNamespace()), "cost", gcs.costSynced())
 	if err != nil {
 		return &costpb.Cost{}, err
 	}
 
-	var costSources []*costpb.CostSource
-
-	var totalCost uint64
-	now := gcs.nowFunc()
-
-	grouped := groupByKind(cost.Spec.Resources)
-	for kind, resources := range grouped {
-		var costForKind uint64
-		var count uint64
-
-		for _, resource := range resources {
-			if resource.DeletionUnixTimestamp == 0 {
-				// skip resource which is still running
-				continue
-			}
-			duration := resource.Duration(now)
-			costForKind += resource.CalcCost(duration)
-			count += 1
-		}
-
-		totalCost += costForKind
-		costSources = append(costSources, &costpb.CostSource{
-			Kind:  kind,
-			Cost:  costForKind,
-			Count: count,
-		})
-	}
-
-	return &costpb.Cost{
-		CostGroup: cost.Name,
-		Total:     totalCost,
-		Source:    costSources,
-	}, nil
+	return NewCostBuilder(cost).WithHistoricCosts().Build(gcs.nowFunc()), nil
 }
 
 func (gcs *GrpcCostServer) GetCostPresent(ctx context.Context, req *generalpb.GetRequest) (*costpb.Cost, error) {
@@ -181,39 +140,7 @@ func (gcs *GrpcCostServer) GetCostPresent(ctx context.Context, req *generalpb.Ge
 		return &costpb.Cost{}, err
 	}
 
-	var costSources []*costpb.CostSource
-
-	var totalCost uint64
-	now := gcs.nowFunc()
-
-	grouped := groupByKind(cost.Spec.Resources)
-	for kind, resources := range grouped {
-		var costForKind uint64
-		var count uint64
-
-		for _, resource := range resources {
-			if resource.DeletionUnixTimestamp != 0 {
-				// skip resource which is terminated
-				continue
-			}
-			duration := resource.Duration(now)
-			costForKind += resource.CalcCost(duration)
-			count += 1
-		}
-
-		totalCost += costForKind
-		costSources = append(costSources, &costpb.CostSource{
-			Kind:  kind,
-			Cost:  costForKind,
-			Count: count,
-		})
-	}
-
-	return &costpb.Cost{
-		CostGroup: cost.Name,
-		Total:     totalCost,
-		Source:    costSources,
-	}, nil
+	return NewCostBuilder(cost).WithPresentCosts().Build(gcs.nowFunc()), nil
 }
 
 func (gcs *GrpcCostServer) GetCost(ctx context.Context, req *generalpb.GetRequest) (*costpb.Cost, error) {
@@ -222,38 +149,7 @@ func (gcs *GrpcCostServer) GetCost(ctx context.Context, req *generalpb.GetReques
 		return &costpb.Cost{}, err
 	}
 
-	return mapCost(cost, gcs.nowFunc()), nil
-}
-
-func mapCost(cost *hfv1.Cost, now time.Time) *costpb.Cost {
-	var costSources []*costpb.CostSource
-
-	var totalCost uint64
-
-	grouped := groupByKind(cost.Spec.Resources)
-	for kind, resources := range grouped {
-		var costForKind uint64
-		var count uint64
-
-		for _, resource := range resources {
-			duration := resource.Duration(now)
-			costForKind += resource.CalcCost(duration)
-			count += 1
-		}
-
-		totalCost += costForKind
-		costSources = append(costSources, &costpb.CostSource{
-			Kind:  kind,
-			Cost:  costForKind,
-			Count: count,
-		})
-	}
-
-	return &costpb.Cost{
-		CostGroup: cost.Name,
-		Total:     totalCost,
-		Source:    costSources,
-	}
+	return NewCostBuilder(cost).WithAllCosts().Build(gcs.nowFunc()), nil
 }
 
 func (gcs *GrpcCostServer) DeleteCost(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
@@ -281,7 +177,7 @@ func (gcs *GrpcCostServer) ListCost(ctx context.Context, listOptions *generalpb.
 	var preparedCosts []*costpb.Cost
 
 	for _, cost := range costs {
-		preparedCosts = append(preparedCosts, mapCost(&cost, gcs.nowFunc()))
+		preparedCosts = append(preparedCosts, NewCostBuilder(&cost).WithAllCosts().Build(gcs.nowFunc()))
 	}
 
 	return &costpb.ListCostsResponse{Costs: preparedCosts}, nil

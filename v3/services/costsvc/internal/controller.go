@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang/glog"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	costpb "github.com/hobbyfarm/gargantua/v3/protos/cost"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -26,7 +25,7 @@ type costGroup struct {
 	Kind              string
 	CostGroup         string
 	BasePrice         uint64
-	TimeUnit          v1.TimeUnit
+	TimeUnit          TimeUnit
 	CreationTimestamp int64
 	DeletionTimestamp *int64
 }
@@ -55,7 +54,7 @@ func newCostGroup(obj interface{}) (*costGroup, error) {
 	if !found {
 		return nil, fmt.Errorf("%s label not found", LabelTimeUnit)
 	}
-	timeUnit, err := v1.ParseTimeUnit(timeUnitLabel)
+	timeUnit, err := ParseTimeUnit(timeUnitLabel)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +117,7 @@ func (li CostController) add(obj interface{}) {
 		CostGroup:             cg.CostGroup,
 		Kind:                  cg.Kind,
 		BasePrice:             cg.BasePrice,
-		TimeUnit:              string(cg.TimeUnit),
+		TimeUnit:              cg.TimeUnit,
 		Id:                    cg.Id,
 		CreationUnixTimestamp: cg.CreationTimestamp,
 		DeletionUnixTimestamp: nil,
@@ -142,7 +141,7 @@ func (li CostController) update(_, newObj interface{}) {
 		CostGroup:             cg.CostGroup,
 		Kind:                  cg.Kind,
 		BasePrice:             cg.BasePrice,
-		TimeUnit:              string(cg.TimeUnit),
+		TimeUnit:              cg.TimeUnit,
 		Id:                    cg.Id,
 		CreationUnixTimestamp: cg.CreationTimestamp,
 		DeletionUnixTimestamp: nil,
@@ -168,7 +167,7 @@ func (li CostController) delete(obj interface{}) {
 		CostGroup:             cg.CostGroup,
 		Kind:                  cg.Kind,
 		BasePrice:             cg.BasePrice,
-		TimeUnit:              string(cg.TimeUnit),
+		TimeUnit:              cg.TimeUnit,
 		Id:                    cg.Id,
 		CreationUnixTimestamp: cg.CreationTimestamp,
 		DeletionUnixTimestamp: &deletionTimestamp,

@@ -14,67 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8stesting "k8s.io/client-go/testing"
-	"reflect"
-	"sort"
 	"testing"
 	"time"
 )
-
-func Test_groupByKind(t *testing.T) {
-	tests := []struct {
-		name  string
-		input []hfv1.CostResource
-		want  map[string][]hfv1.CostResource
-	}{
-		{
-			name: "ok",
-			input: []hfv1.CostResource{
-				{Id: "a", Kind: "Pod"},
-				{Id: "x", Kind: "Deployment"},
-				{Id: "b", Kind: "Pod"},
-				{Id: "y", Kind: "Deployment"},
-				{Id: "c", Kind: "Pod"},
-				{Id: "1", Kind: "VirtualMachine"},
-			},
-			want: map[string][]hfv1.CostResource{
-				"Pod": {
-					{Id: "a", Kind: "Pod"},
-					{Id: "b", Kind: "Pod"},
-					{Id: "c", Kind: "Pod"},
-				},
-				"Deployment": {
-					{Id: "x", Kind: "Deployment"},
-					{Id: "y", Kind: "Deployment"},
-				},
-				"VirtualMachine": {
-					{Id: "1", Kind: "VirtualMachine"},
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := groupByKind(tt.input)
-
-			// Sort the slices for deterministic comparison
-			for k := range got {
-				sort.Slice(got[k], func(i, j int) bool {
-					return got[k][i].Id < got[k][j].Id
-				})
-			}
-			for k := range tt.want {
-				sort.Slice(tt.want[k], func(i, j int) bool {
-					return tt.want[k][i].Id < tt.want[k][j].Id
-				})
-			}
-
-			// Perform the comparison
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("groupByKind() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestGrpcCostServer_GetCostHistory(t *testing.T) {
 	fakeClient := &faketyped.FakeHobbyfarmV1{Fake: &k8stesting.Fake{}}
@@ -98,7 +40,7 @@ func TestGrpcCostServer_GetCostHistory(t *testing.T) {
 					Id:                    "pod-a",
 					Kind:                  "Pod",
 					BasePrice:             1,
-					TimeUnit:              hfv1.TimeUnitSeconds,
+					TimeUnit:              TimeUnitSeconds,
 					CreationUnixTimestamp: 0, // ran 10 seconds and should cost 10
 					DeletionUnixTimestamp: 10,
 				},
@@ -106,7 +48,7 @@ func TestGrpcCostServer_GetCostHistory(t *testing.T) {
 					Id:                    "pod-b",
 					Kind:                  "Pod",
 					BasePrice:             10,
-					TimeUnit:              hfv1.TimeUnitMinutes,
+					TimeUnit:              TimeUnitMinutes,
 					CreationUnixTimestamp: 0, // ran less than a minute so base price, total is 10
 					DeletionUnixTimestamp: 10,
 				},
@@ -114,7 +56,7 @@ func TestGrpcCostServer_GetCostHistory(t *testing.T) {
 					Id:                    "pod-still-running",
 					Kind:                  "Pod",
 					BasePrice:             10,
-					TimeUnit:              hfv1.TimeUnitMinutes,
+					TimeUnit:              TimeUnitMinutes,
 					CreationUnixTimestamp: 1,
 					DeletionUnixTimestamp: 0, // still running, should be filtered out
 				},
@@ -122,7 +64,7 @@ func TestGrpcCostServer_GetCostHistory(t *testing.T) {
 					Id:                    "vm-x",
 					Kind:                  "VirtualMachine",
 					BasePrice:             2,
-					TimeUnit:              hfv1.TimeUnitSeconds,
+					TimeUnit:              TimeUnitSeconds,
 					CreationUnixTimestamp: 10, // ran 5 seconds and should cost 10
 					DeletionUnixTimestamp: 15,
 				},
@@ -130,7 +72,7 @@ func TestGrpcCostServer_GetCostHistory(t *testing.T) {
 					Id:                    "vm-y",
 					Kind:                  "VirtualMachine",
 					BasePrice:             50,
-					TimeUnit:              hfv1.TimeUnitHours,
+					TimeUnit:              TimeUnitHours,
 					CreationUnixTimestamp: 1, // ran less than an hour so base price, total is 50
 					DeletionUnixTimestamp: 3,
 				},
@@ -138,7 +80,7 @@ func TestGrpcCostServer_GetCostHistory(t *testing.T) {
 					Id:                    "vm-still-running",
 					Kind:                  "VirtualMachine",
 					BasePrice:             123213,
-					TimeUnit:              hfv1.TimeUnitHours,
+					TimeUnit:              TimeUnitHours,
 					CreationUnixTimestamp: 1,
 					DeletionUnixTimestamp: 0, // still running, should be filtered out
 				},
@@ -193,7 +135,7 @@ func TestGrpcCostServer_GetCostPresent(t *testing.T) {
 					Id:                    "pod-a",
 					Kind:                  "Pod",
 					BasePrice:             1,
-					TimeUnit:              hfv1.TimeUnitSeconds,
+					TimeUnit:              TimeUnitSeconds,
 					CreationUnixTimestamp: 0, // ran 10 seconds and should cost 10
 					DeletionUnixTimestamp: 0,
 				},
@@ -201,7 +143,7 @@ func TestGrpcCostServer_GetCostPresent(t *testing.T) {
 					Id:                    "pod-b",
 					Kind:                  "Pod",
 					BasePrice:             10,
-					TimeUnit:              hfv1.TimeUnitMinutes,
+					TimeUnit:              TimeUnitMinutes,
 					CreationUnixTimestamp: 0, // ran less than a minute so base price, total is 10
 					DeletionUnixTimestamp: 0,
 				},
@@ -209,7 +151,7 @@ func TestGrpcCostServer_GetCostPresent(t *testing.T) {
 					Id:                    "pod-terminated",
 					Kind:                  "Pod",
 					BasePrice:             10,
-					TimeUnit:              hfv1.TimeUnitMinutes,
+					TimeUnit:              TimeUnitMinutes,
 					CreationUnixTimestamp: 1,
 					DeletionUnixTimestamp: 10, // terminated, should be filtered out
 				},
@@ -217,7 +159,7 @@ func TestGrpcCostServer_GetCostPresent(t *testing.T) {
 					Id:                    "vm-x",
 					Kind:                  "VirtualMachine",
 					BasePrice:             2,
-					TimeUnit:              hfv1.TimeUnitSeconds,
+					TimeUnit:              TimeUnitSeconds,
 					CreationUnixTimestamp: 5, // ran 5 seconds and should cost 10
 					DeletionUnixTimestamp: 0,
 				},
@@ -225,7 +167,7 @@ func TestGrpcCostServer_GetCostPresent(t *testing.T) {
 					Id:                    "vm-y",
 					Kind:                  "VirtualMachine",
 					BasePrice:             50,
-					TimeUnit:              hfv1.TimeUnitHours,
+					TimeUnit:              TimeUnitHours,
 					CreationUnixTimestamp: 1, // ran less than an hour so base price, total is 50
 					DeletionUnixTimestamp: 0,
 				},
@@ -233,7 +175,7 @@ func TestGrpcCostServer_GetCostPresent(t *testing.T) {
 					Id:                    "vm-terminated",
 					Kind:                  "VirtualMachine",
 					BasePrice:             123213,
-					TimeUnit:              hfv1.TimeUnitHours,
+					TimeUnit:              TimeUnitHours,
 					CreationUnixTimestamp: 1,
 					DeletionUnixTimestamp: 10, // terminated, should be filtered out
 				},
@@ -288,7 +230,7 @@ func TestGrpcCostServer_GetCost(t *testing.T) {
 					Id:                    "pod-a",
 					Kind:                  "Pod",
 					BasePrice:             1,
-					TimeUnit:              hfv1.TimeUnitSeconds,
+					TimeUnit:              TimeUnitSeconds,
 					CreationUnixTimestamp: 0, // ran 10 seconds and should cost 10
 					DeletionUnixTimestamp: 10,
 				},
@@ -296,7 +238,7 @@ func TestGrpcCostServer_GetCost(t *testing.T) {
 					Id:                    "pod-b",
 					Kind:                  "Pod",
 					BasePrice:             10,
-					TimeUnit:              hfv1.TimeUnitMinutes,
+					TimeUnit:              TimeUnitMinutes,
 					CreationUnixTimestamp: 0, // ran less than a minute so base price, total is 10
 					DeletionUnixTimestamp: 10,
 				},
@@ -304,7 +246,7 @@ func TestGrpcCostServer_GetCost(t *testing.T) {
 					Id:                    "pod-c",
 					Kind:                  "Pod",
 					BasePrice:             1,
-					TimeUnit:              hfv1.TimeUnitSeconds,
+					TimeUnit:              TimeUnitSeconds,
 					CreationUnixTimestamp: 0,
 					DeletionUnixTimestamp: 0, // still running, total is 10
 				},
@@ -312,7 +254,7 @@ func TestGrpcCostServer_GetCost(t *testing.T) {
 					Id:                    "vm-x",
 					Kind:                  "VirtualMachine",
 					BasePrice:             2,
-					TimeUnit:              hfv1.TimeUnitSeconds,
+					TimeUnit:              TimeUnitSeconds,
 					CreationUnixTimestamp: 10, // ran 5 seconds and should cost 10
 					DeletionUnixTimestamp: 15,
 				},
@@ -320,7 +262,7 @@ func TestGrpcCostServer_GetCost(t *testing.T) {
 					Id:                    "vm-y",
 					Kind:                  "VirtualMachine",
 					BasePrice:             50,
-					TimeUnit:              hfv1.TimeUnitHours,
+					TimeUnit:              TimeUnitHours,
 					CreationUnixTimestamp: 1, // ran less than an hour so base price, total is 50
 					DeletionUnixTimestamp: 3,
 				},
@@ -328,7 +270,7 @@ func TestGrpcCostServer_GetCost(t *testing.T) {
 					Id:                    "vm-z",
 					Kind:                  "VirtualMachine",
 					BasePrice:             2,
-					TimeUnit:              hfv1.TimeUnitSeconds,
+					TimeUnit:              TimeUnitSeconds,
 					CreationUnixTimestamp: 5,
 					DeletionUnixTimestamp: 0, // still running, total is 10
 				},
@@ -387,7 +329,7 @@ func TestGrpcCostServer_ListCost(t *testing.T) {
 							Id:                    "pod-a",
 							Kind:                  "Pod",
 							BasePrice:             1,
-							TimeUnit:              hfv1.TimeUnitSeconds,
+							TimeUnit:              TimeUnitSeconds,
 							CreationUnixTimestamp: 0, // ran 10 seconds and should cost 10
 							DeletionUnixTimestamp: 10,
 						},
@@ -395,7 +337,7 @@ func TestGrpcCostServer_ListCost(t *testing.T) {
 							Id:                    "pod-b",
 							Kind:                  "Pod",
 							BasePrice:             10,
-							TimeUnit:              hfv1.TimeUnitMinutes,
+							TimeUnit:              TimeUnitMinutes,
 							CreationUnixTimestamp: 0, // ran less than a minute so base price, total is 10
 							DeletionUnixTimestamp: 10,
 						},
@@ -403,7 +345,7 @@ func TestGrpcCostServer_ListCost(t *testing.T) {
 							Id:                    "pod-still-running",
 							Kind:                  "Pod",
 							BasePrice:             1,
-							TimeUnit:              hfv1.TimeUnitSeconds,
+							TimeUnit:              TimeUnitSeconds,
 							CreationUnixTimestamp: 0,
 							DeletionUnixTimestamp: 0, // still running, total is 10
 						},
@@ -411,7 +353,7 @@ func TestGrpcCostServer_ListCost(t *testing.T) {
 							Id:                    "vm-x",
 							Kind:                  "VirtualMachine",
 							BasePrice:             2,
-							TimeUnit:              hfv1.TimeUnitSeconds,
+							TimeUnit:              TimeUnitSeconds,
 							CreationUnixTimestamp: 10, // ran 5 seconds and should cost 10
 							DeletionUnixTimestamp: 15,
 						},
@@ -419,7 +361,7 @@ func TestGrpcCostServer_ListCost(t *testing.T) {
 							Id:                    "vm-y",
 							Kind:                  "VirtualMachine",
 							BasePrice:             50,
-							TimeUnit:              hfv1.TimeUnitHours,
+							TimeUnit:              TimeUnitHours,
 							CreationUnixTimestamp: 1, // ran less than an hour so base price, total is 50
 							DeletionUnixTimestamp: 3,
 						},
@@ -427,7 +369,7 @@ func TestGrpcCostServer_ListCost(t *testing.T) {
 							Id:                    "vm-z",
 							Kind:                  "VirtualMachine",
 							BasePrice:             2,
-							TimeUnit:              hfv1.TimeUnitSeconds,
+							TimeUnit:              TimeUnitSeconds,
 							CreationUnixTimestamp: 5,
 							DeletionUnixTimestamp: 0, // still running, total is 10
 						},
@@ -445,7 +387,7 @@ func TestGrpcCostServer_ListCost(t *testing.T) {
 							Id:                    "vm-f",
 							Kind:                  "VirtualMachine",
 							BasePrice:             2,
-							TimeUnit:              hfv1.TimeUnitSeconds,
+							TimeUnit:              TimeUnitSeconds,
 							CreationUnixTimestamp: 10, // ran 5 seconds and should cost 10
 							DeletionUnixTimestamp: 15,
 						},
@@ -453,7 +395,7 @@ func TestGrpcCostServer_ListCost(t *testing.T) {
 							Id:                    "vm-g",
 							Kind:                  "VirtualMachine",
 							BasePrice:             50,
-							TimeUnit:              hfv1.TimeUnitHours,
+							TimeUnit:              TimeUnitHours,
 							CreationUnixTimestamp: 1, // ran less than an hour so base price, total is 50
 							DeletionUnixTimestamp: 3,
 						},
@@ -461,7 +403,7 @@ func TestGrpcCostServer_ListCost(t *testing.T) {
 							Id:                    "vm-h",
 							Kind:                  "VirtualMachine",
 							BasePrice:             2,
-							TimeUnit:              hfv1.TimeUnitSeconds,
+							TimeUnit:              TimeUnitSeconds,
 							CreationUnixTimestamp: 5,
 							DeletionUnixTimestamp: 0, // still running, total is 10
 						},
@@ -528,7 +470,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_create(t *testing.T) {
 				Id:                    "test-resource-id",
 				Kind:                  "VirtualMachine",
 				BasePrice:             100,
-				TimeUnit:              string(hfv1.TimeUnitSeconds),
+				TimeUnit:              TimeUnitSeconds,
 				CreationUnixTimestamp: 10,
 				DeletionUnixTimestamp: nil,
 			},
@@ -542,7 +484,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_create(t *testing.T) {
 						Id:                    "test-resource-id",
 						Kind:                  "VirtualMachine",
 						BasePrice:             100,
-						TimeUnit:              hfv1.TimeUnitSeconds,
+						TimeUnit:              TimeUnitSeconds,
 						CreationUnixTimestamp: 10,
 						DeletionUnixTimestamp: 0,
 					}},
@@ -556,7 +498,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_create(t *testing.T) {
 				Id:                    "test-resource-id",
 				Kind:                  "VirtualMachine",
 				BasePrice:             100,
-				TimeUnit:              string(hfv1.TimeUnitSeconds),
+				TimeUnit:              TimeUnitSeconds,
 				CreationUnixTimestamp: 10,
 				DeletionUnixTimestamp: &deletionTimestamp,
 			},
@@ -570,7 +512,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_create(t *testing.T) {
 						Id:                    "test-resource-id",
 						Kind:                  "VirtualMachine",
 						BasePrice:             100,
-						TimeUnit:              hfv1.TimeUnitSeconds,
+						TimeUnit:              TimeUnitSeconds,
 						CreationUnixTimestamp: 10,
 						DeletionUnixTimestamp: deletionTimestamp,
 					}},
@@ -614,7 +556,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_newResource(t *testing.T) {
 				Id:                    "vm-existing",
 				Kind:                  "VirtualMachine",
 				BasePrice:             1,
-				TimeUnit:              hfv1.TimeUnitHours,
+				TimeUnit:              TimeUnitHours,
 				CreationUnixTimestamp: 10,
 				DeletionUnixTimestamp: 100,
 			}},
@@ -628,7 +570,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_newResource(t *testing.T) {
 		Id:                    "vm-new",
 		Kind:                  "VirtualMachine",
 		BasePrice:             100,
-		TimeUnit:              string(hfv1.TimeUnitSeconds),
+		TimeUnit:              TimeUnitSeconds,
 		CreationUnixTimestamp: 10,
 		DeletionUnixTimestamp: &deletionTimestamp,
 	}
@@ -644,7 +586,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_newResource(t *testing.T) {
 					Id:                    "vm-existing",
 					Kind:                  "VirtualMachine",
 					BasePrice:             1,
-					TimeUnit:              hfv1.TimeUnitHours,
+					TimeUnit:              TimeUnitHours,
 					CreationUnixTimestamp: 10,
 					DeletionUnixTimestamp: 100,
 				},
@@ -652,7 +594,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_newResource(t *testing.T) {
 					Id:                    "vm-new",
 					Kind:                  "VirtualMachine",
 					BasePrice:             100,
-					TimeUnit:              hfv1.TimeUnitSeconds,
+					TimeUnit:              TimeUnitSeconds,
 					CreationUnixTimestamp: 10,
 					DeletionUnixTimestamp: deletionTimestamp,
 				},
@@ -708,7 +650,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_updateResource(t *testing.T) {
 				Id:                    "vm-existing",
 				Kind:                  "VirtualMachine",
 				BasePrice:             1,
-				TimeUnit:              hfv1.TimeUnitHours,
+				TimeUnit:              TimeUnitHours,
 				CreationUnixTimestamp: 10,
 				DeletionUnixTimestamp: 100,
 			}},
@@ -722,7 +664,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_updateResource(t *testing.T) {
 		Id:                    "vm-existing",
 		Kind:                  "VirtualMachine",
 		BasePrice:             100,
-		TimeUnit:              string(hfv1.TimeUnitSeconds),
+		TimeUnit:              TimeUnitSeconds,
 		CreationUnixTimestamp: 10,
 		DeletionUnixTimestamp: &deletionTimestamp,
 	}
@@ -738,7 +680,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_updateResource(t *testing.T) {
 					Id:                    "vm-existing",
 					Kind:                  "VirtualMachine",
 					BasePrice:             100,
-					TimeUnit:              hfv1.TimeUnitSeconds,
+					TimeUnit:              TimeUnitSeconds,
 					CreationUnixTimestamp: 10,
 					DeletionUnixTimestamp: deletionTimestamp,
 				},
