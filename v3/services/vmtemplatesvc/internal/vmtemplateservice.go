@@ -2,8 +2,10 @@ package vmtemplateservice
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
@@ -24,9 +26,11 @@ const (
 
 // Prepared struct for API endpoints which only need to provide vmt id, name and image
 type PreparedVMTemplate struct {
-	Id    string `json:"id"`
-	Name  string `json:"name"`
-	Image string `json:"image"`
+	Id            string `json:"id"`
+	Name          string `json:"name"`
+	Image         string `json:"image"`
+	CostBasePrice string `json:"cost_base_price,omitempty"`
+	CostTimeUnit  string `json:"cost_time_unit,omitempty"`
 }
 
 // Prepared struct for API endpoints which additionally to the PreparedVMTemplate struct also need to provide config details
@@ -73,9 +77,11 @@ func (v VirtualMachineTemplateServer) GetFunc(w http.ResponseWriter, r *http.Req
 
 	preparedVmt := PreparedVMTemplateWithConfig{
 		PreparedVMTemplate: PreparedVMTemplate{
-			Id:    vmtId,
-			Name:  vmt.GetName(),
-			Image: vmt.GetImage(),
+			Id:            vmtId,
+			Name:          vmt.GetName(),
+			Image:         vmt.GetImage(),
+			CostBasePrice: vmt.GetCostBasePrice(),
+			CostTimeUnit:  vmt.GetCostTimeUnit(),
 		},
 		ConfigMap: vmt.GetConfigMap(),
 	}
@@ -114,9 +120,11 @@ func (v VirtualMachineTemplateServer) ListFunc(w http.ResponseWriter, r *http.Re
 
 	for _, vmt := range vmtList.GetVmtemplates() {
 		preparedVirtualMachineTemplates = append(preparedVirtualMachineTemplates, PreparedVMTemplate{
-			Id:    vmt.GetId(),
-			Name:  vmt.GetName(),
-			Image: vmt.GetImage(),
+			Id:            vmt.GetId(),
+			Name:          vmt.GetName(),
+			Image:         vmt.GetImage(),
+			CostBasePrice: vmt.GetCostBasePrice(),
+			CostTimeUnit:  vmt.GetCostTimeUnit(),
 		})
 	}
 
@@ -157,12 +165,23 @@ func (v VirtualMachineTemplateServer) CreateFunc(w http.ResponseWriter, r *http.
 
 	configMapRaw := r.PostFormValue("config_map") // no validation, config_map not required
 
+	costBasePrice, costTimeUnit, err := normalizeCost(
+		r.PostFormValue("cost_base_price"),
+		r.PostFormValue("cost_time_unit"))
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 400, "bad request", err.Error())
+		return
+	}
+
 	glog.V(2).Infof("user %s is creating vmtemplate", user.GetId())
 
 	vmTemplateId, err := v.internalVMTemplateServer.CreateVMTemplate(r.Context(), &vmtemplatepb.CreateVMTemplateRequest{
-		Name:         name,
-		Image:        image,
-		ConfigMapRaw: configMapRaw,
+		Name:          name,
+		Image:         image,
+		ConfigMapRaw:  configMapRaw,
+		CostBasePrice: costBasePrice,
+		CostTimeUnit:  costTimeUnit,
 	})
 	if err != nil {
 		glog.Errorf("error creating vmtemplate: %s", hferrors.GetErrorMessage(err))
@@ -171,6 +190,36 @@ func (v VirtualMachineTemplateServer) CreateFunc(w http.ResponseWriter, r *http.
 	}
 
 	util.ReturnHTTPMessage(w, r, 201, "created", vmTemplateId.GetId())
+}
+
+func normalizeCost(costBasePrice, costTimeUnit string) (basePrice, timeUnit *string, err error) {
+	if util.IsDefaultValue(costBasePrice) && util.IsDefaultValue(costTimeUnit) {
+		return
+	}
+
+	// if one is set the other needs to be set as well
+	if !util.IsDefaultValue(costBasePrice) && util.IsDefaultValue(costTimeUnit) {
+		err = errors.New("missing cost_time_unit")
+		return
+	}
+	if util.IsDefaultValue(costBasePrice) && !util.IsDefaultValue(costTimeUnit) {
+		err = errors.New("missing cost_base_price")
+		return
+	}
+
+	_, err = strconv.ParseUint(costBasePrice, 10, 64)
+	if err != nil {
+		err = errors.New("cost_base_price needs to be a positive number")
+		return
+	}
+
+	parsedTimeUnit, err := util.ParseTimeUnit(costTimeUnit)
+	if err != nil {
+		err = errors.New("invalid cost_time_unit")
+		return
+	}
+
+	return util.RefOrNil(costBasePrice), util.RefOrNil(parsedTimeUnit), nil
 }
 
 func (v VirtualMachineTemplateServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
@@ -201,11 +250,22 @@ func (v VirtualMachineTemplateServer) UpdateFunc(w http.ResponseWriter, r *http.
 	image := r.PostFormValue("image")
 	configMapRaw := r.PostFormValue("config_map")
 
+	costBasePrice, costTimeUnit, err := normalizeCost(
+		r.PostFormValue("cost_base_price"),
+		r.PostFormValue("cost_time_unit"))
+
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 400, "bad request", err.Error())
+		return
+	}
+
 	_, err = v.internalVMTemplateServer.UpdateVMTemplate(r.Context(), &vmtemplatepb.UpdateVMTemplateRequest{
-		Id:           id,
-		Name:         name,
-		Image:        image,
-		ConfigMapRaw: configMapRaw,
+		Id:            id,
+		Name:          name,
+		Image:         image,
+		ConfigMapRaw:  configMapRaw,
+		CostBasePrice: costBasePrice,
+		CostTimeUnit:  costTimeUnit,
 	})
 
 	if err != nil {

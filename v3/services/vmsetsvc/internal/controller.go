@@ -155,6 +155,7 @@ func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmsetpb.VMSet) error
 			}
 			restrictedBind := vmset.GetRestrictedBind()
 
+			seName := vmset.GetLabels()[hflabels.ScheduledEventLabel]
 			vmLabels := map[string]string{
 				"dynamic":                       "false",
 				"vmset":                         vmset.GetId(),
@@ -162,8 +163,13 @@ func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmsetpb.VMSet) error
 				hflabels.EnvironmentLabel:       env.GetId(),
 				"bound":                         "false",
 				"ready":                         "false",
-				hflabels.ScheduledEventLabel:    vmset.GetLabels()[hflabels.ScheduledEventLabel],
+				hflabels.ScheduledEventLabel:    seName,
 				"restrictedbind":                fmt.Sprintf("%t", restrictedBind),
+			}
+			if vmt.GetCostBasePrice() != "" && vmt.GetCostTimeUnit() != "" {
+				vmLabels[hflabels.CostGroup] = seName
+				vmLabels[hflabels.CostBasePrice] = vmt.GetCostBasePrice()
+				vmLabels[hflabels.CostGroup] = vmt.GetCostTimeUnit()
 			}
 			if restrictedBind {
 				vmLabels["restrictedbindvalue"] = vmset.GetRestrictedBindValue()

@@ -21,7 +21,7 @@ type costGroup struct {
 	Kind              string
 	CostGroup         string
 	BasePrice         uint64
-	TimeUnit          TimeUnit
+	TimeUnit          util.TimeUnit
 	CreationTimestamp int64
 	DeletionTimestamp *int64
 }
@@ -50,7 +50,7 @@ func newCostGroup(obj interface{}) (*costGroup, error) {
 	if !found {
 		return nil, fmt.Errorf("%s label not found", labels.CostTimeUnit)
 	}
-	timeUnit, err := ParseTimeUnit(timeUnitLabel)
+	timeUnit, err := util.ParseTimeUnit(timeUnitLabel)
 	if err != nil {
 		return nil, err
 	}

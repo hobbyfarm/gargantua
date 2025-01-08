@@ -1,45 +1,22 @@
 package costservice
 
 import (
-	"fmt"
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	costpb "github.com/hobbyfarm/gargantua/v3/protos/cost"
 	"math"
-	"strings"
 	"time"
 )
-
-type TimeUnit = string
-
-const (
-	TimeUnitSeconds TimeUnit = "seconds"
-	TimeUnitMinutes TimeUnit = "minutes"
-	TimeUnitHours   TimeUnit = "hours"
-)
-
-func ParseTimeUnit(s string) (TimeUnit, error) {
-	lower := strings.ToLower(s)
-	switch lower {
-	case "seconds", "second", "sec", "s":
-		return TimeUnitSeconds, nil
-	case "minutes", "minute", "min", "m":
-		return TimeUnitMinutes, nil
-	case "hours", "hour", "h":
-		return TimeUnitHours, nil
-	default:
-		return TimeUnitSeconds, fmt.Errorf("%s is not a valid time unit", s)
-	}
-}
 
 func CostResourceCalcCost(cr v1.CostResource, duration time.Duration) uint64 {
 	var durationInTimeUnit uint64
 
 	switch cr.TimeUnit {
-	case TimeUnitSeconds:
+	case util.TimeUnitSeconds:
 		durationInTimeUnit = uint64(math.Ceil(duration.Seconds()))
-	case TimeUnitMinutes:
+	case util.TimeUnitMinutes:
 		durationInTimeUnit = uint64(math.Ceil(duration.Minutes()))
-	case TimeUnitHours:
+	case util.TimeUnitHours:
 		durationInTimeUnit = uint64(math.Ceil(duration.Hours()))
 	default:
 		durationInTimeUnit = 0
