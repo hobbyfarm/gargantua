@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang/glog"
+	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	costpb "github.com/hobbyfarm/gargantua/v3/protos/cost"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -12,12 +14,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"strconv"
 	"time"
-)
-
-const (
-	LabelCostGroup = "cost-group"
-	LabelBasePrice = "base-price"
-	LabelTimeUnit  = "time-unit"
 )
 
 type costGroup struct {
@@ -36,23 +32,23 @@ func newCostGroup(obj interface{}) (*costGroup, error) {
 		return nil, errors.New("failed to cast object to *unstructured.Unstructured")
 	}
 
-	labels := unstructuredObj.GetLabels()
+	objLabels := unstructuredObj.GetLabels()
 
-	costGroupLabel, found := labels[LabelCostGroup]
+	costGroupLabel, found := objLabels[labels.CostGroup]
 	if !found {
-		return nil, fmt.Errorf("%s label not found", LabelCostGroup)
+		return nil, fmt.Errorf("%s label not found", labels.CostGroup)
 	}
-	basePriceLabel, found := labels[LabelBasePrice]
+	basePriceLabel, found := objLabels[labels.CostBasePrice]
 	if !found {
-		return nil, fmt.Errorf("%s label not found", LabelBasePrice)
+		return nil, fmt.Errorf("%s label not found", labels.CostBasePrice)
 	}
 	basePrice, err := strconv.ParseUint(basePriceLabel, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("%s label value is not an uint", LabelBasePrice)
+		return nil, fmt.Errorf("%s label value is not an uint", labels.CostBasePrice)
 	}
-	timeUnitLabel, found := labels[LabelTimeUnit]
+	timeUnitLabel, found := objLabels[labels.CostTimeUnit]
 	if !found {
-		return nil, fmt.Errorf("%s label not found", LabelTimeUnit)
+		return nil, fmt.Errorf("%s label not found", labels.CostTimeUnit)
 	}
 	timeUnit, err := ParseTimeUnit(timeUnitLabel)
 	if err != nil {
@@ -161,8 +157,6 @@ func (li CostController) delete(obj interface{}) {
 		return
 	}
 
-	deletionTimestamp := time.Now().Unix()
-
 	resp, err := li.internalCostServer.CreateOrUpdateCost(li.ctx, &costpb.CreateOrUpdateCostRequest{
 		CostGroup:             cg.CostGroup,
 		Kind:                  cg.Kind,
@@ -170,7 +164,7 @@ func (li CostController) delete(obj interface{}) {
 		TimeUnit:              cg.TimeUnit,
 		Id:                    cg.Id,
 		CreationUnixTimestamp: cg.CreationTimestamp,
-		DeletionUnixTimestamp: &deletionTimestamp,
+		DeletionUnixTimestamp: util.Ref(time.Now().Unix()),
 	})
 	if err != nil {
 		glog.Errorf("error processing delete event: %v", err)

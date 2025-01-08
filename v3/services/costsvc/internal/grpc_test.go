@@ -5,6 +5,7 @@ import (
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	faketyped "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1/fake"
 	fakelisters "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1/fake"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	costpb "github.com/hobbyfarm/gargantua/v3/protos/cost"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	"github.com/stretchr/testify/assert"
@@ -456,8 +457,6 @@ func TestGrpcCostServer_CreateOrUpdateCost_create(t *testing.T) {
 	fakeCosts := &faketyped.FakeCosts{Fake: fakeClient}
 	gcs := &GrpcCostServer{costClient: fakeCosts}
 
-	deletionTimestamp := int64(100)
-
 	tests := []struct {
 		name  string
 		input *costpb.CreateOrUpdateCostRequest
@@ -500,7 +499,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_create(t *testing.T) {
 				BasePrice:             100,
 				TimeUnit:              TimeUnitSeconds,
 				CreationUnixTimestamp: 10,
-				DeletionUnixTimestamp: &deletionTimestamp,
+				DeletionUnixTimestamp: util.Ref(int64(100)),
 			},
 			want: &hfv1.Cost{
 				ObjectMeta: metav1.ObjectMeta{
@@ -514,7 +513,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_create(t *testing.T) {
 						BasePrice:             100,
 						TimeUnit:              TimeUnitSeconds,
 						CreationUnixTimestamp: 10,
-						DeletionUnixTimestamp: deletionTimestamp,
+						DeletionUnixTimestamp: 100,
 					}},
 				},
 			},
@@ -563,8 +562,6 @@ func TestGrpcCostServer_CreateOrUpdateCost_newResource(t *testing.T) {
 		},
 	}
 
-	deletionTimestamp := int64(100)
-
 	input := &costpb.CreateOrUpdateCostRequest{
 		CostGroup:             "test-cost-group",
 		Id:                    "vm-new",
@@ -572,7 +569,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_newResource(t *testing.T) {
 		BasePrice:             100,
 		TimeUnit:              TimeUnitSeconds,
 		CreationUnixTimestamp: 10,
-		DeletionUnixTimestamp: &deletionTimestamp,
+		DeletionUnixTimestamp: util.Ref(int64(100)),
 	}
 
 	want := &hfv1.Cost{
@@ -596,7 +593,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_newResource(t *testing.T) {
 					BasePrice:             100,
 					TimeUnit:              TimeUnitSeconds,
 					CreationUnixTimestamp: 10,
-					DeletionUnixTimestamp: deletionTimestamp,
+					DeletionUnixTimestamp: 100,
 				},
 			},
 		},
@@ -657,8 +654,6 @@ func TestGrpcCostServer_CreateOrUpdateCost_updateResource(t *testing.T) {
 		},
 	}
 
-	deletionTimestamp := int64(100)
-
 	input := &costpb.CreateOrUpdateCostRequest{
 		CostGroup:             "test-cost-group",
 		Id:                    "vm-existing",
@@ -666,7 +661,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_updateResource(t *testing.T) {
 		BasePrice:             100,
 		TimeUnit:              TimeUnitSeconds,
 		CreationUnixTimestamp: 10,
-		DeletionUnixTimestamp: &deletionTimestamp,
+		DeletionUnixTimestamp: util.Ref(int64(100)),
 	}
 
 	want := &hfv1.Cost{
@@ -682,7 +677,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_updateResource(t *testing.T) {
 					BasePrice:             100,
 					TimeUnit:              TimeUnitSeconds,
 					CreationUnixTimestamp: 10,
-					DeletionUnixTimestamp: deletionTimestamp,
+					DeletionUnixTimestamp: 100,
 				},
 			},
 		},

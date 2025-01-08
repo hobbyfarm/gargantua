@@ -512,10 +512,6 @@ func GetProtoMarshaller() protojson.MarshalOptions {
 	}
 }
 
-func StringPtr(s string) *string {
-	return &s
-}
-
 // This Method converts a given duration into a valid duration for time.ParseDuration.
 // time.ParseDuration does not accept "d" for days
 func GetDurationWithDays(s string) (string, error) {

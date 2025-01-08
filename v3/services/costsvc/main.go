@@ -4,6 +4,7 @@ import (
 	"context"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
 	"github.com/hobbyfarm/gargantua/v3/pkg/crd"
+	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic/dynamicinformer"
 	"sync"
@@ -38,7 +39,7 @@ func main() {
 	hfInformerFactory := hfInformers.NewSharedInformerFactoryWithOptions(hfClient, time.Second*30, hfInformers.WithNamespace(namespace))
 	dynamicInformerFactory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient, time.Second*30, namespace, func(options *metav1.ListOptions) {
 		// only resources with label cost-group
-		options.LabelSelector = costservice.LabelCostGroup
+		options.LabelSelector = labels.CostGroup
 	})
 
 	crd.InstallCrds(costservice.CostCRDInstaller{}, cfg, "cost")
