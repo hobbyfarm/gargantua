@@ -169,7 +169,7 @@ func (v *VMSetController) reconcileVirtualMachineSet(vmset *vmsetpb.VMSet) error
 			if vmt.GetCostBasePrice() != "" && vmt.GetCostTimeUnit() != "" {
 				vmLabels[hflabels.CostGroup] = seName
 				vmLabels[hflabels.CostBasePrice] = vmt.GetCostBasePrice()
-				vmLabels[hflabels.CostGroup] = vmt.GetCostTimeUnit()
+				vmLabels[hflabels.CostTimeUnit] = vmt.GetCostTimeUnit()
 			}
 			if restrictedBind {
 				vmLabels["restrictedbindvalue"] = vmset.GetRestrictedBindValue()

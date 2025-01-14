@@ -22,24 +22,24 @@ service CostSvc {
 
 message Cost {
     string cost_group = 1; // name of the cost group
-    uint64 total = 2; // total cost for all sources
+    double total = 2; // total cost for all sources
     repeated CostSource source = 3;
 }
 
 message CostSource {
     string kind = 1; // resource kind like VirtualMachine
-    uint64 cost = 2; // total cost for this kind
+    double cost = 2; // total cost for this kind
     uint64 count = 3;
 }
 
 message CreateOrUpdateCostRequest {
     string cost_group = 1;
-    string kind = 3; // like VirtualMachine
-    uint64 base_price = 4;
-    string time_unit = 5;
-    string id = 6; // resource id
-    int64 creation_unix_timestamp = 7; // unix timestamp in seconds
-    optional int64 deletion_unix_timestamp = 8; // unix timestamp in seconds
+    string kind = 2; // like VirtualMachine
+    double base_price = 3;
+    string time_unit = 4;
+    string id = 5; // resource id
+    int64 creation_unix_timestamp = 6; // unix timestamp in seconds
+    optional int64 deletion_unix_timestamp = 7; // unix timestamp in seconds
 }
 
 message ListCostsResponse {

@@ -595,10 +595,10 @@ type CostSpec struct {
 }
 
 type CostResource struct {
-	Id                    string `json:"id"`   // id of the resource
-	Kind                  string `json:"kind"` // name like VirtualMachine
-	BasePrice             uint64 `json:"base_price"`
-	TimeUnit              string `json:"time_unit"`                         // one of [seconds, minutes, hours]
-	CreationUnixTimestamp int64  `json:"creation_unix_timestamp"`           // unix timestamp in seconds
-	DeletionUnixTimestamp int64  `json:"deletion_unix_timestamp,omitempty"` // unix timestamp in seconds
+	Id                    string  `json:"id"`   // id of the resource
+	Kind                  string  `json:"kind"` // name like VirtualMachine
+	BasePrice             float64 `json:"base_price"`
+	TimeUnit              string  `json:"time_unit"`                         // one of [seconds, minutes, hours]
+	CreationUnixTimestamp int64   `json:"creation_unix_timestamp"`           // unix timestamp in seconds
+	DeletionUnixTimestamp int64   `json:"deletion_unix_timestamp,omitempty"` // unix timestamp in seconds
 }

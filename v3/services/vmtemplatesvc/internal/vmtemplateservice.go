@@ -207,9 +207,9 @@ func normalizeCost(costBasePrice, costTimeUnit string) (basePrice, timeUnit *str
 		return
 	}
 
-	_, err = strconv.ParseUint(costBasePrice, 10, 64)
+	_, err = strconv.ParseFloat(costBasePrice, 64)
 	if err != nil {
-		err = errors.New("cost_base_price needs to be a positive number")
+		err = errors.New("cost_base_price needs to be a float64")
 		return
 	}
 

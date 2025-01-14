@@ -20,10 +20,9 @@ type costGroup struct {
 	Id                string
 	Kind              string
 	CostGroup         string
-	BasePrice         uint64
+	BasePrice         float64
 	TimeUnit          util.TimeUnit
 	CreationTimestamp int64
-	DeletionTimestamp *int64
 }
 
 func newCostGroup(obj interface{}) (*costGroup, error) {
@@ -42,9 +41,9 @@ func newCostGroup(obj interface{}) (*costGroup, error) {
 	if !found {
 		return nil, fmt.Errorf("%s label not found", labels.CostBasePrice)
 	}
-	basePrice, err := strconv.ParseUint(basePriceLabel, 10, 64)
+	basePrice, err := strconv.ParseFloat(basePriceLabel, 64)
 	if err != nil {
-		return nil, fmt.Errorf("%s label value is not an uint", labels.CostBasePrice)
+		return nil, fmt.Errorf("%s label value is not a float64", labels.CostBasePrice)
 	}
 	timeUnitLabel, found := objLabels[labels.CostTimeUnit]
 	if !found {
@@ -52,12 +51,7 @@ func newCostGroup(obj interface{}) (*costGroup, error) {
 	}
 	timeUnit, err := util.ParseTimeUnit(timeUnitLabel)
 	if err != nil {
-		return nil, err
-	}
-
-	var deletionTimestamp int64
-	if unstructuredObj.GetDeletionTimestamp() != nil {
-		deletionTimestamp = unstructuredObj.GetDeletionTimestamp().Unix()
+		return nil, fmt.Errorf("%s label value is not a valid time unit", labels.CostTimeUnit)
 	}
 
 	return &costGroup{
@@ -67,7 +61,6 @@ func newCostGroup(obj interface{}) (*costGroup, error) {
 		BasePrice:         basePrice,
 		TimeUnit:          timeUnit,
 		CreationTimestamp: unstructuredObj.GetCreationTimestamp().Unix(),
-		DeletionTimestamp: &deletionTimestamp,
 	}, nil
 }
 

@@ -95,17 +95,17 @@ func TestGrpcCostServer_GetCostHistory(t *testing.T) {
 	costs, err := server.GetCostHistory(context.TODO(), &generalpb.GetRequest{Id: "my-cost-group"})
 	assert.NoError(t, err)
 	assert.Equal(t, costs.GetCostGroup(), expectedCost.Name, "cost group matches")
-	assert.Equal(t, costs.GetTotal(), uint64(10+10+10+50), "cost group total")
+	assert.Equal(t, costs.GetTotal(), float64(10+10+10+50), "cost group total")
 
 	assert.Len(t, costs.GetSource(), 2, "size of cost source")
 	for _, source := range costs.Source {
 		switch source.GetKind() {
 		case "Pod":
 			assert.Equal(t, source.GetCount(), uint64(2), "pod count")
-			assert.Equal(t, source.GetCost(), uint64(20), "pod costs")
+			assert.Equal(t, source.GetCost(), float64(20), "pod costs")
 		case "VirtualMachine":
 			assert.Equal(t, source.GetCount(), uint64(2), "virtual machine count")
-			assert.Equal(t, source.GetCost(), uint64(60), "virtual machine costs")
+			assert.Equal(t, source.GetCost(), float64(60), "virtual machine costs")
 		default:
 			t.Errorf("unkown source kind = %s; want Pod or VirtualMachine", source.Kind)
 		}
@@ -190,17 +190,17 @@ func TestGrpcCostServer_GetCostPresent(t *testing.T) {
 	costs, err := server.GetCostPresent(context.TODO(), &generalpb.GetRequest{Id: "my-cost-group"})
 	assert.NoError(t, err)
 	assert.Equal(t, costs.GetCostGroup(), expectedCost.Name, "cost group matches")
-	assert.Equal(t, costs.GetTotal(), uint64(10+10+10+50), "cost group total")
+	assert.Equal(t, costs.GetTotal(), float64(10+10+10+50), "cost group total")
 
 	assert.Len(t, costs.GetSource(), 2, "size of cost source")
 	for _, source := range costs.Source {
 		switch source.GetKind() {
 		case "Pod":
 			assert.Equal(t, source.GetCount(), uint64(2), "pod count")
-			assert.Equal(t, source.GetCost(), uint64(20), "pod costs")
+			assert.Equal(t, source.GetCost(), float64(20), "pod costs")
 		case "VirtualMachine":
 			assert.Equal(t, source.GetCount(), uint64(2), "virtual machine count")
-			assert.Equal(t, source.GetCost(), uint64(60), "virtual machine costs")
+			assert.Equal(t, source.GetCost(), float64(60), "virtual machine costs")
 		default:
 			t.Errorf("unkown source kind = %s; want Pod or VirtualMachine", source.Kind)
 		}
@@ -285,17 +285,17 @@ func TestGrpcCostServer_GetCost(t *testing.T) {
 	costs, err := server.GetCost(context.TODO(), &generalpb.GetRequest{Id: "my-cost-group"})
 	assert.NoError(t, err)
 	assert.Equal(t, costs.GetCostGroup(), expectedCost.Name, "cost group matches")
-	assert.Equal(t, costs.GetTotal(), uint64(10+10+10+10+50+10), "cost group total")
+	assert.Equal(t, costs.GetTotal(), float64(10+10+10+10+50+10), "cost group total")
 
 	assert.Len(t, costs.GetSource(), 2, "size of cost source")
 	for _, source := range costs.Source {
 		switch source.GetKind() {
 		case "Pod":
 			assert.Equal(t, source.GetCount(), uint64(3), "pod count")
-			assert.Equal(t, source.GetCost(), uint64(30), "pod costs")
+			assert.Equal(t, source.GetCost(), float64(30), "pod costs")
 		case "VirtualMachine":
 			assert.Equal(t, source.GetCount(), uint64(3), "virtual machine count")
-			assert.Equal(t, source.GetCost(), uint64(70), "virtual machine costs")
+			assert.Equal(t, source.GetCost(), float64(70), "virtual machine costs")
 		default:
 			t.Errorf("unkown source kind = %s; want Pod or VirtualMachine", source.Kind)
 		}
@@ -428,10 +428,10 @@ func TestGrpcCostServer_ListCost(t *testing.T) {
 				switch source.GetKind() {
 				case "Pod":
 					assert.Equal(t, source.GetCount(), uint64(3), "pod count")
-					assert.Equal(t, source.GetCost(), uint64(30), "pod costs")
+					assert.Equal(t, source.GetCost(), float64(30), "pod costs")
 				case "VirtualMachine":
 					assert.Equal(t, source.GetCount(), uint64(3), "virtual machine count")
-					assert.Equal(t, source.GetCost(), uint64(70), "virtual machine costs")
+					assert.Equal(t, source.GetCost(), float64(70), "virtual machine costs")
 				default:
 					t.Errorf("unkown source kind = %s; want Pod or VirtualMachine", source.Kind)
 				}
@@ -441,7 +441,7 @@ func TestGrpcCostServer_ListCost(t *testing.T) {
 				switch source.GetKind() {
 				case "VirtualMachine":
 					assert.Equal(t, source.GetCount(), uint64(3), "virtual machine count")
-					assert.Equal(t, source.GetCost(), uint64(70), "virtual machine costs")
+					assert.Equal(t, source.GetCost(), float64(70), "virtual machine costs")
 				default:
 					t.Errorf("unkown source kind = %s; want Pod or VirtualMachine", source.Kind)
 				}

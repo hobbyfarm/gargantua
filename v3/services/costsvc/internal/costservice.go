@@ -16,14 +16,14 @@ import (
 
 type PreparedCost struct {
 	CostGroup string               `json:"cost_group"`
-	Total     uint64               `json:"total"`
+	Total     float64              `json:"total"`
 	Sources   []PreparedCostSource `json:"source"`
 }
 
 type PreparedCostSource struct {
-	Kind  string `json:"kind"`
-	Cost  uint64 `json:"cost"`
-	Count uint64 `json:"count"`
+	Kind  string  `json:"kind"`
+	Cost  float64 `json:"cost"`
+	Count uint64  `json:"count"`
 }
 
 func NewPreparedCost(cost *costpb.Cost) PreparedCost {

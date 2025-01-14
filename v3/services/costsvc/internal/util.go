@@ -8,16 +8,16 @@ import (
 	"time"
 )
 
-func CostResourceCalcCost(cr v1.CostResource, duration time.Duration) uint64 {
-	var durationInTimeUnit uint64
+func CostResourceCalcCost(cr v1.CostResource, duration time.Duration) float64 {
+	var durationInTimeUnit float64
 
 	switch cr.TimeUnit {
 	case util.TimeUnitSeconds:
-		durationInTimeUnit = uint64(math.Ceil(duration.Seconds()))
+		durationInTimeUnit = math.Ceil(duration.Seconds())
 	case util.TimeUnitMinutes:
-		durationInTimeUnit = uint64(math.Ceil(duration.Minutes()))
+		durationInTimeUnit = math.Ceil(duration.Minutes())
 	case util.TimeUnitHours:
-		durationInTimeUnit = uint64(math.Ceil(duration.Hours()))
+		durationInTimeUnit = math.Ceil(duration.Hours())
 	default:
 		durationInTimeUnit = 0
 	}
@@ -78,10 +78,10 @@ func (cb *CostBuilder) WithHistoricCosts() *CostBuilder {
 
 func (cb *CostBuilder) Build(now time.Time) *costpb.Cost {
 	var costSources []*costpb.CostSource
-	var totalCost uint64
+	var totalCost float64
 
 	for kind, resources := range GroupCostResourceByKind(cb.cost.Spec.Resources) {
-		var costForKind uint64
+		var costForKind float64
 		var count uint64
 
 		for _, resource := range resources {

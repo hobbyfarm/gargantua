@@ -14,7 +14,7 @@ func TestCostResourceCalcCost(t *testing.T) {
 		name     string
 		input    v1.CostResource
 		duration time.Duration
-		want     uint64
+		want     float64
 	}{
 		{
 			name: "seconds",
