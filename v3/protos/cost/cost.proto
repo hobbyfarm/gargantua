@@ -15,6 +15,8 @@ service CostSvc {
     rpc GetCostPresent (general.GetRequest) returns (Cost);
     // Response reflects how many costs have been and are currently generated in a cost group (reflects running and terminated resources)
     rpc GetCost (general.GetRequest) returns (Cost);
+    // Response contains cost details for a cost group
+    rpc GetCostDetail (general.GetRequest) returns (CostDetail);
     rpc DeleteCost (general.ResourceId) returns (google.protobuf.Empty);
     // Response reflects how many costs have been and are currently generated for all cost groups (reflects running and terminated resources)
     rpc ListCost (general.ListOptions) returns (ListCostsResponse);
@@ -30,6 +32,20 @@ message CostSource {
     string kind = 1; // resource kind like VirtualMachine
     double cost = 2; // total cost for this kind
     uint64 count = 3;
+}
+
+message CostDetail {
+    string cost_group = 1;
+    repeated CostDetailSource source = 2;
+}
+
+message CostDetailSource {
+    string kind = 1; // like VirtualMachine
+    double base_price = 2;
+    string time_unit = 3;
+    string id = 4; // resource id
+    int64 creation_unix_timestamp = 5; // unix timestamp in seconds
+    optional int64 deletion_unix_timestamp = 6; // unix timestamp in seconds
 }
 
 message CreateOrUpdateCostRequest {

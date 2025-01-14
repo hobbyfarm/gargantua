@@ -29,6 +29,7 @@ func (cs CostServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/cost/all/{cost_group}", cs.GetCostFunc).Methods("GET")
 	r.HandleFunc("/a/cost/history/{cost_group}", cs.GetCostHistoryFunc).Methods("GET")
 	r.HandleFunc("/a/cost/present/{cost_group}", cs.GetCostPresentFunc).Methods("GET")
+	r.HandleFunc("/a/cost/detail/{cost_group}", cs.GetCostDetailFunc).Methods("GET")
 	r.HandleFunc("/a/cost/list", cs.GetAllCostListFunc).Methods("GET")
 	glog.V(2).Infof("set up routes")
 }

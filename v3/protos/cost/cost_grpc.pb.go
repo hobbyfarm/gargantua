@@ -25,6 +25,7 @@ const (
 	CostSvc_GetCostHistory_FullMethodName     = "/cost.CostSvc/GetCostHistory"
 	CostSvc_GetCostPresent_FullMethodName     = "/cost.CostSvc/GetCostPresent"
 	CostSvc_GetCost_FullMethodName            = "/cost.CostSvc/GetCost"
+	CostSvc_GetCostDetail_FullMethodName      = "/cost.CostSvc/GetCostDetail"
 	CostSvc_DeleteCost_FullMethodName         = "/cost.CostSvc/DeleteCost"
 	CostSvc_ListCost_FullMethodName           = "/cost.CostSvc/ListCost"
 )
@@ -40,6 +41,8 @@ type CostSvcClient interface {
 	GetCostPresent(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Cost, error)
 	// Response reflects how many costs have been and are currently generated in a cost group (reflects running and terminated resources)
 	GetCost(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*Cost, error)
+	// Response contains cost details for a cost group
+	GetCostDetail(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*CostDetail, error)
 	DeleteCost(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Response reflects how many costs have been and are currently generated for all cost groups (reflects running and terminated resources)
 	ListCost(ctx context.Context, in *general.ListOptions, opts ...grpc.CallOption) (*ListCostsResponse, error)
@@ -89,6 +92,15 @@ func (c *costSvcClient) GetCost(ctx context.Context, in *general.GetRequest, opt
 	return out, nil
 }
 
+func (c *costSvcClient) GetCostDetail(ctx context.Context, in *general.GetRequest, opts ...grpc.CallOption) (*CostDetail, error) {
+	out := new(CostDetail)
+	err := c.cc.Invoke(ctx, CostSvc_GetCostDetail_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *costSvcClient) DeleteCost(ctx context.Context, in *general.ResourceId, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, CostSvc_DeleteCost_FullMethodName, in, out, opts...)
@@ -118,6 +130,8 @@ type CostSvcServer interface {
 	GetCostPresent(context.Context, *general.GetRequest) (*Cost, error)
 	// Response reflects how many costs have been and are currently generated in a cost group (reflects running and terminated resources)
 	GetCost(context.Context, *general.GetRequest) (*Cost, error)
+	// Response contains cost details for a cost group
+	GetCostDetail(context.Context, *general.GetRequest) (*CostDetail, error)
 	DeleteCost(context.Context, *general.ResourceId) (*emptypb.Empty, error)
 	// Response reflects how many costs have been and are currently generated for all cost groups (reflects running and terminated resources)
 	ListCost(context.Context, *general.ListOptions) (*ListCostsResponse, error)
@@ -139,6 +153,9 @@ func (UnimplementedCostSvcServer) GetCostPresent(context.Context, *general.GetRe
 }
 func (UnimplementedCostSvcServer) GetCost(context.Context, *general.GetRequest) (*Cost, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCost not implemented")
+}
+func (UnimplementedCostSvcServer) GetCostDetail(context.Context, *general.GetRequest) (*CostDetail, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCostDetail not implemented")
 }
 func (UnimplementedCostSvcServer) DeleteCost(context.Context, *general.ResourceId) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteCost not implemented")
@@ -231,6 +248,24 @@ func _CostSvc_GetCost_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CostSvc_GetCostDetail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(general.GetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CostSvcServer).GetCostDetail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CostSvc_GetCostDetail_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CostSvcServer).GetCostDetail(ctx, req.(*general.GetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _CostSvc_DeleteCost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(general.ResourceId)
 	if err := dec(in); err != nil {
@@ -289,6 +324,10 @@ var CostSvc_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCost",
 			Handler:    _CostSvc_GetCost_Handler,
+		},
+		{
+			MethodName: "GetCostDetail",
+			Handler:    _CostSvc_GetCostDetail_Handler,
 		},
 		{
 			MethodName: "DeleteCost",

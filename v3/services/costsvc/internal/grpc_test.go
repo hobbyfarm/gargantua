@@ -302,6 +302,73 @@ func TestGrpcCostServer_GetCost(t *testing.T) {
 	}
 }
 
+func TestGrpcCostServer_GetCostDetail(t *testing.T) {
+	fakeClient := &faketyped.FakeHobbyfarmV1{Fake: &k8stesting.Fake{}}
+	fakeCosts := &faketyped.FakeCosts{Fake: fakeClient}
+	fakeCostLister := &fakelisters.FakeCostLister{}
+	fakeCostLister.On("Costs", mock.Anything).Return(nil)
+	server := GrpcCostServer{
+		costClient: fakeCosts,
+		costLister: fakeCostLister,
+		costSynced: func() bool { return true },
+	}
+	givenCost := &hfv1.Cost{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "my-cost-group",
+		},
+		Spec: hfv1.CostSpec{
+			CostGroup: "my-cost-group",
+			Resources: []hfv1.CostResource{
+				{
+					Id:                    "pod-a",
+					Kind:                  "Pod",
+					BasePrice:             0.1,
+					TimeUnit:              util.TimeUnitSeconds,
+					CreationUnixTimestamp: 10,
+					DeletionUnixTimestamp: 0,
+				},
+				{
+					Id:                    "vm-a",
+					Kind:                  "VirtualMachine",
+					BasePrice:             10.111,
+					TimeUnit:              util.TimeUnitMinutes,
+					CreationUnixTimestamp: 20,
+					DeletionUnixTimestamp: 200,
+				},
+			},
+		},
+	}
+	expectedCostDetail := costpb.CostDetail{
+		CostGroup: "my-cost-group",
+		Source: []*costpb.CostDetailSource{
+			{
+				Kind:                  "Pod",
+				BasePrice:             0.1,
+				TimeUnit:              util.TimeUnitSeconds,
+				Id:                    "pod-a",
+				CreationUnixTimestamp: 10,
+				DeletionUnixTimestamp: nil,
+			},
+			{
+				Kind:                  "VirtualMachine",
+				BasePrice:             10.111,
+				TimeUnit:              util.TimeUnitMinutes,
+				Id:                    "vm-a",
+				CreationUnixTimestamp: 20,
+				DeletionUnixTimestamp: util.Ref(int64(200)),
+			},
+		},
+	}
+	fakeClient.Fake.PrependReactor("get", "costs", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		return true, givenCost, nil
+	})
+
+	costs, err := server.GetCostDetail(context.TODO(), &generalpb.GetRequest{Id: "my-cost-group"})
+	assert.NoError(t, err)
+	assert.Equal(t, costs.GetCostGroup(), expectedCostDetail.CostGroup, "cost group matches")
+	assert.ElementsMatch(t, expectedCostDetail.GetSource(), costs.GetSource(), "source matches")
+}
+
 func TestGrpcCostServer_ListCost(t *testing.T) {
 	now := time.Unix(10, 0)
 

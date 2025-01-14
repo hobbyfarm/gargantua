@@ -152,6 +152,29 @@ func (gcs *GrpcCostServer) GetCost(ctx context.Context, req *generalpb.GetReques
 	return NewCostBuilder(cost).WithAllCosts().Build(gcs.nowFunc()), nil
 }
 
+func (gcs *GrpcCostServer) GetCostDetail(ctx context.Context, req *generalpb.GetRequest) (*costpb.CostDetail, error) {
+	cost, err := util.GenericHfGetter(ctx, req, gcs.costClient, gcs.costLister.Costs(util.GetReleaseNamespace()), "cost", gcs.costSynced())
+	if err != nil {
+		return &costpb.CostDetail{}, err
+	}
+
+	source := make([]*costpb.CostDetailSource, len(cost.Spec.Resources))
+	for i, resource := range cost.Spec.Resources {
+		source[i] = &costpb.CostDetailSource{
+			Kind:                  resource.Kind,
+			BasePrice:             resource.BasePrice,
+			TimeUnit:              resource.TimeUnit,
+			Id:                    resource.Id,
+			CreationUnixTimestamp: resource.CreationUnixTimestamp,
+			DeletionUnixTimestamp: util.RefOrNil(resource.DeletionUnixTimestamp),
+		}
+	}
+	return &costpb.CostDetail{
+		CostGroup: cost.Spec.CostGroup,
+		Source:    source,
+	}, nil
+}
+
 func (gcs *GrpcCostServer) DeleteCost(ctx context.Context, req *generalpb.ResourceId) (*emptypb.Empty, error) {
 	return util.DeleteHfResource(ctx, req, gcs.costClient, "cost")
 }
