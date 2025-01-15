@@ -6,16 +6,13 @@ import (
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
 	labels2 "github.com/hobbyfarm/gargantua/v4/pkg/labels"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"log/slog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (acc *accessCodeController) ensureRole(ctx context.Context, obj runtime.Object) (runtime.Object, error) {
+func (acc *accessCodeController) ensureRole(key string, obj runtime.Object) (runtime.Object, error) {
 	var courses, scenarios, scheduledEvents, machineSets []string
 	var labelSelector, objName string
-	var isOtac bool
 
 	switch a := obj.(type) {
 	case *v4alpha1.AccessCode:
@@ -23,7 +20,6 @@ func (acc *accessCodeController) ensureRole(ctx context.Context, obj runtime.Obj
 		scenarios = a.Spec.Scenarios
 		scheduledEvents = a.Spec.ScheduledEvents
 		machineSets = a.Spec.MachineSets
-		isOtac = false
 		objName = a.GetName()
 		labelSelector = labels2.AccessCodeLabel
 	case *v4alpha1.OneTimeAccessCode:
@@ -31,19 +27,14 @@ func (acc *accessCodeController) ensureRole(ctx context.Context, obj runtime.Obj
 		scenarios = a.Spec.Scenarios
 		scheduledEvents = a.Spec.ScheduledEvents
 		machineSets = a.Spec.MachineSets
-		isOtac = true
 		objName = a.GetName()
 		labelSelector = labels2.OneTimeAccessCodeLabel
 	}
 
 	// retrieve role corresponding with (ot)ac
-
-	selector := labels.SelectorFromSet(map[string]string{
-		labelSelector: objName,
-	})
 	roleList := &v4alpha1.RoleList{}
-	if err := acc.roleClient.List(ctx, roleList, &client.ListOptions{
-		LabelSelector: selector,
+	if err := acc.roleClient.List(context.TODO(), "", roleList, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", labelSelector, objName),
 	}); err != nil {
 		return nil, err
 	}
@@ -62,7 +53,7 @@ func (acc *accessCodeController) ensureRole(ctx context.Context, obj runtime.Obj
 			},
 		}
 
-		if err := acc.roleClient.Create(ctx, role); err != nil {
+		if err := acc.roleClient.Create(context.TODO(), "", role, role, metav1.CreateOptions{}); err != nil {
 			return nil, err
 		}
 	} else if len(roleList.Items) == 1 {
@@ -79,7 +70,7 @@ func (acc *accessCodeController) ensureRole(ctx context.Context, obj runtime.Obj
 		makeRule("machineSets", machineSets),
 	}
 
-	if err := acc.roleClient.Update(ctx, role); err != nil {
+	if err := acc.roleClient.Update(context.TODO(), "", role, role, metav1.UpdateOptions{}); err != nil {
 		return nil, err
 	}
 
@@ -88,8 +79,8 @@ func (acc *accessCodeController) ensureRole(ctx context.Context, obj runtime.Obj
 
 func makeRule(resources string, resourceNames []string) v4alpha1.Rule {
 	return v4alpha1.Rule{
-		APIGroups: []string{"hobbyfarm.io"},
-		Resources: []string{resources},
-		ResourceNames: resourceNames
+		APIGroups:     []string{"hobbyfarm.io"},
+		Resources:     []string{resources},
+		ResourceNames: resourceNames,
 	}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
+	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/accesscode"
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/authentication/providers/ldap"
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/serviceaccount"
 	"github.com/rancher/lasso/pkg/controller"
@@ -65,6 +66,10 @@ func app(cmd *cobra.Command, args []string) error {
 
 	if err := ldap.RegisterHandlers(factory); err != nil {
 		return fmt.Errorf("error registering ldap handlers: %s", err.Error())
+	}
+
+	if err := accesscode.RegisterHandlers(factory); err != nil {
+		return fmt.Errorf("error registering accesscode handlers: %s", err.Error())
 	}
 
 	if err := factory.Start(cmd.Context(), 1); err != nil {
