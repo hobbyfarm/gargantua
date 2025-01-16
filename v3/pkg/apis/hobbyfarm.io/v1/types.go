@@ -269,15 +269,15 @@ type ScenarioList struct {
 }
 
 type ScenarioSpec struct {
-	Name              string              `json:"name"`
-	Description       string              `json:"description"`
-	Steps             []ScenarioStep      `json:"steps"`
-	Categories        []string            `json:"categories"`
-	Tags              []string            `json:"tags"`
-	VirtualMachines   []map[string]string `json:"virtualmachines"`
-	KeepAliveDuration string              `json:"keepalive_duration"`
-	PauseDuration     string              `json:"pause_duration"`
-	Pauseable         bool                `json:"pauseable"`
+	Name              string                `json:"name"`
+	Description       string                `json:"description"`
+	Steps             []ScenarioStep        `json:"steps"`
+	Categories        []string              `json:"categories"`
+	Tags              []string              `json:"tags"`
+	VirtualMachines   []map[string]string   `json:"virtualmachines"`
+	KeepAliveDuration string                `json:"keepalive_duration"`
+	PauseDuration     string                `json:"pause_duration"`
+	Pauseable         bool                  `json:"pauseable"`
 	Tasks             []VirtualMachineTasks `json:"vm_tasks"`
 }
 
@@ -296,7 +296,7 @@ type Task struct {
 	Command             string `json:"command"`
 	ExpectedOutputValue string `json:"expected_output_value"`
 	ExpectedReturnCode  int    `json:"expected_return_code"`
-	ReturnType 			string `json:"return_type"`
+	ReturnType          string `json:"return_type"`
 }
 
 // +genclient
@@ -569,4 +569,36 @@ type ScopeList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Scope `json:"items"`
+}
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type Cost struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              CostSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type CostList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Cost `json:"items"`
+}
+
+type CostSpec struct {
+	CostGroup string         `json:"cost_group"`
+	Resources []CostResource `json:"resources"`
+}
+
+type CostResource struct {
+	Id                    string  `json:"id"`   // id of the resource
+	Kind                  string  `json:"kind"` // name like VirtualMachine
+	BasePrice             float64 `json:"base_price"`
+	TimeUnit              string  `json:"time_unit"`                         // one of [seconds, minutes, hours]
+	CreationUnixTimestamp int64   `json:"creation_unix_timestamp"`           // unix timestamp in seconds
+	DeletionUnixTimestamp int64   `json:"deletion_unix_timestamp,omitempty"` // unix timestamp in seconds
 }

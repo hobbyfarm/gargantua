@@ -23,4 +23,5 @@ use (
 	./v3/services/scenariosvc
 	./v3/services/coursesvc
 	./v3/services/terraformsvc
+	./v3/services/costsvc
 )

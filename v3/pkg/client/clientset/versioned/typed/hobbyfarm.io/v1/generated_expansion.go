@@ -20,6 +20,8 @@ package v1
 
 type AccessCodeExpansion interface{}
 
+type CostExpansion interface{}
+
 type CourseExpansion interface{}
 
 type DynamicBindConfigurationExpansion interface{}
