@@ -40,4 +40,5 @@ const (
 	ResourcePluralOTAC        = "onetimeaccesscodes"
 	ResourcePluralSettings    = "settings"
 	ResourcePluralScopes      = "scopes"
+	ResourcePluralCost        = "costs"
 )

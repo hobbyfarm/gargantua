@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"k8s.io/client-go/dynamic"
 	"net"
 	"net/http"
 	"os"
@@ -55,6 +56,7 @@ const (
 	AccessCode     MicroService = "accesscode-service"
 	AuthN          MicroService = "authn-service"
 	AuthR          MicroService = "authr-service"
+	Cost           MicroService = "cost-service"
 	Course         MicroService = "course-service"
 	DBConfig       MicroService = "dbconfig-service"
 	Environment    MicroService = "environment-service"
@@ -332,6 +334,15 @@ func BuildClusterConfig(serviceConfig *ServiceConfig) (*rest.Config, *hfClientse
 	}
 
 	return cfg, hfClient, kubeClient
+}
+
+func BuildDynamicClient(cfg *rest.Config) *dynamic.DynamicClient {
+	dynamicClient, err := dynamic.NewForConfig(cfg)
+	if err != nil {
+		glog.Fatalf("Error building dynamic client: %s", err.Error())
+	}
+
+	return dynamicClient
 }
 
 // ParseFlags declares the flags and parses them, then returns a ServiceConfig struct.

@@ -22,12 +22,16 @@ message VMTemplate {
     string name = 3;
     string image = 4;
     map<string, string> config_map = 5;
+    optional string cost_base_price = 6;
+    optional string cost_time_unit = 7;
 }
 
 message CreateVMTemplateRequest {
     string name = 1;
     string image = 2;
     string config_map_raw = 3;
+    optional string cost_base_price = 4;
+    optional string cost_time_unit = 5;
 }
 
 message UpdateVMTemplateRequest {
@@ -35,6 +39,8 @@ message UpdateVMTemplateRequest {
     string name = 2;
     string image = 3;
     string config_map_raw = 4;
+    optional string cost_base_price = 5;
+    optional string cost_time_unit = 6;
 }
 
 message ListVMTemplatesResponse {

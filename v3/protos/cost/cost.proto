@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package cost;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/cost;costpb";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+
+service CostSvc {
+    rpc CreateOrUpdateCost (CreateOrUpdateCostRequest) returns (general.ResourceId);
+    // Response reflects how many costs have been generated in a cost group in the past (reflects deleted resources)
+    rpc GetCostHistory (general.GetRequest) returns (Cost);
+    // Response reflects how many costs are currently generated in a cost group (reflects running resources)
+    rpc GetCostPresent (general.GetRequest) returns (Cost);
+    // Response reflects how many costs have been and are currently generated in a cost group (reflects running and terminated resources)
+    rpc GetCost (general.GetRequest) returns (Cost);
+    // Response contains cost details for a cost group
+    rpc GetCostDetail (general.GetRequest) returns (CostDetail);
+    rpc DeleteCost (general.ResourceId) returns (google.protobuf.Empty);
+    // Response reflects how many costs have been and are currently generated for all cost groups (reflects running and terminated resources)
+    rpc ListCost (general.ListOptions) returns (ListCostsResponse);
+}
+
+message Cost {
+    string cost_group = 1; // name of the cost group
+    double total = 2; // total cost for all sources
+    repeated CostSource source = 3;
+}
+
+message CostSource {
+    string kind = 1; // resource kind like VirtualMachine
+    double cost = 2; // total cost for this kind
+    uint64 count = 3;
+}
+
+message CostDetail {
+    string cost_group = 1;
+    repeated CostDetailSource source = 2;
+}
+
+message CostDetailSource {
+    string kind = 1; // like VirtualMachine
+    double base_price = 2;
+    string time_unit = 3;
+    string id = 4; // resource id
+    int64 creation_unix_timestamp = 5; // unix timestamp in seconds
+    optional int64 deletion_unix_timestamp = 6; // unix timestamp in seconds
+}
+
+message CreateOrUpdateCostRequest {
+    string cost_group = 1;
+    string kind = 2; // like VirtualMachine
+    double base_price = 3;
+    string time_unit = 4;
+    string id = 5; // resource id
+    int64 creation_unix_timestamp = 6; // unix timestamp in seconds
+    optional int64 deletion_unix_timestamp = 7; // unix timestamp in seconds
+}
+
+message ListCostsResponse {
+    repeated Cost costs = 1;
+}

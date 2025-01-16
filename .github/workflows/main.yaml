@@ -31,6 +31,12 @@ jobs:
       path: ./v3/services/conversionsvc
       image: conversion-service
     secrets: inherit
+  build-cost-service:
+    uses: ./.github/workflows/build.yaml
+    with:
+      path: ./v3/services/costsvc
+      image: cost-service
+    secrets: inherit
   build-course-service:
     uses: ./.github/workflows/build.yaml
     with:
@@ -120,4 +126,10 @@ jobs:
     with:
       path: ./v3/services/vmtemplatesvc
       image: vmtemplate-service
+    secrets: inherit
+  build-score-service:
+    uses: ./.github/workflows/build.yaml
+    with:
+      path: ./v3/services/scoresvc
+      image: score-service
     secrets: inherit

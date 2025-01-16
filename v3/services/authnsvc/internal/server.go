@@ -42,6 +42,7 @@ func (a AuthServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/auth/accesscode", a.ListAccessCodeFunc).Methods("GET")
 	r.HandleFunc("/auth/accesscode", a.AddAccessCodeFunc).Methods("POST")
 	r.HandleFunc("/auth/accesscode/{access_code}", a.RemoveAccessCodeFunc).Methods("DELETE")
+	r.HandleFunc("/auth/accesscodes", a.RemoveMultipleAccessCodesFunc).Methods("DELETE")
 	r.HandleFunc("/auth/changepassword", a.ChangePasswordFunc).Methods("POST")
 	r.HandleFunc("/auth/settings", a.RetreiveSettingsFunc).Methods("GET")
 	r.HandleFunc("/auth/settings", a.UpdateSettingsFunc).Methods("POST")

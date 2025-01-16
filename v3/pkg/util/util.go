@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	mrand "math/rand"
+	"slices"
 
 	hfv1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	hfClientset "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
@@ -512,10 +513,6 @@ func GetProtoMarshaller() protojson.MarshalOptions {
 	}
 }
 
-func StringPtr(s string) *string {
-	return &s
-}
-
 // This Method converts a given duration into a valid duration for time.ParseDuration.
 // time.ParseDuration does not accept "d" for days
 func GetDurationWithDays(s string) (string, error) {
@@ -575,4 +572,16 @@ func AppendDynamicScenariosByCategories(
 
 	scenariosList = UniqueStringSlice(scenariosList)
 	return scenariosList
+}
+
+// This function returns a slice of all strings from the target slice, which are not also found in the input slice
+func GetUniqueStringsFromSlice(targetSlice []string, inputSlice []string) []string {
+	unique := make([]string, 0)
+	for _, v := range targetSlice {
+		idx := slices.IndexFunc(inputSlice, func(s string) bool { return s == v })
+		if idx == -1 {
+			unique = append(unique, v)
+		}
+	}
+	return unique
 }

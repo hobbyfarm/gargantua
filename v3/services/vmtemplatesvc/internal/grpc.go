@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base32"
+	"github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	"strings"
 
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
@@ -43,6 +44,8 @@ func (s *GrpcVMTemplateServer) CreateVMTemplate(ctx context.Context, req *vmtemp
 	name := req.GetName()
 	image := req.GetImage()
 	configMapRaw := req.GetConfigMapRaw()
+	costBasePrice := req.GetCostBasePrice()
+	costTimeUnit := req.GetCostTimeUnit()
 
 	requiredStringParams := map[string]string{
 		"name":  name,
@@ -76,6 +79,13 @@ func (s *GrpcVMTemplateServer) CreateVMTemplate(ctx context.Context, req *vmtemp
 		vmTemplate.Spec.ConfigMap = configMap
 	}
 
+	if costBasePrice != "" && costTimeUnit != "" {
+		vmTemplate.ObjectMeta.Labels = map[string]string{
+			labels.CostBasePrice: req.GetCostBasePrice(),
+			labels.CostTimeUnit:  req.GetCostTimeUnit(),
+		}
+	}
+
 	_, err := s.vmTemplateClient.Create(ctx, vmTemplate, metav1.CreateOptions{})
 	if err != nil {
 		return &generalpb.ResourceId{}, hferrors.GrpcError(
@@ -94,11 +104,13 @@ func (s *GrpcVMTemplateServer) GetVMTemplate(ctx context.Context, req *generalpb
 	}
 
 	return &vmtemplatepb.VMTemplate{
-		Id:        vmTemplate.Name,
-		Uid:       string(vmTemplate.UID),
-		Name:      vmTemplate.Spec.Name,
-		Image:     vmTemplate.Spec.Image,
-		ConfigMap: vmTemplate.Spec.ConfigMap,
+		Id:            vmTemplate.Name,
+		Uid:           string(vmTemplate.UID),
+		Name:          vmTemplate.Spec.Name,
+		Image:         vmTemplate.Spec.Image,
+		ConfigMap:     vmTemplate.Spec.ConfigMap,
+		CostBasePrice: util.RefOrNil(vmTemplate.ObjectMeta.Labels[labels.CostBasePrice]),
+		CostTimeUnit:  util.RefOrNil(vmTemplate.ObjectMeta.Labels[labels.CostTimeUnit]),
 	}, nil
 }
 
@@ -111,6 +123,8 @@ func (s *GrpcVMTemplateServer) UpdateVMTemplate(ctx context.Context, req *vmtemp
 	name := req.GetName()
 	image := req.GetImage()
 	configMapRaw := req.GetConfigMapRaw()
+	costBasePrice := req.GetCostBasePrice()
+	costTimeUnit := req.GetCostTimeUnit()
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		vmTemplate, err := s.vmTemplateClient.Get(ctx, id, metav1.GetOptions{})
@@ -138,6 +152,21 @@ func (s *GrpcVMTemplateServer) UpdateVMTemplate(ctx context.Context, req *vmtemp
 				return err
 			}
 			vmTemplate.Spec.ConfigMap = configMap
+		}
+
+		if costBasePrice == "" && costTimeUnit == "" {
+			if vmTemplate.ObjectMeta.Labels != nil {
+				delete(vmTemplate.ObjectMeta.Labels, labels.CostBasePrice)
+				delete(vmTemplate.ObjectMeta.Labels, labels.CostTimeUnit)
+			}
+		}
+
+		if costBasePrice != "" && costTimeUnit != "" {
+			if vmTemplate.ObjectMeta.Labels == nil {
+				vmTemplate.ObjectMeta.Labels = make(map[string]string)
+			}
+			vmTemplate.ObjectMeta.Labels[labels.CostBasePrice] = costBasePrice
+			vmTemplate.ObjectMeta.Labels[labels.CostTimeUnit] = costTimeUnit
 		}
 
 		_, updateErr := s.vmTemplateClient.Update(ctx, vmTemplate, metav1.UpdateOptions{})
@@ -185,11 +214,13 @@ func (s *GrpcVMTemplateServer) ListVMTemplate(ctx context.Context, listOptions *
 
 	for _, vmTemplate := range vmTemplates {
 		preparedVmTemplates = append(preparedVmTemplates, &vmtemplatepb.VMTemplate{
-			Id:        vmTemplate.Name,
-			Uid:       string(vmTemplate.UID),
-			Name:      vmTemplate.Spec.Name,
-			Image:     vmTemplate.Spec.Image,
-			ConfigMap: vmTemplate.Spec.ConfigMap,
+			Id:            vmTemplate.Name,
+			Uid:           string(vmTemplate.UID),
+			Name:          vmTemplate.Spec.Name,
+			Image:         vmTemplate.Spec.Image,
+			ConfigMap:     vmTemplate.Spec.ConfigMap,
+			CostBasePrice: util.RefOrNil(vmTemplate.ObjectMeta.Labels[labels.CostBasePrice]),
+			CostTimeUnit:  util.RefOrNil(vmTemplate.ObjectMeta.Labels[labels.CostTimeUnit]),
 		})
 	}
 
