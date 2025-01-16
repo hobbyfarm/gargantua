@@ -6,6 +6,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/accesscode"
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/authentication/providers/ldap"
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/serviceaccount"
+	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/user"
 	"github.com/rancher/lasso/pkg/controller"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -70,6 +71,10 @@ func app(cmd *cobra.Command, args []string) error {
 
 	if err := accesscode.RegisterHandlers(factory); err != nil {
 		return fmt.Errorf("error registering accesscode handlers: %s", err.Error())
+	}
+
+	if err := user.RegisterHandlers(factory); err != nil {
+		return fmt.Errorf("error registering users handlers: %s", err.Error())
 	}
 
 	if err := factory.Start(cmd.Context(), 1); err != nil {
