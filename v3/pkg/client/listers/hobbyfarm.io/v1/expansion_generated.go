@@ -26,6 +26,14 @@ type AccessCodeListerExpansion interface{}
 // AccessCodeNamespaceLister.
 type AccessCodeNamespaceListerExpansion interface{}
 
+// CostListerExpansion allows custom methods to be added to
+// CostLister.
+type CostListerExpansion interface{}
+
+// CostNamespaceListerExpansion allows custom methods to be added to
+// CostNamespaceLister.
+type CostNamespaceListerExpansion interface{}
+
 // CourseListerExpansion allows custom methods to be added to
 // CourseLister.
 type CourseListerExpansion interface{}

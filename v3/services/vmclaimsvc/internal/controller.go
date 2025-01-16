@@ -295,6 +295,12 @@ func (v *VMClaimController) submitVirtualMachines(vmc *vmclaimpb.VMClaim) (err e
 			return err
 		}
 
+		if vmt.GetCostBasePrice() != "" && vmt.GetCostTimeUnit() != "" {
+			vm.Labels[hflabels.CostGroup] = seName
+			vm.Labels[hflabels.CostBasePrice] = vmt.GetCostBasePrice()
+			vm.Labels[hflabels.CostTimeUnit] = vmt.GetCostTimeUnit()
+		}
+
 		config := util.GetVMConfig(environment, vmt)
 
 		protocol, exists := config["protocol"]

@@ -268,6 +268,13 @@ func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 			password = ""
 		}
 
+		shellEndpoint := vm.GetStatus().WsEndpoint
+
+		_, exists = config["cloud-config"]
+		if exists {
+			config["cloud-config"] = strings.Replace(config["cloud-config"], "$_SHELL_ENDPOINT_$", shellEndpoint, -1)
+		}
+
 		vmOwnerReference := []metav1.OwnerReference{
 			{
 				APIVersion: "hobbyfarm.io/v1",

@@ -216,7 +216,7 @@ func (a AuthServer) RemoveAccessCodeFunc(w http.ResponseWriter, r *http.Request)
 
 	accessCode := strings.ToLower(vars["access_code"])
 
-	err = a.RemoveAccessCode(user, accessCode, r.Context())
+	err = a.RemoveAccessCodes(user, []string{accessCode}, r.Context())
 
 	if err != nil {
 		glog.Error(err)
@@ -227,6 +227,37 @@ func (a AuthServer) RemoveAccessCodeFunc(w http.ResponseWriter, r *http.Request)
 	util.ReturnHTTPMessage(w, r, 200, "success", accessCode)
 
 	glog.V(2).Infof("removed accesscode %s to user %s", accessCode, user.Email)
+}
+
+func (a AuthServer) RemoveMultipleAccessCodesFunc(w http.ResponseWriter, r *http.Request) {
+	token := r.Header.Get("Authorization")
+	user, err := a.internalAuthnServer.AuthN(r.Context(), &authnpb.AuthNRequest{
+		Token: token,
+	})
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get accesscode")
+		return
+	}
+
+	var acUnmarshaled []string
+	err = json.NewDecoder(r.Body).Decode(&acUnmarshaled)
+	if err != nil {
+		glog.Errorf("error while unmarshaling accesscodes %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "error attempting to update")
+		return
+	}
+
+	err = a.RemoveAccessCodes(user, acUnmarshaled, r.Context())
+
+	if err != nil {
+		glog.Error(err)
+		util.ReturnHTTPMessage(w, r, 500, "error", "error removing access code")
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "success", "access codes have been deleted")
+
+	glog.V(2).Infof("removed accesscodes %v to user %s", acUnmarshaled, user.Email)
 }
 
 func (a AuthServer) AddAccessCode(user *userpb.User, accessCode string, ctx context.Context) error {
@@ -284,33 +315,25 @@ func (a AuthServer) AddAccessCode(user *userpb.User, accessCode string, ctx cont
 	return nil
 }
 
-func (a AuthServer) RemoveAccessCode(user *userpb.User, accessCode string, ctx context.Context) error {
-	if len(user.GetId()) == 0 || len(accessCode) == 0 {
-		return fmt.Errorf("bad parameters passed, %s:%s", user.GetId(), accessCode)
+func (a AuthServer) RemoveAccessCodes(user *userpb.User, accessCodes []string, ctx context.Context) error {
+	if len(user.GetId()) == 0 || len(accessCodes) == 0 || len(accessCodes[0]) == 0 {
+		return fmt.Errorf("bad parameters passed, %s:%s", user.GetId(), accessCodes)
 	}
-
-	accessCode = strings.ToLower(accessCode)
-
-	var newAccessCodes []string
-
-	newAccessCodes = make([]string, 0)
 
 	if len(user.AccessCodes) == 0 {
 		// there were no access codes at this point so what are we doing
-		return fmt.Errorf("accesscode %s for user %s was not found", accessCode, user.GetId())
-	} else {
-		found := false
-		for _, ac := range user.AccessCodes {
-			if ac == accessCode {
-				found = true
-			} else {
-				newAccessCodes = append(newAccessCodes, ac)
-			}
-		}
-		if !found {
-			// the access code wasn't found so no update required
-			return nil
-		}
+		return fmt.Errorf("user %s has no accesscodes", user.GetId())
+	}
+
+	for index, inputAccessCode := range accessCodes {
+		accessCodes[index] = strings.ToLower(inputAccessCode)
+	}
+
+	newAccessCodes := util.GetUniqueStringsFromSlice(user.AccessCodes, accessCodes)
+
+	// No codes have been changed, return before performing updates
+	if len(user.AccessCodes) == len(newAccessCodes) {
+		return nil
 	}
 
 	// Important: user.GetPassword() contains the hashed password. Hence, it can and should not be updated!
@@ -358,9 +381,15 @@ func (a AuthServer) UpdateSettings(user *userpb.User, newSettings map[string]str
 		return fmt.Errorf("bad parameters passed, %s", user.GetId())
 	}
 
+	settings := user.Settings
+
+	for i, setting := range newSettings {
+		settings[i] = setting
+	}
+
 	user = &userpb.User{
 		Id:       user.GetId(),
-		Settings: newSettings,
+		Settings: settings,
 	}
 
 	_, err := a.userClient.UpdateUser(ctx, user)

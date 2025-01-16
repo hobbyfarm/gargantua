@@ -29,6 +29,7 @@ import (
 type HobbyfarmV1Interface interface {
 	RESTClient() rest.Interface
 	AccessCodesGetter
+	CostsGetter
 	CoursesGetter
 	DynamicBindConfigurationsGetter
 	EnvironmentsGetter
@@ -54,6 +55,10 @@ type HobbyfarmV1Client struct {
 
 func (c *HobbyfarmV1Client) AccessCodes(namespace string) AccessCodeInterface {
 	return newAccessCodes(c, namespace)
+}
+
+func (c *HobbyfarmV1Client) Costs(namespace string) CostInterface {
+	return newCosts(c, namespace)
 }
 
 func (c *HobbyfarmV1Client) Courses(namespace string) CourseInterface {
