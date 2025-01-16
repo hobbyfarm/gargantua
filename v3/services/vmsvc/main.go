@@ -11,6 +11,7 @@ import (
 
 	vmservice "github.com/hobbyfarm/gargantua/services/vmsvc/v3/internal"
 	hfInformers "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions"
+	accesscodepb "github.com/hobbyfarm/gargantua/v3/protos/accesscode"
 	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
 	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
@@ -38,6 +39,7 @@ func main() {
 	services := []microservices.MicroService{
 		microservices.AuthN,
 		microservices.AuthR,
+		microservices.AccessCode,
 		microservices.VMTemplate,
 	}
 	connections := microservices.EstablishConnections(services, serviceConfig.ClientCert)
@@ -46,6 +48,7 @@ func main() {
 	}
 	authnClient := authnpb.NewAuthNClient(connections[microservices.AuthN])
 	authrClient := authrpb.NewAuthRClient(connections[microservices.AuthR])
+	acClient := accesscodepb.NewAccessCodeSvcClient(connections[microservices.AccessCode])
 	vmTemplateClient := vmtemplatepb.NewVMTemplateSvcClient(connections[microservices.VMTemplate])
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
@@ -68,6 +71,7 @@ func main() {
 		vmServer := vmservice.NewVMServer(
 			authnClient,
 			authrClient,
+			acClient,
 			vmTemplateClient,
 			vs,
 		)

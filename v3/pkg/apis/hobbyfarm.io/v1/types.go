@@ -33,15 +33,23 @@ type VirtualMachineList struct {
 }
 
 type VirtualMachineSpec struct {
-	VirtualMachineTemplateId string `json:"vm_template_id"`
-	SshUsername              string `json:"ssh_username"`
-	Protocol                 string `json:"protocol"`
-	SecretName               string `json:"secret_name"` // this refers to the secret name for the keypair
-	VirtualMachineClaimId    string `json:"vm_claim_id"`
-	UserId                   string `json:"user"`
-	Provision                bool   `json:"provision"`
-	VirtualMachineSetId      string `json:"vm_set_id"`
+	VirtualMachineTemplateId string             `json:"vm_template_id"`
+	SshUsername              string             `json:"ssh_username"`
+	Protocol                 string             `json:"protocol"`
+	SecretName               string             `json:"secret_name"` // this refers to the secret name for the keypair
+	VirtualMachineClaimId    string             `json:"vm_claim_id"`
+	UserId                   string             `json:"user"`
+	Provision                bool               `json:"provision"`
+	VirtualMachineSetId      string             `json:"vm_set_id"`
+	VirtualMachineType       VirtualMachineType `json:"vm_type"`
 }
+
+type VirtualMachineType string
+
+const (
+	VirtualMachineTypeUser   VirtualMachineType = "USER"
+	VirtualMachineTypeShared VirtualMachineType = "SHARED"
+)
 
 type VirtualMachineStatus struct {
 	Status        VmStatus `json:"status"` // default is nothing, but could be one of the following: readyforprovisioning, provisioning, running, terminating
@@ -488,6 +496,7 @@ type ScheduledEventSpec struct {
 	Printable               bool                      `json:"printable"`
 	Scenarios               []string                  `json:"scenarios"`
 	Courses                 []string                  `json:"courses"`
+	SharedVirtualMachines   []SharedVirtualMachine    `json:"shared_vms"`
 }
 
 type ScheduledEventStatus struct {
@@ -496,6 +505,13 @@ type ScheduledEventStatus struct {
 	Provisioned        bool     `json:"provisioned"`
 	Ready              bool     `json:"ready"`
 	Finished           bool     `json:"finished"`
+}
+
+type SharedVirtualMachine struct {
+	VMId        string `json:"vmId"`
+	Name        string `json:"name"`
+	Environment string `json:"environment"`
+	VMTemplate  string `json:"vmTemplate"`
 }
 
 // +genclient

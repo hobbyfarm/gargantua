@@ -13,6 +13,7 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
 	settingUtil "github.com/hobbyfarm/gargantua/v3/pkg/setting"
+	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/golang/glog"
@@ -25,8 +26,11 @@ import (
 	scheduledeventpb "github.com/hobbyfarm/gargantua/v3/protos/scheduledevent"
 	sessionpb "github.com/hobbyfarm/gargantua/v3/protos/session"
 	settingpb "github.com/hobbyfarm/gargantua/v3/protos/setting"
+	vmpb "github.com/hobbyfarm/gargantua/v3/protos/vm"
 	vmsetpb "github.com/hobbyfarm/gargantua/v3/protos/vmset"
 	vmtemplatepb "github.com/hobbyfarm/gargantua/v3/protos/vmtemplate"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -40,6 +44,7 @@ type ScheduledEventController struct {
 	progressClient               progresspb.ProgressSvcClient
 	environmentClient            environmentpb.EnvironmentSvcClient
 	dbConfigClient               dbconfigpb.DynamicBindConfigSvcClient
+	vmClient                     vmpb.VMSvcClient
 	vmSetClient                  vmsetpb.VMSetSvcClient
 	vmTemplateClient             vmtemplatepb.VMTemplateSvcClient
 	settingClient                settingpb.SettingSvcClient
@@ -70,6 +75,7 @@ func NewScheduledEventController(
 	environmentClient environmentpb.EnvironmentSvcClient,
 	progressClient progresspb.ProgressSvcClient,
 	sessionClient sessionpb.SessionSvcClient,
+	vmClient vmpb.VMSvcClient,
 	vmSetClient vmsetpb.VMSetSvcClient,
 	vmTemplateClient vmtemplatepb.VMTemplateSvcClient,
 	settingClient settingpb.SettingSvcClient,
@@ -93,6 +99,7 @@ func NewScheduledEventController(
 		environmentClient:               environmentClient,
 		progressClient:                  progressClient,
 		sessionClient:                   sessionClient,
+		vmClient:                        vmClient,
 		vmSetClient:                     vmSetClient,
 		vmTemplateClient:                vmTemplateClient,
 		settingClient:                   settingClient,
@@ -127,7 +134,29 @@ func (sc *ScheduledEventController) completeScheduledEvent(se *scheduledeventpb.
 		return err
 	}
 
+	err = sc.deleteSharedVMsFromScheduledEvent(se)
+
+	if err != nil {
+		return err
+	}
+
 	err = sc.finishSessionsFromScheduledEvent(se)
+
+	if err != nil {
+		return err
+	}
+
+	// Reset VirtualMachine IDs inside the Event to avoid that shared VMs are not starting when the SE is reactivated
+	sharedVms := se.SharedVms
+	for i, v := range sharedVms {
+		sharedVms[i] = &scheduledeventpb.SharedVirtualMachine{Name: v.Name, Environment: v.Environment, VmTemplate: v.VmTemplate}
+	}
+
+	// update the scheduled event and override the shared VMs
+	_, err = sc.internalScheduledEventServer.UpdateScheduledEvent(sc.Context, &scheduledeventpb.UpdateScheduledEventRequest{
+		Id:        se.GetId(),
+		SharedVms: &scheduledeventpb.SharedVirtualMachineWrapper{Value: sharedVms},
+	})
 
 	if err != nil {
 		return err
@@ -172,6 +201,14 @@ func (sc *ScheduledEventController) deleteVMSetsFromScheduledEvent(se *scheduled
 	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
 	_, err := sc.vmSetClient.DeleteCollectionVMSet(sc.Context, &generalpb.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, se.GetId()),
+	})
+	return err
+}
+
+func (sc *ScheduledEventController) deleteSharedVMsFromScheduledEvent(se *scheduledeventpb.ScheduledEvent) error {
+	// for each vmset that belongs to this to-be-stopped scheduled event, delete that vmset
+	_, err := sc.vmClient.DeleteCollectionVM(sc.Context, &generalpb.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s,shared=true", hflabels.ScheduledEventLabel, se.GetId()),
 	})
 	return err
 }
@@ -226,6 +263,22 @@ func (sc *ScheduledEventController) finishSessionsFromScheduledEvent(se *schedul
 
 func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventpb.ScheduledEvent) error {
 	glog.V(6).Infof("ScheduledEvent %s is ready to be provisioned", se.Name)
+
+	// Let's first create or update the shared VMs related to this scheduled event
+
+	// first taint shared vms which are not necessary anymore
+	// doing this first prevents iterating over freshly created vms
+	err := sc.taintSharedVMs(se)
+	if err != nil {
+		return err
+	}
+
+	//create shared VM for ScheduledEvent
+	err = sc.createSharedVMs(se)
+	if err != nil {
+		return err
+	}
+
 	// start creating resources related to this
 	vmSets := []string{}
 
@@ -322,7 +375,7 @@ func (sc *ScheduledEventController) provisionScheduledEvent(se *scheduledeventpb
 	}
 
 	// Delete AccessCode if it exists
-	_, err := sc.accessCodeClient.GetAc(sc.Context, &generalpb.GetRequest{
+	_, err = sc.accessCodeClient.GetAc(sc.Context, &generalpb.GetRequest{
 		Id: se.GetAccessCode(),
 	})
 	if err == nil {
@@ -492,6 +545,147 @@ func (sc *ScheduledEventController) reconcileScheduledEvent(seName string) error
 	}
 
 	return nil
+}
+
+func (sc *ScheduledEventController) taintSharedVMs(se *scheduledeventpb.ScheduledEvent) error {
+	req1, err := labels.NewRequirement("shared", selection.Equals, []string{"true"})
+	if err != nil {
+		return err
+	}
+	req2, err := labels.NewRequirement(hflabels.ScheduledEventLabel, selection.Equals, []string{se.GetId()})
+	if err != nil {
+		return err
+	}
+	selector := labels.NewSelector()
+	selector = selector.Add(*req1).Add(*req2)
+	selectorString := selector.String()
+	existingSharedVMList, err := sc.vmClient.ListVM(sc.Context, &generalpb.ListOptions{LabelSelector: selectorString})
+	if err != nil {
+		return err
+	}
+	existingSharedVMs := existingSharedVMList.GetVms()
+	requiredSharedVMs := se.GetSharedVms()
+
+	for _, existingSharedVM := range existingSharedVMs {
+		taintVm := true
+		currentVmId := existingSharedVM.GetId()
+		for _, requiredSharedVM := range requiredSharedVMs {
+			if currentVmId == requiredSharedVM.GetVmId() {
+				taintVm = false
+				break
+			}
+		}
+		if taintVm {
+			glog.V(5).Infof("tainting VM %s", currentVmId)
+			_, err := sc.vmClient.UpdateVMStatus(sc.Context, &vmpb.UpdateVMStatusRequest{
+				Id:      currentVmId,
+				Tainted: wrapperspb.Bool(true),
+			})
+			if err != nil {
+				glog.Errorf("failed to taint vm %s", currentVmId)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (sc *ScheduledEventController) createSharedVMs(se *scheduledeventpb.ScheduledEvent) error {
+	issuedVmId := false
+	sharedVms := se.GetSharedVms()
+	for i := 0; i < len(sharedVms); i++ {
+		sharedVM := sharedVms[i]
+		// if sharedVM is provisioned (VMId is set) continue, if new sharedVM (empty VMId) we create the VM
+		if sharedVM.GetVmId() != "" {
+			continue
+		}
+		env, err := sc.environmentClient.GetEnvironment(sc.Context, &generalpb.GetRequest{
+			Id: sharedVM.GetEnvironment(),
+		})
+		if err != nil {
+			if hferrors.IsGrpcNotFound(err) {
+				glog.Errorf("environment invalid")
+			}
+			return err
+		}
+
+		vmt, err := sc.vmTemplateClient.GetVMTemplate(sc.Context, &generalpb.GetRequest{
+			Id: sharedVM.GetVmTemplate(),
+		})
+		if err != nil {
+			return fmt.Errorf("error while retrieving virtual machine template %s %v", sharedVM.GetVmTemplate(), err)
+		}
+
+		vmLabels := map[string]string{
+			"dynamic":                       "false",
+			"shared":                        "true",
+			hflabels.EnvironmentLabel:       sharedVM.GetEnvironment(),
+			"bound":                         "true",
+			hflabels.VirtualMachineTemplate: sharedVM.GetVmTemplate(),
+			hflabels.ScheduledEventLabel:    se.GetId(),
+		}
+
+		config := util.GetVMConfig(env, vmt)
+
+		sshUser := config["ssh_username"]
+		protocol, exists := config["protocol"]
+		if !exists {
+			protocol = "ssh"
+		}
+
+		var provision bool
+		provision = true
+		if provisionMethod, ok := env.GetAnnotations()["hobbyfarm.io/provisioner"]; ok && provisionMethod != "" {
+			vmLabels["hobbyfarm.io/provisioner"] = provisionMethod
+			provision = false
+		}
+
+		vmId := fmt.Sprintf("shared-%s-%08x", se.Name, rand.Uint32())
+
+		_, err = sc.vmClient.CreateVM(sc.Context, &vmpb.CreateVMRequest{
+			Id:                vmId,
+			VmTemplateId:      sharedVM.GetVmTemplate(),
+			SshUsername:       sshUser,
+			Protocol:          protocol,
+			Provision:         provision,
+			VmType:            vmpb.VirtualMachineType_SHARED,
+			ScheduledEventId:  se.GetId(),
+			ScheduledEventUid: se.GetUid(),
+			Labels:            vmLabels,
+		})
+		if err != nil {
+			return err
+		}
+		glog.V(4).Infof("Created shared VM %s ", vmId)
+
+		_, err = sc.vmClient.UpdateVMStatus(sc.Context, &vmpb.UpdateVMStatusRequest{
+			Id:            vmId,
+			Status:        string(hfv1.VmStatusRFP),
+			Allocated:     wrapperspb.Bool(true),
+			Tainted:       wrapperspb.Bool(false),
+			PublicIp:      wrapperspb.String(""),
+			PrivateIp:     wrapperspb.String(""),
+			Hostname:      wrapperspb.String(""),
+			EnvironmentId: env.GetId(),
+			WsEndpoint:    env.GetWsEndpoint(),
+		})
+		if err != nil {
+			return err
+		}
+		sharedVM.VmId = vmId
+		issuedVmId = true
+	}
+
+	// If we didn't issue new vm ids to our shared VMs, we do not need to update the scheduled event
+	if !issuedVmId {
+		return nil
+	}
+
+	_, err := sc.internalScheduledEventServer.UpdateScheduledEvent(sc.Context, &scheduledeventpb.UpdateScheduledEventRequest{
+		Id:        se.GetId(),
+		SharedVms: &scheduledeventpb.SharedVirtualMachineWrapper{Value: sharedVms},
+	})
+	return err // returns nil if no error occurs
 }
 
 // @TODO: Integrate this function if it should be used or remove it if not.

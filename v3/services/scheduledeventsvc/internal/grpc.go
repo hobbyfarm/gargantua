@@ -67,6 +67,7 @@ func (s *GrpcScheduledEventServer) CreateScheduledEvent(ctx context.Context, req
 	accessCode := req.GetAccessCode()
 	scenariosRaw := req.GetScenariosRaw()
 	coursesRaw := req.GetCoursesRaw()
+	sharedVmsWrapper := req.GetSharedVms()
 	labels := req.GetLabels()
 
 	requiredStringParams := map[string]string{
@@ -133,6 +134,23 @@ func (s *GrpcScheduledEventServer) CreateScheduledEvent(ctx context.Context, req
 		}
 		event.Spec.Scenarios = scenarios
 	}
+	if sharedVmsWrapper != nil {
+		tmpSharedVms := sharedVmsWrapper.GetValue()
+		sharedVms := make([]hfv1.SharedVirtualMachine, 0, len(tmpSharedVms))
+		for _, sharedVm := range tmpSharedVms {
+			sharedVms = append(sharedVms, hfv1.SharedVirtualMachine{
+				VMId:        sharedVm.VmId,
+				Name:        sharedVm.Name,
+				Environment: sharedVm.Environment,
+				VMTemplate:  sharedVm.VmTemplate,
+			})
+		}
+		err = util.VerifySharedVirtualMachineContent(sharedVms, req)
+		if err != nil {
+			return &generalpb.ResourceId{}, err
+		}
+		event.Spec.SharedVirtualMachines = sharedVms
+	}
 
 	_, err = s.eventClient.Create(ctx, event, metav1.CreateOptions{})
 	if err != nil {
@@ -164,6 +182,18 @@ func (s *GrpcScheduledEventServer) GetScheduledEvent(ctx context.Context, req *g
 		requiredVms[environment] = &scheduledeventpb.VMTemplateCountMap{VmTemplateCounts: util.ConvertIntMap[int, uint32](vmTemplateCountMap)}
 	}
 
+	sharedVms := []*scheduledeventpb.SharedVirtualMachine{}
+
+	for _, sharedVm := range event.Spec.SharedVirtualMachines {
+		tmpSharedVm := &scheduledeventpb.SharedVirtualMachine{
+			VmId:        sharedVm.VMId,
+			Name:        sharedVm.Name,
+			Environment: sharedVm.Environment,
+			VmTemplate:  sharedVm.VMTemplate,
+		}
+		sharedVms = append(sharedVms, tmpSharedVm)
+	}
+
 	return &scheduledeventpb.ScheduledEvent{
 		Id:                  event.Name,
 		Uid:                 string(event.UID),
@@ -180,6 +210,7 @@ func (s *GrpcScheduledEventServer) GetScheduledEvent(ctx context.Context, req *g
 		AccessCode:          event.Spec.AccessCode,
 		Scenarios:           event.Spec.Scenarios,
 		Courses:             event.Spec.Courses,
+		SharedVms:           sharedVms,
 		Labels:              event.Labels,
 		Status:              status,
 	}, nil
@@ -201,6 +232,7 @@ func (s *GrpcScheduledEventServer) UpdateScheduledEvent(ctx context.Context, req
 	accessCode := req.GetAccessCode()
 	scenariosRaw := req.GetScenariosRaw()
 	coursesRaw := req.GetCoursesRaw()
+	sharedVmsWrapper := req.GetSharedVms()
 
 	scheduledEventLabelSelector := fmt.Sprintf("%s=%s", hflabels.ScheduledEventLabel, id)
 
@@ -277,6 +309,23 @@ func (s *GrpcScheduledEventServer) UpdateScheduledEvent(ctx context.Context, req
 				hferrors.GrpcParsingError(req, "courses_raw")
 			}
 			event.Spec.Courses = courses
+		}
+		if sharedVmsWrapper != nil {
+			tmpSharedVms := sharedVmsWrapper.GetValue()
+			sharedVms := make([]hfv1.SharedVirtualMachine, 0, len(tmpSharedVms))
+			for _, sharedVm := range tmpSharedVms {
+				sharedVms = append(sharedVms, hfv1.SharedVirtualMachine{
+					VMId:        sharedVm.VmId,
+					Name:        sharedVm.Name,
+					Environment: sharedVm.Environment,
+					VMTemplate:  sharedVm.VmTemplate,
+				})
+			}
+			err = util.VerifySharedVirtualMachineContent(sharedVms, req)
+			if err != nil {
+				return err
+			}
+			event.Spec.SharedVirtualMachines = sharedVms
 		}
 
 		// if our event is already provisioned, we need to undo that and delete the corresponding access code(s) and DBC(s)
@@ -444,6 +493,18 @@ func (s *GrpcScheduledEventServer) ListScheduledEvent(ctx context.Context, listO
 			requiredVms[environment] = &scheduledeventpb.VMTemplateCountMap{VmTemplateCounts: util.ConvertIntMap[int, uint32](vmTemplateCountMap)}
 		}
 
+		sharedVms := []*scheduledeventpb.SharedVirtualMachine{}
+
+		for _, sharedVm := range event.Spec.SharedVirtualMachines {
+			tmpSharedVm := &scheduledeventpb.SharedVirtualMachine{
+				VmId:        sharedVm.VMId,
+				Name:        sharedVm.Name,
+				Environment: sharedVm.Environment,
+				VmTemplate:  sharedVm.VMTemplate,
+			}
+			sharedVms = append(sharedVms, tmpSharedVm)
+		}
+
 		preparedEvents = append(preparedEvents, &scheduledeventpb.ScheduledEvent{
 			Id:                  event.Name,
 			Uid:                 string(event.UID),
@@ -460,6 +521,7 @@ func (s *GrpcScheduledEventServer) ListScheduledEvent(ctx context.Context, listO
 			AccessCode:          event.Spec.AccessCode,
 			Scenarios:           event.Spec.Scenarios,
 			Courses:             event.Spec.Courses,
+			SharedVms:           sharedVms,
 			Labels:              event.Labels,
 			Status:              status,
 		})
