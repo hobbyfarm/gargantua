@@ -47,7 +47,7 @@ docker-push:
 	docker push ${IMG}
 
 build-svc:
-	docker build -f ./services/${SVC}/Dockerfile -t ${IMG} bin
+	docker build -f ./v3/Dockerfile --build-arg SERVICE_NAME=${SVC} -t ${IMG} .
 
 push-svc: build-svc
 	docker push ${IMG}

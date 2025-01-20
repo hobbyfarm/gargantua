@@ -1,14 +1,17 @@
 ##### BUILD STAGE #####
 FROM golang:1.21.13-alpine3.20 AS build
 
-WORKDIR /app
+ARG SERVICE_NAME
+
+WORKDIR /app/v3/services/${SERVICE_NAME}
 # copy over dependency files and download dependencies
-COPY go.mod .
+COPY /v3/services/${SERVICE_NAME}/go.mod .
+COPY /v3/go.mod /app/v3
 
 RUN go mod download
 
 # copy over source files
-COPY . .
+COPY . /app
 
 ## build the service and output the binary to /tmp/app
 RUN CGO_ENABLED=0 GOOS=linux go build -o /tmp/app
