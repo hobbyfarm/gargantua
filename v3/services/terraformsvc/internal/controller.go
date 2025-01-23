@@ -395,34 +395,21 @@ func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 
 		tfExecs := tfExecsList.GetExecutions()
 
-		var newestTimestamp time.Time
 		var tfExec *terraformpb.Execution
 		if len(tfExecs) == 0 {
 			return fmt.Errorf("no executions found for terraform state"), true
 		}
 
-		newestTimestamp = tfExecs[0].GetCreationTimestamp().AsTime()
+		hasValidExec := false
 		tfExec = tfExecs[0]
 		for _, e := range tfExecs {
-			if newestTimestamp.Before(e.GetCreationTimestamp().AsTime()) {
-				newestTimestamp = e.GetCreationTimestamp().AsTime()
+			if e.GetStatus().GetOutputs() != "" {
 				tfExec = e
+				hasValidExec = true
 			}
 		}
-		// END TEMPORARY WORKAROUND
 
-		//executionName := tfState.Status.ExecutionName
-		/*
-			tfExec, err := t.tfeLister.Executions(util.GetReleaseNamespace()).Get(executionName)
-			if err != nil {
-				//glog.Error(err)
-				if apierrors.IsNotFound(err) {
-					return fmt.Errorf("execution not found")
-				}
-				return nil
-			}
-		*/
-		if tfExec.GetStatus().GetOutputs() == "" {
+		if !hasValidExec {
 			return nil, true
 		}
 
