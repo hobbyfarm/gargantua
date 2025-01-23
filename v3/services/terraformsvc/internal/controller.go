@@ -370,16 +370,6 @@ func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 		return nil, false
 
 	} else if vm.Status.Status == string(hfv1.VmStatusProvisioned) {
-		// let's check the status of our tf provision
-		/*tfState, err := t.tfsLister.States(util.GetReleaseNamespace()).Get(vm.Status.TFState)
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				return fmt.Errorf("execution not found")
-			}
-			return nil
-		} */
-		// TEMPORARY WORKAROUND UNTIL WE FIGURE OUT A BETTER WAY TO DO THIS
-
 		if vm.GetStatus().GetTfstate() == "" {
 			return fmt.Errorf("tf state was blank in object"), true
 		}
@@ -395,34 +385,21 @@ func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 
 		tfExecs := tfExecsList.GetExecutions()
 
-		var newestTimestamp int32
 		var tfExec *terraformpb.Execution
 		if len(tfExecs) == 0 {
 			return fmt.Errorf("no executions found for terraform state"), true
 		}
 
-		newestTimestamp = tfExecs[0].GetCreationTimestamp().GetNanos()
+		hasValidExec := false
 		tfExec = tfExecs[0]
 		for _, e := range tfExecs {
-			if newestTimestamp < e.GetCreationTimestamp().GetNanos() {
-				newestTimestamp = e.GetCreationTimestamp().GetNanos()
+			if e.GetStatus().GetOutputs() != "" {
 				tfExec = e
+				hasValidExec = true
 			}
 		}
-		// END TEMPORARY WORKAROUND
 
-		//executionName := tfState.Status.ExecutionName
-		/*
-			tfExec, err := t.tfeLister.Executions(util.GetReleaseNamespace()).Get(executionName)
-			if err != nil {
-				//glog.Error(err)
-				if apierrors.IsNotFound(err) {
-					return fmt.Errorf("execution not found")
-				}
-				return nil
-			}
-		*/
-		if tfExec.GetStatus().GetOutputs() == "" {
+		if !hasValidExec {
 			return nil, true
 		}
 
