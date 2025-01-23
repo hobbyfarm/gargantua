@@ -395,17 +395,17 @@ func (v *VMController) handleProvision(vm *vmpb.VM) (error, bool) {
 
 		tfExecs := tfExecsList.GetExecutions()
 
-		var newestTimestamp int32
+		var newestTimestamp time.Time
 		var tfExec *terraformpb.Execution
 		if len(tfExecs) == 0 {
 			return fmt.Errorf("no executions found for terraform state"), true
 		}
 
-		newestTimestamp = tfExecs[0].GetCreationTimestamp().GetNanos()
+		newestTimestamp = tfExecs[0].GetCreationTimestamp().AsTime()
 		tfExec = tfExecs[0]
 		for _, e := range tfExecs {
-			if newestTimestamp < e.GetCreationTimestamp().GetNanos() {
-				newestTimestamp = e.GetCreationTimestamp().GetNanos()
+			if newestTimestamp.Before(e.GetCreationTimestamp().AsTime()) {
+				newestTimestamp = e.GetCreationTimestamp().AsTime()
 				tfExec = e
 			}
 		}
