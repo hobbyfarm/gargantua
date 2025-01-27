@@ -14,10 +14,10 @@ import (
 	"github.com/hobbyfarm/mink/pkg/serializer"
 	"github.com/hobbyfarm/mink/pkg/server"
 	"github.com/hobbyfarm/mink/pkg/strategy"
-	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/apiserver/pkg/registry/rest"
 	apiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/options"
+	"k8s.io/component-base/version"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -72,6 +72,7 @@ func NewKubernetesServer(ctx context.Context, config *KubernetesServerConfig) (*
 		SkipInClusterLookup:          true,
 		RemoteKubeConfigFileOptional: true,
 		IgnoreStartFailure:           false,
+		EffectiveVersion:             version.DefaultKubeEffectiveVersion(),
 		Middleware:                   nil,
 		Authentication: &options.DelegatingAuthenticationOptions{
 			SkipInClusterLookup:          true,
@@ -108,11 +109,6 @@ func NewKubernetesServer(ctx context.Context, config *KubernetesServerConfig) (*
 		return nil
 	}); err != nil {
 		return nil, err
-	}
-
-	svr.GenericAPIServer.Version = &version.Info{
-		Major: "4",
-		Minor: "0.0-dev",
 	}
 
 	return svr, nil
