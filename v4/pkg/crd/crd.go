@@ -260,6 +260,17 @@ func GenerateCRDs() []crder.CRD {
 				IsNamespaced(true).
 				AddVersion("v4alpha1", &v4alpha1.RoleBinding{}, nil)
 		}),
+		hobbyfarmCRD(&v4alpha1.Event{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v4alpha1", &v4alpha1.Event{}, func(cv *crder.Version) {
+					cv.
+						WithColumn("Kind", ".objectRef.kind").
+						WithColumn("Name", ".objectRef.name").
+						WithColumn("Type", ".eventType").
+						WithColumn("Reason", ".reason")
+				})
+		}),
 	}
 }
 

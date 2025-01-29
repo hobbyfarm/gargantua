@@ -278,6 +278,11 @@ func V4Alpha1APIGroups(storages map[string]strategy.CompleteStrategy) (map[strin
 		return nil, err
 	}
 
+	eventStorage, err := registry.NewEventStorage(storages["events"])
+	if err != nil {
+		return nil, err
+	}
+
 	stores := map[string]rest.Storage{
 		"providers":                    providerStorage,
 		"machinetemplates":             machineTemplateStorage,
@@ -318,6 +323,7 @@ func V4Alpha1APIGroups(storages map[string]strategy.CompleteStrategy) (map[strin
 		"groups":                       groupStorage,
 		"onetimeaccesscodesets":        otacSetStorage,
 		"onetimeaccesscodesets/status": otacSetStatusStorage,
+		"events":                       eventStorage,
 	}
 
 	return stores, nil
