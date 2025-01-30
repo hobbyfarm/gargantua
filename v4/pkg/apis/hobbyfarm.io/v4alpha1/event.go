@@ -1,6 +1,8 @@
 package v4alpha1
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -25,7 +27,10 @@ type Event struct {
 	EventType EventType `json:"eventType"`
 
 	// EventTime is the time (microsecond) when the event occurred.
-	EventTime metav1.MicroTime `json:"eventTime"`
+	EventTime *metav1.MicroTime `json:"eventTime" wrangler:"type=string"`
+	// EventTime is overridden via wrangler tag to type=string because wrangler is not aware
+	// of metav1.MicroTime and attempts to create a CRD in which that is represented as an object
+	// instead of a string.
 
 	// ReportingController is the name of the controller that generated the event.
 	// This is distinct from ReportingInstance as there may be multiple instances
@@ -63,7 +68,7 @@ type ObjectReference struct {
 type EventType string
 
 const (
-	EventTypeNormal  = "Info"
+	EventTypeInfo    = "Info"
 	EventTypeWarning = "Warning"
 	EventTypeError   = "Error"
 )
@@ -75,4 +80,8 @@ type EventList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Event `json:"items"`
+}
+
+func (e Event) NamespaceScoped() bool {
+	return false
 }

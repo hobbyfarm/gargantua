@@ -35,6 +35,7 @@ func V4Alpha1Storages(client client.WithWatch, namespace string) map[string]stra
 	ldapConfigRemote := remote.NewNamespaceScopedRemote(&v4alpha1.LdapConfig{}, client, namespace)
 	groupRemote := remote.NewNamespaceScopedRemote(&v4alpha1.Group{}, client, namespace)
 	otacSetRemote := remote.NewNamespaceScopedRemote(&v4alpha1.OneTimeAccessCodeSet{}, client, namespace)
+	eventRemote := remote.NewNamespaceScopedRemote(&v4alpha1.Event{}, client, namespace)
 
 	configMapTranslator := translators.ConfigMapTranslator{Namespace: namespace}
 	configMapRemote := translation.NewSimpleTranslationStrategy(
@@ -73,5 +74,6 @@ func V4Alpha1Storages(client client.WithWatch, namespace string) map[string]stra
 		"ldapconfigs":           ldapConfigRemote,
 		"groups":                groupRemote,
 		"onetimeaccesscodesets": otacSetRemote,
+		"events":                eventRemote,
 	}
 }
