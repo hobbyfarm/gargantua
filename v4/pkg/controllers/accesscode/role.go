@@ -10,9 +10,34 @@ import (
 	"log/slog"
 )
 
+type hasDeletionTimestamp interface {
+	GetDeletionTimestamp() *metav1.Time
+}
+
 func (acc *accessCodeController) ensureRole(key string, obj runtime.Object) (runtime.Object, error) {
 	var courses, scenarios, scheduledEvents, machineSets []string
 	var labelSelector, objName string
+
+	// for any case (delete, update, create), we need to get the role for this (ot)ac
+	// so frontload that work here
+	roleList := &v4alpha1.RoleList{}
+	if err := acc.roleClient.List(context.TODO(), "", roleList, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", labels2.CodeRoleLabel, objName),
+	}); err != nil {
+		return nil, err
+	}
+
+	if obj == nil || obj.(hasDeletionTimestamp).GetDeletionTimestamp() != nil {
+		// (ot)ac has been deleted
+		// we need to cleanup
+
+		// remove the role
+		if len(roleList.Items) > 0 {
+			if roleList.Items[0].DeletionTimestamp != nil {
+				return nil, nil
+			}
+		}
+	}
 
 	switch a := obj.(type) {
 	case *v4alpha1.AccessCode:
@@ -21,22 +46,12 @@ func (acc *accessCodeController) ensureRole(key string, obj runtime.Object) (run
 		scheduledEvents = a.Spec.ScheduledEvents
 		machineSets = a.Spec.MachineSets
 		objName = a.GetName()
-		labelSelector = labels2.AccessCodeLabel
 	case *v4alpha1.OneTimeAccessCode:
 		courses = a.Spec.Courses
 		scenarios = a.Spec.Scenarios
 		scheduledEvents = a.Spec.ScheduledEvents
 		machineSets = a.Spec.MachineSets
 		objName = a.GetName()
-		labelSelector = labels2.OneTimeAccessCodeLabel
-	}
-
-	// retrieve role corresponding with (ot)ac
-	roleList := &v4alpha1.RoleList{}
-	if err := acc.roleClient.List(context.TODO(), "", roleList, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", labelSelector, objName),
-	}); err != nil {
-		return nil, err
 	}
 
 	var role *v4alpha1.Role
