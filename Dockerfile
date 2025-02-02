@@ -1,5 +1,11 @@
 ##### BUILD STAGE #####
-FROM golang:1.21.13-alpine3.20 AS build
+# use BUILDPLATFORM to pin to the native platform to prevent emulation from kicking in
+FROM --platform=$BUILDPLATFORM golang:1.22.11-alpine3.21 AS build
+
+# os from --platform linux/amd64
+ARG TARGETOS
+# architecture from --platform linux/amd64
+ARG TARGETARCH
 
 WORKDIR /app
 # copy over dependency files and download dependencies
@@ -10,8 +16,8 @@ RUN go mod download
 # copy over source files
 COPY . .
 
-## build the service and output the binary to /tmp/app
-RUN CGO_ENABLED=0 GOOS=linux go build -o /tmp/app
+# build the service and output the binary to /tmp/app
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /tmp/app
 
 ##### RUNTIME STAGE #####
 FROM alpine:3.21.2
