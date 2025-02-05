@@ -1,6 +1,6 @@
 ##### BUILD STAGE #####
 # use BUILDPLATFORM to pin to the native platform to prevent emulation from kicking in
-FROM --platform=$BUILDPLATFORM golang:1.22.11-alpine3.21 AS build
+FROM --platform=$BUILDPLATFORM golang:1.23.2-alpine3.20 AS build
 
 # os from --platform linux/amd64
 ARG TARGETOS

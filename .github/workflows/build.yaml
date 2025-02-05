@@ -17,12 +17,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@master
 
-    - uses: actions/setup-go@v3
+    - uses: actions/setup-go@v5
       name: go-cache
       with:
-        go-version: '1.21'
-        check-latest: false
-        cache: true
+        # caching is enabled by default since setup-go@v4
+        go-version: '1.23.2'
 
     - name: Build
       env:

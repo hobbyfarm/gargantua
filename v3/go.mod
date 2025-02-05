@@ -1,8 +1,8 @@
 module github.com/hobbyfarm/gargantua/v3
 
-go 1.21
+go 1.23.0
 
-replace k8s.io/client-go => k8s.io/client-go v0.28.2
+replace k8s.io/client-go => k8s.io/client-go v0.32.1
 
 require (
 	github.com/ebauman/crder v0.1.0
