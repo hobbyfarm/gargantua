@@ -19,7 +19,7 @@ RUN go mod download
 COPY . /app
 
 # build the service and output the binary to /tmp/app
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /tmp/app
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags="-s -w" -o /tmp/app
 
 ##### RUNTIME STAGE #####
 FROM alpine:3.21.2

@@ -1,135 +1,113 @@
-name: Main
-on: [push, pull_request]
+name: Pull Request
+on: [pull_request]
 jobs:
   build-gargantua:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./
-      image: gargantua
     secrets: inherit
   build-accesscode-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/accesscodesvc
-      image: accesscode-service
     secrets: inherit
   build-authn-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/authnsvc
-      image: authn-service
     secrets: inherit
   build-authr-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/authrsvc
-      image: authr-service
     secrets: inherit
   build-conversion-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/conversionsvc
-      image: conversion-service
     secrets: inherit
   build-cost-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/costsvc
-      image: cost-service
     secrets: inherit
   build-course-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/coursesvc
-      image: course-service
     secrets: inherit
   build-dbconfig-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/dbconfigsvc
-      image: dbconfig-service
     secrets: inherit
   build-environment-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/environmentsvc
-      image: environment-service
     secrets: inherit
   build-progress-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/progresssvc
-      image: progress-service
     secrets: inherit
   build-rbac-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/rbacsvc
-      image: rbac-service
     secrets: inherit
   build-scenario-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/scenariosvc
-      image: scenario-service
     secrets: inherit
   build-scheduledevent-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/scheduledeventsvc
-      image: scheduledevent-service
     secrets: inherit
   build-session-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/sessionsvc
-      image: session-service
     secrets: inherit
   build-setting-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/settingsvc
-      image: setting-service
     secrets: inherit
   build-terraform-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/terraformsvc
-      image: terraform-service
     secrets: inherit
   build-user-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/usersvc
-      image: user-service
     secrets: inherit
   build-vmclaim-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/vmclaimsvc
-      image: vmclaim-service
     secrets: inherit
   build-vmset-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/vmsetsvc
-      image: vmset-service
     secrets: inherit
   build-vm-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/vmsvc
-      image: vm-service
     secrets: inherit
   build-vmtemplate-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/vmtemplatesvc
-      image: vmtemplate-service
     secrets: inherit
   build-score-service:
     uses: ./.github/workflows/build.yaml
     with:
       path: ./v3/services/scoresvc
-      image: score-service
     secrets: inherit
