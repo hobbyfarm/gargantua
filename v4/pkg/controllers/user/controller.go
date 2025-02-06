@@ -7,6 +7,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v4/pkg/labels"
 	"github.com/rancher/lasso/pkg/client"
 	"github.com/rancher/lasso/pkg/controller"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -21,7 +22,11 @@ func RegisterHandlers(factory controller.SharedControllerFactory) error {
 		return err
 	}
 
-	rolebindingInformer, err := factory.SharedCacheFactory().ForObject(&v4alpha1.RoleBinding{})
+	rolebindingInformer, err := factory.SharedCacheFactory().ForKind(schema.GroupVersionKind{
+		Group:   "hobbyfarm.io",
+		Version: "v4alpha1",
+		Kind:    "RoleBinding",
+	})
 	if err != nil {
 		return err
 	}
