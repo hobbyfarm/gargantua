@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/go-logr/logr"
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/accesscode"
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/authentication/providers/ldap"
@@ -14,6 +15,10 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"log"
+	"log/slog"
+	"os"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	runtimeMetrics "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 var (
@@ -24,6 +29,7 @@ var (
 	clientKey   string
 	caCert      string
 	server      string
+	logLevel    int
 )
 
 var rootCmd = &cobra.Command{
@@ -40,6 +46,7 @@ func init() {
 	rootCmd.Flags().StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig file")
 	rootCmd.Flags().StringVar(&kubecontext, "kubecontext", "default", "kubecontext")
 	rootCmd.Flags().StringVar(&namespace, "namespace", "hobbyfarm", "namespace in which to operate")
+	rootCmd.Flags().IntVar(&logLevel, "log-level", 4, "log level, valid values are ( -4 , 8 )")
 }
 
 func app(cmd *cobra.Command, args []string) error {
@@ -56,6 +63,19 @@ func app(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("error adding corev1 to scheme: %s", err.Error())
 	}
 
+	stderrHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.Level(logLevel),
+	})
+	slog.SetDefault(slog.New(stderrHandler))
+
+	mgr, err := manager.New(cfg, manager.Options{
+		Metrics: runtimeMetrics.Options{
+			BindAddress: "0.0.0.0:8081",
+		},
+		Scheme: scheme,
+		Logger: logr.FromSlogHandler(stderrHandler),
+	})
+
 	factory, err := controller.NewSharedControllerFactoryFromConfig(cfg, scheme)
 	if err != nil {
 		return fmt.Errorf("error building shared controller factory: %s", err.Error())
@@ -69,7 +89,7 @@ func app(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("error registering ldap handlers: %s", err.Error())
 	}
 
-	if err := accesscode.RegisterHandlers(factory); err != nil {
+	if err := accesscode.New(mgr); err != nil {
 		return fmt.Errorf("error registering accesscode handlers: %s", err.Error())
 	}
 
@@ -78,7 +98,11 @@ func app(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := factory.Start(cmd.Context(), 1); err != nil {
-		return fmt.Errorf("error starting controllers: %s", err.Error())
+		return fmt.Errorf("error starting lasso controllers: %s", err.Error())
+	}
+
+	if err := mgr.Start(cmd.Context()); err != nil {
+		return fmt.Errorf("error starting manager controllers: %s", err.Error())
 	}
 
 	<-cmd.Context().Done()
