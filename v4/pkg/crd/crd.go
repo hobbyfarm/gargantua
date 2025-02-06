@@ -113,6 +113,7 @@ func GenerateCRDs() []crder.CRD {
 		}),
 		hobbyfarmCRD(&v4alpha1.AccessCode{}, func(c *crder.CRD) {
 			c.
+				IsNamespaced(true).
 				AddVersion("v4alpha1", v4alpha1.AccessCode{}, func(cv *crder.Version) {
 					cv.
 						WithColumn("Code", ".spec.code").

@@ -5,76 +5,92 @@ import (
 	"fmt"
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
 	labels2 "github.com/hobbyfarm/gargantua/v4/pkg/labels"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"github.com/hobbyfarm/gargantua/v4/pkg/uid"
 	"log/slog"
+	client2 "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func (acc *accessCodeController) ensureRole(key string, obj runtime.Object) (runtime.Object, error) {
-	var courses, scenarios, scheduledEvents, machineSets []string
-	var labelSelector, objName string
-
-	switch a := obj.(type) {
-	case *v4alpha1.AccessCode:
-		courses = a.Spec.Courses
-		scenarios = a.Spec.Scenarios
-		scheduledEvents = a.Spec.ScheduledEvents
-		machineSets = a.Spec.MachineSets
-		objName = a.GetName()
-		labelSelector = labels2.AccessCodeLabel
-	case *v4alpha1.OneTimeAccessCode:
-		courses = a.Spec.Courses
-		scenarios = a.Spec.Scenarios
-		scheduledEvents = a.Spec.ScheduledEvents
-		machineSets = a.Spec.MachineSets
-		objName = a.GetName()
-		labelSelector = labels2.OneTimeAccessCodeLabel
-	}
-
-	// retrieve role corresponding with (ot)ac
+func (acc *accessCodeController) ReconcileRole(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	roleList := &v4alpha1.RoleList{}
-	if err := acc.roleClient.List(context.TODO(), "", roleList, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", labelSelector, objName),
+	if err := acc.kclient.List(ctx, roleList, client2.MatchingLabels{
+		labels2.CodeRoleLabel: request.Name,
 	}); err != nil {
-		return nil, err
+		return reconcile.Result{}, err
 	}
 
-	var role *v4alpha1.Role
-	// if there isn't a role, create it
+	ac := &v4alpha1.AccessCode{}
+	if err := acc.kclient.Get(ctx, request.NamespacedName, ac); err != nil {
+		return reconcile.Result{}, client2.IgnoreNotFound(err)
+	}
+
+	// Because mink adds "-p" to end of UIDs for some reason
+	// We need to remove it because it breaks references to other objects
+	// Especially when using owner refs
+	ac.UID = uid.RemoveUIDPublic(ac.UID)
+
+	var requeue bool
+
 	if len(roleList.Items) == 0 {
-		slog.Debug("role does not exist for (ot)ac, creating it", "kind", obj.GetObjectKind().GroupVersionKind().Kind,
-			"objectName", objName)
-		role = &v4alpha1.Role{
-			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: "coderole-",
-				Labels: map[string]string{
-					labelSelector: objName,
-				},
-			},
+		err := acc.createRole(ctx, request, ac)
+		if err != nil {
+			return reconcile.Result{}, err
 		}
 
-		if err := acc.roleClient.Create(context.TODO(), "", role, role, metav1.CreateOptions{}); err != nil {
-			return nil, err
+		requeue = true
+	}
+
+	if len(roleList.Items) == 1 {
+		var role = &roleList.Items[0]
+
+		acc.setRules(ac, role)
+
+		if err := controllerutil.SetOwnerReference(ac, role, acc.scheme); err != nil {
+			slog.Error("error setting owner reference for role", "error", err.Error())
+			return reconcile.Result{}, err
 		}
-	} else if len(roleList.Items) == 1 {
-		role = &roleList.Items[0]
-	} else {
+
+		if err := acc.kclient.Update(ctx, role); err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	if len(roleList.Items) > 1 {
 		// there should not be more than one role for a code
-		return nil, fmt.Errorf("more than one role exists for %s %s", obj.GetObjectKind().GroupVersionKind().Kind, objName)
+		slog.Error("> 1 role exists for accesscode", "accesscode", request.Name)
+		return reconcile.Result{}, fmt.Errorf("> 1 role exists for accesscode")
 	}
 
+	return reconcile.Result{
+		Requeue: requeue,
+	}, nil
+}
+
+func (acc *accessCodeController) createRole(ctx context.Context, request reconcile.Request, accessCode *v4alpha1.AccessCode) error {
+	var role = &v4alpha1.Role{}
+	slog.Debug("role does not exist for accesscode, creating it", "accesscode", request.Name)
+	role.GenerateName = "coderole-"
+	role.Labels = map[string]string{
+		labels2.CodeRoleLabel: request.Name,
+	}
+
+	if err := acc.kclient.Create(ctx, role); err != nil {
+		slog.Error("error creating role for accesscode", "error", err.Error(), "accesscode", request.Name)
+		return err
+	}
+
+	slog.Debug("role created for accesscode", "accesscode", request.Name, "role", role.Name)
+	return nil
+}
+
+func (acc *accessCodeController) setRules(accessCode *v4alpha1.AccessCode, role *v4alpha1.Role) {
 	role.Rules = []v4alpha1.Rule{
-		makeRule("scenarios", scenarios),
-		makeRule("courses", courses),
-		makeRule("scheduledEvents", scheduledEvents),
-		makeRule("machineSets", machineSets),
+		makeRule("scenarios", accessCode.Spec.Scenarios),
+		makeRule("courses", accessCode.Spec.Courses),
+		makeRule("scheduledEvents", accessCode.Spec.ScheduledEvents),
+		makeRule("machineSets", accessCode.Spec.MachineSets),
 	}
-
-	if err := acc.roleClient.Update(context.TODO(), "", role, role, metav1.UpdateOptions{}); err != nil {
-		return nil, err
-	}
-
-	return role, nil
 }
 
 func makeRule(resources string, resourceNames []string) v4alpha1.Rule {
