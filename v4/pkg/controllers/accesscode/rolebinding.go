@@ -15,7 +15,7 @@ import (
 func (acc *accessCodeController) ReconcileRoleBinding(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	roleBindingList := &v4alpha1.RoleBindingList{}
 	if err := acc.kclient.List(ctx, roleBindingList, client.MatchingLabels{
-		labels2.CodeRoleBindingLabel: request.Name,
+		labels2.AccessCodeLabel: request.Name,
 	}); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -63,7 +63,7 @@ func (acc *accessCodeController) createRoleBinding(ctx context.Context, ac *v4al
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "code-",
 			Labels: map[string]string{
-				labels2.CodeRoleBindingLabel: ac.Name,
+				labels2.AccessCodeLabel: ac.Name,
 			},
 		},
 	}
