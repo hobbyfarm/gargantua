@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
 	"github.com/hobbyfarm/gargantua/v4/pkg/names"
-	lasso "github.com/rancher/lasso/pkg/client"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"log/slog"
@@ -48,16 +47,16 @@ func Error() *EventBuilder {
 // WriteOrLog attempts to write the event using the provided client.
 // Unlike Write, this method does not return an error. Instead
 // it uses log/slog to write the error if one should occur.
-func (e *EventBuilder) WriteOrLog(kclient *lasso.Client) {
+func (e *EventBuilder) WriteOrLog(kclient client.Client) {
 	if err := e.Write(kclient); err != nil {
 		slog.Error(err.Error())
 	}
 }
 
 // Write attempts to write the event using the provided client.
-func (e *EventBuilder) Write(kclient *lasso.Client) error {
+func (e *EventBuilder) Write(kclient client.Client) error {
 	ev := e.ToEvent()
-	return kclient.Create(context.Background(), "", ev, ev, metav1.CreateOptions{})
+	return kclient.Create(context.Background(), ev)
 }
 
 // Type sets the EventType of the Event.
