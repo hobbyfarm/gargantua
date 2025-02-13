@@ -64,7 +64,8 @@ func app(cmd *cobra.Command, args []string) error {
 	}
 
 	stderrHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: slog.Level(logLevel),
+		Level:     slog.Level(logLevel),
+		AddSource: true,
 	})
 	slog.SetDefault(slog.New(stderrHandler))
 
@@ -93,8 +94,8 @@ func app(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("error registering accesscode handlers: %s", err.Error())
 	}
 
-	if err := user.RegisterHandlers(factory); err != nil {
-		return fmt.Errorf("error registering users handlers: %s", err.Error())
+	if err := user.New(mgr); err != nil {
+		return fmt.Errorf("error registering user handlers: %s", err.Error())
 	}
 
 	if err := factory.Start(cmd.Context(), 1); err != nil {
