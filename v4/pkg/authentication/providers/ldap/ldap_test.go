@@ -2,8 +2,6 @@ package ldap
 
 import (
 	"encoding/base64"
-	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 )
 
@@ -29,14 +27,7 @@ func Test_LabelToDn(t *testing.T) {
 func Test_DnToLabel(t *testing.T) {
 	var host = "dc01.it.example.org"
 	var dn = "cn=user01,ou=users,dc=it,dc=example,dc=org"
-	l := dnToLabel(dn, &v4alpha1.LdapConfig{
-		TypeMeta:   metav1.TypeMeta{},
-		ObjectMeta: metav1.ObjectMeta{},
-		Spec: v4alpha1.LdapConfigSpec{
-			LdapHost: host,
-		},
-		Status: v4alpha1.LdapConfigStatus{},
-	})
+	l := dnToLabel(dn, host)
 
 	res := base64.StdEncoding.EncodeToString([]byte("ldap://" + host + "/" + dn))
 
