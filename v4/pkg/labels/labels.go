@@ -22,8 +22,6 @@ const (
 	OneTimeAccessCodeLabel         = "hobbyfarm.io/onetimeaccesscode"
 	OneTimeAccessCodeSetLabel      = "hobbyfarm.io/onetimeaccesscodeset"
 	OneTimeAccessCodeRedeemedLabel = "hobbyfarm.io/otac-redeemed"
-	CodeRoleLabel                  = "hobbyfarm.io/code-role"
-	CodeRoleBindingLabel           = "hobbyfarm.io/code-rolebinding"
 )
 
 // rbac related

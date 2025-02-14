@@ -15,7 +15,7 @@ import (
 func (acc *accessCodeController) ReconcileRole(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	roleList := &v4alpha1.RoleList{}
 	if err := acc.kclient.List(ctx, roleList, client2.MatchingLabels{
-		labels2.CodeRoleLabel: request.Name,
+		labels2.AccessCodeLabel: request.Name,
 	}); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -72,7 +72,7 @@ func (acc *accessCodeController) createRole(ctx context.Context, request reconci
 	slog.Debug("role does not exist for accesscode, creating it", "accesscode", request.Name)
 	role.GenerateName = "coderole-"
 	role.Labels = map[string]string{
-		labels2.CodeRoleLabel: request.Name,
+		labels2.AccessCodeLabel: request.Name,
 	}
 
 	if err := acc.kclient.Create(ctx, role); err != nil {

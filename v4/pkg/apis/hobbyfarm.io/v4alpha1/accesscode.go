@@ -1,6 +1,9 @@
 package v4alpha1
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"time"
+)
 
 type AccessCodeState string
 
@@ -63,4 +66,20 @@ type AccessCodeStatus struct {
 
 func (a AccessCode) NamespaceScoped() bool {
 	return false
+}
+
+func (a *AccessCode) IsActive() bool {
+	if a.Spec.NotBefore != nil {
+		if a.Spec.NotBefore.Time.After(time.Now()) {
+			return false
+		}
+	}
+
+	if a.Spec.NotAfter != nil {
+		if a.Spec.NotAfter.Time.Before(time.Now()) {
+			return false
+		}
+	}
+
+	return true
 }
