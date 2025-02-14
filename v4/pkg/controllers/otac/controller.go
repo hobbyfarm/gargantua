@@ -7,8 +7,11 @@ import (
 )
 
 func New(mgr manager.Manager) error {
-	builder.
+	osc := &otacSetScaleController{kclient: mgr.GetClient()}
+
+	return builder.
 		ControllerManagedBy(mgr).
 		For(&v4alpha1.OneTimeAccessCodeSet{}).
-		Named("otacset-scale-controller")
+		Owns(&v4alpha1.OneTimeAccessCode{}).
+		Named("otacset-scale-controller").Complete(osc)
 }
