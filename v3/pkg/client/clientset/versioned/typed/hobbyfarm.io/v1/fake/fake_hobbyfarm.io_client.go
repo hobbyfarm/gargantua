@@ -29,75 +29,75 @@ type FakeHobbyfarmV1 struct {
 }
 
 func (c *FakeHobbyfarmV1) AccessCodes(namespace string) v1.AccessCodeInterface {
-	return &FakeAccessCodes{c, namespace}
+	return newFakeAccessCodes(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) Costs(namespace string) v1.CostInterface {
-	return &FakeCosts{c, namespace}
+	return newFakeCosts(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) Courses(namespace string) v1.CourseInterface {
-	return &FakeCourses{c, namespace}
+	return newFakeCourses(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) DynamicBindConfigurations(namespace string) v1.DynamicBindConfigurationInterface {
-	return &FakeDynamicBindConfigurations{c, namespace}
+	return newFakeDynamicBindConfigurations(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) Environments(namespace string) v1.EnvironmentInterface {
-	return &FakeEnvironments{c, namespace}
+	return newFakeEnvironments(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) OneTimeAccessCodes(namespace string) v1.OneTimeAccessCodeInterface {
-	return &FakeOneTimeAccessCodes{c, namespace}
+	return newFakeOneTimeAccessCodes(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) PredefinedServices(namespace string) v1.PredefinedServiceInterface {
-	return &FakePredefinedServices{c, namespace}
+	return newFakePredefinedServices(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) Progresses(namespace string) v1.ProgressInterface {
-	return &FakeProgresses{c, namespace}
+	return newFakeProgresses(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) Scenarios(namespace string) v1.ScenarioInterface {
-	return &FakeScenarios{c, namespace}
+	return newFakeScenarios(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) ScheduledEvents(namespace string) v1.ScheduledEventInterface {
-	return &FakeScheduledEvents{c, namespace}
+	return newFakeScheduledEvents(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) Scopes(namespace string) v1.ScopeInterface {
-	return &FakeScopes{c, namespace}
+	return newFakeScopes(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) Sessions(namespace string) v1.SessionInterface {
-	return &FakeSessions{c, namespace}
+	return newFakeSessions(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) Settings(namespace string) v1.SettingInterface {
-	return &FakeSettings{c, namespace}
+	return newFakeSettings(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) Users(namespace string) v1.UserInterface {
-	return &FakeUsers{c, namespace}
+	return newFakeUsers(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) VirtualMachines(namespace string) v1.VirtualMachineInterface {
-	return &FakeVirtualMachines{c, namespace}
+	return newFakeVirtualMachines(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) VirtualMachineClaims(namespace string) v1.VirtualMachineClaimInterface {
-	return &FakeVirtualMachineClaims{c, namespace}
+	return newFakeVirtualMachineClaims(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) VirtualMachineSets(namespace string) v1.VirtualMachineSetInterface {
-	return &FakeVirtualMachineSets{c, namespace}
+	return newFakeVirtualMachineSets(c, namespace)
 }
 
 func (c *FakeHobbyfarmV1) VirtualMachineTemplates(namespace string) v1.VirtualMachineTemplateInterface {
-	return &FakeVirtualMachineTemplates{c, namespace}
+	return newFakeVirtualMachineTemplates(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

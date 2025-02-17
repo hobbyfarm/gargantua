@@ -19,111 +19,30 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeUsers implements UserInterface
-type FakeUsers struct {
+// fakeUsers implements UserInterface
+type fakeUsers struct {
+	*gentype.FakeClientWithList[*v1.User, *v1.UserList]
 	Fake *FakeHobbyfarmV1
-	ns   string
 }
 
-var usersResource = v1.SchemeGroupVersion.WithResource("users")
-
-var usersKind = v1.SchemeGroupVersion.WithKind("User")
-
-// Get takes name of the user, and returns the corresponding user object, and an error if there is any.
-func (c *FakeUsers) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.User, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(usersResource, c.ns, name), &v1.User{})
-
-	if obj == nil {
-		return nil, err
+func newFakeUsers(fake *FakeHobbyfarmV1, namespace string) hobbyfarmiov1.UserInterface {
+	return &fakeUsers{
+		gentype.NewFakeClientWithList[*v1.User, *v1.UserList](
+			fake.Fake,
+			namespace,
+			v1.SchemeGroupVersion.WithResource("users"),
+			v1.SchemeGroupVersion.WithKind("User"),
+			func() *v1.User { return &v1.User{} },
+			func() *v1.UserList { return &v1.UserList{} },
+			func(dst, src *v1.UserList) { dst.ListMeta = src.ListMeta },
+			func(list *v1.UserList) []*v1.User { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1.UserList, items []*v1.User) { list.Items = gentype.FromPointerSlice(items) },
+		),
+		fake,
 	}
-	return obj.(*v1.User), err
-}
-
-// List takes label and field selectors, and returns the list of Users that match those selectors.
-func (c *FakeUsers) List(ctx context.Context, opts metav1.ListOptions) (result *v1.UserList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(usersResource, usersKind, c.ns, opts), &v1.UserList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1.UserList{ListMeta: obj.(*v1.UserList).ListMeta}
-	for _, item := range obj.(*v1.UserList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested users.
-func (c *FakeUsers) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(usersResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a user and creates it.  Returns the server's representation of the user, and an error, if there is any.
-func (c *FakeUsers) Create(ctx context.Context, user *v1.User, opts metav1.CreateOptions) (result *v1.User, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(usersResource, c.ns, user), &v1.User{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.User), err
-}
-
-// Update takes the representation of a user and updates it. Returns the server's representation of the user, and an error, if there is any.
-func (c *FakeUsers) Update(ctx context.Context, user *v1.User, opts metav1.UpdateOptions) (result *v1.User, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(usersResource, c.ns, user), &v1.User{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.User), err
-}
-
-// Delete takes name of the user and deletes it. Returns an error if one occurs.
-func (c *FakeUsers) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(usersResource, c.ns, name, opts), &v1.User{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeUsers) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(usersResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1.UserList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched user.
-func (c *FakeUsers) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.User, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(usersResource, c.ns, name, pt, data, subresources...), &v1.User{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.User), err
 }

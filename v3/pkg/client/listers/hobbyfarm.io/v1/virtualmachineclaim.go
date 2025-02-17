@@ -19,10 +19,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // VirtualMachineClaimLister helps list VirtualMachineClaims.
@@ -30,7 +30,7 @@ import (
 type VirtualMachineClaimLister interface {
 	// List lists all VirtualMachineClaims in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.VirtualMachineClaim, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.VirtualMachineClaim, err error)
 	// VirtualMachineClaims returns an object that can list and get VirtualMachineClaims.
 	VirtualMachineClaims(namespace string) VirtualMachineClaimNamespaceLister
 	VirtualMachineClaimListerExpansion
@@ -38,25 +38,17 @@ type VirtualMachineClaimLister interface {
 
 // virtualMachineClaimLister implements the VirtualMachineClaimLister interface.
 type virtualMachineClaimLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*hobbyfarmiov1.VirtualMachineClaim]
 }
 
 // NewVirtualMachineClaimLister returns a new VirtualMachineClaimLister.
 func NewVirtualMachineClaimLister(indexer cache.Indexer) VirtualMachineClaimLister {
-	return &virtualMachineClaimLister{indexer: indexer}
-}
-
-// List lists all VirtualMachineClaims in the indexer.
-func (s *virtualMachineClaimLister) List(selector labels.Selector) (ret []*v1.VirtualMachineClaim, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.VirtualMachineClaim))
-	})
-	return ret, err
+	return &virtualMachineClaimLister{listers.New[*hobbyfarmiov1.VirtualMachineClaim](indexer, hobbyfarmiov1.Resource("virtualmachineclaim"))}
 }
 
 // VirtualMachineClaims returns an object that can list and get VirtualMachineClaims.
 func (s *virtualMachineClaimLister) VirtualMachineClaims(namespace string) VirtualMachineClaimNamespaceLister {
-	return virtualMachineClaimNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return virtualMachineClaimNamespaceLister{listers.NewNamespaced[*hobbyfarmiov1.VirtualMachineClaim](s.ResourceIndexer, namespace)}
 }
 
 // VirtualMachineClaimNamespaceLister helps list and get VirtualMachineClaims.
@@ -64,36 +56,15 @@ func (s *virtualMachineClaimLister) VirtualMachineClaims(namespace string) Virtu
 type VirtualMachineClaimNamespaceLister interface {
 	// List lists all VirtualMachineClaims in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.VirtualMachineClaim, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.VirtualMachineClaim, err error)
 	// Get retrieves the VirtualMachineClaim from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.VirtualMachineClaim, error)
+	Get(name string) (*hobbyfarmiov1.VirtualMachineClaim, error)
 	VirtualMachineClaimNamespaceListerExpansion
 }
 
 // virtualMachineClaimNamespaceLister implements the VirtualMachineClaimNamespaceLister
 // interface.
 type virtualMachineClaimNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all VirtualMachineClaims in the indexer for a given namespace.
-func (s virtualMachineClaimNamespaceLister) List(selector labels.Selector) (ret []*v1.VirtualMachineClaim, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.VirtualMachineClaim))
-	})
-	return ret, err
-}
-
-// Get retrieves the VirtualMachineClaim from the indexer for a given namespace and name.
-func (s virtualMachineClaimNamespaceLister) Get(name string) (*v1.VirtualMachineClaim, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("virtualmachineclaim"), name)
-	}
-	return obj.(*v1.VirtualMachineClaim), nil
+	listers.ResourceIndexer[*hobbyfarmiov1.VirtualMachineClaim]
 }

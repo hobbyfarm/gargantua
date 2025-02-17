@@ -19,13 +19,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	apishobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // DynamicBindConfigurations.
 type DynamicBindConfigurationInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.DynamicBindConfigurationLister
+	Lister() hobbyfarmiov1.DynamicBindConfigurationLister
 }
 
 type dynamicBindConfigurationInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredDynamicBindConfigurationInformer(client versioned.Interface, nam
 				return client.HobbyfarmV1().DynamicBindConfigurations(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&hobbyfarmiov1.DynamicBindConfiguration{},
+		&apishobbyfarmiov1.DynamicBindConfiguration{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *dynamicBindConfigurationInformer) defaultInformer(client versioned.Inte
 }
 
 func (f *dynamicBindConfigurationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&hobbyfarmiov1.DynamicBindConfiguration{}, f.defaultInformer)
+	return f.factory.InformerFor(&apishobbyfarmiov1.DynamicBindConfiguration{}, f.defaultInformer)
 }
 
-func (f *dynamicBindConfigurationInformer) Lister() v1.DynamicBindConfigurationLister {
-	return v1.NewDynamicBindConfigurationLister(f.Informer().GetIndexer())
+func (f *dynamicBindConfigurationInformer) Lister() hobbyfarmiov1.DynamicBindConfigurationLister {
+	return hobbyfarmiov1.NewDynamicBindConfigurationLister(f.Informer().GetIndexer())
 }

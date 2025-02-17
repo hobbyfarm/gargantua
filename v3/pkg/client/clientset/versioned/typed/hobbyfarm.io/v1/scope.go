@@ -19,15 +19,14 @@ limitations under the License.
 package v1
 
 import (
-	"context"
-	"time"
+	context "context"
 
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	scheme "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // ScopesGetter has a method to return a ScopeInterface.
@@ -38,141 +37,32 @@ type ScopesGetter interface {
 
 // ScopeInterface has methods to work with Scope resources.
 type ScopeInterface interface {
-	Create(ctx context.Context, scope *v1.Scope, opts metav1.CreateOptions) (*v1.Scope, error)
-	Update(ctx context.Context, scope *v1.Scope, opts metav1.UpdateOptions) (*v1.Scope, error)
+	Create(ctx context.Context, scope *hobbyfarmiov1.Scope, opts metav1.CreateOptions) (*hobbyfarmiov1.Scope, error)
+	Update(ctx context.Context, scope *hobbyfarmiov1.Scope, opts metav1.UpdateOptions) (*hobbyfarmiov1.Scope, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.Scope, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1.ScopeList, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*hobbyfarmiov1.Scope, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*hobbyfarmiov1.ScopeList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Scope, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *hobbyfarmiov1.Scope, err error)
 	ScopeExpansion
 }
 
 // scopes implements ScopeInterface
 type scopes struct {
-	client rest.Interface
-	ns     string
+	*gentype.ClientWithList[*hobbyfarmiov1.Scope, *hobbyfarmiov1.ScopeList]
 }
 
 // newScopes returns a Scopes
 func newScopes(c *HobbyfarmV1Client, namespace string) *scopes {
 	return &scopes{
-		client: c.RESTClient(),
-		ns:     namespace,
+		gentype.NewClientWithList[*hobbyfarmiov1.Scope, *hobbyfarmiov1.ScopeList](
+			"scopes",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			namespace,
+			func() *hobbyfarmiov1.Scope { return &hobbyfarmiov1.Scope{} },
+			func() *hobbyfarmiov1.ScopeList { return &hobbyfarmiov1.ScopeList{} },
+		),
 	}
-}
-
-// Get takes name of the scope, and returns the corresponding scope object, and an error if there is any.
-func (c *scopes) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Scope, err error) {
-	result = &v1.Scope{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("scopes").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of Scopes that match those selectors.
-func (c *scopes) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ScopeList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1.ScopeList{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("scopes").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested scopes.
-func (c *scopes) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Namespace(c.ns).
-		Resource("scopes").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a scope and creates it.  Returns the server's representation of the scope, and an error, if there is any.
-func (c *scopes) Create(ctx context.Context, scope *v1.Scope, opts metav1.CreateOptions) (result *v1.Scope, err error) {
-	result = &v1.Scope{}
-	err = c.client.Post().
-		Namespace(c.ns).
-		Resource("scopes").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(scope).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a scope and updates it. Returns the server's representation of the scope, and an error, if there is any.
-func (c *scopes) Update(ctx context.Context, scope *v1.Scope, opts metav1.UpdateOptions) (result *v1.Scope, err error) {
-	result = &v1.Scope{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("scopes").
-		Name(scope.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(scope).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the scope and deletes it. Returns an error if one occurs.
-func (c *scopes) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("scopes").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *scopes) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("scopes").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched scope.
-func (c *scopes) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Scope, err error) {
-	result = &v1.Scope{}
-	err = c.client.Patch(pt).
-		Namespace(c.ns).
-		Resource("scopes").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }

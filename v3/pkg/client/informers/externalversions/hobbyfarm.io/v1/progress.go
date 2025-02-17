@@ -19,13 +19,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	apishobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // Progresses.
 type ProgressInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.ProgressLister
+	Lister() hobbyfarmiov1.ProgressLister
 }
 
 type progressInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredProgressInformer(client versioned.Interface, namespace string, r
 				return client.HobbyfarmV1().Progresses(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&hobbyfarmiov1.Progress{},
+		&apishobbyfarmiov1.Progress{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *progressInformer) defaultInformer(client versioned.Interface, resyncPer
 }
 
 func (f *progressInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&hobbyfarmiov1.Progress{}, f.defaultInformer)
+	return f.factory.InformerFor(&apishobbyfarmiov1.Progress{}, f.defaultInformer)
 }
 
-func (f *progressInformer) Lister() v1.ProgressLister {
-	return v1.NewProgressLister(f.Informer().GetIndexer())
+func (f *progressInformer) Lister() hobbyfarmiov1.ProgressLister {
+	return hobbyfarmiov1.NewProgressLister(f.Informer().GetIndexer())
 }

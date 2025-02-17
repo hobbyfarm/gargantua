@@ -19,13 +19,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	terraformcontrollercattleiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	apisterraformcontrollercattleiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/terraformcontroller.cattle.io/v1"
+	terraformcontrollercattleiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/terraformcontroller.cattle.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // States.
 type StateInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.StateLister
+	Lister() terraformcontrollercattleiov1.StateLister
 }
 
 type stateInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredStateInformer(client versioned.Interface, namespace string, resy
 				return client.TerraformcontrollerV1().States(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&terraformcontrollercattleiov1.State{},
+		&apisterraformcontrollercattleiov1.State{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *stateInformer) defaultInformer(client versioned.Interface, resyncPeriod
 }
 
 func (f *stateInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&terraformcontrollercattleiov1.State{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisterraformcontrollercattleiov1.State{}, f.defaultInformer)
 }
 
-func (f *stateInformer) Lister() v1.StateLister {
-	return v1.NewStateLister(f.Informer().GetIndexer())
+func (f *stateInformer) Lister() terraformcontrollercattleiov1.StateLister {
+	return terraformcontrollercattleiov1.NewStateLister(f.Informer().GetIndexer())
 }

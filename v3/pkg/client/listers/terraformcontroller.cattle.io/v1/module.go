@@ -19,10 +19,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	terraformcontrollercattleiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ModuleLister helps list Modules.
@@ -30,7 +30,7 @@ import (
 type ModuleLister interface {
 	// List lists all Modules in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.Module, err error)
+	List(selector labels.Selector) (ret []*terraformcontrollercattleiov1.Module, err error)
 	// Modules returns an object that can list and get Modules.
 	Modules(namespace string) ModuleNamespaceLister
 	ModuleListerExpansion
@@ -38,25 +38,17 @@ type ModuleLister interface {
 
 // moduleLister implements the ModuleLister interface.
 type moduleLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*terraformcontrollercattleiov1.Module]
 }
 
 // NewModuleLister returns a new ModuleLister.
 func NewModuleLister(indexer cache.Indexer) ModuleLister {
-	return &moduleLister{indexer: indexer}
-}
-
-// List lists all Modules in the indexer.
-func (s *moduleLister) List(selector labels.Selector) (ret []*v1.Module, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Module))
-	})
-	return ret, err
+	return &moduleLister{listers.New[*terraformcontrollercattleiov1.Module](indexer, terraformcontrollercattleiov1.Resource("module"))}
 }
 
 // Modules returns an object that can list and get Modules.
 func (s *moduleLister) Modules(namespace string) ModuleNamespaceLister {
-	return moduleNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return moduleNamespaceLister{listers.NewNamespaced[*terraformcontrollercattleiov1.Module](s.ResourceIndexer, namespace)}
 }
 
 // ModuleNamespaceLister helps list and get Modules.
@@ -64,36 +56,15 @@ func (s *moduleLister) Modules(namespace string) ModuleNamespaceLister {
 type ModuleNamespaceLister interface {
 	// List lists all Modules in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.Module, err error)
+	List(selector labels.Selector) (ret []*terraformcontrollercattleiov1.Module, err error)
 	// Get retrieves the Module from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.Module, error)
+	Get(name string) (*terraformcontrollercattleiov1.Module, error)
 	ModuleNamespaceListerExpansion
 }
 
 // moduleNamespaceLister implements the ModuleNamespaceLister
 // interface.
 type moduleNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all Modules in the indexer for a given namespace.
-func (s moduleNamespaceLister) List(selector labels.Selector) (ret []*v1.Module, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Module))
-	})
-	return ret, err
-}
-
-// Get retrieves the Module from the indexer for a given namespace and name.
-func (s moduleNamespaceLister) Get(name string) (*v1.Module, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("module"), name)
-	}
-	return obj.(*v1.Module), nil
+	listers.ResourceIndexer[*terraformcontrollercattleiov1.Module]
 }

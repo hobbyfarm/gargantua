@@ -19,10 +19,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // PredefinedServiceLister helps list PredefinedServices.
@@ -30,7 +30,7 @@ import (
 type PredefinedServiceLister interface {
 	// List lists all PredefinedServices in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.PredefinedService, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.PredefinedService, err error)
 	// PredefinedServices returns an object that can list and get PredefinedServices.
 	PredefinedServices(namespace string) PredefinedServiceNamespaceLister
 	PredefinedServiceListerExpansion
@@ -38,25 +38,17 @@ type PredefinedServiceLister interface {
 
 // predefinedServiceLister implements the PredefinedServiceLister interface.
 type predefinedServiceLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*hobbyfarmiov1.PredefinedService]
 }
 
 // NewPredefinedServiceLister returns a new PredefinedServiceLister.
 func NewPredefinedServiceLister(indexer cache.Indexer) PredefinedServiceLister {
-	return &predefinedServiceLister{indexer: indexer}
-}
-
-// List lists all PredefinedServices in the indexer.
-func (s *predefinedServiceLister) List(selector labels.Selector) (ret []*v1.PredefinedService, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.PredefinedService))
-	})
-	return ret, err
+	return &predefinedServiceLister{listers.New[*hobbyfarmiov1.PredefinedService](indexer, hobbyfarmiov1.Resource("predefinedservice"))}
 }
 
 // PredefinedServices returns an object that can list and get PredefinedServices.
 func (s *predefinedServiceLister) PredefinedServices(namespace string) PredefinedServiceNamespaceLister {
-	return predefinedServiceNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return predefinedServiceNamespaceLister{listers.NewNamespaced[*hobbyfarmiov1.PredefinedService](s.ResourceIndexer, namespace)}
 }
 
 // PredefinedServiceNamespaceLister helps list and get PredefinedServices.
@@ -64,36 +56,15 @@ func (s *predefinedServiceLister) PredefinedServices(namespace string) Predefine
 type PredefinedServiceNamespaceLister interface {
 	// List lists all PredefinedServices in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.PredefinedService, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.PredefinedService, err error)
 	// Get retrieves the PredefinedService from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.PredefinedService, error)
+	Get(name string) (*hobbyfarmiov1.PredefinedService, error)
 	PredefinedServiceNamespaceListerExpansion
 }
 
 // predefinedServiceNamespaceLister implements the PredefinedServiceNamespaceLister
 // interface.
 type predefinedServiceNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all PredefinedServices in the indexer for a given namespace.
-func (s predefinedServiceNamespaceLister) List(selector labels.Selector) (ret []*v1.PredefinedService, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.PredefinedService))
-	})
-	return ret, err
-}
-
-// Get retrieves the PredefinedService from the indexer for a given namespace and name.
-func (s predefinedServiceNamespaceLister) Get(name string) (*v1.PredefinedService, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("predefinedservice"), name)
-	}
-	return obj.(*v1.PredefinedService), nil
+	listers.ResourceIndexer[*hobbyfarmiov1.PredefinedService]
 }

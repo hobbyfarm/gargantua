@@ -19,10 +19,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // VirtualMachineSetLister helps list VirtualMachineSets.
@@ -30,7 +30,7 @@ import (
 type VirtualMachineSetLister interface {
 	// List lists all VirtualMachineSets in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.VirtualMachineSet, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.VirtualMachineSet, err error)
 	// VirtualMachineSets returns an object that can list and get VirtualMachineSets.
 	VirtualMachineSets(namespace string) VirtualMachineSetNamespaceLister
 	VirtualMachineSetListerExpansion
@@ -38,25 +38,17 @@ type VirtualMachineSetLister interface {
 
 // virtualMachineSetLister implements the VirtualMachineSetLister interface.
 type virtualMachineSetLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*hobbyfarmiov1.VirtualMachineSet]
 }
 
 // NewVirtualMachineSetLister returns a new VirtualMachineSetLister.
 func NewVirtualMachineSetLister(indexer cache.Indexer) VirtualMachineSetLister {
-	return &virtualMachineSetLister{indexer: indexer}
-}
-
-// List lists all VirtualMachineSets in the indexer.
-func (s *virtualMachineSetLister) List(selector labels.Selector) (ret []*v1.VirtualMachineSet, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.VirtualMachineSet))
-	})
-	return ret, err
+	return &virtualMachineSetLister{listers.New[*hobbyfarmiov1.VirtualMachineSet](indexer, hobbyfarmiov1.Resource("virtualmachineset"))}
 }
 
 // VirtualMachineSets returns an object that can list and get VirtualMachineSets.
 func (s *virtualMachineSetLister) VirtualMachineSets(namespace string) VirtualMachineSetNamespaceLister {
-	return virtualMachineSetNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return virtualMachineSetNamespaceLister{listers.NewNamespaced[*hobbyfarmiov1.VirtualMachineSet](s.ResourceIndexer, namespace)}
 }
 
 // VirtualMachineSetNamespaceLister helps list and get VirtualMachineSets.
@@ -64,36 +56,15 @@ func (s *virtualMachineSetLister) VirtualMachineSets(namespace string) VirtualMa
 type VirtualMachineSetNamespaceLister interface {
 	// List lists all VirtualMachineSets in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.VirtualMachineSet, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.VirtualMachineSet, err error)
 	// Get retrieves the VirtualMachineSet from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.VirtualMachineSet, error)
+	Get(name string) (*hobbyfarmiov1.VirtualMachineSet, error)
 	VirtualMachineSetNamespaceListerExpansion
 }
 
 // virtualMachineSetNamespaceLister implements the VirtualMachineSetNamespaceLister
 // interface.
 type virtualMachineSetNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all VirtualMachineSets in the indexer for a given namespace.
-func (s virtualMachineSetNamespaceLister) List(selector labels.Selector) (ret []*v1.VirtualMachineSet, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.VirtualMachineSet))
-	})
-	return ret, err
-}
-
-// Get retrieves the VirtualMachineSet from the indexer for a given namespace and name.
-func (s virtualMachineSetNamespaceLister) Get(name string) (*v1.VirtualMachineSet, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("virtualmachineset"), name)
-	}
-	return obj.(*v1.VirtualMachineSet), nil
+	listers.ResourceIndexer[*hobbyfarmiov1.VirtualMachineSet]
 }

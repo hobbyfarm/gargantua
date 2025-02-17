@@ -29,15 +29,15 @@ type FakeTerraformcontrollerV1 struct {
 }
 
 func (c *FakeTerraformcontrollerV1) Executions(namespace string) v1.ExecutionInterface {
-	return &FakeExecutions{c, namespace}
+	return newFakeExecutions(c, namespace)
 }
 
 func (c *FakeTerraformcontrollerV1) Modules(namespace string) v1.ModuleInterface {
-	return &FakeModules{c, namespace}
+	return newFakeModules(c, namespace)
 }
 
 func (c *FakeTerraformcontrollerV1) States(namespace string) v1.StateInterface {
-	return &FakeStates{c, namespace}
+	return newFakeStates(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

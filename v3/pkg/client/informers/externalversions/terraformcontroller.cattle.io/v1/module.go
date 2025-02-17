@@ -19,13 +19,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	terraformcontrollercattleiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	apisterraformcontrollercattleiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/terraformcontroller.cattle.io/v1"
+	terraformcontrollercattleiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/terraformcontroller.cattle.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // Modules.
 type ModuleInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.ModuleLister
+	Lister() terraformcontrollercattleiov1.ModuleLister
 }
 
 type moduleInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredModuleInformer(client versioned.Interface, namespace string, res
 				return client.TerraformcontrollerV1().Modules(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&terraformcontrollercattleiov1.Module{},
+		&apisterraformcontrollercattleiov1.Module{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *moduleInformer) defaultInformer(client versioned.Interface, resyncPerio
 }
 
 func (f *moduleInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&terraformcontrollercattleiov1.Module{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisterraformcontrollercattleiov1.Module{}, f.defaultInformer)
 }
 
-func (f *moduleInformer) Lister() v1.ModuleLister {
-	return v1.NewModuleLister(f.Informer().GetIndexer())
+func (f *moduleInformer) Lister() terraformcontrollercattleiov1.ModuleLister {
+	return terraformcontrollercattleiov1.NewModuleLister(f.Informer().GetIndexer())
 }

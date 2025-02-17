@@ -19,10 +19,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // SettingLister helps list Settings.
@@ -30,7 +30,7 @@ import (
 type SettingLister interface {
 	// List lists all Settings in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.Setting, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.Setting, err error)
 	// Settings returns an object that can list and get Settings.
 	Settings(namespace string) SettingNamespaceLister
 	SettingListerExpansion
@@ -38,25 +38,17 @@ type SettingLister interface {
 
 // settingLister implements the SettingLister interface.
 type settingLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*hobbyfarmiov1.Setting]
 }
 
 // NewSettingLister returns a new SettingLister.
 func NewSettingLister(indexer cache.Indexer) SettingLister {
-	return &settingLister{indexer: indexer}
-}
-
-// List lists all Settings in the indexer.
-func (s *settingLister) List(selector labels.Selector) (ret []*v1.Setting, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Setting))
-	})
-	return ret, err
+	return &settingLister{listers.New[*hobbyfarmiov1.Setting](indexer, hobbyfarmiov1.Resource("setting"))}
 }
 
 // Settings returns an object that can list and get Settings.
 func (s *settingLister) Settings(namespace string) SettingNamespaceLister {
-	return settingNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return settingNamespaceLister{listers.NewNamespaced[*hobbyfarmiov1.Setting](s.ResourceIndexer, namespace)}
 }
 
 // SettingNamespaceLister helps list and get Settings.
@@ -64,36 +56,15 @@ func (s *settingLister) Settings(namespace string) SettingNamespaceLister {
 type SettingNamespaceLister interface {
 	// List lists all Settings in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.Setting, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.Setting, err error)
 	// Get retrieves the Setting from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.Setting, error)
+	Get(name string) (*hobbyfarmiov1.Setting, error)
 	SettingNamespaceListerExpansion
 }
 
 // settingNamespaceLister implements the SettingNamespaceLister
 // interface.
 type settingNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all Settings in the indexer for a given namespace.
-func (s settingNamespaceLister) List(selector labels.Selector) (ret []*v1.Setting, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Setting))
-	})
-	return ret, err
-}
-
-// Get retrieves the Setting from the indexer for a given namespace and name.
-func (s settingNamespaceLister) Get(name string) (*v1.Setting, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("setting"), name)
-	}
-	return obj.(*v1.Setting), nil
+	listers.ResourceIndexer[*hobbyfarmiov1.Setting]
 }
