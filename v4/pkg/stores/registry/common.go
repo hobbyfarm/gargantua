@@ -86,6 +86,10 @@ func ValidatePauseKeepaliveDurations(pauseDuration string, keepaliveDuration str
 }
 
 func ValidateNotBeforeNotAfter(notBefore *metav1.Time, notAfter *metav1.Time) (result field.ErrorList) {
+	if notAfter == nil || notBefore == nil {
+		return nil
+	}
+
 	if notAfter.Before(notBefore) {
 		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("notAfter"),
 			notAfter, "notAfter must be after notBefore")}
