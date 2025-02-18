@@ -26,13 +26,11 @@ FROM alpine:3.21.2
 RUN addgroup -S app && adduser -S app -G app
 
 # copy over app binary from build stage
-COPY --from=build /tmp/app /home/app/app
-# make the binary executable
-RUN chmod +x /home/app/app && chown -R app:app /home/app/app
+COPY --from=build /tmp/app /usr/local/bin/app
 
 # switch to user app
 USER app
 WORKDIR /home/app
 
-ENTRYPOINT ["/home/app/app"]
+ENTRYPOINT ["app"]
 CMD ["-v=9", "-logtostderr"]

@@ -26,7 +26,7 @@ endif
 
 # If no services are specified, get all service directories
 ifeq ($(SERVICES),)
-    SERVICES := gargantua $(shell find $(SERVICE_BASE_PATH) -maxdepth 1 -type d -exec basename {} \; | tail -n +2)
+    SERVICES := gargantua $(shell find $(SERVICE_BASE_PATH) -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
 endif
 
 .PHONY: help
