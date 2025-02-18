@@ -25,3 +25,5 @@ ko
 apiserver.local.config/
 hf-apiserver/
 samples/
+
+kube_codegen.sh
