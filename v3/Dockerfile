@@ -1,6 +1,6 @@
 ##### BUILD STAGE #####
 # use BUILDPLATFORM to pin to the native platform to prevent emulation from kicking in
-FROM --platform=$BUILDPLATFORM golang:1.23.2-alpine3.20 AS build
+FROM --platform=$BUILDPLATFORM golang:1.23.6-alpine3.21 AS build
 
 # os from --platform linux/amd64
 ARG TARGETOS
@@ -22,7 +22,7 @@ COPY . /app
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags="-s -w" -o /tmp/app
 
 ##### RUNTIME STAGE #####
-FROM alpine:3.21.2
+FROM alpine:3.21.3
 
 # create group and user app
 RUN addgroup -S app && adduser -S app -G app

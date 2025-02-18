@@ -19,7 +19,7 @@ jobs:
         # caching is enabled by default since setup-go@v4
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23.2'
+          go-version: '1.23.6'
 
       - name: Build
         run: go build -ldflags="-s -w" -v -o app "${{ inputs.path }}"
