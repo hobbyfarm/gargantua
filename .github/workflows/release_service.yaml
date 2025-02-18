@@ -33,7 +33,7 @@ jobs:
         id: compute_docker_tag
         uses: docker/metadata-action@v5
         with:
-          images: ${{ vars.DOCKER_REGISTRY }}/${{ inputs.image }}
+          images: ${{ vars.DOCKER_REGISTRY || 'hobbyfarm' }}/${{ inputs.image }}
           tags: |
             type=ref,event=tag
             type=ref,event=branch
@@ -81,7 +81,7 @@ jobs:
         with:
           tags: |
             ${{ steps.compute_docker_tag.outputs.tags }}
-            ${{ vars.DOCKER_REGISTRY }}/${{ inputs.image }}:latest
+            ${{ vars.DOCKER_REGISTRY || 'hobbyfarm' }}/${{ inputs.image }}:latest
           platforms: linux/amd64,linux/arm64
           build-args: SERVICE_NAME=${{ inputs.service }}
           context: .
