@@ -6,6 +6,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/accesscode"
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/authentication/providers/ldap"
+	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/event"
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/serviceaccount"
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/user"
 	"github.com/rancher/lasso/pkg/controller"
@@ -79,6 +80,10 @@ func app(cmd *cobra.Command, args []string) error {
 	factory, err := controller.NewSharedControllerFactoryFromConfig(cfg, scheme)
 	if err != nil {
 		return fmt.Errorf("error building shared controller factory: %s", err.Error())
+	}
+
+	if err := event.New(mgr); err != nil {
+		return fmt.Errorf("error registering event handlers: %s", err.Error())
 	}
 
 	if err := serviceaccount.RegisterHandlers(factory); err != nil {
