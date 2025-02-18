@@ -25,7 +25,9 @@ func NewNamespaceScopedRemote(obj types.Object, client client.WithWatch, namespa
 
 	scopingTranslator := translators.NewSetNamespaceTranslator(namespace)
 	return &NamespaceScopedRemote{
-		root:      translation.NewSimpleTranslationStrategy(scopingTranslator, ogRemote),
+		root: translation.NewSimpleTranslationStrategyWithOptions(scopingTranslator, ogRemote, translation.TranslationOptions{
+			AppendPublicUIDSegment: false,
+		}),
 		namespace: namespace,
 	}
 }
