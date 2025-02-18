@@ -55,7 +55,8 @@ func (cx otacSetScaleController) Reconcile(ctx context.Context, request reconcil
 				ObjectMeta: metav1.ObjectMeta{
 					GenerateName: "otacset-",
 					Labels: map[string]string{
-						labels.OneTimeAccessCodeSetLabel: set.GetName(),
+						labels.OneTimeAccessCodeSetLabel:      set.GetName(),
+						labels.OneTimeAccessCodeRedeemedLabel: "false",
 					},
 				},
 				Spec: set.Spec.Template,
@@ -80,23 +81,28 @@ func (cx otacSetScaleController) Reconcile(ctx context.Context, request reconcil
 		eventbuilder.Info().For(set).By(OtacSetScaleControllerName, "").
 			Reason("attempting to scale down otacset").WriteOrLog(cx.kclient)
 
-		// attempt to delete some candidates
-		err := cx.kclient.DeleteAllOf(ctx, &v4alpha1.OneTimeAccessCode{}, &client.DeleteAllOfOptions{
-			ListOptions: client.ListOptions{
-				Limit: int64(set.Status.Created - set.Spec.Count),
-				LabelSelector: labels2.SelectorFromSet(map[string]string{
-					labels.OneTimeAccessCodeRedeemedLabel: "false",
-				}),
-			},
-		})
-		if err != nil {
+		// list the number of objects that meet the requirement
+		list := &v4alpha1.OneTimeAccessCodeList{}
+		if err := cx.kclient.List(ctx, list, &client.ListOptions{
+			Limit: int64(set.Status.Created - set.Spec.Count),
+			LabelSelector: labels2.SelectorFromSet(map[string]string{
+				labels.OneTimeAccessCodeRedeemedLabel: "false",
+			}),
+		}); err != nil {
 			return reconcile.Result{}, err
+		}
+
+		// attempt to delete them
+		for _, i := range list.Items {
+			if err := cx.kclient.Delete(ctx, &i); err != nil {
+				eventbuilder.Error().For(set).By(OtacSetScaleControllerName, "").
+					Reason("error deleting otac").For(set).Note(err.Error()).WriteOrLog(cx.kclient)
+			}
 		}
 
 		reQ = true
 	}
 
 	// ... just right, do nothing
-
 	return reconcile.Result{Requeue: reQ}, nil
 }
