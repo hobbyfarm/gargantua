@@ -6,6 +6,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v4/pkg/apis/hobbyfarm.io/v4alpha1"
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/accesscode"
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/authentication/providers/ldap"
+	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/otac"
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/serviceaccount"
 	"github.com/hobbyfarm/gargantua/v4/pkg/controllers/user"
 	"github.com/rancher/lasso/pkg/controller"
@@ -91,6 +92,10 @@ func app(cmd *cobra.Command, args []string) error {
 
 	if err := accesscode.New(mgr); err != nil {
 		return fmt.Errorf("error registering accesscode handlers: %s", err.Error())
+	}
+
+	if err := otac.New(mgr); err != nil {
+		return fmt.Errorf("error registering otac handlers: %s", err.Error())
 	}
 
 	if err := user.RegisterHandlers(factory); err != nil {
