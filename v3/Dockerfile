@@ -10,8 +10,8 @@ ARG SERVICE_NAME
 
 WORKDIR /app/v3/services/${SERVICE_NAME}
 # copy over dependency files and download dependencies
-COPY ./v3/services/${SERVICE_NAME}/go.mod .
-COPY ./v3/go.mod /app/v3
+COPY ./v3/services/${SERVICE_NAME}/go.mod ./v3/services/${SERVICE_NAME}/go.sum ./
+COPY ./v3/go.mod ./v3/go.sum /app/v3/
 
 RUN go mod download
 
