@@ -19,13 +19,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	apishobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // Costs.
 type CostInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.CostLister
+	Lister() hobbyfarmiov1.CostLister
 }
 
 type costInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredCostInformer(client versioned.Interface, namespace string, resyn
 				return client.HobbyfarmV1().Costs(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&hobbyfarmiov1.Cost{},
+		&apishobbyfarmiov1.Cost{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *costInformer) defaultInformer(client versioned.Interface, resyncPeriod 
 }
 
 func (f *costInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&hobbyfarmiov1.Cost{}, f.defaultInformer)
+	return f.factory.InformerFor(&apishobbyfarmiov1.Cost{}, f.defaultInformer)
 }
 
-func (f *costInformer) Lister() v1.CostLister {
-	return v1.NewCostLister(f.Informer().GetIndexer())
+func (f *costInformer) Lister() hobbyfarmiov1.CostLister {
+	return hobbyfarmiov1.NewCostLister(f.Informer().GetIndexer())
 }

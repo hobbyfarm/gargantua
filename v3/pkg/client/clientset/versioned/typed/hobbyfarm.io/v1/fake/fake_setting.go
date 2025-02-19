@@ -19,111 +19,30 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeSettings implements SettingInterface
-type FakeSettings struct {
+// fakeSettings implements SettingInterface
+type fakeSettings struct {
+	*gentype.FakeClientWithList[*v1.Setting, *v1.SettingList]
 	Fake *FakeHobbyfarmV1
-	ns   string
 }
 
-var settingsResource = v1.SchemeGroupVersion.WithResource("settings")
-
-var settingsKind = v1.SchemeGroupVersion.WithKind("Setting")
-
-// Get takes name of the setting, and returns the corresponding setting object, and an error if there is any.
-func (c *FakeSettings) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Setting, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(settingsResource, c.ns, name), &v1.Setting{})
-
-	if obj == nil {
-		return nil, err
+func newFakeSettings(fake *FakeHobbyfarmV1, namespace string) hobbyfarmiov1.SettingInterface {
+	return &fakeSettings{
+		gentype.NewFakeClientWithList[*v1.Setting, *v1.SettingList](
+			fake.Fake,
+			namespace,
+			v1.SchemeGroupVersion.WithResource("settings"),
+			v1.SchemeGroupVersion.WithKind("Setting"),
+			func() *v1.Setting { return &v1.Setting{} },
+			func() *v1.SettingList { return &v1.SettingList{} },
+			func(dst, src *v1.SettingList) { dst.ListMeta = src.ListMeta },
+			func(list *v1.SettingList) []*v1.Setting { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1.SettingList, items []*v1.Setting) { list.Items = gentype.FromPointerSlice(items) },
+		),
+		fake,
 	}
-	return obj.(*v1.Setting), err
-}
-
-// List takes label and field selectors, and returns the list of Settings that match those selectors.
-func (c *FakeSettings) List(ctx context.Context, opts metav1.ListOptions) (result *v1.SettingList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(settingsResource, settingsKind, c.ns, opts), &v1.SettingList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1.SettingList{ListMeta: obj.(*v1.SettingList).ListMeta}
-	for _, item := range obj.(*v1.SettingList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested settings.
-func (c *FakeSettings) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(settingsResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a setting and creates it.  Returns the server's representation of the setting, and an error, if there is any.
-func (c *FakeSettings) Create(ctx context.Context, setting *v1.Setting, opts metav1.CreateOptions) (result *v1.Setting, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(settingsResource, c.ns, setting), &v1.Setting{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.Setting), err
-}
-
-// Update takes the representation of a setting and updates it. Returns the server's representation of the setting, and an error, if there is any.
-func (c *FakeSettings) Update(ctx context.Context, setting *v1.Setting, opts metav1.UpdateOptions) (result *v1.Setting, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(settingsResource, c.ns, setting), &v1.Setting{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.Setting), err
-}
-
-// Delete takes name of the setting and deletes it. Returns an error if one occurs.
-func (c *FakeSettings) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(settingsResource, c.ns, name, opts), &v1.Setting{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeSettings) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(settingsResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1.SettingList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched setting.
-func (c *FakeSettings) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Setting, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(settingsResource, c.ns, name, pt, data, subresources...), &v1.Setting{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.Setting), err
 }

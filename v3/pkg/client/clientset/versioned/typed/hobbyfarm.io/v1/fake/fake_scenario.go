@@ -19,111 +19,30 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeScenarios implements ScenarioInterface
-type FakeScenarios struct {
+// fakeScenarios implements ScenarioInterface
+type fakeScenarios struct {
+	*gentype.FakeClientWithList[*v1.Scenario, *v1.ScenarioList]
 	Fake *FakeHobbyfarmV1
-	ns   string
 }
 
-var scenariosResource = v1.SchemeGroupVersion.WithResource("scenarios")
-
-var scenariosKind = v1.SchemeGroupVersion.WithKind("Scenario")
-
-// Get takes name of the scenario, and returns the corresponding scenario object, and an error if there is any.
-func (c *FakeScenarios) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Scenario, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(scenariosResource, c.ns, name), &v1.Scenario{})
-
-	if obj == nil {
-		return nil, err
+func newFakeScenarios(fake *FakeHobbyfarmV1, namespace string) hobbyfarmiov1.ScenarioInterface {
+	return &fakeScenarios{
+		gentype.NewFakeClientWithList[*v1.Scenario, *v1.ScenarioList](
+			fake.Fake,
+			namespace,
+			v1.SchemeGroupVersion.WithResource("scenarios"),
+			v1.SchemeGroupVersion.WithKind("Scenario"),
+			func() *v1.Scenario { return &v1.Scenario{} },
+			func() *v1.ScenarioList { return &v1.ScenarioList{} },
+			func(dst, src *v1.ScenarioList) { dst.ListMeta = src.ListMeta },
+			func(list *v1.ScenarioList) []*v1.Scenario { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1.ScenarioList, items []*v1.Scenario) { list.Items = gentype.FromPointerSlice(items) },
+		),
+		fake,
 	}
-	return obj.(*v1.Scenario), err
-}
-
-// List takes label and field selectors, and returns the list of Scenarios that match those selectors.
-func (c *FakeScenarios) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ScenarioList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(scenariosResource, scenariosKind, c.ns, opts), &v1.ScenarioList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1.ScenarioList{ListMeta: obj.(*v1.ScenarioList).ListMeta}
-	for _, item := range obj.(*v1.ScenarioList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested scenarios.
-func (c *FakeScenarios) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(scenariosResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a scenario and creates it.  Returns the server's representation of the scenario, and an error, if there is any.
-func (c *FakeScenarios) Create(ctx context.Context, scenario *v1.Scenario, opts metav1.CreateOptions) (result *v1.Scenario, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(scenariosResource, c.ns, scenario), &v1.Scenario{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.Scenario), err
-}
-
-// Update takes the representation of a scenario and updates it. Returns the server's representation of the scenario, and an error, if there is any.
-func (c *FakeScenarios) Update(ctx context.Context, scenario *v1.Scenario, opts metav1.UpdateOptions) (result *v1.Scenario, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(scenariosResource, c.ns, scenario), &v1.Scenario{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.Scenario), err
-}
-
-// Delete takes name of the scenario and deletes it. Returns an error if one occurs.
-func (c *FakeScenarios) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(scenariosResource, c.ns, name, opts), &v1.Scenario{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeScenarios) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(scenariosResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1.ScenarioList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched scenario.
-func (c *FakeScenarios) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Scenario, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(scenariosResource, c.ns, name, pt, data, subresources...), &v1.Scenario{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.Scenario), err
 }

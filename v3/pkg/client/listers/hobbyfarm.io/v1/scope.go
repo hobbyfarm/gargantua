@@ -19,10 +19,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ScopeLister helps list Scopes.
@@ -30,7 +30,7 @@ import (
 type ScopeLister interface {
 	// List lists all Scopes in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.Scope, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.Scope, err error)
 	// Scopes returns an object that can list and get Scopes.
 	Scopes(namespace string) ScopeNamespaceLister
 	ScopeListerExpansion
@@ -38,25 +38,17 @@ type ScopeLister interface {
 
 // scopeLister implements the ScopeLister interface.
 type scopeLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*hobbyfarmiov1.Scope]
 }
 
 // NewScopeLister returns a new ScopeLister.
 func NewScopeLister(indexer cache.Indexer) ScopeLister {
-	return &scopeLister{indexer: indexer}
-}
-
-// List lists all Scopes in the indexer.
-func (s *scopeLister) List(selector labels.Selector) (ret []*v1.Scope, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Scope))
-	})
-	return ret, err
+	return &scopeLister{listers.New[*hobbyfarmiov1.Scope](indexer, hobbyfarmiov1.Resource("scope"))}
 }
 
 // Scopes returns an object that can list and get Scopes.
 func (s *scopeLister) Scopes(namespace string) ScopeNamespaceLister {
-	return scopeNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return scopeNamespaceLister{listers.NewNamespaced[*hobbyfarmiov1.Scope](s.ResourceIndexer, namespace)}
 }
 
 // ScopeNamespaceLister helps list and get Scopes.
@@ -64,36 +56,15 @@ func (s *scopeLister) Scopes(namespace string) ScopeNamespaceLister {
 type ScopeNamespaceLister interface {
 	// List lists all Scopes in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.Scope, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.Scope, err error)
 	// Get retrieves the Scope from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.Scope, error)
+	Get(name string) (*hobbyfarmiov1.Scope, error)
 	ScopeNamespaceListerExpansion
 }
 
 // scopeNamespaceLister implements the ScopeNamespaceLister
 // interface.
 type scopeNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all Scopes in the indexer for a given namespace.
-func (s scopeNamespaceLister) List(selector labels.Selector) (ret []*v1.Scope, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Scope))
-	})
-	return ret, err
-}
-
-// Get retrieves the Scope from the indexer for a given namespace and name.
-func (s scopeNamespaceLister) Get(name string) (*v1.Scope, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("scope"), name)
-	}
-	return obj.(*v1.Scope), nil
+	listers.ResourceIndexer[*hobbyfarmiov1.Scope]
 }

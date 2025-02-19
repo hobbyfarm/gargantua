@@ -19,13 +19,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	apishobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // VirtualMachineTemplates.
 type VirtualMachineTemplateInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.VirtualMachineTemplateLister
+	Lister() hobbyfarmiov1.VirtualMachineTemplateLister
 }
 
 type virtualMachineTemplateInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredVirtualMachineTemplateInformer(client versioned.Interface, names
 				return client.HobbyfarmV1().VirtualMachineTemplates(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&hobbyfarmiov1.VirtualMachineTemplate{},
+		&apishobbyfarmiov1.VirtualMachineTemplate{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *virtualMachineTemplateInformer) defaultInformer(client versioned.Interf
 }
 
 func (f *virtualMachineTemplateInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&hobbyfarmiov1.VirtualMachineTemplate{}, f.defaultInformer)
+	return f.factory.InformerFor(&apishobbyfarmiov1.VirtualMachineTemplate{}, f.defaultInformer)
 }
 
-func (f *virtualMachineTemplateInformer) Lister() v1.VirtualMachineTemplateLister {
-	return v1.NewVirtualMachineTemplateLister(f.Informer().GetIndexer())
+func (f *virtualMachineTemplateInformer) Lister() hobbyfarmiov1.VirtualMachineTemplateLister {
+	return hobbyfarmiov1.NewVirtualMachineTemplateLister(f.Informer().GetIndexer())
 }

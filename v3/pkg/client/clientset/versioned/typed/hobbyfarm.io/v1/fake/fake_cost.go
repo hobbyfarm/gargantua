@@ -19,111 +19,30 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeCosts implements CostInterface
-type FakeCosts struct {
+// fakeCosts implements CostInterface
+type fakeCosts struct {
+	*gentype.FakeClientWithList[*v1.Cost, *v1.CostList]
 	Fake *FakeHobbyfarmV1
-	ns   string
 }
 
-var costsResource = v1.SchemeGroupVersion.WithResource("costs")
-
-var costsKind = v1.SchemeGroupVersion.WithKind("Cost")
-
-// Get takes name of the cost, and returns the corresponding cost object, and an error if there is any.
-func (c *FakeCosts) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Cost, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(costsResource, c.ns, name), &v1.Cost{})
-
-	if obj == nil {
-		return nil, err
+func newFakeCosts(fake *FakeHobbyfarmV1, namespace string) hobbyfarmiov1.CostInterface {
+	return &fakeCosts{
+		gentype.NewFakeClientWithList[*v1.Cost, *v1.CostList](
+			fake.Fake,
+			namespace,
+			v1.SchemeGroupVersion.WithResource("costs"),
+			v1.SchemeGroupVersion.WithKind("Cost"),
+			func() *v1.Cost { return &v1.Cost{} },
+			func() *v1.CostList { return &v1.CostList{} },
+			func(dst, src *v1.CostList) { dst.ListMeta = src.ListMeta },
+			func(list *v1.CostList) []*v1.Cost { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1.CostList, items []*v1.Cost) { list.Items = gentype.FromPointerSlice(items) },
+		),
+		fake,
 	}
-	return obj.(*v1.Cost), err
-}
-
-// List takes label and field selectors, and returns the list of Costs that match those selectors.
-func (c *FakeCosts) List(ctx context.Context, opts metav1.ListOptions) (result *v1.CostList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(costsResource, costsKind, c.ns, opts), &v1.CostList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1.CostList{ListMeta: obj.(*v1.CostList).ListMeta}
-	for _, item := range obj.(*v1.CostList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested costs.
-func (c *FakeCosts) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(costsResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a cost and creates it.  Returns the server's representation of the cost, and an error, if there is any.
-func (c *FakeCosts) Create(ctx context.Context, cost *v1.Cost, opts metav1.CreateOptions) (result *v1.Cost, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(costsResource, c.ns, cost), &v1.Cost{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.Cost), err
-}
-
-// Update takes the representation of a cost and updates it. Returns the server's representation of the cost, and an error, if there is any.
-func (c *FakeCosts) Update(ctx context.Context, cost *v1.Cost, opts metav1.UpdateOptions) (result *v1.Cost, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(costsResource, c.ns, cost), &v1.Cost{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.Cost), err
-}
-
-// Delete takes name of the cost and deletes it. Returns an error if one occurs.
-func (c *FakeCosts) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(costsResource, c.ns, name, opts), &v1.Cost{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeCosts) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(costsResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1.CostList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched cost.
-func (c *FakeCosts) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Cost, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(costsResource, c.ns, name, pt, data, subresources...), &v1.Cost{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.Cost), err
 }

@@ -19,10 +19,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // CostLister helps list Costs.
@@ -30,7 +30,7 @@ import (
 type CostLister interface {
 	// List lists all Costs in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.Cost, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.Cost, err error)
 	// Costs returns an object that can list and get Costs.
 	Costs(namespace string) CostNamespaceLister
 	CostListerExpansion
@@ -38,25 +38,17 @@ type CostLister interface {
 
 // costLister implements the CostLister interface.
 type costLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*hobbyfarmiov1.Cost]
 }
 
 // NewCostLister returns a new CostLister.
 func NewCostLister(indexer cache.Indexer) CostLister {
-	return &costLister{indexer: indexer}
-}
-
-// List lists all Costs in the indexer.
-func (s *costLister) List(selector labels.Selector) (ret []*v1.Cost, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Cost))
-	})
-	return ret, err
+	return &costLister{listers.New[*hobbyfarmiov1.Cost](indexer, hobbyfarmiov1.Resource("cost"))}
 }
 
 // Costs returns an object that can list and get Costs.
 func (s *costLister) Costs(namespace string) CostNamespaceLister {
-	return costNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return costNamespaceLister{listers.NewNamespaced[*hobbyfarmiov1.Cost](s.ResourceIndexer, namespace)}
 }
 
 // CostNamespaceLister helps list and get Costs.
@@ -64,36 +56,15 @@ func (s *costLister) Costs(namespace string) CostNamespaceLister {
 type CostNamespaceLister interface {
 	// List lists all Costs in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.Cost, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.Cost, err error)
 	// Get retrieves the Cost from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.Cost, error)
+	Get(name string) (*hobbyfarmiov1.Cost, error)
 	CostNamespaceListerExpansion
 }
 
 // costNamespaceLister implements the CostNamespaceLister
 // interface.
 type costNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all Costs in the indexer for a given namespace.
-func (s costNamespaceLister) List(selector labels.Selector) (ret []*v1.Cost, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Cost))
-	})
-	return ret, err
-}
-
-// Get retrieves the Cost from the indexer for a given namespace and name.
-func (s costNamespaceLister) Get(name string) (*v1.Cost, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("cost"), name)
-	}
-	return obj.(*v1.Cost), nil
+	listers.ResourceIndexer[*hobbyfarmiov1.Cost]
 }

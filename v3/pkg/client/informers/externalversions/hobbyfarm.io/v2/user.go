@@ -19,13 +19,13 @@ limitations under the License.
 package v2
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	hobbyfarmiov2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
+	apishobbyfarmiov2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v2 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v2"
+	hobbyfarmiov2 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // Users.
 type UserInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v2.UserLister
+	Lister() hobbyfarmiov2.UserLister
 }
 
 type userInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredUserInformer(client versioned.Interface, namespace string, resyn
 				return client.HobbyfarmV2().Users(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&hobbyfarmiov2.User{},
+		&apishobbyfarmiov2.User{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *userInformer) defaultInformer(client versioned.Interface, resyncPeriod 
 }
 
 func (f *userInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&hobbyfarmiov2.User{}, f.defaultInformer)
+	return f.factory.InformerFor(&apishobbyfarmiov2.User{}, f.defaultInformer)
 }
 
-func (f *userInformer) Lister() v2.UserLister {
-	return v2.NewUserLister(f.Informer().GetIndexer())
+func (f *userInformer) Lister() hobbyfarmiov2.UserLister {
+	return hobbyfarmiov2.NewUserLister(f.Informer().GetIndexer())
 }

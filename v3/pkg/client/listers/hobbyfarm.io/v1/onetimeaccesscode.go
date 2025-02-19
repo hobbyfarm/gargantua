@@ -19,10 +19,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // OneTimeAccessCodeLister helps list OneTimeAccessCodes.
@@ -30,7 +30,7 @@ import (
 type OneTimeAccessCodeLister interface {
 	// List lists all OneTimeAccessCodes in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.OneTimeAccessCode, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.OneTimeAccessCode, err error)
 	// OneTimeAccessCodes returns an object that can list and get OneTimeAccessCodes.
 	OneTimeAccessCodes(namespace string) OneTimeAccessCodeNamespaceLister
 	OneTimeAccessCodeListerExpansion
@@ -38,25 +38,17 @@ type OneTimeAccessCodeLister interface {
 
 // oneTimeAccessCodeLister implements the OneTimeAccessCodeLister interface.
 type oneTimeAccessCodeLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*hobbyfarmiov1.OneTimeAccessCode]
 }
 
 // NewOneTimeAccessCodeLister returns a new OneTimeAccessCodeLister.
 func NewOneTimeAccessCodeLister(indexer cache.Indexer) OneTimeAccessCodeLister {
-	return &oneTimeAccessCodeLister{indexer: indexer}
-}
-
-// List lists all OneTimeAccessCodes in the indexer.
-func (s *oneTimeAccessCodeLister) List(selector labels.Selector) (ret []*v1.OneTimeAccessCode, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.OneTimeAccessCode))
-	})
-	return ret, err
+	return &oneTimeAccessCodeLister{listers.New[*hobbyfarmiov1.OneTimeAccessCode](indexer, hobbyfarmiov1.Resource("onetimeaccesscode"))}
 }
 
 // OneTimeAccessCodes returns an object that can list and get OneTimeAccessCodes.
 func (s *oneTimeAccessCodeLister) OneTimeAccessCodes(namespace string) OneTimeAccessCodeNamespaceLister {
-	return oneTimeAccessCodeNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return oneTimeAccessCodeNamespaceLister{listers.NewNamespaced[*hobbyfarmiov1.OneTimeAccessCode](s.ResourceIndexer, namespace)}
 }
 
 // OneTimeAccessCodeNamespaceLister helps list and get OneTimeAccessCodes.
@@ -64,36 +56,15 @@ func (s *oneTimeAccessCodeLister) OneTimeAccessCodes(namespace string) OneTimeAc
 type OneTimeAccessCodeNamespaceLister interface {
 	// List lists all OneTimeAccessCodes in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.OneTimeAccessCode, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.OneTimeAccessCode, err error)
 	// Get retrieves the OneTimeAccessCode from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.OneTimeAccessCode, error)
+	Get(name string) (*hobbyfarmiov1.OneTimeAccessCode, error)
 	OneTimeAccessCodeNamespaceListerExpansion
 }
 
 // oneTimeAccessCodeNamespaceLister implements the OneTimeAccessCodeNamespaceLister
 // interface.
 type oneTimeAccessCodeNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all OneTimeAccessCodes in the indexer for a given namespace.
-func (s oneTimeAccessCodeNamespaceLister) List(selector labels.Selector) (ret []*v1.OneTimeAccessCode, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.OneTimeAccessCode))
-	})
-	return ret, err
-}
-
-// Get retrieves the OneTimeAccessCode from the indexer for a given namespace and name.
-func (s oneTimeAccessCodeNamespaceLister) Get(name string) (*v1.OneTimeAccessCode, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("onetimeaccesscode"), name)
-	}
-	return obj.(*v1.OneTimeAccessCode), nil
+	listers.ResourceIndexer[*hobbyfarmiov1.OneTimeAccessCode]
 }

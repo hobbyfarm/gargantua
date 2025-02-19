@@ -19,13 +19,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	apishobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // OneTimeAccessCodes.
 type OneTimeAccessCodeInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.OneTimeAccessCodeLister
+	Lister() hobbyfarmiov1.OneTimeAccessCodeLister
 }
 
 type oneTimeAccessCodeInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredOneTimeAccessCodeInformer(client versioned.Interface, namespace 
 				return client.HobbyfarmV1().OneTimeAccessCodes(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&hobbyfarmiov1.OneTimeAccessCode{},
+		&apishobbyfarmiov1.OneTimeAccessCode{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *oneTimeAccessCodeInformer) defaultInformer(client versioned.Interface, 
 }
 
 func (f *oneTimeAccessCodeInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&hobbyfarmiov1.OneTimeAccessCode{}, f.defaultInformer)
+	return f.factory.InformerFor(&apishobbyfarmiov1.OneTimeAccessCode{}, f.defaultInformer)
 }
 
-func (f *oneTimeAccessCodeInformer) Lister() v1.OneTimeAccessCodeLister {
-	return v1.NewOneTimeAccessCodeLister(f.Informer().GetIndexer())
+func (f *oneTimeAccessCodeInformer) Lister() hobbyfarmiov1.OneTimeAccessCodeLister {
+	return hobbyfarmiov1.NewOneTimeAccessCodeLister(f.Informer().GetIndexer())
 }

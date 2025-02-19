@@ -19,13 +19,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	apishobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // Scenarios.
 type ScenarioInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.ScenarioLister
+	Lister() hobbyfarmiov1.ScenarioLister
 }
 
 type scenarioInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredScenarioInformer(client versioned.Interface, namespace string, r
 				return client.HobbyfarmV1().Scenarios(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&hobbyfarmiov1.Scenario{},
+		&apishobbyfarmiov1.Scenario{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *scenarioInformer) defaultInformer(client versioned.Interface, resyncPer
 }
 
 func (f *scenarioInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&hobbyfarmiov1.Scenario{}, f.defaultInformer)
+	return f.factory.InformerFor(&apishobbyfarmiov1.Scenario{}, f.defaultInformer)
 }
 
-func (f *scenarioInformer) Lister() v1.ScenarioLister {
-	return v1.NewScenarioLister(f.Informer().GetIndexer())
+func (f *scenarioInformer) Lister() hobbyfarmiov1.ScenarioLister {
+	return hobbyfarmiov1.NewScenarioLister(f.Informer().GetIndexer())
 }

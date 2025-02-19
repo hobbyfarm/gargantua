@@ -19,10 +19,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // VirtualMachineTemplateLister helps list VirtualMachineTemplates.
@@ -30,7 +30,7 @@ import (
 type VirtualMachineTemplateLister interface {
 	// List lists all VirtualMachineTemplates in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.VirtualMachineTemplate, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.VirtualMachineTemplate, err error)
 	// VirtualMachineTemplates returns an object that can list and get VirtualMachineTemplates.
 	VirtualMachineTemplates(namespace string) VirtualMachineTemplateNamespaceLister
 	VirtualMachineTemplateListerExpansion
@@ -38,25 +38,17 @@ type VirtualMachineTemplateLister interface {
 
 // virtualMachineTemplateLister implements the VirtualMachineTemplateLister interface.
 type virtualMachineTemplateLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*hobbyfarmiov1.VirtualMachineTemplate]
 }
 
 // NewVirtualMachineTemplateLister returns a new VirtualMachineTemplateLister.
 func NewVirtualMachineTemplateLister(indexer cache.Indexer) VirtualMachineTemplateLister {
-	return &virtualMachineTemplateLister{indexer: indexer}
-}
-
-// List lists all VirtualMachineTemplates in the indexer.
-func (s *virtualMachineTemplateLister) List(selector labels.Selector) (ret []*v1.VirtualMachineTemplate, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.VirtualMachineTemplate))
-	})
-	return ret, err
+	return &virtualMachineTemplateLister{listers.New[*hobbyfarmiov1.VirtualMachineTemplate](indexer, hobbyfarmiov1.Resource("virtualmachinetemplate"))}
 }
 
 // VirtualMachineTemplates returns an object that can list and get VirtualMachineTemplates.
 func (s *virtualMachineTemplateLister) VirtualMachineTemplates(namespace string) VirtualMachineTemplateNamespaceLister {
-	return virtualMachineTemplateNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return virtualMachineTemplateNamespaceLister{listers.NewNamespaced[*hobbyfarmiov1.VirtualMachineTemplate](s.ResourceIndexer, namespace)}
 }
 
 // VirtualMachineTemplateNamespaceLister helps list and get VirtualMachineTemplates.
@@ -64,36 +56,15 @@ func (s *virtualMachineTemplateLister) VirtualMachineTemplates(namespace string)
 type VirtualMachineTemplateNamespaceLister interface {
 	// List lists all VirtualMachineTemplates in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.VirtualMachineTemplate, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.VirtualMachineTemplate, err error)
 	// Get retrieves the VirtualMachineTemplate from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.VirtualMachineTemplate, error)
+	Get(name string) (*hobbyfarmiov1.VirtualMachineTemplate, error)
 	VirtualMachineTemplateNamespaceListerExpansion
 }
 
 // virtualMachineTemplateNamespaceLister implements the VirtualMachineTemplateNamespaceLister
 // interface.
 type virtualMachineTemplateNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all VirtualMachineTemplates in the indexer for a given namespace.
-func (s virtualMachineTemplateNamespaceLister) List(selector labels.Selector) (ret []*v1.VirtualMachineTemplate, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.VirtualMachineTemplate))
-	})
-	return ret, err
-}
-
-// Get retrieves the VirtualMachineTemplate from the indexer for a given namespace and name.
-func (s virtualMachineTemplateNamespaceLister) Get(name string) (*v1.VirtualMachineTemplate, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("virtualmachinetemplate"), name)
-	}
-	return obj.(*v1.VirtualMachineTemplate), nil
+	listers.ResourceIndexer[*hobbyfarmiov1.VirtualMachineTemplate]
 }

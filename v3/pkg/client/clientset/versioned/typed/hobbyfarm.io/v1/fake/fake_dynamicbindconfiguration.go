@@ -19,111 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeDynamicBindConfigurations implements DynamicBindConfigurationInterface
-type FakeDynamicBindConfigurations struct {
+// fakeDynamicBindConfigurations implements DynamicBindConfigurationInterface
+type fakeDynamicBindConfigurations struct {
+	*gentype.FakeClientWithList[*v1.DynamicBindConfiguration, *v1.DynamicBindConfigurationList]
 	Fake *FakeHobbyfarmV1
-	ns   string
 }
 
-var dynamicbindconfigurationsResource = v1.SchemeGroupVersion.WithResource("dynamicbindconfigurations")
-
-var dynamicbindconfigurationsKind = v1.SchemeGroupVersion.WithKind("DynamicBindConfiguration")
-
-// Get takes name of the dynamicBindConfiguration, and returns the corresponding dynamicBindConfiguration object, and an error if there is any.
-func (c *FakeDynamicBindConfigurations) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.DynamicBindConfiguration, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(dynamicbindconfigurationsResource, c.ns, name), &v1.DynamicBindConfiguration{})
-
-	if obj == nil {
-		return nil, err
+func newFakeDynamicBindConfigurations(fake *FakeHobbyfarmV1, namespace string) hobbyfarmiov1.DynamicBindConfigurationInterface {
+	return &fakeDynamicBindConfigurations{
+		gentype.NewFakeClientWithList[*v1.DynamicBindConfiguration, *v1.DynamicBindConfigurationList](
+			fake.Fake,
+			namespace,
+			v1.SchemeGroupVersion.WithResource("dynamicbindconfigurations"),
+			v1.SchemeGroupVersion.WithKind("DynamicBindConfiguration"),
+			func() *v1.DynamicBindConfiguration { return &v1.DynamicBindConfiguration{} },
+			func() *v1.DynamicBindConfigurationList { return &v1.DynamicBindConfigurationList{} },
+			func(dst, src *v1.DynamicBindConfigurationList) { dst.ListMeta = src.ListMeta },
+			func(list *v1.DynamicBindConfigurationList) []*v1.DynamicBindConfiguration {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1.DynamicBindConfigurationList, items []*v1.DynamicBindConfiguration) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1.DynamicBindConfiguration), err
-}
-
-// List takes label and field selectors, and returns the list of DynamicBindConfigurations that match those selectors.
-func (c *FakeDynamicBindConfigurations) List(ctx context.Context, opts metav1.ListOptions) (result *v1.DynamicBindConfigurationList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(dynamicbindconfigurationsResource, dynamicbindconfigurationsKind, c.ns, opts), &v1.DynamicBindConfigurationList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1.DynamicBindConfigurationList{ListMeta: obj.(*v1.DynamicBindConfigurationList).ListMeta}
-	for _, item := range obj.(*v1.DynamicBindConfigurationList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested dynamicBindConfigurations.
-func (c *FakeDynamicBindConfigurations) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(dynamicbindconfigurationsResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a dynamicBindConfiguration and creates it.  Returns the server's representation of the dynamicBindConfiguration, and an error, if there is any.
-func (c *FakeDynamicBindConfigurations) Create(ctx context.Context, dynamicBindConfiguration *v1.DynamicBindConfiguration, opts metav1.CreateOptions) (result *v1.DynamicBindConfiguration, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(dynamicbindconfigurationsResource, c.ns, dynamicBindConfiguration), &v1.DynamicBindConfiguration{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.DynamicBindConfiguration), err
-}
-
-// Update takes the representation of a dynamicBindConfiguration and updates it. Returns the server's representation of the dynamicBindConfiguration, and an error, if there is any.
-func (c *FakeDynamicBindConfigurations) Update(ctx context.Context, dynamicBindConfiguration *v1.DynamicBindConfiguration, opts metav1.UpdateOptions) (result *v1.DynamicBindConfiguration, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(dynamicbindconfigurationsResource, c.ns, dynamicBindConfiguration), &v1.DynamicBindConfiguration{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.DynamicBindConfiguration), err
-}
-
-// Delete takes name of the dynamicBindConfiguration and deletes it. Returns an error if one occurs.
-func (c *FakeDynamicBindConfigurations) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(dynamicbindconfigurationsResource, c.ns, name, opts), &v1.DynamicBindConfiguration{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeDynamicBindConfigurations) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(dynamicbindconfigurationsResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1.DynamicBindConfigurationList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched dynamicBindConfiguration.
-func (c *FakeDynamicBindConfigurations) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.DynamicBindConfiguration, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(dynamicbindconfigurationsResource, c.ns, name, pt, data, subresources...), &v1.DynamicBindConfiguration{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.DynamicBindConfiguration), err
 }

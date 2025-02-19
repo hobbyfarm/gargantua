@@ -19,13 +19,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	apishobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // ScheduledEvents.
 type ScheduledEventInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.ScheduledEventLister
+	Lister() hobbyfarmiov1.ScheduledEventLister
 }
 
 type scheduledEventInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredScheduledEventInformer(client versioned.Interface, namespace str
 				return client.HobbyfarmV1().ScheduledEvents(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&hobbyfarmiov1.ScheduledEvent{},
+		&apishobbyfarmiov1.ScheduledEvent{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *scheduledEventInformer) defaultInformer(client versioned.Interface, res
 }
 
 func (f *scheduledEventInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&hobbyfarmiov1.ScheduledEvent{}, f.defaultInformer)
+	return f.factory.InformerFor(&apishobbyfarmiov1.ScheduledEvent{}, f.defaultInformer)
 }
 
-func (f *scheduledEventInformer) Lister() v1.ScheduledEventLister {
-	return v1.NewScheduledEventLister(f.Informer().GetIndexer())
+func (f *scheduledEventInformer) Lister() hobbyfarmiov1.ScheduledEventLister {
+	return hobbyfarmiov1.NewScheduledEventLister(f.Informer().GetIndexer())
 }
