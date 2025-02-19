@@ -2,9 +2,9 @@ module github.com/hobbyfarm/gargantua/services/costsvc/v3
 
 replace github.com/hobbyfarm/gargantua/v3 => ../../
 
-replace k8s.io/client-go => k8s.io/client-go v0.28.2
+replace k8s.io/client-go => k8s.io/client-go v0.32.1
 
-go 1.21.1
+go 1.23.0
 
 require (
 	github.com/ebauman/crder v0.1.0

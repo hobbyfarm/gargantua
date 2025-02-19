@@ -6,15 +6,17 @@ FROM --platform=$BUILDPLATFORM golang:1.23.6-alpine3.21 AS build
 ARG TARGETOS
 # architecture from --platform linux/amd64
 ARG TARGETARCH
+ARG SERVICE_NAME
 
-WORKDIR /app
+WORKDIR /app/v3/services/${SERVICE_NAME}
 # copy over dependency files and download dependencies
-COPY go.mod .
+COPY ./v3/services/${SERVICE_NAME}/go.mod .
+COPY ./v3/go.mod /app/v3
 
 RUN go mod download
 
 # copy over source files
-COPY . .
+COPY . /app
 
 # build the service and output the binary to /tmp/app
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags="-s -w" -o /tmp/app
