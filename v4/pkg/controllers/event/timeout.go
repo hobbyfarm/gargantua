@@ -11,6 +11,7 @@ import (
 )
 
 // TODO: Make this a flag
+
 const (
 	EventGarbageCollectionMinutes = 60
 )
@@ -43,6 +44,7 @@ func (cx EventGarbageCollectorController) Reconcile(ctx context.Context, req rec
 		return reconcile.Result{}, client.IgnoreNotFound(err)
 	}
 
+	// TODO - Inefficient. Can we do this easier with kclient.DeleteAllOf or some alternative?
 	var exp = time.Duration(EventGarbageCollectionMinutes * int64(time.Minute))
 	if ev.CreationTimestamp.Add(exp).Before(time.Now()) {
 		// exp has passed
