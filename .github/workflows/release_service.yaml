@@ -72,7 +72,13 @@ jobs:
           cache-from: type=local,src=${{ runner.temp }}/buildx-cache-${{ inputs.image }}-arm64
           cache-to: type=local,dest=${{ runner.temp }}/buildx-cache-${{ inputs.image }}-arm64-new,mode=max
 
-      - name: Push multi-platform image
+      - name: Login to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Push multi-platform image Master
         uses: docker/build-push-action@v6
         if: |
           github.event_name == 'push' && (
@@ -91,13 +97,7 @@ jobs:
             type=local,src=${{ runner.temp }}/buildx-cache-${{ inputs.image }}-amd64-new
             type=local,src=${{ runner.temp }}/buildx-cache-${{ inputs.image }}-arm64-new
 
-      - name: Login to Docker Registry
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_HUB_USER }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-
-      - name: Push multi-platform image
+      - name: Push multi-platform image Tag
         uses: docker/build-push-action@v6
         if: |
           github.event_name == 'push' && (
