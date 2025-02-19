@@ -21,7 +21,7 @@ import (
 
 func TestGrpcCostServer_GetCostHistory(t *testing.T) {
 	fakeClient := &faketyped.FakeHobbyfarmV1{Fake: &k8stesting.Fake{}}
-	fakeCosts := &faketyped.FakeCosts{Fake: fakeClient}
+	fakeCosts := fakeClient.Costs("")
 	fakeCostLister := &fakelisters.FakeCostLister{}
 	fakeCostLister.On("Costs", mock.Anything).Return(nil)
 	server := GrpcCostServer{
@@ -116,7 +116,7 @@ func TestGrpcCostServer_GetCostPresent(t *testing.T) {
 	now := time.Unix(10, 0)
 
 	fakeClient := &faketyped.FakeHobbyfarmV1{Fake: &k8stesting.Fake{}}
-	fakeCosts := &faketyped.FakeCosts{Fake: fakeClient}
+	fakeCosts := fakeClient.Costs("")
 	fakeCostLister := &fakelisters.FakeCostLister{}
 	fakeCostLister.On("Costs", mock.Anything).Return(nil)
 	server := GrpcCostServer{
@@ -211,7 +211,7 @@ func TestGrpcCostServer_GetCost(t *testing.T) {
 	now := time.Unix(10, 0)
 
 	fakeClient := &faketyped.FakeHobbyfarmV1{Fake: &k8stesting.Fake{}}
-	fakeCosts := &faketyped.FakeCosts{Fake: fakeClient}
+	fakeCosts := fakeClient.Costs("")
 	fakeCostLister := &fakelisters.FakeCostLister{}
 	fakeCostLister.On("Costs", mock.Anything).Return(nil)
 	server := GrpcCostServer{
@@ -304,7 +304,7 @@ func TestGrpcCostServer_GetCost(t *testing.T) {
 
 func TestGrpcCostServer_GetCostDetail(t *testing.T) {
 	fakeClient := &faketyped.FakeHobbyfarmV1{Fake: &k8stesting.Fake{}}
-	fakeCosts := &faketyped.FakeCosts{Fake: fakeClient}
+	fakeCosts := fakeClient.Costs("")
 	fakeCostLister := &fakelisters.FakeCostLister{}
 	fakeCostLister.On("Costs", mock.Anything).Return(nil)
 	server := GrpcCostServer{
@@ -373,7 +373,7 @@ func TestGrpcCostServer_ListCost(t *testing.T) {
 	now := time.Unix(10, 0)
 
 	fakeClient := &faketyped.FakeHobbyfarmV1{Fake: &k8stesting.Fake{}}
-	fakeCosts := &faketyped.FakeCosts{Fake: fakeClient}
+	fakeCosts := fakeClient.Costs("")
 	fakeCostLister := &fakelisters.FakeCostLister{}
 	fakeCostLister.On("Costs", mock.Anything).Return(nil)
 	server := GrpcCostServer{
@@ -521,7 +521,7 @@ func TestGrpcCostServer_ListCost(t *testing.T) {
 
 func TestGrpcCostServer_CreateOrUpdateCost_create(t *testing.T) {
 	fakeClient := &faketyped.FakeHobbyfarmV1{Fake: &k8stesting.Fake{}}
-	fakeCosts := &faketyped.FakeCosts{Fake: fakeClient}
+	fakeCosts := fakeClient.Costs("")
 	gcs := &GrpcCostServer{costClient: fakeCosts}
 
 	tests := []struct {
@@ -667,7 +667,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_newResource(t *testing.T) {
 	}
 
 	fakeClient := &faketyped.FakeHobbyfarmV1{Fake: &k8stesting.Fake{}}
-	fakeCosts := &faketyped.FakeCosts{Fake: fakeClient}
+	fakeCosts := fakeClient.Costs("")
 	gcs := &GrpcCostServer{costClient: fakeCosts}
 
 	fakeClient.Fake.PrependReactor("get", "costs", func(action k8stesting.Action) (bool, runtime.Object, error) {
@@ -751,7 +751,7 @@ func TestGrpcCostServer_CreateOrUpdateCost_updateResource(t *testing.T) {
 	}
 
 	fakeClient := &faketyped.FakeHobbyfarmV1{Fake: &k8stesting.Fake{}}
-	fakeCosts := &faketyped.FakeCosts{Fake: fakeClient}
+	fakeCosts := fakeClient.Costs("")
 	gcs := &GrpcCostServer{costClient: fakeCosts}
 
 	fakeClient.Fake.PrependReactor("get", "costs", func(action k8stesting.Action) (bool, runtime.Object, error) {
