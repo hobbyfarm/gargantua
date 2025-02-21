@@ -2,6 +2,7 @@ package shell
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -44,14 +45,16 @@ type ShellProxy struct {
 }
 
 type Service struct {
-	Name                string `json:"name"`
-	HasWebinterface     bool   `json:"hasWebinterface"`
-	Port                int    `json:"port"`
-	Path                string `json:"path"`
-	HasOwnTab           bool   `json:"hasOwnTab"`
-	NoRewriteRootPath   bool   `json:"noRewriteRootPath"`
-	RewriteHostHeader   bool   `json:"rewriteHostHeader"`
-	RewriteOriginHeader bool   `json:"rewriteOriginHeader"`
+	Name                       string `json:"name"`
+	HasWebinterface            bool   `json:"hasWebinterface"`
+	Port                       int    `json:"port"`
+	Path                       string `json:"path"`
+	Protocol                   string `json:"protocol"`
+	HasOwnTab                  bool   `json:"hasOwnTab"`
+	NoRewriteRootPath          bool   `json:"noRewriteRootPath"`
+	RewriteHostHeader          bool   `json:"rewriteHostHeader"`
+	RewriteOriginHeader        bool   `json:"rewriteOriginHeader"`
+	DisableAuthorizationHeader bool   `json:"disableAuthorizationHeader"`
 }
 
 var sshDev = ""
@@ -229,6 +232,9 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 				if strconv.Itoa(s.Port) == targetPort {
 					service = s
 					hasService = true
+					if s.Protocol == "" {
+						service.Protocol = "http"
+					}
 					break
 				}
 			}
@@ -236,7 +242,7 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 	}
 
 	// Build URL and Proxy to forward the Request to
-	target := "http://127.0.0.1:" + targetPort
+	target := service.Protocol + "://127.0.0.1:" + targetPort
 	remote, err := url.Parse(target)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 500, "error", "unable to parse URL for Localhost")
@@ -308,11 +314,16 @@ func (sp ShellProxy) proxy(w http.ResponseWriter, r *http.Request, user *userpb.
 				r.Out.Header.Set("Origin", target)
 			}
 
+			if hasService && service.DisableAuthorizationHeader {
+				// Remove Authorization header if present
+				r.Out.Header.Del("Authorization")
+			}
 		},
 	}
 	proxy.Transport = &http.Transport{
 		Dial:                sshConn.Dial,
 		TLSHandshakeTimeout: 10 * time.Second,
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 	}
 	//r.RequestURI = ""
 	r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))

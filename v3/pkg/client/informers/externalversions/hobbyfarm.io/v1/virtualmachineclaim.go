@@ -19,13 +19,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	apishobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // VirtualMachineClaims.
 type VirtualMachineClaimInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.VirtualMachineClaimLister
+	Lister() hobbyfarmiov1.VirtualMachineClaimLister
 }
 
 type virtualMachineClaimInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredVirtualMachineClaimInformer(client versioned.Interface, namespac
 				return client.HobbyfarmV1().VirtualMachineClaims(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&hobbyfarmiov1.VirtualMachineClaim{},
+		&apishobbyfarmiov1.VirtualMachineClaim{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *virtualMachineClaimInformer) defaultInformer(client versioned.Interface
 }
 
 func (f *virtualMachineClaimInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&hobbyfarmiov1.VirtualMachineClaim{}, f.defaultInformer)
+	return f.factory.InformerFor(&apishobbyfarmiov1.VirtualMachineClaim{}, f.defaultInformer)
 }
 
-func (f *virtualMachineClaimInformer) Lister() v1.VirtualMachineClaimLister {
-	return v1.NewVirtualMachineClaimLister(f.Informer().GetIndexer())
+func (f *virtualMachineClaimInformer) Lister() hobbyfarmiov1.VirtualMachineClaimLister {
+	return hobbyfarmiov1.NewVirtualMachineClaimLister(f.Informer().GetIndexer())
 }

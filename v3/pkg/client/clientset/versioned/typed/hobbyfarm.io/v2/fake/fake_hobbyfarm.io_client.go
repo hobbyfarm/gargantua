@@ -29,7 +29,7 @@ type FakeHobbyfarmV2 struct {
 }
 
 func (c *FakeHobbyfarmV2) Users(namespace string) v2.UserInterface {
-	return &FakeUsers{c, namespace}
+	return newFakeUsers(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

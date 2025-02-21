@@ -19,16 +19,17 @@ limitations under the License.
 package v1
 
 import (
-	"net/http"
+	http "net/http"
 
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	"github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/scheme"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	scheme "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
 type HobbyfarmV1Interface interface {
 	RESTClient() rest.Interface
 	AccessCodesGetter
+	CostsGetter
 	CoursesGetter
 	DynamicBindConfigurationsGetter
 	EnvironmentsGetter
@@ -54,6 +55,10 @@ type HobbyfarmV1Client struct {
 
 func (c *HobbyfarmV1Client) AccessCodes(namespace string) AccessCodeInterface {
 	return newAccessCodes(c, namespace)
+}
+
+func (c *HobbyfarmV1Client) Costs(namespace string) CostInterface {
+	return newCosts(c, namespace)
 }
 
 func (c *HobbyfarmV1Client) Courses(namespace string) CourseInterface {
@@ -165,10 +170,10 @@ func New(c rest.Interface) *HobbyfarmV1Client {
 }
 
 func setConfigDefaults(config *rest.Config) error {
-	gv := v1.SchemeGroupVersion
+	gv := hobbyfarmiov1.SchemeGroupVersion
 	config.GroupVersion = &gv
 	config.APIPath = "/apis"
-	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+	config.NegotiatedSerializer = rest.CodecFactoryForGeneratedClient(scheme.Scheme, scheme.Codecs).WithoutConversion()
 
 	if config.UserAgent == "" {
 		config.UserAgent = rest.DefaultKubernetesUserAgent()

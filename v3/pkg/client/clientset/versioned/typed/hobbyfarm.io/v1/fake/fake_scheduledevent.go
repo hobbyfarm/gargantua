@@ -19,123 +19,32 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeScheduledEvents implements ScheduledEventInterface
-type FakeScheduledEvents struct {
+// fakeScheduledEvents implements ScheduledEventInterface
+type fakeScheduledEvents struct {
+	*gentype.FakeClientWithList[*v1.ScheduledEvent, *v1.ScheduledEventList]
 	Fake *FakeHobbyfarmV1
-	ns   string
 }
 
-var scheduledeventsResource = v1.SchemeGroupVersion.WithResource("scheduledevents")
-
-var scheduledeventsKind = v1.SchemeGroupVersion.WithKind("ScheduledEvent")
-
-// Get takes name of the scheduledEvent, and returns the corresponding scheduledEvent object, and an error if there is any.
-func (c *FakeScheduledEvents) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.ScheduledEvent, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(scheduledeventsResource, c.ns, name), &v1.ScheduledEvent{})
-
-	if obj == nil {
-		return nil, err
+func newFakeScheduledEvents(fake *FakeHobbyfarmV1, namespace string) hobbyfarmiov1.ScheduledEventInterface {
+	return &fakeScheduledEvents{
+		gentype.NewFakeClientWithList[*v1.ScheduledEvent, *v1.ScheduledEventList](
+			fake.Fake,
+			namespace,
+			v1.SchemeGroupVersion.WithResource("scheduledevents"),
+			v1.SchemeGroupVersion.WithKind("ScheduledEvent"),
+			func() *v1.ScheduledEvent { return &v1.ScheduledEvent{} },
+			func() *v1.ScheduledEventList { return &v1.ScheduledEventList{} },
+			func(dst, src *v1.ScheduledEventList) { dst.ListMeta = src.ListMeta },
+			func(list *v1.ScheduledEventList) []*v1.ScheduledEvent { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1.ScheduledEventList, items []*v1.ScheduledEvent) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1.ScheduledEvent), err
-}
-
-// List takes label and field selectors, and returns the list of ScheduledEvents that match those selectors.
-func (c *FakeScheduledEvents) List(ctx context.Context, opts metav1.ListOptions) (result *v1.ScheduledEventList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(scheduledeventsResource, scheduledeventsKind, c.ns, opts), &v1.ScheduledEventList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1.ScheduledEventList{ListMeta: obj.(*v1.ScheduledEventList).ListMeta}
-	for _, item := range obj.(*v1.ScheduledEventList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested scheduledEvents.
-func (c *FakeScheduledEvents) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(scheduledeventsResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a scheduledEvent and creates it.  Returns the server's representation of the scheduledEvent, and an error, if there is any.
-func (c *FakeScheduledEvents) Create(ctx context.Context, scheduledEvent *v1.ScheduledEvent, opts metav1.CreateOptions) (result *v1.ScheduledEvent, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(scheduledeventsResource, c.ns, scheduledEvent), &v1.ScheduledEvent{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.ScheduledEvent), err
-}
-
-// Update takes the representation of a scheduledEvent and updates it. Returns the server's representation of the scheduledEvent, and an error, if there is any.
-func (c *FakeScheduledEvents) Update(ctx context.Context, scheduledEvent *v1.ScheduledEvent, opts metav1.UpdateOptions) (result *v1.ScheduledEvent, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(scheduledeventsResource, c.ns, scheduledEvent), &v1.ScheduledEvent{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.ScheduledEvent), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeScheduledEvents) UpdateStatus(ctx context.Context, scheduledEvent *v1.ScheduledEvent, opts metav1.UpdateOptions) (*v1.ScheduledEvent, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(scheduledeventsResource, "status", c.ns, scheduledEvent), &v1.ScheduledEvent{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.ScheduledEvent), err
-}
-
-// Delete takes name of the scheduledEvent and deletes it. Returns an error if one occurs.
-func (c *FakeScheduledEvents) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(scheduledeventsResource, c.ns, name, opts), &v1.ScheduledEvent{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeScheduledEvents) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(scheduledeventsResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1.ScheduledEventList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched scheduledEvent.
-func (c *FakeScheduledEvents) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.ScheduledEvent, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(scheduledeventsResource, c.ns, name, pt, data, subresources...), &v1.ScheduledEvent{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.ScheduledEvent), err
 }

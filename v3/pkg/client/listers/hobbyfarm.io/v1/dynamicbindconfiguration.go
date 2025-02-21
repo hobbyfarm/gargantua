@@ -19,10 +19,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // DynamicBindConfigurationLister helps list DynamicBindConfigurations.
@@ -30,7 +30,7 @@ import (
 type DynamicBindConfigurationLister interface {
 	// List lists all DynamicBindConfigurations in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.DynamicBindConfiguration, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.DynamicBindConfiguration, err error)
 	// DynamicBindConfigurations returns an object that can list and get DynamicBindConfigurations.
 	DynamicBindConfigurations(namespace string) DynamicBindConfigurationNamespaceLister
 	DynamicBindConfigurationListerExpansion
@@ -38,25 +38,17 @@ type DynamicBindConfigurationLister interface {
 
 // dynamicBindConfigurationLister implements the DynamicBindConfigurationLister interface.
 type dynamicBindConfigurationLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*hobbyfarmiov1.DynamicBindConfiguration]
 }
 
 // NewDynamicBindConfigurationLister returns a new DynamicBindConfigurationLister.
 func NewDynamicBindConfigurationLister(indexer cache.Indexer) DynamicBindConfigurationLister {
-	return &dynamicBindConfigurationLister{indexer: indexer}
-}
-
-// List lists all DynamicBindConfigurations in the indexer.
-func (s *dynamicBindConfigurationLister) List(selector labels.Selector) (ret []*v1.DynamicBindConfiguration, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.DynamicBindConfiguration))
-	})
-	return ret, err
+	return &dynamicBindConfigurationLister{listers.New[*hobbyfarmiov1.DynamicBindConfiguration](indexer, hobbyfarmiov1.Resource("dynamicbindconfiguration"))}
 }
 
 // DynamicBindConfigurations returns an object that can list and get DynamicBindConfigurations.
 func (s *dynamicBindConfigurationLister) DynamicBindConfigurations(namespace string) DynamicBindConfigurationNamespaceLister {
-	return dynamicBindConfigurationNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return dynamicBindConfigurationNamespaceLister{listers.NewNamespaced[*hobbyfarmiov1.DynamicBindConfiguration](s.ResourceIndexer, namespace)}
 }
 
 // DynamicBindConfigurationNamespaceLister helps list and get DynamicBindConfigurations.
@@ -64,36 +56,15 @@ func (s *dynamicBindConfigurationLister) DynamicBindConfigurations(namespace str
 type DynamicBindConfigurationNamespaceLister interface {
 	// List lists all DynamicBindConfigurations in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.DynamicBindConfiguration, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.DynamicBindConfiguration, err error)
 	// Get retrieves the DynamicBindConfiguration from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.DynamicBindConfiguration, error)
+	Get(name string) (*hobbyfarmiov1.DynamicBindConfiguration, error)
 	DynamicBindConfigurationNamespaceListerExpansion
 }
 
 // dynamicBindConfigurationNamespaceLister implements the DynamicBindConfigurationNamespaceLister
 // interface.
 type dynamicBindConfigurationNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all DynamicBindConfigurations in the indexer for a given namespace.
-func (s dynamicBindConfigurationNamespaceLister) List(selector labels.Selector) (ret []*v1.DynamicBindConfiguration, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.DynamicBindConfiguration))
-	})
-	return ret, err
-}
-
-// Get retrieves the DynamicBindConfiguration from the indexer for a given namespace and name.
-func (s dynamicBindConfigurationNamespaceLister) Get(name string) (*v1.DynamicBindConfiguration, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("dynamicbindconfiguration"), name)
-	}
-	return obj.(*v1.DynamicBindConfiguration), nil
+	listers.ResourceIndexer[*hobbyfarmiov1.DynamicBindConfiguration]
 }

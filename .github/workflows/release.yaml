@@ -1,0 +1,157 @@
+name: Release
+on: [push]
+jobs:
+  release-gargantua:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: gargantua
+      image: gargantua
+      dockerfile: ./Dockerfile
+    secrets: inherit
+  release-accesscode-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: accesscodesvc
+      image: accesscode-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-authn-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: authnsvc
+      image: authn-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-authr-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: authrsvc
+      image: authr-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-conversion-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: conversionsvc
+      image: conversion-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-cost-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: costsvc
+      image: cost-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-course-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: coursesvc
+      image: course-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-dbconfig-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: dbconfigsvc
+      image: dbconfig-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-environment-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: environmentsvc
+      image: environment-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-progress-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: progresssvc
+      image: progress-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-rbac-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: rbacsvc
+      image: rbac-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-scenario-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: scenariosvc
+      image: scenario-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-scheduledevent-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: scheduledeventsvc
+      image: scheduledevent-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-session-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: sessionsvc
+      image: session-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-setting-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: settingsvc
+      image: setting-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-terraform-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: terraformsvc
+      image: terraform-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-user-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: usersvc
+      image: user-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-vmclaim-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: vmclaimsvc
+      image: vmclaim-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-vmset-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: vmsetsvc
+      image: vmset-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-vm-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: vmsvc
+      image: vm-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-vmtemplate-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: vmtemplatesvc
+      image: vmtemplate-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
+  release-score-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: scoresvc
+      image: score-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit

@@ -1,0 +1,125 @@
+name: Release Service
+on:
+  workflow_call:
+    inputs:
+      service:
+        description: 'Service to build like costsvc, vmsetsvc'
+        required: true
+        type: string
+      image:
+        description: 'Base image name like cost-service, vmset-service'
+        required: true
+        type: string
+      dockerfile:
+        description: 'Dockerfile for the service'
+        required: true
+        type: string
+jobs:
+  release:
+    name: Release ${{ inputs.image }}
+    runs-on: ubuntu-latest
+    # run if commit has new tag or push to master branch
+    if: |
+      github.event_name == 'push' && (
+        startsWith(github.event.ref, 'refs/tags/')
+        || endsWith(github.event.ref, '/master')
+      )
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate Docker Metadata
+        id: compute_docker_tag
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ vars.DOCKER_REGISTRY || 'hobbyfarm' }}/${{ inputs.image }}
+          tags: |
+            type=ref,event=tag
+            type=ref,event=branch
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/buildx-cache-${{ inputs.image }}-amd64
+            ${{ runner.temp }}/buildx-cache-${{ inputs.image }}-arm64
+          # caching key includes service
+          key: ${{ runner.os }}-buildx-${{ inputs.image }}
+          restore-keys: |
+              ${{ runner.os }}-buildx-
+
+      - name: Build linux/amd64
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64
+          build-args: SERVICE_NAME=${{ inputs.service }}
+          context: .
+          file: ${{ inputs.dockerfile }}
+          cache-from: type=local,src=${{ runner.temp }}/buildx-cache-${{ inputs.image }}-amd64
+          cache-to: type=local,dest=${{ runner.temp }}/buildx-cache-${{ inputs.image }}-amd64-new,mode=max
+
+      - name: Build linux/arm64
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/arm64
+          build-args: SERVICE_NAME=${{ inputs.service }}
+          context: .
+          file: ${{ inputs.dockerfile }}
+          cache-from: type=local,src=${{ runner.temp }}/buildx-cache-${{ inputs.image }}-arm64
+          cache-to: type=local,dest=${{ runner.temp }}/buildx-cache-${{ inputs.image }}-arm64-new,mode=max
+
+      - name: Login to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Push multi-platform image Master
+        uses: docker/build-push-action@v6
+        if: |
+          github.event_name == 'push' && (
+            startsWith(github.event.ref, 'refs/tags/')
+          )
+        with:
+          tags: |
+            ${{ steps.compute_docker_tag.outputs.tags }}
+            ${{ vars.DOCKER_REGISTRY || 'hobbyfarm' }}/${{ inputs.image }}:latest
+          platforms: linux/amd64,linux/arm64
+          build-args: SERVICE_NAME=${{ inputs.service }}
+          context: .
+          file: ${{ inputs.dockerfile }}
+          push: true
+          cache-from: |
+            type=local,src=${{ runner.temp }}/buildx-cache-${{ inputs.image }}-amd64-new
+            type=local,src=${{ runner.temp }}/buildx-cache-${{ inputs.image }}-arm64-new
+
+      - name: Push multi-platform image Tag
+        uses: docker/build-push-action@v6
+        if: |
+          github.event_name == 'push' && (
+            endsWith(github.event.ref, '/master')
+          )
+        with:
+          tags: ${{ steps.compute_docker_tag.outputs.tags }}
+          platforms: linux/amd64,linux/arm64
+          build-args: SERVICE_NAME=${{ inputs.service }}
+          context: .
+          file: ${{ inputs.dockerfile }}
+          push: true
+          cache-from: |
+            type=local,src=${{ runner.temp }}/buildx-cache-${{ inputs.image }}-amd64-new
+            type=local,src=${{ runner.temp }}/buildx-cache-${{ inputs.image }}-arm64-new
+
+      - # Temp fix
+        # https://github.com/docker/build-push-action/issues/252
+        # https://github.com/moby/buildkit/issues/1896
+        name: Move cache
+        run: |
+          rm -rf ${{ runner.temp }}/buildx-cache-${{ inputs.image }}-amd64
+          mv ${{ runner.temp }}/buildx-cache-${{ inputs.image }}-amd64-new ${{ runner.temp }}/buildx-cache-${{ inputs.image }}-amd64
+          rm -rf ${{ runner.temp }}/buildx-cache-${{ inputs.image }}-arm64
+          mv ${{ runner.temp }}/buildx-cache-${{ inputs.image }}-arm64-new ${{ runner.temp }}/buildx-cache-${{ inputs.image }}-arm64

@@ -16,6 +16,9 @@ const (
 	RBACManagedLabel       = "rbac.hobbyfarm.io/managed"
 	EnvironmentLabel       = "hobbyfarm.io/environment"
 	VirtualMachineTemplate = "hobbyfarm.io/virtualmachinetemplate"
+	CostGroup              = "hobbyfarm.io/cost-group"
+	CostBasePrice          = "hobbyfarm.io/cost-base-price"
+	CostTimeUnit           = "hobbyfarm.io/cost-time-unit"
 )
 
 func DotEscapeLabel(label string) string {

@@ -19,10 +19,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	terraformcontrollercattleiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ExecutionLister helps list Executions.
@@ -30,7 +30,7 @@ import (
 type ExecutionLister interface {
 	// List lists all Executions in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.Execution, err error)
+	List(selector labels.Selector) (ret []*terraformcontrollercattleiov1.Execution, err error)
 	// Executions returns an object that can list and get Executions.
 	Executions(namespace string) ExecutionNamespaceLister
 	ExecutionListerExpansion
@@ -38,25 +38,17 @@ type ExecutionLister interface {
 
 // executionLister implements the ExecutionLister interface.
 type executionLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*terraformcontrollercattleiov1.Execution]
 }
 
 // NewExecutionLister returns a new ExecutionLister.
 func NewExecutionLister(indexer cache.Indexer) ExecutionLister {
-	return &executionLister{indexer: indexer}
-}
-
-// List lists all Executions in the indexer.
-func (s *executionLister) List(selector labels.Selector) (ret []*v1.Execution, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Execution))
-	})
-	return ret, err
+	return &executionLister{listers.New[*terraformcontrollercattleiov1.Execution](indexer, terraformcontrollercattleiov1.Resource("execution"))}
 }
 
 // Executions returns an object that can list and get Executions.
 func (s *executionLister) Executions(namespace string) ExecutionNamespaceLister {
-	return executionNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return executionNamespaceLister{listers.NewNamespaced[*terraformcontrollercattleiov1.Execution](s.ResourceIndexer, namespace)}
 }
 
 // ExecutionNamespaceLister helps list and get Executions.
@@ -64,36 +56,15 @@ func (s *executionLister) Executions(namespace string) ExecutionNamespaceLister 
 type ExecutionNamespaceLister interface {
 	// List lists all Executions in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.Execution, err error)
+	List(selector labels.Selector) (ret []*terraformcontrollercattleiov1.Execution, err error)
 	// Get retrieves the Execution from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.Execution, error)
+	Get(name string) (*terraformcontrollercattleiov1.Execution, error)
 	ExecutionNamespaceListerExpansion
 }
 
 // executionNamespaceLister implements the ExecutionNamespaceLister
 // interface.
 type executionNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all Executions in the indexer for a given namespace.
-func (s executionNamespaceLister) List(selector labels.Selector) (ret []*v1.Execution, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Execution))
-	})
-	return ret, err
-}
-
-// Get retrieves the Execution from the indexer for a given namespace and name.
-func (s executionNamespaceLister) Get(name string) (*v1.Execution, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("execution"), name)
-	}
-	return obj.(*v1.Execution), nil
+	listers.ResourceIndexer[*terraformcontrollercattleiov1.Execution]
 }

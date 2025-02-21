@@ -19,10 +19,10 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // UserLister helps list Users.
@@ -30,7 +30,7 @@ import (
 type UserLister interface {
 	// List lists all Users in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.User, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.User, err error)
 	// Users returns an object that can list and get Users.
 	Users(namespace string) UserNamespaceLister
 	UserListerExpansion
@@ -38,25 +38,17 @@ type UserLister interface {
 
 // userLister implements the UserLister interface.
 type userLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*hobbyfarmiov1.User]
 }
 
 // NewUserLister returns a new UserLister.
 func NewUserLister(indexer cache.Indexer) UserLister {
-	return &userLister{indexer: indexer}
-}
-
-// List lists all Users in the indexer.
-func (s *userLister) List(selector labels.Selector) (ret []*v1.User, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.User))
-	})
-	return ret, err
+	return &userLister{listers.New[*hobbyfarmiov1.User](indexer, hobbyfarmiov1.Resource("user"))}
 }
 
 // Users returns an object that can list and get Users.
 func (s *userLister) Users(namespace string) UserNamespaceLister {
-	return userNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return userNamespaceLister{listers.NewNamespaced[*hobbyfarmiov1.User](s.ResourceIndexer, namespace)}
 }
 
 // UserNamespaceLister helps list and get Users.
@@ -64,36 +56,15 @@ func (s *userLister) Users(namespace string) UserNamespaceLister {
 type UserNamespaceLister interface {
 	// List lists all Users in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1.User, err error)
+	List(selector labels.Selector) (ret []*hobbyfarmiov1.User, err error)
 	// Get retrieves the User from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1.User, error)
+	Get(name string) (*hobbyfarmiov1.User, error)
 	UserNamespaceListerExpansion
 }
 
 // userNamespaceLister implements the UserNamespaceLister
 // interface.
 type userNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all Users in the indexer for a given namespace.
-func (s userNamespaceLister) List(selector labels.Selector) (ret []*v1.User, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.User))
-	})
-	return ret, err
-}
-
-// Get retrieves the User from the indexer for a given namespace and name.
-func (s userNamespaceLister) Get(name string) (*v1.User, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("user"), name)
-	}
-	return obj.(*v1.User), nil
+	listers.ResourceIndexer[*hobbyfarmiov1.User]
 }

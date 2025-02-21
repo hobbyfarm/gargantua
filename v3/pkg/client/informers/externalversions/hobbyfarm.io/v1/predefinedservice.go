@@ -19,13 +19,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	apishobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // PredefinedServices.
 type PredefinedServiceInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.PredefinedServiceLister
+	Lister() hobbyfarmiov1.PredefinedServiceLister
 }
 
 type predefinedServiceInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredPredefinedServiceInformer(client versioned.Interface, namespace 
 				return client.HobbyfarmV1().PredefinedServices(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&hobbyfarmiov1.PredefinedService{},
+		&apishobbyfarmiov1.PredefinedService{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *predefinedServiceInformer) defaultInformer(client versioned.Interface, 
 }
 
 func (f *predefinedServiceInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&hobbyfarmiov1.PredefinedService{}, f.defaultInformer)
+	return f.factory.InformerFor(&apishobbyfarmiov1.PredefinedService{}, f.defaultInformer)
 }
 
-func (f *predefinedServiceInformer) Lister() v1.PredefinedServiceLister {
-	return v1.NewPredefinedServiceLister(f.Informer().GetIndexer())
+func (f *predefinedServiceInformer) Lister() hobbyfarmiov1.PredefinedServiceLister {
+	return hobbyfarmiov1.NewPredefinedServiceLister(f.Informer().GetIndexer())
 }

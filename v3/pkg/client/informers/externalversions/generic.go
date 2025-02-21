@@ -19,7 +19,7 @@ limitations under the License.
 package externalversions
 
 import (
-	"fmt"
+	fmt "fmt"
 
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	v2 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v2"
@@ -57,6 +57,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=hobbyfarm.io, Version=v1
 	case v1.SchemeGroupVersion.WithResource("accesscodes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().AccessCodes().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("costs"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Costs().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("courses"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Courses().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("dynamicbindconfigurations"):

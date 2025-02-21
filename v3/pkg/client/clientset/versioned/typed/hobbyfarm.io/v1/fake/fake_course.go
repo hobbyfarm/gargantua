@@ -19,111 +19,30 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned/typed/hobbyfarm.io/v1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeCourses implements CourseInterface
-type FakeCourses struct {
+// fakeCourses implements CourseInterface
+type fakeCourses struct {
+	*gentype.FakeClientWithList[*v1.Course, *v1.CourseList]
 	Fake *FakeHobbyfarmV1
-	ns   string
 }
 
-var coursesResource = v1.SchemeGroupVersion.WithResource("courses")
-
-var coursesKind = v1.SchemeGroupVersion.WithKind("Course")
-
-// Get takes name of the course, and returns the corresponding course object, and an error if there is any.
-func (c *FakeCourses) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.Course, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(coursesResource, c.ns, name), &v1.Course{})
-
-	if obj == nil {
-		return nil, err
+func newFakeCourses(fake *FakeHobbyfarmV1, namespace string) hobbyfarmiov1.CourseInterface {
+	return &fakeCourses{
+		gentype.NewFakeClientWithList[*v1.Course, *v1.CourseList](
+			fake.Fake,
+			namespace,
+			v1.SchemeGroupVersion.WithResource("courses"),
+			v1.SchemeGroupVersion.WithKind("Course"),
+			func() *v1.Course { return &v1.Course{} },
+			func() *v1.CourseList { return &v1.CourseList{} },
+			func(dst, src *v1.CourseList) { dst.ListMeta = src.ListMeta },
+			func(list *v1.CourseList) []*v1.Course { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1.CourseList, items []*v1.Course) { list.Items = gentype.FromPointerSlice(items) },
+		),
+		fake,
 	}
-	return obj.(*v1.Course), err
-}
-
-// List takes label and field selectors, and returns the list of Courses that match those selectors.
-func (c *FakeCourses) List(ctx context.Context, opts metav1.ListOptions) (result *v1.CourseList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(coursesResource, coursesKind, c.ns, opts), &v1.CourseList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1.CourseList{ListMeta: obj.(*v1.CourseList).ListMeta}
-	for _, item := range obj.(*v1.CourseList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested courses.
-func (c *FakeCourses) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(coursesResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a course and creates it.  Returns the server's representation of the course, and an error, if there is any.
-func (c *FakeCourses) Create(ctx context.Context, course *v1.Course, opts metav1.CreateOptions) (result *v1.Course, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(coursesResource, c.ns, course), &v1.Course{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.Course), err
-}
-
-// Update takes the representation of a course and updates it. Returns the server's representation of the course, and an error, if there is any.
-func (c *FakeCourses) Update(ctx context.Context, course *v1.Course, opts metav1.UpdateOptions) (result *v1.Course, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(coursesResource, c.ns, course), &v1.Course{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.Course), err
-}
-
-// Delete takes name of the course and deletes it. Returns an error if one occurs.
-func (c *FakeCourses) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(coursesResource, c.ns, name, opts), &v1.Course{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeCourses) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(coursesResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1.CourseList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched course.
-func (c *FakeCourses) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.Course, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(coursesResource, c.ns, name, pt, data, subresources...), &v1.Course{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1.Course), err
 }

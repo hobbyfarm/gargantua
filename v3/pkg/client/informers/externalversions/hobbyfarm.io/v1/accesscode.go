@@ -19,13 +19,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	apishobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // AccessCodes.
 type AccessCodeInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.AccessCodeLister
+	Lister() hobbyfarmiov1.AccessCodeLister
 }
 
 type accessCodeInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredAccessCodeInformer(client versioned.Interface, namespace string,
 				return client.HobbyfarmV1().AccessCodes(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&hobbyfarmiov1.AccessCode{},
+		&apishobbyfarmiov1.AccessCode{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *accessCodeInformer) defaultInformer(client versioned.Interface, resyncP
 }
 
 func (f *accessCodeInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&hobbyfarmiov1.AccessCode{}, f.defaultInformer)
+	return f.factory.InformerFor(&apishobbyfarmiov1.AccessCode{}, f.defaultInformer)
 }
 
-func (f *accessCodeInformer) Lister() v1.AccessCodeLister {
-	return v1.NewAccessCodeLister(f.Informer().GetIndexer())
+func (f *accessCodeInformer) Lister() hobbyfarmiov1.AccessCodeLister {
+	return hobbyfarmiov1.NewAccessCodeLister(f.Informer().GetIndexer())
 }

@@ -1,22 +1,36 @@
-##### sdk image #####
-FROM golang:1.21.1 AS sdk
+##### BUILD STAGE #####
+# use BUILDPLATFORM to pin to the native platform to prevent emulation from kicking in
+FROM --platform=$BUILDPLATFORM golang:1.23.6-alpine3.21 AS build
+
+# os from --platform linux/amd64
+ARG TARGETOS
+# architecture from --platform linux/amd64
+ARG TARGETARCH
 
 WORKDIR /app
-COPY go.mod .
+# copy over dependency files and download dependencies
+COPY go.mod go.sum ./
 
-# Change to the directory of the service.
-RUN go mod download -x
+RUN go mod download
 
+# copy over source files
 COPY . .
 
-# Build the service. The output binary is named "app".
-RUN CGO_ENABLED=0 GOOS=linux go build -v -o /tmp/app
+# build the service and output the binary to /tmp/app
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags="-s -w" -o /tmp/app
 
-#RUN ls -lart && go build -o /go/bin/gargantua main.go
-###### release image #####
-FROM alpine:latest
+##### RUNTIME STAGE #####
+FROM alpine:3.21.3
 
-COPY --from=sdk /tmp/app /usr/local/bin/
+# create group and user app
+RUN addgroup -S app && adduser -S app -G app
 
-ENTRYPOINT ["app"] 
-CMD ["-v=9", "-logtostderr"] 
+# copy over app binary from build stage
+COPY --from=build /tmp/app /usr/local/bin/app
+
+# switch to user app
+USER app
+WORKDIR /home/app
+
+ENTRYPOINT ["app"]
+CMD ["-v=9", "-logtostderr"]

@@ -19,13 +19,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	terraformcontrollercattleiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
+	apisterraformcontrollercattleiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/terraformcontroller.cattle.io/v1"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/terraformcontroller.cattle.io/v1"
+	terraformcontrollercattleiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/terraformcontroller.cattle.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // Executions.
 type ExecutionInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.ExecutionLister
+	Lister() terraformcontrollercattleiov1.ExecutionLister
 }
 
 type executionInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredExecutionInformer(client versioned.Interface, namespace string, 
 				return client.TerraformcontrollerV1().Executions(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&terraformcontrollercattleiov1.Execution{},
+		&apisterraformcontrollercattleiov1.Execution{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *executionInformer) defaultInformer(client versioned.Interface, resyncPe
 }
 
 func (f *executionInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&terraformcontrollercattleiov1.Execution{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisterraformcontrollercattleiov1.Execution{}, f.defaultInformer)
 }
 
-func (f *executionInformer) Lister() v1.ExecutionLister {
-	return v1.NewExecutionLister(f.Informer().GetIndexer())
+func (f *executionInformer) Lister() terraformcontrollercattleiov1.ExecutionLister {
+	return terraformcontrollercattleiov1.NewExecutionLister(f.Informer().GetIndexer())
 }

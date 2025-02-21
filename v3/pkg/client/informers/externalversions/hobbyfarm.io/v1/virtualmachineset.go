@@ -19,13 +19,13 @@ limitations under the License.
 package v1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
+	apishobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/apis/hobbyfarm.io/v1"
 	versioned "github.com/hobbyfarm/gargantua/v3/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/hobbyfarm/gargantua/v3/pkg/client/informers/externalversions/internalinterfaces"
-	v1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
+	hobbyfarmiov1 "github.com/hobbyfarm/gargantua/v3/pkg/client/listers/hobbyfarm.io/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // VirtualMachineSets.
 type VirtualMachineSetInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.VirtualMachineSetLister
+	Lister() hobbyfarmiov1.VirtualMachineSetLister
 }
 
 type virtualMachineSetInformer struct {
@@ -71,7 +71,7 @@ func NewFilteredVirtualMachineSetInformer(client versioned.Interface, namespace 
 				return client.HobbyfarmV1().VirtualMachineSets(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&hobbyfarmiov1.VirtualMachineSet{},
+		&apishobbyfarmiov1.VirtualMachineSet{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +82,9 @@ func (f *virtualMachineSetInformer) defaultInformer(client versioned.Interface, 
 }
 
 func (f *virtualMachineSetInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&hobbyfarmiov1.VirtualMachineSet{}, f.defaultInformer)
+	return f.factory.InformerFor(&apishobbyfarmiov1.VirtualMachineSet{}, f.defaultInformer)
 }
 
-func (f *virtualMachineSetInformer) Lister() v1.VirtualMachineSetLister {
-	return v1.NewVirtualMachineSetLister(f.Informer().GetIndexer())
+func (f *virtualMachineSetInformer) Lister() hobbyfarmiov1.VirtualMachineSetLister {
+	return hobbyfarmiov1.NewVirtualMachineSetLister(f.Informer().GetIndexer())
 }
