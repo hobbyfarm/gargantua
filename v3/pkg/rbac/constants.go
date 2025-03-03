@@ -41,4 +41,5 @@ const (
 	ResourcePluralSettings    = "settings"
 	ResourcePluralScopes      = "scopes"
 	ResourcePluralCost        = "costs"
+	ResourcePluralQuiz        = "quizes"
 )

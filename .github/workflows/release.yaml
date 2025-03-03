@@ -71,6 +71,13 @@ jobs:
       image: progress-service
       dockerfile: ./v3/Dockerfile
     secrets: inherit
+  release-quiz-service:
+    uses: ./.github/workflows/release_service.yaml
+    with:
+      service: quizsvc
+      image: quiz-service
+      dockerfile: ./v3/Dockerfile
+    secrets: inherit
   release-rbac-service:
     uses: ./.github/workflows/release_service.yaml
     with:

@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package quiz;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/quiz;quizpb";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+
+service QuizSvc {
+    rpc CreateQuiz (CreateQuizRequest) returns (general.ResourceId);
+    rpc GetQuiz (general.GetRequest) returns (Quiz);
+    rpc UpdateQuiz (UpdateQuizRequest) returns (google.protobuf.Empty);
+    rpc DeleteQuiz (general.ResourceId) returns (google.protobuf.Empty);
+    rpc ListQuiz (general.ListOptions) returns (ListQuizzesResponse);
+}
+
+message Quiz {
+    string id = 1;
+    string uid = 2;
+    string title = 3;
+    string type = 4;
+    bool shuffle = 5;
+    uint32 pool_size = 6;
+    uint32 max_attempts = 7;
+    uint32 success_threshold = 8;
+    repeated QuizQuestion questions = 9;
+}
+
+message QuizQuestion {
+    string id = 1;
+    string title = 2;
+    string description = 3;
+    string type = 4;
+    bool shuffle = 5;
+    string failure_message = 6;
+    string success_message = 7;
+    string validation_type = 8;
+    uint32 weight = 9;
+    repeated QuizAnswer answers = 10;
+}
+
+message QuizAnswer {
+    string id = 1;
+    string title = 2;
+    bool correct = 3;
+}
+
+message CreateQuizRequest {
+    string title = 1;
+    string type = 2;
+    bool shuffle = 3;
+    uint32 pool_size = 4;
+    uint32 max_attempts = 5;
+    uint32 success_threshold = 6;
+    repeated CreateQuizQuestion questions = 7;
+}
+
+message CreateQuizQuestion {
+    string title = 1;
+    string description = 2;
+    string type = 3;
+    bool shuffle = 4;
+    string failure_message = 5;
+    string success_message = 6;
+    string validation_type = 7;
+    uint32 weight = 8;
+    repeated CreateQuizAnswer answers = 9;
+}
+
+message CreateQuizAnswer {
+    string title = 1;
+    bool correct = 2;
+}
+
+message UpdateQuizRequest {
+    string id = 1;
+    string title = 2;
+    string type = 3;
+    bool shuffle = 4;
+    uint32 pool_size = 5;
+    uint32 max_attempts = 6;
+    uint32 success_threshold = 7;
+    repeated UpdateQuizQuestion questions = 8;
+}
+
+message UpdateQuizQuestion {
+    string title = 1;
+    string description = 2;
+    string type = 3;
+    bool shuffle = 4;
+    string failure_message = 5;
+    string success_message = 6;
+    string validation_type = 7;
+    uint32 weight = 8;
+    repeated UpdateQuizAnswer answers = 9;
+}
+
+message UpdateQuizAnswer {
+    string title = 1;
+    bool correct = 2;
+}
+
+message ListQuizzesResponse {
+    repeated Quiz quizzes = 1;
+}

@@ -602,3 +602,48 @@ type CostResource struct {
 	CreationUnixTimestamp int64   `json:"creation_unix_timestamp"`           // unix timestamp in seconds
 	DeletionUnixTimestamp int64   `json:"deletion_unix_timestamp,omitempty"` // unix timestamp in seconds
 }
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type Quiz struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              QuizSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type QuizList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Quiz `json:"items"`
+}
+
+type QuizSpec struct {
+	Title            string         `json:"title"`             // title of the quiz
+	Type             string         `json:"type"`              // type of the quiz defined by the admin-ui
+	Shuffle          bool           `json:"shuffle"`           // shuffle the questions within the quiz (default: false)
+	PoolSize         uint32         `json:"pool_size"`         // amount of questions to pick (default: all)
+	MaxAttempts      uint32         `json:"max_attempts"`      // the maximum number of attempts for the quiz
+	SuccessThreshold uint32         `json:"success_threshold"` // threshold in percent [0, 100] to pass the quiz
+	Questions        []QuizQuestion `json:"questions"`
+}
+
+type QuizQuestion struct {
+	Title          string       `json:"title"`           // title of the question
+	Description    string       `json:"description"`     // description of the question
+	Type           string       `json:"type"`            // type of the question defined by the admin-ui
+	Shuffle        bool         `json:"shuffle"`         // shuffle the answers for the question
+	FailureMessage string       `json:"failure_message"` // message in case user failed the quiz
+	SuccessMessage string       `json:"success_message"` // message in case user succeeded the quiz
+	ValidationType string       `json:"validation_type"` // type of validation defined by the admin-ui
+	Weight         uint32       `json:"weight"`          // weight of the question
+	Answers        []QuizAnswer `json:"answers"`
+}
+
+type QuizAnswer struct {
+	Title   string `json:"title"`   // title of the answer
+	Correct bool   `json:"correct"` // indicates that this answer is correct
+}
