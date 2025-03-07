@@ -90,6 +90,14 @@ type QuizListerExpansion interface{}
 // QuizNamespaceLister.
 type QuizNamespaceListerExpansion interface{}
 
+// QuizEvaluationListerExpansion allows custom methods to be added to
+// QuizEvaluationLister.
+type QuizEvaluationListerExpansion interface{}
+
+// QuizEvaluationNamespaceListerExpansion allows custom methods to be added to
+// QuizEvaluationNamespaceLister.
+type QuizEvaluationNamespaceListerExpansion interface{}
+
 // ScenarioListerExpansion allows custom methods to be added to
 // ScenarioLister.
 type ScenarioListerExpansion interface{}

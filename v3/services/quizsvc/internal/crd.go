@@ -19,5 +19,10 @@ func (qi QuizCRDInstaller) GenerateCRDs() []crder.CRD {
 				AddVersion("v1", &v1.Quiz{}, nil).
 				WithNames("quiz", rbac.ResourcePluralQuiz)
 		}),
+		crd.HobbyfarmCRD(&v1.QuizEvaluation{}, func(c *crder.CRD) {
+			c.
+				IsNamespaced(true).
+				AddVersion("v1", &v1.QuizEvaluation{}, nil)
+		}),
 	}
 }

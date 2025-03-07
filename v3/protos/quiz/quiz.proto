@@ -24,7 +24,8 @@ message Quiz {
     uint32 pool_size = 6;
     uint32 max_attempts = 7;
     uint32 success_threshold = 8;
-    repeated QuizQuestion questions = 9;
+    string validation_type = 9;
+    repeated QuizQuestion questions = 10;
 }
 
 message QuizQuestion {
@@ -35,8 +36,7 @@ message QuizQuestion {
     bool shuffle = 5;
     string failure_message = 6;
     string success_message = 7;
-    string validation_type = 8;
-    uint32 weight = 9;
+    uint32 weight = 8;
     repeated QuizAnswer answers = 10;
 }
 
@@ -53,7 +53,8 @@ message CreateQuizRequest {
     uint32 pool_size = 4;
     uint32 max_attempts = 5;
     uint32 success_threshold = 6;
-    repeated CreateQuizQuestion questions = 7;
+    string validation_type = 7;
+    repeated CreateQuizQuestion questions = 8;
 }
 
 message CreateQuizQuestion {
@@ -63,9 +64,8 @@ message CreateQuizQuestion {
     bool shuffle = 4;
     string failure_message = 5;
     string success_message = 6;
-    string validation_type = 7;
-    uint32 weight = 8;
-    repeated CreateQuizAnswer answers = 9;
+    uint32 weight = 7;
+    repeated CreateQuizAnswer answers = 8;
 }
 
 message CreateQuizAnswer {
@@ -81,7 +81,8 @@ message UpdateQuizRequest {
     uint32 pool_size = 5;
     uint32 max_attempts = 6;
     uint32 success_threshold = 7;
-    repeated UpdateQuizQuestion questions = 8;
+    string validation_type = 8;
+    repeated UpdateQuizQuestion questions = 9;
 }
 
 message UpdateQuizQuestion {
@@ -91,9 +92,8 @@ message UpdateQuizQuestion {
     bool shuffle = 4;
     string failure_message = 5;
     string success_message = 6;
-    string validation_type = 7;
-    uint32 weight = 8;
-    repeated UpdateQuizAnswer answers = 9;
+    uint32 weight = 7;
+    repeated UpdateQuizAnswer answers = 8;
 }
 
 message UpdateQuizAnswer {

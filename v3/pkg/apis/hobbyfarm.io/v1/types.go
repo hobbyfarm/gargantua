@@ -628,6 +628,7 @@ type QuizSpec struct {
 	PoolSize         uint32         `json:"pool_size"`         // amount of questions to pick (default: all)
 	MaxAttempts      uint32         `json:"max_attempts"`      // the maximum number of attempts for the quiz
 	SuccessThreshold uint32         `json:"success_threshold"` // threshold in percent [0, 100] to pass the quiz
+	ValidationType   string         `json:"validation_type"`   // type of validation defined by the admin-ui
 	Questions        []QuizQuestion `json:"questions"`
 }
 
@@ -638,7 +639,6 @@ type QuizQuestion struct {
 	Shuffle        bool         `json:"shuffle"`         // shuffle the answers for the question
 	FailureMessage string       `json:"failure_message"` // message in case user failed the quiz
 	SuccessMessage string       `json:"success_message"` // message in case user succeeded the quiz
-	ValidationType string       `json:"validation_type"` // type of validation defined by the admin-ui
 	Weight         uint32       `json:"weight"`          // weight of the question
 	Answers        []QuizAnswer `json:"answers"`
 }
@@ -646,4 +646,38 @@ type QuizQuestion struct {
 type QuizAnswer struct {
 	Title   string `json:"title"`   // title of the answer
 	Correct bool   `json:"correct"` // indicates that this answer is correct
+}
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type QuizEvaluation struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              QuizEvaluationSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type QuizEvaluationList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []QuizEvaluation `json:"items"`
+}
+
+type QuizEvaluationSpec struct {
+	Quiz     string                  `json:"quiz"`     // the quiz id
+	User     string                  `json:"user"`     // the user id
+	Scenario string                  `json:"scenario"` // the scenario id
+	Attempts []QuizEvaluationAttempt `json:"attempts"`
+}
+
+type QuizEvaluationAttempt struct {
+	Timestamp string              `json:"timestamp"`
+	Attempt   uint32              `json:"attempt"`
+	Score     uint32              `json:"score"`
+	Pass      bool                `json:"pass"`
+	Corrects  map[string][]string `json:"corrects"` // key is question id and values are correct answer ids
+	Selects   map[string][]string `json:"selects"`  // key is question id and values are answer ids of the answers chosen by the user
 }

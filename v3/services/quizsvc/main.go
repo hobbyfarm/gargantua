@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/hobbyfarm/gargantua/services/quizsvc/v3/internal/quiz"
+	"github.com/hobbyfarm/gargantua/services/quizsvc/v3/internal/quizevaluation"
 	"sync"
 	"time"
 
@@ -47,8 +49,11 @@ func main() {
 
 	gs := microservices.CreateGRPCServer(serviceConfig.ServerCert.Clone())
 
-	qs := quizservice.NewGrpcQuizServer(hfClient, hfInformerFactory)
+	qs := quiz.NewGrpcQuizServer(hfClient, hfInformerFactory)
 	quizpb.RegisterQuizSvcServer(gs, qs)
+
+	qes := quizevaluation.NewGrpcQuizEvaluationServer(hfClient, hfInformerFactory)
+	quizpb.RegisterQuizEvaluationSvcServer(gs, qes)
 
 	var wg sync.WaitGroup
 	// only add 1 to our wait group since our service should stop (and restart) as soon as one of the go routines terminates
@@ -66,6 +71,7 @@ func main() {
 			authnClient,
 			authrClient,
 			qs,
+			qes,
 		)
 		microservices.StartAPIServer(quizServer)
 	}()

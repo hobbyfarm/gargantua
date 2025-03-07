@@ -64,6 +64,10 @@ func (c *FakeHobbyfarmV1) Quizes(namespace string) v1.QuizInterface {
 	return newFakeQuizes(c, namespace)
 }
 
+func (c *FakeHobbyfarmV1) QuizEvaluations(namespace string) v1.QuizEvaluationInterface {
+	return newFakeQuizEvaluations(c, namespace)
+}
+
 func (c *FakeHobbyfarmV1) Scenarios(namespace string) v1.ScenarioInterface {
 	return newFakeScenarios(c, namespace)
 }

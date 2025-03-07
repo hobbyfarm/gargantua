@@ -42,6 +42,8 @@ type Interface interface {
 	Progresses() ProgressInformer
 	// Quizes returns a QuizInformer.
 	Quizes() QuizInformer
+	// QuizEvaluations returns a QuizEvaluationInformer.
+	QuizEvaluations() QuizEvaluationInformer
 	// Scenarios returns a ScenarioInformer.
 	Scenarios() ScenarioInformer
 	// ScheduledEvents returns a ScheduledEventInformer.
@@ -118,6 +120,11 @@ func (v *version) Progresses() ProgressInformer {
 // Quizes returns a QuizInformer.
 func (v *version) Quizes() QuizInformer {
 	return &quizInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// QuizEvaluations returns a QuizEvaluationInformer.
+func (v *version) QuizEvaluations() QuizEvaluationInformer {
+	return &quizEvaluationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Scenarios returns a ScenarioInformer.

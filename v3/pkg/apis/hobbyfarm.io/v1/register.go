@@ -63,6 +63,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&CostList{},
 		&Quiz{},
 		&QuizList{},
+		&QuizEvaluation{},
+		&QuizEvaluationList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

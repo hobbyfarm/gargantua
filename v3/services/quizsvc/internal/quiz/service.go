@@ -1,4 +1,4 @@
-package quizservice
+package quiz
 
 import (
 	"encoding/json"
@@ -8,92 +8,32 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"github.com/hobbyfarm/gargantua/v3/pkg/rbac"
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
+	authnpb "github.com/hobbyfarm/gargantua/v3/protos/authn"
+	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
-	quizpb "github.com/hobbyfarm/gargantua/v3/protos/quiz"
 	"google.golang.org/grpc/status"
 	"net/http"
 )
 
-type PreparedQuiz struct {
-	Id               string             `json:"id,omitempty"`
-	Title            string             `json:"title"`
-	Type             string             `json:"type"`
-	Shuffle          bool               `json:"shuffle"`
-	PoolSize         uint32             `json:"pool_size"`
-	MaxAttempts      uint32             `json:"max_attempts"`
-	SuccessThreshold uint32             `json:"success_threshold"`
-	Questions        []PreparedQuestion `json:"questions"`
+type QuizService struct {
+	authnClient    authnpb.AuthNClient
+	authrClient    authrpb.AuthRClient
+	internalServer *GrpcQuizServer
 }
 
-func NewPreparedQuiz(quiz *quizpb.Quiz, showCorrect bool) PreparedQuiz {
-	questions := make([]PreparedQuestion, len(quiz.GetQuestions()))
-	for i, question := range quiz.GetQuestions() {
-		questions[i] = NewPreparedQuestion(question, showCorrect)
-	}
-	return PreparedQuiz{
-		Id:               quiz.GetId(),
-		Title:            quiz.GetTitle(),
-		Type:             quiz.GetType(),
-		Shuffle:          quiz.GetShuffle(),
-		PoolSize:         quiz.GetPoolSize(),
-		MaxAttempts:      quiz.GetMaxAttempts(),
-		SuccessThreshold: quiz.GetSuccessThreshold(),
-		Questions:        questions,
+func NewQuizService(
+	authnClient authnpb.AuthNClient,
+	authrClient authrpb.AuthRClient,
+	internalQuizServer *GrpcQuizServer,
+) *QuizService {
+	return &QuizService{
+		authnClient:    authnClient,
+		authrClient:    authrClient,
+		internalServer: internalQuizServer,
 	}
 }
 
-type PreparedQuestion struct {
-	Id             string           `json:"id,omitempty"`
-	Title          string           `json:"title"`
-	Description    string           `json:"description"`
-	Type           string           `json:"type"`
-	Shuffle        bool             `json:"shuffle"`
-	FailureMessage string           `json:"failure_message"`
-	SuccessMessage string           `json:"success_message"`
-	ValidationType string           `json:"validation_type"`
-	Weight         uint32           `json:"weight"`
-	Answers        []PreparedAnswer `json:"answers"`
-}
-
-func NewPreparedQuestion(question *quizpb.QuizQuestion, showCorrect bool) PreparedQuestion {
-	answers := make([]PreparedAnswer, len(question.GetAnswers()))
-	for i, answer := range question.GetAnswers() {
-		answers[i] = NewPreparedAnswer(answer, showCorrect)
-	}
-	return PreparedQuestion{
-		Id:             question.GetId(),
-		Title:          question.GetTitle(),
-		Description:    question.GetDescription(),
-		Type:           question.GetType(),
-		Shuffle:        question.GetShuffle(),
-		FailureMessage: question.GetFailureMessage(),
-		SuccessMessage: question.GetSuccessMessage(),
-		ValidationType: question.GetValidationType(),
-		Weight:         question.GetWeight(),
-		Answers:        answers,
-	}
-}
-
-type PreparedAnswer struct {
-	Id      string `json:"id,omitempty"`
-	Title   string `json:"title"`
-	Correct *bool  `json:"correct,omitempty"`
-}
-
-func NewPreparedAnswer(answer *quizpb.QuizAnswer, showCorrect bool) PreparedAnswer {
-	var correct *bool
-	if showCorrect {
-		correct = util.Ref[bool](answer.GetCorrect())
-	}
-
-	return PreparedAnswer{
-		Id:      answer.GetId(),
-		Title:   answer.GetTitle(),
-		Correct: correct,
-	}
-}
-
-func (qs QuizServer) GetFunc(w http.ResponseWriter, r *http.Request) {
+func (qs QuizService) GetFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := rbac.AuthenticateRequest(r, qs.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
@@ -116,7 +56,7 @@ func (qs QuizServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	quiz, err := qs.internalQuizServer.GetQuiz(r.Context(), &generalpb.GetRequest{Id: quizId})
+	quiz, err := qs.internalServer.GetQuiz(r.Context(), &generalpb.GetRequest{Id: quizId})
 	if err != nil {
 		glog.Errorf("error while retrieving quiz: %s", hferrors.GetErrorMessage(err))
 		if hferrors.IsGrpcNotFound(err) {
@@ -139,7 +79,7 @@ func (qs QuizServer) GetFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infof("retrieved quiz %s", quizId)
 }
 
-func (qs QuizServer) GetForUserFunc(w http.ResponseWriter, r *http.Request) {
+func (qs QuizService) GetForUserFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := rbac.AuthenticateRequest(r, qs.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
@@ -162,7 +102,7 @@ func (qs QuizServer) GetForUserFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	quiz, err := qs.internalQuizServer.GetQuiz(r.Context(), &generalpb.GetRequest{Id: quizId})
+	quiz, err := qs.internalServer.GetQuiz(r.Context(), &generalpb.GetRequest{Id: quizId})
 	if err != nil {
 		glog.Errorf("error while retrieving quiz: %s", hferrors.GetErrorMessage(err))
 		if hferrors.IsGrpcNotFound(err) {
@@ -185,7 +125,7 @@ func (qs QuizServer) GetForUserFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infof("retrieved quiz %s", quizId)
 }
 
-func (qs QuizServer) ListFunc(w http.ResponseWriter, r *http.Request) {
+func (qs QuizService) ListFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := rbac.AuthenticateRequest(r, qs.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
@@ -199,17 +139,14 @@ func (qs QuizServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	quizList, err := qs.internalQuizServer.ListQuiz(r.Context(), &generalpb.ListOptions{})
+	quizList, err := qs.internalServer.ListQuiz(r.Context(), &generalpb.ListOptions{})
 	if err != nil {
 		glog.Errorf("error while listing all quizzes: %s", hferrors.GetErrorMessage(err))
 		util.ReturnHTTPMessage(w, r, 500, "error", "error listing all quizzes")
 		return
 	}
 
-	preparedQuizzes := make([]PreparedQuiz, len(quizList.GetQuizzes()))
-	for i, quiz := range quizList.GetQuizzes() {
-		preparedQuizzes[i] = NewPreparedQuiz(quiz, true)
-	}
+	preparedQuizzes := NewPreparedQuizList(quizList.Quizzes)
 
 	encodedQuizzes, err := json.Marshal(preparedQuizzes)
 	if err != nil {
@@ -220,7 +157,7 @@ func (qs QuizServer) ListFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infof("retrieved list of all quizzes")
 }
 
-func (qs QuizServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
+func (qs QuizService) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := rbac.AuthenticateRequest(r, qs.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
@@ -242,38 +179,8 @@ func (qs QuizServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	questions := make([]*quizpb.CreateQuizQuestion, len(preparedQuiz.Questions))
-	for i, question := range preparedQuiz.Questions {
-		answers := make([]*quizpb.CreateQuizAnswer, len(question.Answers))
-		for j, answer := range question.Answers {
-			answers[j] = &quizpb.CreateQuizAnswer{
-				Title:   answer.Title,
-				Correct: util.DerefOrDefault[bool](answer.Correct),
-			}
-		}
-
-		questions[i] = &quizpb.CreateQuizQuestion{
-			Title:          question.Title,
-			Description:    question.Description,
-			Type:           question.Type,
-			Shuffle:        question.Shuffle,
-			FailureMessage: question.FailureMessage,
-			SuccessMessage: question.SuccessMessage,
-			ValidationType: question.ValidationType,
-			Weight:         question.Weight,
-			Answers:        answers,
-		}
-	}
-
-	quizId, err := qs.internalQuizServer.CreateQuiz(r.Context(), &quizpb.CreateQuizRequest{
-		Title:            preparedQuiz.Title,
-		Type:             preparedQuiz.Type,
-		Shuffle:          preparedQuiz.Shuffle,
-		PoolSize:         preparedQuiz.PoolSize,
-		MaxAttempts:      preparedQuiz.MaxAttempts,
-		SuccessThreshold: preparedQuiz.SuccessThreshold,
-		Questions:        questions,
-	})
+	quiz := NewPBCreateQuiz(preparedQuiz)
+	quizId, err := qs.internalServer.CreateQuiz(r.Context(), quiz)
 
 	if err != nil {
 		statusErr := status.Convert(err)
@@ -291,7 +198,7 @@ func (qs QuizServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(4).Infof("Created quiz %s", quizId.GetId())
 }
 
-func (qs QuizServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
+func (qs QuizService) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := rbac.AuthenticateRequest(r, qs.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
@@ -321,39 +228,8 @@ func (qs QuizServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	questions := make([]*quizpb.UpdateQuizQuestion, len(preparedQuiz.Questions))
-	for i, question := range preparedQuiz.Questions {
-		answers := make([]*quizpb.UpdateQuizAnswer, len(question.Answers))
-		for j, answer := range question.Answers {
-			answers[j] = &quizpb.UpdateQuizAnswer{
-				Title:   answer.Title,
-				Correct: util.DerefOrDefault[bool](answer.Correct),
-			}
-		}
-
-		questions[i] = &quizpb.UpdateQuizQuestion{
-			Title:          question.Title,
-			Description:    question.Description,
-			Type:           question.Type,
-			Shuffle:        question.Shuffle,
-			FailureMessage: question.FailureMessage,
-			SuccessMessage: question.SuccessMessage,
-			ValidationType: question.ValidationType,
-			Weight:         question.Weight,
-			Answers:        answers,
-		}
-	}
-
-	_, err = qs.internalQuizServer.UpdateQuiz(r.Context(), &quizpb.UpdateQuizRequest{
-		Id:               id,
-		Title:            preparedQuiz.Title,
-		Type:             preparedQuiz.Type,
-		Shuffle:          preparedQuiz.Shuffle,
-		PoolSize:         preparedQuiz.PoolSize,
-		MaxAttempts:      preparedQuiz.MaxAttempts,
-		SuccessThreshold: preparedQuiz.SuccessThreshold,
-		Questions:        questions,
-	})
+	quiz := NewPBUpdateQuiz(id, preparedQuiz)
+	_, err = qs.internalServer.UpdateQuiz(r.Context(), quiz)
 
 	if err != nil {
 		glog.Error(hferrors.GetErrorMessage(err))
@@ -365,7 +241,7 @@ func (qs QuizServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(4).Infof("Updated quiz %s", id)
 }
 
-func (qs QuizServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
+func (qs QuizService) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := rbac.AuthenticateRequest(r, qs.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
@@ -383,14 +259,14 @@ func (qs QuizServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	quizId := vars["id"]
 	if quizId == "" {
-		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no id passed in")
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no quiz id passed in")
 		return
 	}
 
 	glog.V(2).Infof("user %s deleting quiz %s", user.GetId(), quizId)
 
 	// first check if the quiz actually exists
-	_, err = qs.internalQuizServer.GetQuiz(r.Context(), &generalpb.GetRequest{Id: quizId})
+	_, err = qs.internalServer.GetQuiz(r.Context(), &generalpb.GetRequest{Id: quizId})
 	if err != nil {
 		glog.Errorf("error while retrieving quiz: %s", hferrors.GetErrorMessage(err))
 		if hferrors.IsGrpcNotFound(err) {
@@ -403,8 +279,7 @@ func (qs QuizServer) DeleteFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO @MARCUS also delete all quiz progresses
-	_, err = qs.internalQuizServer.DeleteQuiz(r.Context(), &generalpb.ResourceId{Id: quizId})
+	_, err = qs.internalServer.DeleteQuiz(r.Context(), &generalpb.ResourceId{Id: quizId})
 	if err != nil {
 		glog.Errorf("error deleting quiz: %s", hferrors.GetErrorMessage(err))
 		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error deleting quiz")

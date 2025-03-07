@@ -37,6 +37,7 @@ type HobbyfarmV1Interface interface {
 	PredefinedServicesGetter
 	ProgressesGetter
 	QuizesGetter
+	QuizEvaluationsGetter
 	ScenariosGetter
 	ScheduledEventsGetter
 	ScopesGetter
@@ -88,6 +89,10 @@ func (c *HobbyfarmV1Client) Progresses(namespace string) ProgressInterface {
 
 func (c *HobbyfarmV1Client) Quizes(namespace string) QuizInterface {
 	return newQuizes(c, namespace)
+}
+
+func (c *HobbyfarmV1Client) QuizEvaluations(namespace string) QuizEvaluationInterface {
+	return newQuizEvaluations(c, namespace)
 }
 
 func (c *HobbyfarmV1Client) Scenarios(namespace string) ScenarioInterface {

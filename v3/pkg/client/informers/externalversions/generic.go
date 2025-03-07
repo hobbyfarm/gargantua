@@ -73,6 +73,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Progresses().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("quizes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Quizes().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("quizevaluations"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().QuizEvaluations().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("scenarios"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Hobbyfarm().V1().Scenarios().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("scheduledevents"):

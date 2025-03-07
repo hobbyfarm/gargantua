@@ -36,6 +36,8 @@ type ProgressExpansion interface{}
 
 type QuizExpansion interface{}
 
+type QuizEvaluationExpansion interface{}
+
 type ScenarioExpansion interface{}
 
 type ScheduledEventExpansion interface{}

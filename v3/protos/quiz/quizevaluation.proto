@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package quiz;
+
+option go_package = "github.com/hobbyfarm/gargantua/v3/protos/quiz;quizpb";
+
+import "general/general.proto";
+import "google/protobuf/empty.proto";
+
+service QuizEvaluationSvc {
+    rpc CreateQuizEvaluation (CreateQuizEvaluationRequest) returns (general.ResourceId);
+    rpc GetQuizEvaluation (general.GetRequest) returns (QuizEvaluation);
+    rpc GetQuizEvaluationForUser(GetQuizEvaluationForUserRequest) returns (QuizEvaluation);
+    rpc UpdateQuizEvaluation(UpdateQuizEvaluationRequest) returns (google.protobuf.Empty);
+    rpc DeleteQuizEvaluation (general.ResourceId) returns (google.protobuf.Empty);
+    rpc ListQuizEvaluation (general.ListOptions) returns (ListQuizEvaluationsResponse);
+}
+
+message QuizEvaluation {
+    string id = 1;
+    string uid = 2;
+    string quiz = 3;
+    string user = 4;
+    string scenario = 5;
+    repeated QuizEvaluationAttempt attempts = 6;
+}
+
+message QuizEvaluationAttempt {
+    string timestamp = 1;
+    uint32 attempt = 2;
+    uint32 score = 3;
+    bool pass = 4;
+    map<string, general.StringArray> corrects = 5; // question id and answer ids of correct answers
+    map<string, general.StringArray> selects = 6; // answer ids of the answers chosen by the user
+}
+
+message CreateQuizEvaluationRequest {
+    string quiz = 1;
+    string quiz_uid = 2;
+    string user = 3;
+    string scenario = 4;
+    repeated QuizEvaluationAttempt attempts = 5;
+}
+
+message UpdateQuizEvaluationRequest {
+    string id = 1;
+    string quiz = 2;
+    string user = 3;
+    string scenario = 4;
+    repeated QuizEvaluationAttempt attempts = 5;
+}
+
+message GetQuizEvaluationForUserRequest {
+    string quiz = 1;
+    string user = 2;
+    string scenario = 3;
+}
+
+message ListQuizEvaluationsResponse {
+    repeated QuizEvaluation quiz_evaluations= 1;
+}
