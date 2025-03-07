@@ -34,6 +34,7 @@ const (
 type PreparedScenarioStep struct {
 	Title   string `json:"title"`
 	Content string `json:"content"`
+	Quiz    string `json:"quiz"`
 }
 
 type PreparedScenario struct {
@@ -82,7 +83,7 @@ func (s ScenarioServer) getPreparedScenarioStepById(ctx context.Context, id stri
 
 	if step >= 0 && len(scenario.GetSteps()) > step {
 		stepContent := scenario.GetSteps()[step]
-		return PreparedScenarioStep{stepContent.GetTitle(), stepContent.GetContent()}, nil
+		return PreparedScenarioStep{stepContent.GetTitle(), stepContent.GetContent(), stepContent.GetQuiz()}, nil
 	}
 
 	return PreparedScenarioStep{}, fmt.Errorf("error while retrieving scenario step, most likely doesn't exist in cache")

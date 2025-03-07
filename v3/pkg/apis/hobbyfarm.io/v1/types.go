@@ -284,6 +284,7 @@ type ScenarioSpec struct {
 type ScenarioStep struct {
 	Title   string `json:"title"`
 	Content string `json:"content"`
+	Quiz    string `json:"quiz"`
 }
 
 type VirtualMachineTasks struct {
