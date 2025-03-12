@@ -2,6 +2,7 @@ package quiz
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
@@ -179,6 +180,11 @@ func (qs QuizService) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err = validatePreparedQuiz(preparedQuiz); err != nil {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", err.Error())
+		return
+	}
+
 	quiz := NewPBCreateQuiz(preparedQuiz)
 	quizId, err := qs.internalServer.CreateQuiz(r.Context(), quiz)
 
@@ -196,6 +202,40 @@ func (qs QuizService) CreateFunc(w http.ResponseWriter, r *http.Request) {
 
 	util.ReturnHTTPMessage(w, r, 201, "created", quizId.GetId())
 	glog.V(4).Infof("Created quiz %s", quizId.GetId())
+}
+
+func validatePreparedQuiz(preparedQuiz PreparedQuiz) error {
+	if preparedQuiz.PoolSize == 0 {
+		return errors.New("pool size needs to be greater than 0")
+	}
+
+	if int(preparedQuiz.PoolSize) > len(preparedQuiz.Questions) {
+		return errors.New("pool size can not be greater than amount of questions")
+	}
+
+	if preparedQuiz.MaxAttempts == 0 {
+		return errors.New("max attempts needs to be greater than 0")
+	}
+
+	if preparedQuiz.SuccessThreshold > 100 {
+		return errors.New("success threshold needs to be between 0 and 100")
+	}
+
+	for _, question := range preparedQuiz.Questions {
+		if question.Weight == 0 {
+			return errors.New("question weight needs to be greater than 0")
+		}
+		var hasCorrect bool
+		for _, answer := range question.Answers {
+			if util.DerefOrDefault(answer.Correct) {
+				hasCorrect = true
+			}
+		}
+		if !hasCorrect {
+			return errors.New("each question needs at least one correct answer")
+		}
+	}
+	return nil
 }
 
 func (qs QuizService) UpdateFunc(w http.ResponseWriter, r *http.Request) {
@@ -225,6 +265,11 @@ func (qs QuizService) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	// Decode JSON body
 	if err = json.NewDecoder(r.Body).Decode(&preparedQuiz); err != nil {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid json body")
+		return
+	}
+
+	if err = validatePreparedQuiz(preparedQuiz); err != nil {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", err.Error())
 		return
 	}
 

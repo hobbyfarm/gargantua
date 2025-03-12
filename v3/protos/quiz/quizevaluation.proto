@@ -22,16 +22,17 @@ message QuizEvaluation {
     string quiz = 3;
     string user = 4;
     string scenario = 5;
-    repeated QuizEvaluationAttempt attempts = 6;
+    repeated QuizEvaluationAttempt attempts = 7;
 }
 
 message QuizEvaluationAttempt {
-    string timestamp = 1;
-    uint32 attempt = 2;
-    uint32 score = 3;
-    bool pass = 4;
-    map<string, general.StringArray> corrects = 5; // question id and answer ids of correct answers
-    map<string, general.StringArray> selects = 6; // answer ids of the answers chosen by the user
+    string creation_timestamp = 1;
+    string timestamp = 2;
+    uint32 attempt = 3;
+    uint32 score = 4;
+    bool pass = 5;
+    map<string, general.StringArray> corrects = 6; // question id and answer ids of correct answers
+    map<string, general.StringArray> selects = 7; // answer ids of the answers chosen by the user
 }
 
 message CreateQuizEvaluationRequest {
@@ -39,7 +40,7 @@ message CreateQuizEvaluationRequest {
     string quiz_uid = 2;
     string user = 3;
     string scenario = 4;
-    repeated QuizEvaluationAttempt attempts = 5;
+    QuizEvaluationAttempt attempt = 6;
 }
 
 message UpdateQuizEvaluationRequest {

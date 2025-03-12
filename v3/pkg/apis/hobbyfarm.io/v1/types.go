@@ -675,10 +675,11 @@ type QuizEvaluationSpec struct {
 }
 
 type QuizEvaluationAttempt struct {
-	Timestamp string              `json:"timestamp"`
-	Attempt   uint32              `json:"attempt"`
-	Score     uint32              `json:"score"`
-	Pass      bool                `json:"pass"`
-	Corrects  map[string][]string `json:"corrects"` // key is question id and values are correct answer ids
-	Selects   map[string][]string `json:"selects"`  // key is question id and values are answer ids of the answers chosen by the user
+	CreationTimestamp string              `json:"creation_timestamp"`  // the creation timestamp
+	Timestamp         string              `json:"timestamp,omitempty"` // the timestamp when the quiz was solved
+	Attempt           uint32              `json:"attempt"`
+	Score             uint32              `json:"score"`
+	Pass              bool                `json:"pass"`
+	Corrects          map[string][]string `json:"corrects,omitempty"` // key is question id and values are correct answer ids
+	Selects           map[string][]string `json:"selects"`            // key is question id and values are answer ids of the answers chosen by the user
 }

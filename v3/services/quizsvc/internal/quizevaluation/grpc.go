@@ -44,26 +44,26 @@ func resourceName(quiz, user, scenario string) string {
 func (gqes GrpcQuizEvaluationServer) CreateQuizEvaluation(ctx context.Context, req *quizpb.CreateQuizEvaluationRequest) (*generalpb.ResourceId, error) {
 	quizEvaluationId := resourceName(req.Quiz, req.User, req.Scenario)
 
-	attempts := make([]hfv1.QuizEvaluationAttempt, len(req.GetAttempts()))
-	for i, attempt := range req.GetAttempts() {
-		corrects := make(map[string][]string)
-		for questionId, answerIds := range attempt.GetCorrects() {
-			corrects[questionId] = answerIds.GetValues()
-		}
+	corrects := make(map[string][]string)
+	for questionId, answerIds := range req.GetAttempt().GetCorrects() {
+		corrects[questionId] = answerIds.GetValues()
+	}
 
-		selects := make(map[string][]string)
-		for questionId, answerIds := range attempt.GetSelects() {
-			selects[questionId] = answerIds.GetValues()
-		}
+	selects := make(map[string][]string)
+	for questionId, answerIds := range req.GetAttempt().GetSelects() {
+		selects[questionId] = answerIds.GetValues()
+	}
 
-		attempts[i] = hfv1.QuizEvaluationAttempt{
-			Timestamp: attempt.GetTimestamp(),
-			Attempt:   attempt.GetAttempt(),
-			Score:     attempt.GetScore(),
-			Pass:      attempt.GetPass(),
-			Corrects:  corrects,
-			Selects:   selects,
-		}
+	attempts := []hfv1.QuizEvaluationAttempt{
+		{
+			CreationTimestamp: req.GetAttempt().GetCreationTimestamp(),
+			Timestamp:         req.GetAttempt().GetTimestamp(),
+			Attempt:           req.GetAttempt().GetAttempt(),
+			Score:             req.GetAttempt().GetScore(),
+			Pass:              req.GetAttempt().GetPass(),
+			Corrects:          corrects,
+			Selects:           selects,
+		},
 	}
 
 	quizEvaluation := &hfv1.QuizEvaluation{
@@ -146,12 +146,13 @@ func (gqes GrpcQuizEvaluationServer) UpdateQuizEvaluation(ctx context.Context, r
 			}
 
 			attempts[i] = hfv1.QuizEvaluationAttempt{
-				Timestamp: attempt.GetTimestamp(),
-				Attempt:   attempt.GetAttempt(),
-				Score:     attempt.GetScore(),
-				Pass:      attempt.GetPass(),
-				Corrects:  corrects,
-				Selects:   selects,
+				CreationTimestamp: attempt.GetCreationTimestamp(),
+				Timestamp:         attempt.GetTimestamp(),
+				Attempt:           attempt.GetAttempt(),
+				Score:             attempt.GetScore(),
+				Pass:              attempt.GetPass(),
+				Corrects:          corrects,
+				Selects:           selects,
 			}
 		}
 		quizEvaluation.Spec.Attempts = attempts

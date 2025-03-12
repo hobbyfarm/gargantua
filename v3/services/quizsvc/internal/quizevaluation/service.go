@@ -75,7 +75,7 @@ func (qes QuizEvaluationService) GetFunc(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	preparedQuizEvaluation := NewPreparedQuizEvaluation(quizEvaluation)
+	preparedQuizEvaluation := NewPreparedQuizEvaluation(quiz.ValidationTypeDetailed, quizEvaluation, true)
 	encodedQuiz, err := json.Marshal(preparedQuizEvaluation)
 	if err != nil {
 		glog.Error(err)
@@ -113,7 +113,7 @@ func (qes QuizEvaluationService) GetForUserFunc(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	quiz, err := qes.getQuiz(r.Context(), quizId)
+	existing, err := qes.getQuiz(r.Context(), quizId)
 	if err != nil {
 		glog.Errorf("error while retrieving quiz: %s", hferrors.GetErrorMessage(err))
 		if hferrors.IsGrpcNotFound(err) {
@@ -144,17 +144,7 @@ func (qes QuizEvaluationService) GetForUserFunc(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	attempts := make([]PreparedAttempt, len(quizEvaluation.GetAttempts()))
-	for i, attempt := range quizEvaluation.GetAttempts() {
-		attempts[i] = NewPreparedAttempt(quiz.ValidationType, attempt)
-	}
-	preparedQuizEvaluation := PreparedQuizEvaluation{
-		Id:       quizEvaluation.GetId(),
-		Quiz:     quizEvaluation.GetQuiz(),
-		User:     quizEvaluation.GetUser(),
-		Scenario: quizEvaluation.GetScenario(),
-		Attempts: attempts,
-	}
+	preparedQuizEvaluation := NewPreparedQuizEvaluation(existing.ValidationType, quizEvaluation, false)
 	encodedQuiz, err := json.Marshal(preparedQuizEvaluation)
 	if err != nil {
 		glog.Error(err)
@@ -164,7 +154,7 @@ func (qes QuizEvaluationService) GetForUserFunc(w http.ResponseWriter, r *http.R
 	glog.V(2).Infof("retrieved quiz evaluation %s", quizId)
 }
 
-func (qes QuizEvaluationService) CreateFunc(w http.ResponseWriter, r *http.Request) {
+func (qes QuizEvaluationService) StartFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := rbac.AuthenticateRequest(r, qes.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
@@ -174,25 +164,25 @@ func (qes QuizEvaluationService) CreateFunc(w http.ResponseWriter, r *http.Reque
 	impersonatedUserId := user.GetId()
 	authrResponse, err := rbac.AuthorizeSimple(r, qes.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(rbac.ResourcePluralQuizEvaluation, rbac.VerbCreate))
 	if err != nil || !authrResponse.Success {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to create quiz evaluation")
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to start quiz evaluation")
 		return
 	}
 
-	var preparedCreateQuizEvaluation PreparedCreateQuizEvaluation
+	var preparedStartQuizEvaluation PreparedStartQuizEvaluation
 
 	// Decode JSON body
-	if err = json.NewDecoder(r.Body).Decode(&preparedCreateQuizEvaluation); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&preparedStartQuizEvaluation); err != nil {
 		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid json body")
 		return
 	}
 
 	req := &quizpb.GetQuizEvaluationForUserRequest{
-		Quiz:     preparedCreateQuizEvaluation.Quiz,
+		Quiz:     preparedStartQuizEvaluation.Quiz,
 		User:     impersonatedUserId,
-		Scenario: preparedCreateQuizEvaluation.Scenario,
+		Scenario: preparedStartQuizEvaluation.Scenario,
 	}
 
-	quiz, err := qes.getQuiz(r.Context(), req.GetQuiz())
+	existing, err := qes.getQuiz(r.Context(), req.GetQuiz())
 	if err != nil {
 		glog.Errorf("error while retrieving quiz: %s", hferrors.GetErrorMessage(err))
 		if hferrors.IsGrpcNotFound(err) {
@@ -209,13 +199,13 @@ func (qes QuizEvaluationService) CreateFunc(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		if hferrors.IsGrpcNotFound(err) {
 			// create
-			quizEvaluationAttempt := NewPBQuizEvaluationAttempt(1, preparedCreateQuizEvaluation, quiz)
+			quizEvaluationAttempt := NewPBQuizEvaluationAttemptForStart(1, existing)
 			createQuizEvaluation := &quizpb.CreateQuizEvaluationRequest{
 				Quiz:     req.GetQuiz(),
-				QuizUid:  quiz.Uid,
+				QuizUid:  existing.Uid,
 				User:     req.GetUser(),
 				Scenario: req.GetScenario(),
-				Attempts: []*quizpb.QuizEvaluationAttempt{quizEvaluationAttempt},
+				Attempt:  quizEvaluationAttempt,
 			}
 			quizEvaluationId, err := qes.internalServer.CreateQuizEvaluation(r.Context(), createQuizEvaluation)
 			if err != nil {
@@ -225,31 +215,32 @@ func (qes QuizEvaluationService) CreateFunc(w http.ResponseWriter, r *http.Reque
 					util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
 					return
 				}
-				glog.Errorf("error creating quiz evaluation %s", hferrors.GetErrorMessage(err))
-				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating quiz evaluation")
+				glog.Errorf("error starting quiz evaluation %s", hferrors.GetErrorMessage(err))
+				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error starting quiz evaluation")
 				return
 			}
 
-			preparedQuizEvaluationAttempt := NewPreparedAttempt(quiz.ValidationType, quizEvaluationAttempt)
-			encodedQuizEvaluationAttempt, err := json.Marshal(preparedQuizEvaluationAttempt)
+			preparedStartQuizEvaluationResult := NewPreparedStartQuizEvaluationResult(
+				quizEvaluationId.GetId(), req.GetQuiz(), req.GetScenario(), quizEvaluationAttempt)
+			encodedStartQuizEvaluationResult, err := json.Marshal(preparedStartQuizEvaluationResult)
 			if err != nil {
 				glog.Errorf("error marshalling prepared quiz evaluation: %v", err)
-				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating quiz evaluation")
+				util.ReturnHTTPMessage(w, r, 500, "internalerror", "error starting quiz evaluation")
 				return
 			}
 
-			util.ReturnHTTPContent(w, r, 201, "created", encodedQuizEvaluationAttempt)
-			glog.V(4).Infof("Created quiz evaluation %s", quizEvaluationId.GetId())
+			util.ReturnHTTPContent(w, r, 201, "created", encodedStartQuizEvaluationResult)
+			glog.V(4).Infof("Started quiz evaluation %s", quizEvaluationId.GetId())
 			return
 		}
-		errMsg := "error retrieving quiz evaluation while attempting quiz evaluation creation"
-		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "error retrieving quiz evaluation for create", errMsg)
+		errMsg := "error retrieving quiz evaluation while attempting quiz evaluation start"
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "error retrieving quiz evaluation for start", errMsg)
 		return
 	}
 
 	// update
 	attempt := uint32(len(quizEvaluation.GetAttempts())) + 1
-	quizEvaluationAttempt := NewPBQuizEvaluationAttempt(attempt, preparedCreateQuizEvaluation, quiz)
+	quizEvaluationAttempt := NewPBQuizEvaluationAttemptForStart(attempt, existing)
 	updateQuizEvaluation := &quizpb.UpdateQuizEvaluationRequest{
 		Id:       quizEvaluation.GetId(),
 		Quiz:     req.GetQuiz(),
@@ -260,20 +251,120 @@ func (qes QuizEvaluationService) CreateFunc(w http.ResponseWriter, r *http.Reque
 	_, err = qes.internalServer.UpdateQuizEvaluation(r.Context(), updateQuizEvaluation)
 	if err != nil {
 		glog.Error(hferrors.GetErrorMessage(err))
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating quiz evaluation")
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error starting quiz evaluation")
 		return
 	}
 
-	preparedQuizEvaluationAttempt := NewPreparedAttempt(quiz.ValidationType, quizEvaluationAttempt)
-	encodedQuizEvaluationAttempt, err := json.Marshal(preparedQuizEvaluationAttempt)
+	preparedStartQuizEvaluationResult := NewPreparedStartQuizEvaluationResult(
+		quizEvaluation.GetId(), req.GetQuiz(), req.GetScenario(), quizEvaluationAttempt)
+	encodedStartQuizEvaluationResult, err := json.Marshal(preparedStartQuizEvaluationResult)
 	if err != nil {
 		glog.Errorf("error marshalling prepared quiz evaluation: %v", err)
-		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error creating quiz evaluation")
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error starting quiz evaluation")
 		return
 	}
 
-	util.ReturnHTTPContent(w, r, 201, "created", encodedQuizEvaluationAttempt)
-	glog.V(4).Infof("Created quiz evaluation %s", quizEvaluation.GetId())
+	util.ReturnHTTPContent(w, r, 201, "created", encodedStartQuizEvaluationResult)
+	glog.V(4).Infof("Started quiz evaluation %s", quizEvaluation.GetId())
+}
+
+func (qes QuizEvaluationService) RecordFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := rbac.AuthenticateRequest(r, qes.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, qes.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(rbac.ResourcePluralQuizEvaluation, rbac.VerbCreate))
+	if err != nil || !authrResponse.Success {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to record quiz evaluation")
+		return
+	}
+
+	var preparedRecordQuizEvaluation PreparedRecordQuizEvaluation
+
+	// Decode JSON body
+	if err = json.NewDecoder(r.Body).Decode(&preparedRecordQuizEvaluation); err != nil {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "invalid json body")
+		return
+	}
+
+	req := &quizpb.GetQuizEvaluationForUserRequest{
+		Quiz:     preparedRecordQuizEvaluation.Quiz,
+		User:     impersonatedUserId,
+		Scenario: preparedRecordQuizEvaluation.Scenario,
+	}
+
+	existing, err := qes.getQuiz(r.Context(), req.GetQuiz())
+	if err != nil {
+		glog.Errorf("error while retrieving quiz: %s", hferrors.GetErrorMessage(err))
+		if hferrors.IsGrpcNotFound(err) {
+			errMsg := fmt.Sprintf("quiz %s not found", req.GetQuiz())
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "not found", errMsg)
+			return
+		}
+		errMsg := fmt.Sprintf("error retrieving quiz %s", req.GetQuiz())
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "error", errMsg)
+		return
+	}
+
+	quizEvaluation, err := qes.internalServer.GetQuizEvaluationForUser(r.Context(), req)
+	if err != nil {
+		glog.Errorf("error while retrieving quiz evaluation for quiz: %s", hferrors.GetErrorMessage(err))
+		if hferrors.IsGrpcNotFound(err) {
+			errMsg := fmt.Sprintf("quiz evaluation for quiz %s not found", req.GetQuiz())
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "not found", errMsg)
+			return
+		}
+		errMsg := fmt.Sprintf("error retrieving quiz evaluation for quiz %s", req.GetQuiz())
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "error", errMsg)
+		return
+	}
+
+	attempt := uint32(len(quizEvaluation.GetAttempts()))
+	quizEvaluationAttempt := NewPBQuizEvaluationAttemptForRecord(attempt, preparedRecordQuizEvaluation, existing)
+
+	attempts := make([]*quizpb.QuizEvaluationAttempt, len(quizEvaluation.GetAttempts()))
+	for i := 0; i < len(quizEvaluation.GetAttempts()); i++ {
+		currentQuizAttempt := quizEvaluation.GetAttempts()[i]
+		if currentQuizAttempt.GetAttempt() == attempt {
+			quizEvaluationAttempt.CreationTimestamp = currentQuizAttempt.GetCreationTimestamp()
+			attempts[i] = quizEvaluationAttempt
+			continue
+		}
+		attempts[i] = currentQuizAttempt
+	}
+
+	updateQuizEvaluation := &quizpb.UpdateQuizEvaluationRequest{
+		Id:       quizEvaluation.GetId(),
+		Quiz:     req.GetQuiz(),
+		User:     req.GetUser(),
+		Scenario: req.GetScenario(),
+		Attempts: attempts,
+	}
+	_, err = qes.internalServer.UpdateQuizEvaluation(r.Context(), updateQuizEvaluation)
+	if err != nil {
+		glog.Error(hferrors.GetErrorMessage(err))
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error recording quiz evaluation")
+		return
+	}
+
+	preparedRecordQuizEvaluationResult := PreparedRecordQuizEvaluationResult{
+		Id:       quizEvaluation.GetId(),
+		Quiz:     req.GetQuiz(),
+		Scenario: req.GetScenario(),
+		Attempt:  NewPreparedAttempt(existing.ValidationType, quizEvaluationAttempt),
+	}
+	encodedRecordQuizEvaluationResult, err := json.Marshal(preparedRecordQuizEvaluationResult)
+	if err != nil {
+		glog.Errorf("error marshalling prepared quiz evaluation: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error recording quiz evaluation")
+		return
+	}
+
+	util.ReturnHTTPContent(w, r, 201, "created", encodedRecordQuizEvaluationResult)
+	glog.V(4).Infof("Recorded quiz evaluation %s", quizEvaluation.GetId())
 }
 
 func (qes QuizEvaluationService) getQuiz(ctx context.Context, quizId string) (*quizpb.Quiz, error) {
