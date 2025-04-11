@@ -35,6 +35,7 @@ message VM {
     VMStatus status = 13;
     map<string, string> annotations = 14;
     google.protobuf.Timestamp deletion_timestamp = 15;
+    google.protobuf.Timestamp creation_timestamp = 16;
 }
 
 message CreateVMRequest {

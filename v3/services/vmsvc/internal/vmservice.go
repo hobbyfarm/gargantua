@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
@@ -23,6 +24,7 @@ const (
 
 type PreparedVirtualMachine struct {
 	Id                       string `json:"id"`
+	CreationTimestamp        string `json:"creation_timestamp"`
 	VirtualMachineTemplateId string `json:"vm_template_id"`
 	SshUsername              string `json:"ssh_username"`
 	Protocol                 string `json:"protocol"`
@@ -307,6 +309,7 @@ func (vms VMServer) GetAllVMListFunc(w http.ResponseWriter, r *http.Request) {
 func getPreparedVM(vm *vmpb.VM) PreparedVirtualMachine {
 	return PreparedVirtualMachine{
 		Id:                       vm.GetId(),
+		CreationTimestamp:        vm.GetCreationTimestamp().AsTime().Format(time.UnixDate),
 		VirtualMachineTemplateId: vm.GetVmTemplateId(),
 		SshUsername:              vm.GetSshUsername(),
 		Protocol:                 vm.GetProtocol(),
