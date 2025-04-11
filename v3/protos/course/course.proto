@@ -29,6 +29,10 @@ message Course {
     string pause_duration = 9;
     bool pausable = 10;
     bool keep_vm = 11;
+    bool is_learnpath = 12;
+    bool is_learnpath_strict = 13;
+    bool in_catalog = 14;
+    string header_image_path = 15;
 }
 
 message CreateCourseRequest {
@@ -41,6 +45,10 @@ message CreateCourseRequest {
     string pause_duration = 7;
     bool pausable = 8;
     bool keep_vm = 9;
+    bool is_learnpath = 12;
+    bool is_learnpath_strict = 13;
+    bool in_catalog = 14;
+    string header_image_path = 15;
 }
 
 message UpdateCourseRequest {
@@ -54,6 +62,10 @@ message UpdateCourseRequest {
     google.protobuf.StringValue pause_duration = 8;
     google.protobuf.BoolValue pausable = 9;
     google.protobuf.BoolValue keep_vm = 10;
+    google.protobuf.BoolValue is_learnpath = 12;
+    google.protobuf.BoolValue is_learnpath_strict = 13;
+    google.protobuf.BoolValue in_catalog = 14;
+    google.protobuf.StringValue header_image_path = 15;
 }
 
 message ListCoursesResponse {

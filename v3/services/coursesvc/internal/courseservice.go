@@ -36,6 +36,10 @@ type PreparedCourse struct {
 	PauseDuration     string              `json:"pause_duration"`
 	Pauseable         bool                `json:"pauseable"`
 	KeepVM            bool                `json:"keep_vm"`
+	IsLearnpath       bool                `json:"is_learnpath"`
+	IsLearnPathStrict bool                `json:"is_learnpath_strict"`
+	DisplayInCatalog  bool                `json:"in_catalog"`
+	HeaderImagePath   string              `json:"header_image_path"`
 }
 
 func convertToPreparedCourse(course *coursepb.Course) PreparedCourse {
@@ -50,6 +54,10 @@ func convertToPreparedCourse(course *coursepb.Course) PreparedCourse {
 		PauseDuration:     course.GetPauseDuration(),
 		Pauseable:         course.GetPausable(),
 		KeepVM:            course.GetKeepVm(),
+		IsLearnpath:       course.GetIsLearnpath(),
+		IsLearnPathStrict: course.GetIsLearnpathStrict(),
+		DisplayInCatalog:  course.GetInCatalog(),
+		HeaderImagePath:   course.GetHeaderImagePath(),
 	}
 }
 
@@ -196,6 +204,32 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	isLearnPathRaw := r.PostFormValue("is_learnpath")
+	isLearnpath, err := strconv.ParseBool(isLearnPathRaw)
+	if err != nil {
+		glog.Errorf("error while parsing bool: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+		return
+	}
+
+	isLearnPathStrictRaw := r.PostFormValue("is_learnpath_strict")
+	isLearnpathStrict, err := strconv.ParseBool(isLearnPathStrictRaw)
+	if err != nil {
+		glog.Errorf("error while parsing bool: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+		return
+	}
+
+	inCatalogRaw := r.PostFormValue("in_catalog")
+	inCatalog, err := strconv.ParseBool(inCatalogRaw)
+	if err != nil {
+		glog.Errorf("error while parsing bool: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+		return
+	}
+
+	headerImagePath := r.PostFormValue("header_image_path")
+
 	courseId, err := c.internalCourseServer.CreateCourse(r.Context(), &coursepb.CreateCourseRequest{
 		Name:              name,
 		Description:       description,
@@ -206,6 +240,10 @@ func (c CourseServer) CreateFunc(w http.ResponseWriter, r *http.Request) {
 		PauseDuration:     pauseDuration,
 		Pausable:          pauseable,
 		KeepVm:            keepVM,
+		IsLearnpath:       isLearnpath,
+		IsLearnpathStrict: isLearnpathStrict,
+		InCatalog:         inCatalog,
+		HeaderImagePath:   headerImagePath,
 	})
 	if err != nil {
 		statusErr := status.Convert(err)
@@ -254,6 +292,10 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 	pauseDuration := r.PostFormValue("pause_duration")
 	pauseableRaw := r.PostFormValue("pauseable")
 	keepVMRaw := r.PostFormValue("keep_vm")
+	isLearnPathRaw := r.PostFormValue("is_learnpath")
+	isLearnPathStrictRaw := r.PostFormValue("is_learnpath_strict")
+	inCatalogRaw := r.PostFormValue("in_catalog")
+	headerImagePath := r.PostFormValue("header_image_path")
 
 	var keepaliveWrapper *wrapperspb.StringValue
 	if keepaliveDuration != "" {
@@ -285,6 +327,41 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var isLearnPath bool
+	if isLearnPathRaw != "" {
+		isLearnPath, err = strconv.ParseBool(isLearnPathRaw)
+		if err != nil {
+			glog.Errorf("error while parsing bool: %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	var isLearnPathStrict bool
+	if isLearnPathStrictRaw != "" {
+		isLearnPathStrict, err = strconv.ParseBool(isLearnPathStrictRaw)
+		if err != nil {
+			glog.Errorf("error while parsing bool: %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	var inCatalog bool
+	if inCatalogRaw != "" {
+		inCatalog, err = strconv.ParseBool(inCatalogRaw)
+		if err != nil {
+			glog.Errorf("error while parsing bool: %v", err)
+			util.ReturnHTTPMessage(w, r, 500, "internalerror", "error parsing")
+			return
+		}
+	}
+
+	var headerImagePathWrapper *wrapperspb.StringValue
+	if headerImagePath != "" {
+		headerImagePathWrapper = wrapperspb.String(headerImagePath)
+	}
+
 	_, err = c.internalCourseServer.UpdateCourse(r.Context(), &coursepb.UpdateCourseRequest{
 		Id:                id,
 		Name:              name,
@@ -296,6 +373,10 @@ func (c CourseServer) UpdateFunc(w http.ResponseWriter, r *http.Request) {
 		PauseDuration:     pauseDurationWrapper,
 		Pausable:          wrapperspb.Bool(pauseable),
 		KeepVm:            wrapperspb.Bool(keepVM),
+		IsLearnpath:       wrapperspb.Bool(isLearnPath),
+		IsLearnpathStrict: wrapperspb.Bool(isLearnPathStrict),
+		InCatalog:         wrapperspb.Bool(inCatalog),
+		HeaderImagePath:   headerImagePathWrapper,
 	})
 
 	if err != nil {
@@ -442,6 +523,46 @@ func (c CourseServer) ListCoursesForAccesscode(w http.ResponseWriter, r *http.Re
 		glog.Error(err)
 	}
 	util.ReturnHTTPContent(w, r, 200, "success", encodedCourses)
+}
+
+func (c CourseServer) ListCourseCatalog(w http.ResponseWriter, r *http.Request) {
+	_, err := rbac.AuthenticateRequest(r, c.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	tempCoursList, err := c.internalCourseServer.ListCourse(r.Context(), &generalpb.ListOptions{})
+	if err != nil {
+		glog.Errorf("error listing courses: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing courses")
+		return
+	}
+	tempCourses := tempCoursList.GetCourses()
+
+	courses := make([]PreparedCourse, 0, len(tempCourses))
+	for _, course := range tempCourses {
+		if course.InCatalog {
+			course.Scenarios = util.AppendDynamicScenariosByCategories(
+				r.Context(),
+				course.Scenarios,
+				course.Categories,
+				c.listScenarios,
+			)
+			courses = append(courses, convertToPreparedCourse(course))
+		}
+	}
+
+	encodedCourses, err := json.Marshal(courses)
+	if err != nil {
+		glog.Errorf("error marshalling prepared courses: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error listing courses")
+		return
+	}
+
+	util.ReturnHTTPContent(w, r, 200, "success", encodedCourses)
+
+	glog.V(4).Infof("listed courses")
 }
 
 func (c CourseServer) previewDynamicScenarios(w http.ResponseWriter, r *http.Request) {

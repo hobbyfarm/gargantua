@@ -248,6 +248,10 @@ type CourseSpec struct {
 	PauseDuration     string              `json:"pause_duration"`
 	Pauseable         bool                `json:"pauseable"`
 	KeepVM            bool                `json:"keep_vm"`
+	IsLearnpath       bool                `json:"is_learnpath"`
+	IsLearnPathStrict bool                `json:"is_learnpath_strict"`
+	DisplayInCatalog  bool                `json:"in_catalog"`
+	HeaderImagePath   string              `json:"header_image_path"`
 }
 
 // +genclient
