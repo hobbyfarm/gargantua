@@ -27,6 +27,7 @@ import (
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
 )
 
 const (
@@ -87,7 +88,34 @@ func NewVMClaimController(
 	vmClaimController.SetReconciler(vmClaimController)
 	vmClaimController.SetWorkScheduler(vmClaimController)
 
+	vmInformer := hfInformerFactory.Hobbyfarm().V1().VirtualMachines().Informer()
+	_, err :=vmInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		UpdateFunc: vmClaimController.update,
+	})
+	if err != nil {
+		glog.Fatalf("Error building vm informer: %s", err.Error())
+	}
+
 	return vmClaimController, nil
+}
+
+func (v *VMClaimController) update(oldVirtualMachineObject, newVirtualMachineObject interface{}) {
+	oldVirtualMachine, ok := oldVirtualMachineObject.(*hfv1.VirtualMachine)
+    if !ok {
+        glog.Errorf("failed to cast old object to *hfv1.VirtualMachine")
+        return
+    }
+	newVirtualMachine, ok := newVirtualMachineObject.(*hfv1.VirtualMachine)
+    if !ok {
+        glog.Errorf("failed to cast new object to *hfv1.VirtualMachine")
+        return
+    }
+    if oldVirtualMachine.Status.Status != hfv1.VmStatusRunning && newVirtualMachine.Status.Status == hfv1.VmStatusRunning {
+        if newVirtualMachine.Spec.VirtualMachineClaimId != "" {
+            glog.Infof("notified vm %s status changed to running for vmclaim: %s", newVirtualMachine.Name, newVirtualMachine.Spec.VirtualMachineClaimId)
+            v.internalVmClaimServer.vmClaimWorkqueue.Add(newVirtualMachine.Spec.VirtualMachineClaimId)
+        }
+    }
 }
 
 func (v *VMClaimController) Reconcile(objName string) error {
