@@ -19,6 +19,8 @@ const (
 	CostGroup              = "hobbyfarm.io/cost-group"
 	CostBasePrice          = "hobbyfarm.io/cost-base-price"
 	CostTimeUnit           = "hobbyfarm.io/cost-time-unit"
+	QuizLabel              = "hobbyfarm.io/quiz"
+	ScenarioLabel          = "hobbyfarm.io/scenario"
 )
 
 func DotEscapeLabel(label string) string {

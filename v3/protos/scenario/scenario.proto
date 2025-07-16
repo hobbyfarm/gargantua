@@ -52,6 +52,7 @@ message CreateScenarioRequest {
 message ScenarioStep {
     string title = 1;
     string content = 2;
+    string quiz = 3;
 }
 
 message UpdateScenarioRequest {
