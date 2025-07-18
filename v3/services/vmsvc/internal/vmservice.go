@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
 	hflabels "github.com/hobbyfarm/gargantua/v3/pkg/labels"
@@ -23,6 +24,7 @@ const (
 
 type PreparedVirtualMachine struct {
 	Id                       string `json:"id"`
+	CreationTimestamp        string `json:"creation_timestamp"`
 	VirtualMachineTemplateId string `json:"vm_template_id"`
 	SshUsername              string `json:"ssh_username"`
 	Protocol                 string `json:"protocol"`
@@ -163,6 +165,56 @@ func (vms VMServer) GetVMFunc(w http.ResponseWriter, r *http.Request) {
 	glog.V(2).Infof("retrieved vm %s", vm.GetId())
 }
 
+func (vms VMServer) DeleteVMFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := rbac.AuthenticateRequest(r, vms.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get vm")
+		return
+	}
+	impersonatedUserId := user.GetId()
+
+	authrResponse, err := rbac.AuthorizeSimple(r, vms.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbDelete))
+	if err != nil || !authrResponse.Success {
+		glog.Errorf("user forbidden from deleting vms")
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to delete vm")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	vmId := vars["vm_id"]
+
+	if len(vmId) == 0 {
+		util.ReturnHTTPMessage(w, r, 400, "bad request", "no vm id passed in")
+		return
+	}
+
+	_, err = vms.internalVMServer.DeleteVM(r.Context(), &generalpb.ResourceId{Id: vmId})
+	if err != nil {
+		glog.Errorf("error retrieving virtual machine %s from cache: %s", vmId, hferrors.GetErrorMessage(err))
+		if hferrors.IsGrpcNotFound(err) {
+			errMsg := fmt.Sprintf("vm %s not found", vmId)
+			util.ReturnHTTPMessage(w, r, http.StatusNotFound, "not found", errMsg)
+			return
+		}
+		errMsg := fmt.Sprintf("error deleting vm %s", vmId)
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "error", errMsg)
+		return
+	}
+
+	_, err = vms.internalVMServer.UpdateVM(r.Context(), &vmpb.UpdateVMRequest{Id: vmId, Finalizers: &generalpb.StringArray{}})
+	if err != nil {
+		glog.Errorf("error updating finalizers for virtual machine %s, :%s", vmId, hferrors.GetErrorMessage(err))
+		errMsg := fmt.Sprintf("error updating vm %s", vmId)
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "error", errMsg)
+		return
+	}
+
+	util.ReturnHTTPMessage(w, r, 200, "success", "deleted successfully")
+
+	glog.V(2).Infof("deleted vm %s", vmId)
+}
+
 func (vms VMServer) GetVMListFunc(w http.ResponseWriter, r *http.Request, listOptions *generalpb.ListOptions) {
 	user, err := rbac.AuthenticateRequest(r, vms.authnClient)
 	if err != nil {
@@ -257,6 +309,7 @@ func (vms VMServer) GetAllVMListFunc(w http.ResponseWriter, r *http.Request) {
 func getPreparedVM(vm *vmpb.VM) PreparedVirtualMachine {
 	return PreparedVirtualMachine{
 		Id:                       vm.GetId(),
+		CreationTimestamp:        vm.GetCreationTimestamp().AsTime().Format(time.RFC1123),
 		VirtualMachineTemplateId: vm.GetVmTemplateId(),
 		SshUsername:              vm.GetSshUsername(),
 		Protocol:                 vm.GetProtocol(),

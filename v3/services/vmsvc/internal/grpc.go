@@ -150,6 +150,11 @@ func (s *GrpcVMServer) GetVM(ctx context.Context, req *generalpb.GetRequest) (*v
 		deletionTimeStamp = timestamppb.New(vm.DeletionTimestamp.Time)
 	}
 
+	var creationTimestamp *timestamppb.Timestamp
+	if !vm.CreationTimestamp.IsZero() {
+		creationTimestamp = timestamppb.New(vm.CreationTimestamp.Time)
+	}
+
 	return &vmpb.VM{
 		Id:                vm.Name,
 		Uid:               string(vm.UID),
@@ -166,6 +171,7 @@ func (s *GrpcVMServer) GetVM(ctx context.Context, req *generalpb.GetRequest) (*v
 		Status:            status,
 		Annotations:       vm.Annotations,
 		DeletionTimestamp: deletionTimeStamp,
+		CreationTimestamp: creationTimestamp,
 	}, nil
 }
 
@@ -357,6 +363,11 @@ func (s *GrpcVMServer) ListVM(ctx context.Context, listOptions *generalpb.ListOp
 			deletionTimeStamp = timestamppb.New(vm.DeletionTimestamp.Time)
 		}
 
+		var creationTimestamp *timestamppb.Timestamp
+		if !vm.CreationTimestamp.IsZero() {
+			creationTimestamp = timestamppb.New(vm.CreationTimestamp.Time)
+		}
+
 		preparedVms = append(preparedVms, &vmpb.VM{
 			Id:                vm.Name,
 			Uid:               string(vm.UID),
@@ -373,6 +384,7 @@ func (s *GrpcVMServer) ListVM(ctx context.Context, listOptions *generalpb.ListOp
 			Status:            status,
 			Annotations:       vm.Annotations,
 			DeletionTimestamp: deletionTimeStamp,
+			CreationTimestamp: creationTimestamp,
 		})
 	}
 
