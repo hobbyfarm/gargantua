@@ -309,7 +309,7 @@ func (vms VMServer) GetAllVMListFunc(w http.ResponseWriter, r *http.Request) {
 func getPreparedVM(vm *vmpb.VM) PreparedVirtualMachine {
 	return PreparedVirtualMachine{
 		Id:                       vm.GetId(),
-		CreationTimestamp:        vm.GetCreationTimestamp().AsTime().Format(time.UnixDate),
+		CreationTimestamp:        vm.GetCreationTimestamp().AsTime().Format(time.RFC1123),
 		VirtualMachineTemplateId: vm.GetVmTemplateId(),
 		SshUsername:              vm.GetSshUsername(),
 		Protocol:                 vm.GetProtocol(),
