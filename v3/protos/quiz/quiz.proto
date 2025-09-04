@@ -19,7 +19,7 @@ message Quiz {
     string id = 1;
     string uid = 2;
     string title = 3;
-    string type = 4;
+    string issuer = 4;
     bool shuffle = 5;
     uint32 pool_size = 6;
     uint32 max_attempts = 7;
@@ -48,7 +48,7 @@ message QuizAnswer {
 
 message CreateQuizRequest {
     string title = 1;
-    string type = 2;
+    string issuer = 2;
     bool shuffle = 3;
     uint32 pool_size = 4;
     uint32 max_attempts = 5;
@@ -76,7 +76,7 @@ message CreateQuizAnswer {
 message UpdateQuizRequest {
     string id = 1;
     string title = 2;
-    string type = 3;
+    string issuer = 3;
     bool shuffle = 4;
     uint32 pool_size = 5;
     uint32 max_attempts = 6;

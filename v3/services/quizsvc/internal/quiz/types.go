@@ -7,7 +7,7 @@ import (
 type PreparedQuiz struct {
 	Id               string             `json:"id,omitempty"`
 	Title            string             `json:"title"`
-	Type             string             `json:"type"`
+	Issuer           string             `json:"issuer"`
 	Shuffle          bool               `json:"shuffle"`
 	PoolSize         uint32             `json:"pool_size"`
 	MaxAttempts      uint32             `json:"max_attempts"`

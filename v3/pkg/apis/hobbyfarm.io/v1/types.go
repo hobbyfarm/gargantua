@@ -624,7 +624,7 @@ type QuizList struct {
 
 type QuizSpec struct {
 	Title            string         `json:"title"`             // title of the quiz
-	Type             string         `json:"type"`              // type of the quiz defined by the admin-ui
+	Issuer           string         `json:"issuer"`            // name of the issuer of this quiz
 	Shuffle          bool           `json:"shuffle"`           // shuffle the questions within the quiz (default: false)
 	PoolSize         uint32         `json:"pool_size"`         // amount of questions to pick (default: all)
 	MaxAttempts      uint32         `json:"max_attempts"`      // the maximum number of attempts for the quiz

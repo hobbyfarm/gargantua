@@ -23,7 +23,7 @@ func NewPreparedQuiz(quiz *quizpb.Quiz, showCorrect bool) PreparedQuiz {
 	return PreparedQuiz{
 		Id:               quiz.GetId(),
 		Title:            quiz.GetTitle(),
-		Type:             quiz.GetType(),
+		Issuer:           quiz.GetIssuer(),
 		Shuffle:          quiz.GetShuffle(),
 		PoolSize:         quiz.GetPoolSize(),
 		MaxAttempts:      quiz.GetMaxAttempts(),
@@ -71,7 +71,7 @@ func NewPBCreateQuiz(quiz PreparedQuiz) *quizpb.CreateQuizRequest {
 	}
 	return &quizpb.CreateQuizRequest{
 		Title:            quiz.Title,
-		Type:             quiz.Type,
+		Issuer:           quiz.Issuer,
 		Shuffle:          quiz.Shuffle,
 		PoolSize:         quiz.PoolSize,
 		MaxAttempts:      quiz.MaxAttempts,
@@ -113,7 +113,7 @@ func NewPBUpdateQuiz(id string, quiz PreparedQuiz) *quizpb.UpdateQuizRequest {
 	return &quizpb.UpdateQuizRequest{
 		Id:               id,
 		Title:            quiz.Title,
-		Type:             quiz.Type,
+		Issuer:           quiz.Issuer,
 		Shuffle:          quiz.Shuffle,
 		PoolSize:         quiz.PoolSize,
 		MaxAttempts:      quiz.MaxAttempts,
@@ -187,7 +187,7 @@ func NewPBQuiz(quiz *hfv1.Quiz) *quizpb.Quiz {
 		Id:               quiz.Name,
 		Uid:              string(quiz.UID),
 		Title:            quiz.Spec.Title,
-		Type:             quiz.Spec.Type,
+		Issuer:           quiz.Spec.Issuer,
 		Shuffle:          quiz.Spec.Shuffle,
 		PoolSize:         quiz.Spec.PoolSize,
 		MaxAttempts:      quiz.Spec.MaxAttempts,
@@ -227,7 +227,7 @@ func NewQuizFromCreate(id string, quiz *quizpb.CreateQuizRequest) *hfv1.Quiz {
 		},
 		Spec: hfv1.QuizSpec{
 			Title:            quiz.GetTitle(),
-			Type:             quiz.GetType(),
+			Issuer:           quiz.GetIssuer(),
 			Shuffle:          quiz.GetShuffle(),
 			PoolSize:         quiz.GetPoolSize(),
 			MaxAttempts:      quiz.GetMaxAttempts(),
@@ -240,7 +240,7 @@ func NewQuizFromCreate(id string, quiz *quizpb.CreateQuizRequest) *hfv1.Quiz {
 
 func NewQuizFromUpdate(req *quizpb.UpdateQuizRequest, source *hfv1.Quiz) *hfv1.Quiz {
 	source.Spec.Title = req.GetTitle()
-	source.Spec.Type = req.GetType()
+	source.Spec.Issuer = req.GetIssuer()
 	source.Spec.Shuffle = req.GetShuffle()
 	source.Spec.PoolSize = req.GetPoolSize()
 	source.Spec.MaxAttempts = req.GetMaxAttempts()
