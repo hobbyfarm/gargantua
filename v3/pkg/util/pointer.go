@@ -24,3 +24,12 @@ func Ref[T any](v T) *T {
 func Deref[T any](ref *T) T {
 	return *ref
 }
+
+// DerefOrDefault returns value of pointer or default value for type T.
+func DerefOrDefault[T any](ref *T) T {
+	var defaultValue T
+	if ref == nil {
+		return defaultValue
+	}
+	return *ref
+}

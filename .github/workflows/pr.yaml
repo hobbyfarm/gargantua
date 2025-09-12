@@ -51,6 +51,11 @@ jobs:
     with:
       path: ./v3/services/progresssvc
     secrets: inherit
+  build-quiz-service:
+    uses: ./.github/workflows/build.yaml
+    with:
+      path: ./v3/services/quizsvc
+    secrets: inherit
   build-rbac-service:
     uses: ./.github/workflows/build.yaml
     with:

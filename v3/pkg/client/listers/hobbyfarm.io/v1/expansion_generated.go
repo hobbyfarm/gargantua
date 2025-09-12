@@ -82,6 +82,22 @@ type ProgressListerExpansion interface{}
 // ProgressNamespaceLister.
 type ProgressNamespaceListerExpansion interface{}
 
+// QuizListerExpansion allows custom methods to be added to
+// QuizLister.
+type QuizListerExpansion interface{}
+
+// QuizNamespaceListerExpansion allows custom methods to be added to
+// QuizNamespaceLister.
+type QuizNamespaceListerExpansion interface{}
+
+// QuizEvaluationListerExpansion allows custom methods to be added to
+// QuizEvaluationLister.
+type QuizEvaluationListerExpansion interface{}
+
+// QuizEvaluationNamespaceListerExpansion allows custom methods to be added to
+// QuizEvaluationNamespaceLister.
+type QuizEvaluationNamespaceListerExpansion interface{}
+
 // ScenarioListerExpansion allows custom methods to be added to
 // ScenarioLister.
 type ScenarioListerExpansion interface{}

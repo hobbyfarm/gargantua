@@ -288,6 +288,7 @@ type ScenarioSpec struct {
 type ScenarioStep struct {
 	Title   string `json:"title"`
 	Content string `json:"content"`
+	Quiz    string `json:"quiz"`
 }
 
 type VirtualMachineTasks struct {
@@ -605,4 +606,84 @@ type CostResource struct {
 	TimeUnit              string  `json:"time_unit"`                         // one of [seconds, minutes, hours]
 	CreationUnixTimestamp int64   `json:"creation_unix_timestamp"`           // unix timestamp in seconds
 	DeletionUnixTimestamp int64   `json:"deletion_unix_timestamp,omitempty"` // unix timestamp in seconds
+}
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type Quiz struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              QuizSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type QuizList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Quiz `json:"items"`
+}
+
+type QuizSpec struct {
+	Title            string         `json:"title"`             // title of the quiz
+	Issuer           string         `json:"issuer"`            // name of the issuer of this quiz
+	Shuffle          bool           `json:"shuffle"`           // shuffle the questions within the quiz (default: false)
+	PoolSize         uint32         `json:"pool_size"`         // amount of questions to pick (default: all)
+	MaxAttempts      uint32         `json:"max_attempts"`      // the maximum number of attempts for the quiz
+	SuccessThreshold uint32         `json:"success_threshold"` // threshold in percent [0, 100] to pass the quiz
+	ValidationType   string         `json:"validation_type"`   // type of validation defined by the admin-ui
+	Questions        []QuizQuestion `json:"questions"`
+}
+
+type QuizQuestion struct {
+	Title          string       `json:"title"`           // title of the question
+	Description    string       `json:"description"`     // description of the question
+	Type           string       `json:"type"`            // type of the question defined by the admin-ui
+	Shuffle        bool         `json:"shuffle"`         // shuffle the answers for the question
+	FailureMessage string       `json:"failure_message"` // message in case user failed the quiz
+	SuccessMessage string       `json:"success_message"` // message in case user succeeded the quiz
+	Weight         uint32       `json:"weight"`          // weight of the question
+	Answers        []QuizAnswer `json:"answers"`
+}
+
+type QuizAnswer struct {
+	Title   string `json:"title"`   // title of the answer
+	Correct bool   `json:"correct"` // indicates that this answer is correct
+}
+
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type QuizEvaluation struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              QuizEvaluationSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type QuizEvaluationList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []QuizEvaluation `json:"items"`
+}
+
+type QuizEvaluationSpec struct {
+	Quiz     string                  `json:"quiz"`     // the quiz id
+	User     string                  `json:"user"`     // the user id
+	Scenario string                  `json:"scenario"` // the scenario id
+	Attempts []QuizEvaluationAttempt `json:"attempts"`
+}
+
+type QuizEvaluationAttempt struct {
+	CreationTimestamp string              `json:"creation_timestamp"`  // the creation timestamp
+	Timestamp         string              `json:"timestamp,omitempty"` // the timestamp when the quiz was solved
+	Attempt           uint32              `json:"attempt"`
+	Score             uint32              `json:"score"`
+	Pass              bool                `json:"pass"`
+	Corrects          map[string][]string `json:"corrects,omitempty"` // key is question id and values are correct answer ids
+	Selects           map[string][]string `json:"selects"`            // key is question id and values are answer ids of the answers chosen by the user
 }

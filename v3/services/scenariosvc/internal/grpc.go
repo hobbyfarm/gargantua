@@ -138,7 +138,7 @@ func (s *GrpcScenarioServer) GetScenario(ctx context.Context, req *generalpb.Get
 
 	scenarioSteps := []*scenariopb.ScenarioStep{}
 	for _, step := range scenario.Spec.Steps {
-		scenarioSteps = append(scenarioSteps, &scenariopb.ScenarioStep{Title: step.Title, Content: step.Content})
+		scenarioSteps = append(scenarioSteps, &scenariopb.ScenarioStep{Title: step.Title, Content: step.Content, Quiz: step.Quiz})
 	}
 
 	vms := []*generalpb.StringMap{}
@@ -314,7 +314,7 @@ func (s *GrpcScenarioServer) ListScenario(ctx context.Context, listOptions *gene
 
 		scenarioSteps := []*scenariopb.ScenarioStep{}
 		for _, step := range scenario.Spec.Steps {
-			scenarioSteps = append(scenarioSteps, &scenariopb.ScenarioStep{Title: step.Title, Content: step.Content})
+			scenarioSteps = append(scenarioSteps, &scenariopb.ScenarioStep{Title: step.Title, Content: step.Content, Quiz: step.Quiz})
 		}
 
 		vms := []*generalpb.StringMap{}
