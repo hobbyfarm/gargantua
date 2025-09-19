@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/services/quizsvc/v3/internal/quiz"
@@ -15,7 +17,6 @@ import (
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	quizpb "github.com/hobbyfarm/gargantua/v3/protos/quiz"
 	"google.golang.org/grpc/status"
-	"net/http"
 )
 
 type QuizEvaluationService struct {
@@ -162,11 +163,6 @@ func (qes QuizEvaluationService) StartFunc(w http.ResponseWriter, r *http.Reques
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, qes.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(rbac.ResourcePluralQuizEvaluation, rbac.VerbCreate))
-	if err != nil || !authrResponse.Success {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to start quiz evaluation")
-		return
-	}
 
 	var preparedStartQuizEvaluation PreparedStartQuizEvaluation
 
@@ -276,11 +272,6 @@ func (qes QuizEvaluationService) RecordFunc(w http.ResponseWriter, r *http.Reque
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, qes.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(rbac.ResourcePluralQuizEvaluation, rbac.VerbCreate))
-	if err != nil || !authrResponse.Success {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to record quiz evaluation")
-		return
-	}
 
 	var preparedRecordQuizEvaluation PreparedRecordQuizEvaluation
 
