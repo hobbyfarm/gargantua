@@ -157,11 +157,6 @@ func (qes QuizEvaluationService) StartFunc(w http.ResponseWriter, r *http.Reques
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, qes.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(rbac.ResourcePluralQuizEvaluation, rbac.VerbCreate))
-	if err != nil || !authrResponse.Success {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to start quiz evaluation")
-		return
-	}
 
 	var preparedStartQuizEvaluation PreparedStartQuizEvaluation
 
@@ -271,11 +266,6 @@ func (qes QuizEvaluationService) RecordFunc(w http.ResponseWriter, r *http.Reque
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, qes.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(rbac.ResourcePluralQuizEvaluation, rbac.VerbCreate))
-	if err != nil || !authrResponse.Success {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to record quiz evaluation")
-		return
-	}
 
 	var preparedRecordQuizEvaluation PreparedRecordQuizEvaluation
 
