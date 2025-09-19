@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"github.com/hobbyfarm/gargantua/services/quizsvc/v3/internal/quiz"
@@ -15,7 +17,6 @@ import (
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	quizpb "github.com/hobbyfarm/gargantua/v3/protos/quiz"
 	"google.golang.org/grpc/status"
-	"net/http"
 )
 
 type QuizEvaluationService struct {
@@ -93,12 +94,6 @@ func (qes QuizEvaluationService) GetForUserFunc(w http.ResponseWriter, r *http.R
 	}
 
 	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, qes.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(rbac.ResourcePluralQuizEvaluation, rbac.VerbGet))
-	if err != nil || !authrResponse.Success {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to get quiz evaluation")
-		return
-	}
-
 	vars := mux.Vars(r)
 
 	quizId := vars["quiz_id"]
