@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	hferrors "github.com/hobbyfarm/gargantua/v3/pkg/errors"
@@ -13,7 +15,6 @@ import (
 	authrpb "github.com/hobbyfarm/gargantua/v3/protos/authr"
 	generalpb "github.com/hobbyfarm/gargantua/v3/protos/general"
 	"google.golang.org/grpc/status"
-	"net/http"
 )
 
 type QuizService struct {
@@ -81,16 +82,9 @@ func (qs QuizService) GetFunc(w http.ResponseWriter, r *http.Request) {
 }
 
 func (qs QuizService) GetForUserFunc(w http.ResponseWriter, r *http.Request) {
-	user, err := rbac.AuthenticateRequest(r, qs.authnClient)
+	_, err := rbac.AuthenticateRequest(r, qs.authnClient)
 	if err != nil {
 		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
-		return
-	}
-
-	impersonatedUserId := user.GetId()
-	authrResponse, err := rbac.AuthorizeSimple(r, qs.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(rbac.ResourcePluralQuiz, rbac.VerbGet))
-	if err != nil || !authrResponse.Success {
-		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to quiz")
 		return
 	}
 
