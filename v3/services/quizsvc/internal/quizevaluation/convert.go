@@ -41,6 +41,25 @@ func NewPreparedQuizEvaluation(validationType quiz.ValidationType, quizEvaluatio
 	}
 }
 
+func NewPreparedQuizEvaluationReport(quizEvaluation *quizpb.QuizEvaluation) PreparedQuizEvaluationReport {
+	attempts := make([]PreparedQuizEvaluationReportAttempt, len(quizEvaluation.GetAttempts()))
+	for i, attempt := range quizEvaluation.GetAttempts() {
+		attempts[i] = PreparedQuizEvaluationReportAttempt{
+			Timestamp: attempt.GetTimestamp(),
+			Score:     attempt.GetScore(),
+			Pass:      attempt.GetPass(),
+		}
+	}
+
+	return PreparedQuizEvaluationReport{
+		Id:       quizEvaluation.GetId(),
+		Quiz:     quizEvaluation.GetQuiz(),
+		User:     quizEvaluation.GetUser(),
+		Scenario: quizEvaluation.GetScenario(),
+		Attempts: attempts,
+	}
+}
+
 func NewPBQuizEvaluationAttemptForStart(attempt uint32, quiz *quizpb.Quiz) *quizpb.QuizEvaluationAttempt {
 	var selects map[string]*generalpb.StringArray
 	if quiz.GetShuffle() {

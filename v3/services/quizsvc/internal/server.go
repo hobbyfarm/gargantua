@@ -36,6 +36,7 @@ func (qs QuizServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/quiz/{id}/delete", qs.internalQuizService.DeleteFunc).Methods("DELETE")
 	r.HandleFunc("/quiz/{id}", qs.internalQuizService.GetForUserFunc).Methods("GET")
 	// quiz score
+	r.HandleFunc("/a/quiz/evaluation/list", qs.internalQuizEvaluationService.ListFunc).Methods("GET")
 	r.HandleFunc("/a/quiz/evaluation/{id}", qs.internalQuizEvaluationService.GetFunc).Methods("GET")
 	r.HandleFunc("/a/quiz/evaluation/{id}/delete", qs.internalQuizEvaluationService.DeleteFunc).Methods("DELETE")
 	r.HandleFunc("/quiz/evaluation/start", qs.internalQuizEvaluationService.StartFunc).Methods("POST")
