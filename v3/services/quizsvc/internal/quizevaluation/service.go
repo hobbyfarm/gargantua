@@ -40,6 +40,43 @@ func NewQuizEvaluationService(
 	}
 }
 
+func (qes QuizEvaluationService) ListFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := rbac.AuthenticateRequest(r, qes.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, http.StatusUnauthorized, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, qes.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(rbac.ResourcePluralQuizEvaluation, rbac.VerbList))
+	if err != nil || !authrResponse.Success {
+		util.ReturnHTTPMessage(w, r, http.StatusForbidden, "forbidden", "no access to list quiz evaluations")
+		return
+	}
+
+	quizEvaluationList, err := qes.internalServer.ListQuizEvaluation(r.Context(), &generalpb.ListOptions{})
+	if err != nil {
+		glog.Errorf("error while listing all quiz evaluations: %s", hferrors.GetErrorMessage(err))
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "error", "error listing all quiz evaluations")
+		return
+	}
+
+	preparedQuizEvaluations := make([]PreparedQuizEvaluationReport, 0, len(quizEvaluationList.GetQuizEvaluations()))
+	for _, quizEvaluation := range quizEvaluationList.GetQuizEvaluations() {
+		preparedQuizEvaluations = append(preparedQuizEvaluations, NewPreparedQuizEvaluationReport(quizEvaluation))
+	}
+
+	encodedQuizEvaluations, err := json.Marshal(preparedQuizEvaluations)
+	if err != nil {
+		glog.Errorf("error marshalling quiz evaluations: %v", err)
+		util.ReturnHTTPMessage(w, r, http.StatusInternalServerError, "error", "error listing all quiz evaluations")
+		return
+	}
+
+	util.ReturnHTTPContent(w, r, http.StatusOK, "success", encodedQuizEvaluations)
+	glog.V(2).Info("retrieved list of all quiz evaluations")
+}
+
 func (qes QuizEvaluationService) GetFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := rbac.AuthenticateRequest(r, qes.authnClient)
 	if err != nil {

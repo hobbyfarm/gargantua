@@ -7,6 +7,7 @@ IMAGE_TAG ?= latest
 PLATFORMS ?= linux/amd64
 DOCKER_COMMAND ?= $(notdir $(shell command -v docker || command -v podman))
 DOCKER_BUILD_COMMAND ?= buildx build
+BUILDX_BUILDER ?= hobbyfarm
 SERVICE_BASE_PATH ?= $(shell realpath ./v3/services)
 SERVICE_DOCKERFILE ?= $(shell realpath ./v3/Dockerfile)
 GARGANTUA_DOCKERFILE ?= $(shell realpath ./Dockerfile)
@@ -26,7 +27,7 @@ endif
 
 # If no services are specified, get all service directories
 ifeq ($(SERVICES),)
-    SERVICES := gargantua $(shell find $(SERVICE_BASE_PATH) -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
+    SERVICES := gargantua $(shell find "$(SERVICE_BASE_PATH)" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
 endif
 
 .PHONY: help
@@ -67,8 +68,12 @@ generate-protos:
 .PHONY: docker-setup
 docker-setup:
 	@if [ "$(DOCKER_COMMAND)" = "docker" ]; then \
-		docker buildx create --use --name hobbyfarm || true; \
-		docker buildx inspect --bootstrap; \
+		if "$(DOCKER_COMMAND)" buildx inspect "$(BUILDX_BUILDER)" >/dev/null 2>&1; then \
+			"$(DOCKER_COMMAND)" buildx use "$(BUILDX_BUILDER)"; \
+		else \
+			"$(DOCKER_COMMAND)" buildx create --use --name "$(BUILDX_BUILDER)"; \
+		fi; \
+		"$(DOCKER_COMMAND)" buildx inspect "$(BUILDX_BUILDER)" --bootstrap; \
 	fi
 
 .PHONY: docker-build
@@ -76,11 +81,11 @@ docker-build:
 	@for service in $(SERVICES); do \
 		if [ "$$service" = "gargantua" ]; then \
 			echo "Building gargantua..."; \
-			$(DOCKER_COMMAND) $(DOCKER_BUILD_COMMAND) $(if $(PUSH),--push,--load) $(PLATFORM_ARG) --file $(GARGANTUA_DOCKERFILE) --tag $(IMAGE_REGISTRY)/$$service:$(IMAGE_TAG) .; \
+			$(DOCKER_COMMAND) $(DOCKER_BUILD_COMMAND) $(if $(PUSH),--push,--load) $(PLATFORM_ARG) --file "$(GARGANTUA_DOCKERFILE)" --tag "$(IMAGE_REGISTRY)/$$service:$(IMAGE_TAG)" "."; \
 		else \
 			echo "Building $$service..."; \
 			image_tag=$(IMAGE_REGISTRY)/$${service/%svc/-service}:$(IMAGE_TAG); \
-			$(DOCKER_COMMAND) $(DOCKER_BUILD_COMMAND) $(if $(PUSH),--push,--load) $(PLATFORM_ARG) --build-arg SERVICE_NAME=$$service --file $(SERVICE_DOCKERFILE) --tag $$image_tag .; \
+			$(DOCKER_COMMAND) $(DOCKER_BUILD_COMMAND) $(if $(PUSH),--push,--load) $(PLATFORM_ARG) --build-arg SERVICE_NAME="$$service" --file "$(SERVICE_DOCKERFILE)" --tag "$$image_tag" "."; \
 		fi; \
 	done
 

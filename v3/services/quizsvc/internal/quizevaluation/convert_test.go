@@ -333,3 +333,35 @@ func TestNewPreparedAttempt(t *testing.T) {
 		})
 	}
 }
+
+func TestNewPreparedQuizEvaluationReport(t *testing.T) {
+	evaluation := &quizpb.QuizEvaluation{
+		Id:       "evaluation-id",
+		Quiz:     "quiz-id",
+		User:     "user-id",
+		Scenario: "scenario-id",
+		Attempts: []*quizpb.QuizEvaluationAttempt{
+			{
+				Timestamp: "completed-at",
+				Score:     80,
+				Pass:      true,
+				Corrects: map[string]*generalpb.StringArray{
+					"question-id": {Values: []string{"answer-id"}},
+				},
+				Selects: map[string]*generalpb.StringArray{
+					"question-id": {Values: []string{"answer-id"}},
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, PreparedQuizEvaluationReport{
+		Id:       "evaluation-id",
+		Quiz:     "quiz-id",
+		User:     "user-id",
+		Scenario: "scenario-id",
+		Attempts: []PreparedQuizEvaluationReportAttempt{
+			{Timestamp: "completed-at", Score: 80, Pass: true},
+		},
+	}, NewPreparedQuizEvaluationReport(evaluation))
+}

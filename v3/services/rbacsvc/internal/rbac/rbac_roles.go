@@ -7,6 +7,7 @@ import (
 	"github.com/hobbyfarm/gargantua/v3/pkg/util"
 	wranglerRbac "github.com/rancher/wrangler/pkg/generated/controllers/rbac"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 )
@@ -29,10 +30,10 @@ func list() []Role {
 				addRule([]string{"hobbyfarm.io"}, []string{"list", "get"}, []string{"users"}).
 				addRule([]string{"rbac.authorization.k8s.io"}, []string{"*"}, []string{"roles", "rolebindings"})
 		}),
-		// Content Creator can create and edit scenarios and courses
+		// Content Creator can create and edit scenarios, courses and quiz
 		newRole("content-creator", func(r Role) Role {
 			return r.
-				addRule([]string{"hobbyfarm.io"}, []string{"*"}, []string{"scenarios", "courses"}).
+				addRule([]string{"hobbyfarm.io"}, []string{"*"}, []string{"scenarios", "courses", "quizes"}).
 				addRule([]string{"hobbyfarm.io"}, []string{"list", "get"}, []string{"virtualmachinetemplates"})
 		}),
 		// Infatructure Admin can edit environments and vmtemplates
@@ -52,7 +53,7 @@ func list() []Role {
 		// ScheduledEvent Proctor is allowed to view scheduled events + dashboards
 		newRole("scheduledevent-proctor", func(r Role) Role {
 			return r.
-				addRule([]string{"hobbyfarm.io"}, []string{"list", "get"}, []string{"scheduledevents", "accesscodes", "scenarios", "courses", "environments", "virtualmachinetemplates", "virtualmachinesets", "users"}).
+				addRule([]string{"hobbyfarm.io"}, []string{"list", "get"}, []string{"scheduledevents", "accesscodes", "scenarios", "courses", "environments", "virtualmachinetemplates", "virtualmachinesets", "users", "quizes", "quizevaluations"}).
 				addRule([]string{"hobbyfarm.io"}, []string{"list"}, []string{"environments"}).
 				addRule([]string{"hobbyfarm.io"}, []string{"list", "get", "watch"}, []string{"progresses", "virtualmachines", "virtualmachineclaims"}).
 				addRule([]string{"hobbyfarm.io"}, []string{"update", "delete", "list", "get"}, []string{"sessions"})
@@ -78,7 +79,21 @@ func Create(ctx context.Context, cfg *rest.Config) error {
 	roles := list()
 	rf := factory.Rbac().V1().Role()
 	for _, role := range roles {
-		rf.Create(&role.r)
+		existing, err := rf.Get(role.r.Namespace, role.r.Name, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			if _, err = rf.Create(&role.r); err != nil {
+				return err
+			}
+			continue
+		}
+		if err != nil {
+			return err
+		}
+
+		role.r.ResourceVersion = existing.ResourceVersion
+		if _, err = rf.Update(&role.r); err != nil {
+			return err
+		}
 	}
 
 	return nil

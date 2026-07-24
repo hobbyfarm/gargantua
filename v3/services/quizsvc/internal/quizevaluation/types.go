@@ -8,6 +8,20 @@ type PreparedQuizEvaluation struct {
 	Attempts []PreparedAttempt `json:"attempts"`
 }
 
+type PreparedQuizEvaluationReport struct {
+	Id       string                                `json:"id"`
+	Quiz     string                                `json:"quiz"`
+	User     string                                `json:"user"`
+	Scenario string                                `json:"scenario"`
+	Attempts []PreparedQuizEvaluationReportAttempt `json:"attempts"`
+}
+
+type PreparedQuizEvaluationReportAttempt struct {
+	Timestamp string `json:"timestamp,omitempty"`
+	Score     uint32 `json:"score"`
+	Pass      bool   `json:"pass"`
+}
+
 type PreparedAttempt struct {
 	CreationTimestamp string              `json:"creation_timestamp"`
 	Timestamp         string              `json:"timestamp,omitempty"`
