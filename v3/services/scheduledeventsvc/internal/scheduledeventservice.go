@@ -541,6 +541,69 @@ func (s ScheduledEventServer) DeleteOTACFunc(w http.ResponseWriter, r *http.Requ
 	util.ReturnHTTPMessage(w, r, 200, "success", "deleted OTAC")
 }
 
+func (s ScheduledEventServer) UpdateOTACFunc(w http.ResponseWriter, r *http.Request) {
+	user, err := rbac.AuthenticateRequest(r, s.authnClient)
+	if err != nil {
+		util.ReturnHTTPMessage(w, r, 401, "unauthorized", "authentication failed")
+		return
+	}
+
+	impersonatedUserId := user.GetId()
+	authrResponse, err := rbac.AuthorizeSimple(r, s.authrClient, impersonatedUserId, rbac.HobbyfarmPermission(resourcePlural, rbac.VerbUpdate))
+	if err != nil || !authrResponse.Success {
+		util.ReturnHTTPMessage(w, r, 403, "forbidden", "no access to update scheduledevents")
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	otacId := vars["otac"]
+	if otacId == "" {
+		util.ReturnHTTPMessage(w, r, 400, "badrequest", "no OTAC ID passed in")
+		return
+	}
+
+	maxDurationValue := r.PostFormValue("max_duration")
+
+	// Get the existing OTAC
+	otac, err := s.acClient.GetOtac(r.Context(), &generalpb.GetRequest{Id: otacId})
+	if err != nil {
+		glog.Error(hferrors.GetErrorMessage(err))
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error retrieving OTAC")
+		return
+	}
+
+	// Update the max_duration
+	otac.MaxDuration = maxDurationValue
+
+	// Update the OTAC via gRPC
+	_, err = s.acClient.UpdateOtac(r.Context(), otac)
+	if err != nil {
+		glog.Error(hferrors.GetErrorMessage(err))
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error updating OTAC")
+		return
+	}
+
+	// Return the updated OTAC
+	preparedOTAC := PreparedOTAC{
+		Id:                otac.GetId(),
+		User:              otac.GetUser(),
+		RedeemedTimestamp: otac.GetRedeemedTimestamp(),
+		MaxDuration:       otac.GetMaxDuration(),
+	}
+
+	encoded, err := json.Marshal(preparedOTAC)
+	if err != nil {
+		glog.Errorf("error marshalling updated otac: %v", err)
+		util.ReturnHTTPMessage(w, r, 500, "internalerror", "error updating OTAC")
+		return
+	}
+
+	util.ReturnHTTPContent(w, r, 200, "success", encoded)
+
+	glog.V(4).Infof("updated OTAC %s with new max_duration %s", otacId, maxDurationValue)
+}
+
 func (s ScheduledEventServer) GenerateOTACsFunc(w http.ResponseWriter, r *http.Request) {
 	user, err := rbac.AuthenticateRequest(r, s.authnClient)
 	if err != nil {

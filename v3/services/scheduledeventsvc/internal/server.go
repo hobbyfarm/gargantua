@@ -54,6 +54,7 @@ func (s ScheduledEventServer) SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/a/scheduledevent/{id}", s.GetFunc).Methods("GET")
 	r.HandleFunc("/a/scheduledevent/{id}", s.UpdateFunc).Methods("PUT")
 	r.HandleFunc("/a/scheduledevent/{id}/otacs/add/{count}", s.GenerateOTACsFunc).Methods("POST")
+	r.HandleFunc("/a/scheduledevent/{id}/otacs/update/{otac}", s.UpdateOTACFunc).Methods("POST")
 	r.HandleFunc("/a/scheduledevent/{id}/otacs/delete/{otac}", s.DeleteOTACFunc).Methods("GET")
 	r.HandleFunc("/a/scheduledevent/{id}/otacs/list", s.GetOTACsFunc).Methods("GET")
 	r.HandleFunc("/a/scheduledevent/delete/{id}", s.DeleteFunc).Methods("DELETE")
